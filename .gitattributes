@@ -1,0 +1,18 @@
+# 既定は LF に正規化する。
+* text=auto eol=lf
+
+# RPG III / RPG IV(固定形式)/ CL / DDS は桁位置が意味を持つため、
+# CR が 1 バイトでも混入すると壊れる。明示的に LF を強制する。
+*.rpg text eol=lf
+*.rpgle text eol=lf
+*.clp text eol=lf
+*.clle text eol=lf
+*.pf text eol=lf
+*.lf text eol=lf
+*.dspf text eol=lf
+*.prtf text eol=lf
+*.cmd text eol=lf
+*.rpgleinc text eol=lf
+*.bnd text eol=lf
+*.sql text eol=lf
+*.md text eol=lf

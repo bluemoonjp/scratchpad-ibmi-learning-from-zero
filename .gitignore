@@ -1,0 +1,24 @@
+# OS / エディター
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Node(CI チェック・スクリプト用。依存パッケージは使わない想定だが念のため)
+node_modules/
+
+# 秘密鍵・接続情報(誤って追加しないため)
+*.pem
+*.key
+*.ppk
+id_rsa*
+id_ed25519*
+pub400
+pub400.pub
+.ssh/
+*.env
+*.local.*
+
+# 実機とのやり取りで生じる作業ファイル
+work/
+*.savf.bin
