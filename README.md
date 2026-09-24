@@ -4,7 +4,7 @@ IBM i を全く触ったことがない方が、[PUB400.com](https://pub400.com/
 
 ## 現在の状態
 
-**作成中です。** 全 11 部・約 100 レッスンを、部ごとに実機で検証しながら順次公開しています。進捗は [Issue 一覧](../../issues) で追えます(第0部〜第10部それぞれに 1 つの Issue があり、その部が書き終わると close されます)。
+**作成中です。** 全 11 部・約 100 レッスンを、部ごとに実機で検証しながら順次公開しています。進捗は [Issue 一覧](https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero/issues) で追えます(第0部〜第10部それぞれに 1 つの Issue があり、その部が書き終わると close されます)。
 
 ## 対象読者
 
