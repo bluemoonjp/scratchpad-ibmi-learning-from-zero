@@ -42,6 +42,10 @@ export function field(name, length, type, dec, kwList) {
 export function key(name, extra) {
   return line({ nameType: 'K', name, kw: extra || '' });
 }
+// 選択(S)・除外(O)行: 例 selectOmit('S', 'TOKTAN', "VALUES('T00001')")
+export function selectOmit(sType, name, kw) {
+  return line({ nameType: sType, name, kw });
+}
 export function comment(text) {
   return line({ comment: true, kw: text }); // NOTE: comment text placed from col45 for simplicity; real comments can start col8
 }
