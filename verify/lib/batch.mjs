@@ -10,6 +10,12 @@
 //   - qsh の system() 呼び出しが同一ジョブ内で連続するか(違えば QTEMP は使えない)。
 //   - SYSTOOLS.SPOOLED_FILE_DATA の呼び出し方(引数の形)。ここでは最有力候補を既定にし、
 //     失敗したら候補を増やして次回の接続で決着させる(推測で試行錯誤しない、という方針)。
+//
+// CCSID の既定値(1208): 推測ではなく、tools/qclsrc/txsetup.clp が実機で完走を確認済みの
+// CPYFRMSTMF ... STMFCCSID(1208) をそのまま踏襲している(git clone で届いたASCII/UTF-8の
+// ソースを取り込む実績)。heredocで書いたファイルもASCII/UTF-8で、同じqsh/PASE環境が
+// ファイル作成時に付けるCCSIDタグは同じ既定である可能性が高いと考えられるが、
+// heredoc経由でこの値が実際に正しいかどうか自体は、このハーネスではまだ確認していない。
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,6 +23,16 @@ import { repoRoot } from './paths.mjs';
 import { buildClWrapperSource, pgmNameForBatch } from './clgen.mjs';
 
 const MARKER = (name) => `===VFY:${name}===`;
+
+// tools/qclsrc/txsetup.clp で実機確認済みの値(上記コメント参照)。manifest の
+// file/cl ステップで `ccsid` を省略した場合はこれを使う。`ccsid: false` を明示すれば
+// setccsid/STMFCCSID を一切出さない(候補比較などで意図的に既定を外したいとき用)。
+const DEFAULT_CCSID = 1208;
+
+function resolveCcsid(explicit) {
+  if (explicit === false) return null;
+  return explicit || DEFAULT_CCSID;
+}
 
 // リポジトリー内で完全に統制している相対パス(バッチ名・メンバー名から機械生成)だけを
 // 対象にした最小限のエスケープ。空白・ワイルドカード等の紛れ込みを防ぐ。
@@ -62,12 +78,9 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
     const remoteRel = `${remoteDir}/${path.basename(step.localPath)}`;
     lines.push(`echo ${MARKER(`transfer:${step.member}`)}`);
     lines.push(heredocWrite(remoteRel, content));
-    // `ccsid` を省略した場合は setccsid も STMFCCSID() も出さない(未検証の数字を
-    // 推測で決め打ちしない。CPYFRMSTMF はその場合ファイル自身のCCSIDタグを使う)。
-    // heredoc で書いたファイルの実際のCCSIDタグが何になるかは、この計画の最初の
-    // 実接続で確かめる(結果に応じて、必要ならここに明示的な候補を追加する)。
-    if (step.ccsid) {
-      lines.push(`setccsid ${step.ccsid} "${remoteAbs(remoteRel)}"`);
+    const ccsid = resolveCcsid(step.ccsid);
+    if (ccsid) {
+      lines.push(`setccsid ${ccsid} "${remoteAbs(remoteRel)}"`);
     }
     if (step.ensureSrcFile) {
       // 既に存在すれば CPF7302 で失敗するだけなので無視してよい(system の終了コードは
@@ -76,7 +89,7 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
         `system "CRTSRCPF FILE(${lib}/${step.remoteSrcFile}) RCDLEN(${step.ensureSrcFile.recordLength}) TEXT('verify harness auto-create')" 2>&1`,
       );
     }
-    const stmfCcsid = step.ccsid ? ` STMFCCSID(${step.ccsid})` : '';
+    const stmfCcsid = ccsid ? ` STMFCCSID(${ccsid})` : '';
     lines.push(
       `system "CPYFRMSTMF FROMSTMF('${remoteAbs(remoteRel)}') ` +
         `TOMBR('/QSYS.LIB/${lib}.LIB/${step.remoteSrcFile}.FILE/${step.member}.MBR') MBROPT(*REPLACE)${stmfCcsid}" 2>&1`,
@@ -101,11 +114,12 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
 
     lines.push(`echo ${MARKER('wrapper-source')}`);
     lines.push(heredocWrite(wrapperRel, source));
-    // ccsid の扱いは上の file ステップと同じ方針(未検証の数字を決め打ちしない)。
-    if (manifest.wrapperCcsid) {
-      lines.push(`setccsid ${manifest.wrapperCcsid} "${remoteAbs(wrapperRel)}"`);
+    // ccsid の扱いは上の file ステップと同じ方針(既定 1208、`false` で無指定に戻せる)。
+    const wrapperCcsid = resolveCcsid(manifest.wrapperCcsid);
+    if (wrapperCcsid) {
+      lines.push(`setccsid ${wrapperCcsid} "${remoteAbs(wrapperRel)}"`);
     }
-    const wrapperStmfCcsid = manifest.wrapperCcsid ? ` STMFCCSID(${manifest.wrapperCcsid})` : '';
+    const wrapperStmfCcsid = wrapperCcsid ? ` STMFCCSID(${wrapperCcsid})` : '';
     lines.push(
       `system "CPYFRMSTMF FROMSTMF('${remoteAbs(wrapperRel)}') ` +
         `TOMBR('/QSYS.LIB/${lib}.LIB/QCLSRC.FILE/${pgmName}.MBR') MBROPT(*REPLACE)${wrapperStmfCcsid}" 2>&1`,
