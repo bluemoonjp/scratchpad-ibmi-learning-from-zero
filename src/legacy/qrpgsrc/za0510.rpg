@@ -1,0 +1,347 @@
+      * ZA0510 - allocation priority lookup and summary helper. Legacy system
+      * (Part 5), lesson 05-04 (arrays / tables / DS / error handling /
+      * QCMDEXC). Standalone teaching program per design.objects[4].purpose:
+      * NOT wired into the JU0900C -> ZA0500 chain.
+      *
+      * NOT YET COMPILED ON REAL HARDWARE (this session is out of its SSH
+      * connection-count budget). Column positions come only from
+      * tools/gen/rpg3.mjs and, where noted below, from RPG/400 Reference
+      * (work/design/refs/rpg400ref.txt) by inference - not from a real
+      * CRTRPGPGM. Verify with CRTRPGPGM before relying on this source.
+      *
+      * 1. /COPY placement (FLDREFR).
+      *    Per fldrefr.rpg's own header (the authoritative spec for this),
+      *    FLDREFR is copied in with copyDirective('I', 'FLDREFR'), placed
+      *    in the I-spec area AFTER this program's own record-level I-specs
+      *    (the ZAIKOR override block below) and BEFORE the C-specs. RPG/400
+      *    Reference "Figure 1. Order of the Types of Specifications" (lines
+      *    890-904) requires H-F-E-L-I-C-O source order; data-structure specs
+      *    "as a whole must come after all record-level I-specs" (rpg3.mjs
+      *    iSpecDS() comment) - so FLDREFR's copied-in CMNFLD DS, and this
+      *    program's own CMDDS/PSDS/PRIDS data structures, all sit after the
+      *    ZAIKOR block and before the first C-spec.
+      *
+      *    IMPORTANT: CMNFLD (copied in from FLDREFR) defines subfields named
+      *    ZASHO and ZASU (src/legacy/qrpgsrc/fldrefr.rpg) - the exact same
+      *    names as ZAIKOM's own external fields ZASHO/ZASU (db/v1/zaikom.pf).
+      *    RPG/400 Reference p.6 ("A symbolic name must be unique") states
+      *    uniqueness as a rule common to fields, subfields and data-structure
+      *    names alike (lines 1180-1207 list them together under one rule
+      *    set), so leaving ZAIKOM's fields under their natural external names
+      *    would collide with CMNFLD's subfields of the same name - two
+      *    different definitions of one symbol, not legal. This program
+      *    renames them via I-spec field override (cols 21-30 external name
+      *    -> cols 53-58 program name, RPG/400 Reference p.149/153, same
+      *    mechanism tk0100.rpg uses for TANTOM's TANTOCODE/TANTONAME - itself
+      *    flagged there as reference-based/not yet compiled for this specific
+      *    rename form) to ZKSHO/ZKSU before FLDREFR is copied in, freeing the
+      *    ZASHO/ZASU names for CMNFLD.
+      *
+      * 2. Compile-time TABLE pair (product code -> priority), not a single
+      *    alternating-format table pair - and where its "**" data actually
+      *    goes in the source.
+      *    RPG/400 Reference "Positions 46-57 (Second Array Description)"
+      *    (lines 8358-8374) lets ONE E-spec line describe two tables loaded
+      *    in alternating format on the SAME input record. rpg3.mjs's eSpec()
+      *    does not implement cols 46-57 (only cols 27-45, one array/table per
+      *    call - see its own header comment). Per this lesson's design brief,
+      *    that gap is not worked around by hand-deriving those columns;
+      *    instead this program declares TWO INDEPENDENT compile-time tables,
+      *    TABPCD (product code) and TABPRI (priority), each its own "**"
+      *    data block. This is not an approximation: RPG/400 Reference's own
+      *    "LOKUP with Two Tables" section (lines 22619-22677, Figure 113/114,
+      *    TABEMP/TABPAY) documents exactly this - two separately-declared
+      *    tables with the same entry count, one searched by LOKUP, the
+      *    other's corresponding element retrieved via the LOKUP result field
+      *    - as the standard way to look up a related pair of tables.
+      *
+      *    Placement of the "**" data: Figure 1 ("Order of the Types of
+      *    Specifications", lines 889-904) draws the required source order as
+      *    Control/File/Extension/Line-Counter/Input/Calculation/Output, THEN
+      *    "Compile-Time Array and Table Data" (then alternate collating
+      *    sequence / file translation records, unused here) - i.e. ALL
+      *    compile-time array/table data comes after every H/F/E/I/C/O spec,
+      *    not right after each table's own E-spec header. "Loading a
+      *    Compile-Time Array" (lines 21934-21941) confirms this directly:
+      *    "enter array input data into records ... following the source
+      *    records for this program". Both "**" blocks below therefore sit
+      *    after the last O-spec, in E-spec declaration order (TABPCD then
+      *    TABPRI - "arrays are loaded in the order in which they are
+      *    described in the extension specifications", line 22008-22009).
+      *    (verify/part05-gen-probe/src/t0eds.rpg puts its own "**" data
+      *    between its C-specs and O-specs; ju0300.rpg's header already notes
+      *    that probe is itself not yet compiled, and Figure 1 above is a
+      *    clearer, more direct source for this specific question, so this
+      *    program follows Figure 1 rather than that probe's placement.)
+      *
+      *    Product codes are the real ones from db/v1/zaikom.pf / db/data/
+      *    load_v1.sql (P00001-P00006). Priority values (1=highest .. 3=
+      *    lowest) are invented teaching data, not a real business rule:
+      *    P00001/P00002=1, P00003/P00004=2, P00005/P00006=3. Compile-time
+      *    table data format for TABPRI (zoned decimal, length 1, 0 decimal
+      *    positions) is written as a plain digit character per RPG/400
+      *    Reference's zoned-decimal literal convention; this specific 1-
+      *    digit unsigned case has no real-compile record in docs/probes.md.
+      *
+      * 3. LOKUP: TABPCD searched (factor 2), TABPRI is the related table
+      *    named in the result field (RPG/400 Reference p.286, "LOKUP with
+      *    Two Tables" p.401-402). Only an EQUAL search is needed (exact
+      *    product-code match), so the resulting indicator goes in the EQ
+      *    position (58-59) per the general LOKUP rule (p.286); no A/D
+      *    sequence entry is coded on either E-spec, matching "if only an
+      *    equal indicator is used, LOKUP searches the entire table" (p.287).
+      *    Per p.286 ("No resulting indicator is set on if the search is not
+      *    successful"), the EQ indicator is NOT cleared by an unsuccessful
+      *    LOKUP, so it is SETOF before every LOKUP - same reasoning as
+      *    za0500.rpg's SETOF 9091 before its CHAIN.
+      *
+      * 4. Summary array SQ + cross-foot, same technique as ju0300.rpg's CT:
+      *    a RUN-TIME array (E-spec with entries-per-record left blank, no
+      *    "**" data), one element per priority (1-3), accumulating ZAIKOM
+      *    quantity (renamed ZKSU) as each record is read. GQTY is an
+      *    independent running total (added once per record, not through the
+      *    array); XFOOT sums SQ into XQTY at LR and XQTY is COMPed against
+      *    GQTY as an integrity check (indicator 93 = match), printed as OK /
+      *    MISMATCH - the same cross-footing pattern ju0300.rpg uses for XTOT
+      *    vs GCNT.
+      *
+      *    Array-element result-field naming: RPG/400 Reference p.397 ("if an
+      *    array element is to be used as a result field, the array name with
+      *    the comma and index cannot exceed 6 characters" - this is just the
+      *    physical 6-column width of the C-spec Result field, cols 43-48,
+      *    restated). "SQ,PRI" is exactly 6 characters (array name SQ + comma
+      *    + index field PRI), which is why the array is named SQ rather than
+      *    something longer/more descriptive.
+      *
+      * 5. DS PRIDS: a separate summary data structure (distinct from the
+      *    copied-in CMNFLD), giving each SQ element an alias name (PQ1/PQ2/
+      *    PQ3) per the design brief's own suggested "natural use". RPG III
+      *    has no keyword (RPG IV's OVERLAY) to make a DS subfield share
+      *    storage with an already-declared array element, and no such
+      *    overlay technique is confirmed anywhere in this repo's sources or
+      *    in rpg400ref.txt as searched this session - so PQ1/PQ2/PQ3 are
+      *    populated by an explicit Z-ADD copy from SQ,1/SQ,2/SQ,3 at LR (no
+      *    len/dec repeated on these Z-ADDs: PQ1-PQ3 are already defined by
+      *    the I-spec subfields below, and RPG/400 Reference requires len/dec
+      *    only on a result field's FIRST definition - the same rule
+      *    ju0300.rpg's header note 6a already applies to L1CNT/L2CNT), not a
+      *    storage overlay. The O-specs below print PQ1/PQ2/PQ3 (not SQ
+      *    directly), so the DS is genuinely what drives the report output.
+      *
+      * 6. Error indicator at C-spec cols 56-57 (item 7 of the design brief):
+      *    the CALL to QCMDEXC below carries its error indicator in the LO
+      *    position (56-57) - RPG/400 Reference's CALL entry (p.216): "Any
+      *    valid resulting indicator can be specified in positions 56 and 57
+      *    to be set on for an error returned from the called program" (54-55
+      *    must stay blank). This is the same "_ ER _" column convention used
+      *    by ACQ (p.205) and OUT (p.317); tk0100.rpg's H1 (LOCK IN) is the
+      *    same convention for a different opcode. Indicator 85 here.
+      *
+      * 7. Program status DS (PSDS), not INFDS.
+      *    The design brief's item 7 calls this "INFDS (program status data
+      *    structure)", but RPG/400 Reference reserves "INFDS" specifically
+      *    for the FILE information data structure (p.25, "A file information
+      *    data structure (INFDS) can be defined for EACH FILE..."; F-spec
+      *    continuation line, cols 53=K/54-59=INFDS/60-65=name). The
+      *    construct rpg3.mjs's iSpecDS(option:'S') actually builds is the
+      *    separate "Program Status Data Structure" (p.42-43) - not file-
+      *    specific, declared on an I-spec (option 'S' in col 18), and never
+      *    called "INFDS" anywhere this session found in rpg400ref.txt. The
+      *    design brief's own parenthetical Japanese gloss (program-state-
+      *    data-structure) does describe this construct correctly even though
+      *    its preceding English label does not; that is what is built here,
+      *    named PSDS. A true per-file INFDS is NOT coded for ZAIKOM, for the
+      *    same reason noted in item 8 below (fSpec() has no continuation-
+      *    line support).
+      *
+      *    STATUS and a routine-name subfield (named RTN here) are declared
+      *    at their predefined From/To byte positions from Table 8 (STATUS=
+      *    11-15, ROUTINE=29-36) rather than via the keyword form (cols
+      *    44-51, literally "STATUS"/"ROUTINE"): rpg3.mjs's iSpecSubfield()
+      *    only implements numeric from/to, not the keyword token, and this
+      *    script does not hand-derive columns outside the generator. PSDS is
+      *    not read by any logic below (kept available for a human debugging
+      *    a real compile/run).
+      *
+      * 8. INFSR / *PSSR: this program relies on a single, program-wide *PSSR
+      *    subroutine as its error handler, without a per-file F-spec INFSR
+      *    continuation line (RPG/400 Reference p.37: col 53=K, cols 54-59=
+      *    INFSR, cols 60-65=subroutine name - not coded here because
+      *    rpg3.mjs's fSpec() does not implement those continuation columns,
+      *    and this script does not hand-derive columns outside the
+      *    generator; per p.37 itself, INFSR's subroutine name "can be PSSR",
+      *    so this is a legitimate, if less explicit, way to let one
+      *    subroutine cover both roles).
+      *
+      *    Chapter 2's general exception/error dispatch (p.24, Figure 7 steps
+      *    1-4, lines 2202-2214) is explicit that *PSSR DOES act as the
+      *    catch-all when no per-file INFSR is present: step 3 asks only
+      *    "whether the appropriate exception/error subroutine (INFSR or
+      *    PSSR) is present" - a single combined check, not "INFSR, and only
+      *    PSSR if INFSR is also present". So *PSSR here also catches
+      *    unhandled runtime exceptions while reading ZAIKOM (e.g. a decimal
+      *    data error), not only the LOKUP-not-found case. The one confirmed
+      *    exception to this (p.38, lines 3127-3129: "If a file
+      *    exception/error occurs during the start or end of a program,
+      *    control passes to the RPG/400 default error handler, and not to
+      *    the user-written file exception/error subroutine (INFSR)") is
+      *    OPEN/CLOSE-time failures, which bypass INFSR *and* PSSR alike -
+      *    exactly what probes.md's 04-06 finding shows on real hardware
+      *    ("*PSSR ... did not solve" an implicit-open failure). That narrow
+      *    case is out of scope here (ZAIKOM's F-spec is unchanged from the
+      *    already-working pattern used elsewhere in this repo).
+      *
+      *    The LOKUP-not-found case is not an RPG-raised exception at all
+      *    (LOKUP just leaves its indicator off - p.286), so it is routed to
+      *    *PSSR by an explicit EXSR, which p.38 confirms is valid ("the
+      *    programmer can explicitly call the file exception/error subroutine
+      *    by specifying the name of the subroutine in factor 2 of the EXSR
+      *    operation"). With the shipped table data (TABPCD covering exactly
+      *    ZAIKOM's six product codes), the not-found path is not expected to
+      *    fire; it is included as the "fatal LOKUP miss" case the design
+      *    brief asks for.
+      *
+      * 9. QCMDEXC is NOT documented anywhere in rpg400ref.txt (grepped this
+      *    session for QCMDEXC - zero matches), and has no real-compile record
+      *    in docs/probes.md; work/design/part05-legacy-design.json's own
+      *    unverifiedGeneratorFeatures says the same. It is called here as an
+      *    ordinary CALL to the system program QSYS/QCMDEXC (RPG/400
+      *    Reference's CALL opcode, p.214-217 - CALL itself IS confirmed by
+      *    primary source, only the specific target program QCMDEXC is not),
+      *    with two PARMs, per general IBM i API documentation (external to
+      *    this repo, UNCONFIRMED here): (1) the command string to run, (2) a
+      *    packed(15,5) field holding that string's length - matching the
+      *    design brief's "length 15 5" wording exactly.
+      *
+      *    The command text is built into CMDDS (a plain DS, C1-C9 subfields
+      *    covering its 57 bytes) by explicit RUNTIME MOVEL operations in
+      *    *PSSR, NOT by I-spec compile-time subfield initialization: RPG/400
+      *    Reference's own PARM rule (p.318, lines 18453-18458) says the PARM
+      *    result field "cannot contain ... a data structure with initialized
+      *    subfields" - so a DS built via iSpecSubfield()'s init/initValue
+      *    could not legally be PARMed at all. Each MOVEL literal chunk is
+      *    <=7 raw characters, so even with one embedded quote doubled
+      *    (apostrophes doubled per p.7-8's "O'CLOCK" -> 'O''CLOCK' rule, for
+      *    the two literal quotes SNDPGMMSG's own MSG('...') syntax needs) its
+      *    RPG-encoded form is at most 10 characters including the two
+      *    delimiting quotes - fitting the C-spec Factor2 field's 10-column
+      *    width (cols 33-42) exactly, narrower than the 22-column I-spec
+      *    init-value field this session first (wrongly) planned around.
+      *    Since every chunk equals its target subfield's length exactly, each
+      *    MOVEL is an exact same-length character move (RPG/400 Reference
+      *    p.302, rule 1.d) - no truncation or padding involved. CMDDS is then
+      *    passed whole to PARM (a plain, non-multi-occurrence, non-*LDA data
+      *    structure is a legal PARM result field; only the excluded forms
+      *    listed above are not).
+      *
+      *    MSGTYPE(*INFO)/TOPGMQ(*EXT) (send a free-text message to this job's
+      *    external message queue) is used instead of MSGTYPE(*ESCAPE) because
+      *    docs/probes.md's CPD2489 finding is that *ESCAPE specifically needs
+      *    a registered MSGID, not free MSG() text; that finding is from a CL
+      *    SNDPGMMSG call, not one driven through QCMDEXC from RPG, so
+      *    carrying it over here is inference, not a direct confirmation. No
+      *    message file is created for this task (one RPG source file only),
+      *    so a free-text-eligible MSGTYPE is used rather than a registered
+      *    MSGID.
+      *
+      * 10. Leading "*" on PSSR/CANCL: this source's own OCR is self-
+      *     contradictory, so this program follows the majority reading.
+      *     The design brief's ticket-3 note (part05-legacy-design.json) says
+      *     "ENDSR *CANCL". Within rpg400ref.txt itself: BEGSR's own opcode
+      *     entry (p.208, lines 13006-13008, "the keyword PSSR used in factor
+      *     1") and the File Exception/Error Subroutine return-point list
+      *     (p.18 lines 1840-1841, p.37-38 lines 3096/3108, "a literal with
+      *     the value CANCL"/"CANCL Cancel the processing of the program")
+      *     give these WITHOUT a leading star. But EXSR's own opcode entry
+      *     (p.263, lines 15806-15807, "*PSSR used in factor 2 ... *INZSR
+      *     used in factor 2") gives PSSR/INZSR WITH a star, consistently as
+      *     a pair; Figure 4's program-cycle diagram (lines 1613-1650) also
+      *     stars *DETC/*TOTC/*TOTL/*TERM/*CANCL throughout; and the index
+      *     (lines 25116, 25638, 25127, 26262, 26366) lists both *PSSR and
+      *     *CANCL starred. tk0100.rpg's header already documents this same
+      *     OCR text dropping leading "*" inconsistently on special words. No
+      *     single reading is fully self-consistent within this document, so
+      *     this program follows the more specific/more frequent starred
+      *     reading (EXSR's own definition names *PSSR by exact, deliberate
+      *     pairing with *INZSR; the diagram and index agree) - *PSSR in
+      *     BEGSR factor 1 and EXSR factor 2, and '*CANCL' in ENDSR factor 2
+      *     - rather than treating the design brief as wrong. This remains
+      *     unverified against a real compile either way.
+      *
+      * 11. F-spec for QSYSPRT: za0500.rpg's O-specs reference QSYSPRT but
+      *     that file has no FQSYSPRT F-spec line at all (checked its current
+      *     source directly). ju0300.rpg does declare one correctly. This
+      *     program follows ju0300.rpg's complete pattern, not za0500.rpg's.
+      *
+     H
+     FZAIKOM  IP  E           K        DISK
+     FQSYSPRT O   F     132            PRINTER
+     E                    TABPCD  6   6  6
+     E                    TABPRI  6   6  1 0
+     E                    SQ          3  7 0
+     IZAIKOR
+     I              ZASHO                           ZKSHO
+     I              ZASU                            ZKSU
+     I/COPY FLDREFR
+     ICMDDS       DS                             57
+     I                                        1   7 C1
+     I                                        8  14 C2
+     I                                       15  21 C3
+     I                                       22  28 C4
+     I                                       29  35 C5
+     I                                       36  42 C6
+     I                                       43  49 C7
+     I                                       50  56 C8
+     I                                       57  57 C9
+     IPSDS       SDS
+     I                                       11  150STATUS
+     I                                       29  36 RTN
+     IPRIDS       DS                             21
+     I                                        1   70PQ1
+     I                                        8  140PQ2
+     I                                       15  210PQ3
+      * -- detail: one cycle per ZAIKOM record --
+     C                     ADD  ZKSU      GQTY    90
+     C                     SETOF                     80
+     C           ZKSHO     LOKUPTABPCD    TABPRI         80
+     C  N80                EXSR *PSSR
+     C   80                Z-ADDTABPRI    PRI     10
+     C   80                ADD  ZKSU      SQ,PRI
+      * -- LR: cross-foot the array against the independent total --
+     CLR                   XFOOTSQ        XQTY    90
+     CLR         XQTY      COMP GQTY                     93
+     CLR                   Z-ADDSQ,1      PQ1
+     CLR                   Z-ADDSQ,2      PQ2
+     CLR                   Z-ADDSQ,3      PQ3
+     CLR                   EXCPT
+      * -- subroutines --
+      * *PSSR: fatal LOKUP-miss (explicit EXSR) and, program-wide,
+      * RPG's default error/exception handler (see header note 8).
+     CSR         *PSSR     BEGSR
+      * build the QCMDEXC command text into CMDDS (see header note 9)
+     C                     MOVEL'SNDPGMM' C1
+     C                     MOVEL'SG MSG(' C2
+     C                     MOVEL'''ZA0510'C3
+     C                     MOVEL' ERROR'''C4
+     C                     MOVEL') TOPGM' C5
+     C                     MOVEL'Q(*EXT)' C6
+     C                     MOVEL' MSGTYP' C7
+     C                     MOVEL'E(*INFO' C8
+     C                     MOVEL')'       C9
+     C                     Z-ADD57        CMDLEN 155
+     C                     CALL 'QCMDEXC'              85
+     C                     PARM           CMDDS
+     C                     PARM           CMDLEN
+     CSR                   ENDSR'*CANCL'
+     OQSYSPRT E
+     O                         PQ1        9
+     O                         PQ2       18
+     O                         PQ3       27
+     O                         GQTY      38
+     O                         XQTY      49
+     O                 93                55 'OK'
+     O                N93                65 'MISMATCH'
+**
+P00001P00002P00003P00004P00005P00006
+**
+112233
