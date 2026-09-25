@@ -1,0 +1,13 @@
+     A*                                     JUCHUM (db/v2): adds JUDLV.
+     A*                                     DBVER=2 target, lesson 05-09.
+     A*                                     UNVERIFIED: DATE/CVTOPT/ALWNULL
+     A*                                     not yet compiled on PUB400.
+     A          R JUCHUR                    TEXT('Order master')
+     A            JUNO           6A         TEXT('Order number')
+     A            JUTOK          6A         TEXT('Customer code')
+     A            JUDATE         8S 0       TEXT('Order date YYYYMMDD')
+     A            JUTAN          6A         TEXT('Sales rep code')
+     A            JUDLV           L         TEXT('Delivery date')
+     A                                      CVTOPT(*DATEDEC)
+     A                                      ALWNULL(*NO)
+     A          K JUNO

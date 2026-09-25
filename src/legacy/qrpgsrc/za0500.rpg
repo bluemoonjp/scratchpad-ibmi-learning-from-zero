@@ -1,0 +1,44 @@
+      * ZA0500 - allocate stock for order lines (JUCHUD) matched to
+      * their order header (JUCHUM), M1/MR processing. Legacy system
+      * (Part 5). JUCHUD is opened by JU0900C via OVRDBF SHARE(*YES);
+      * this program only opens JUCHUM and ZAIKOM directly.
+      * BUG (05-13 ticket 1): *ENTRY PLIST below declares MINQTY as
+      * 5,0, but JU0900C declares the CL variable it passes as 3,0.
+     H
+     FJUCHUD  IP  F      27            DISK
+     FJUCHUM  IS  F      26            DISK
+     FZAIKOM  UF  E           K        DISK
+     IJUCHUD      01
+     I                                        1   6 JUNO    M1
+     I                                        7   90JULINE
+     I                                       10  15 JUSHO
+     I                                       16  200JUSU
+     I                                       21  272JUTNK
+     IJUCHUM      02
+     I                                        1   6 JUNO    M1
+     I                                        7  12 JUTOK
+     I                                       13  200JUDATE
+     I                                       21  26 JUTAN
+     C           *ENTRY    PLIST
+     C                     PARM           RMODE  10
+     C                     PARM           MINQTY  50
+     C   MR                SETOF                     9091
+     C   MR      JUSHO     CHAINZAIKOM               90
+     C  N90                Z-ADDZASU      AVAIL   70
+     C  N90                SUB  JUSU      AVAIL
+     C  N90      AVAIL     COMP MINQTY                 91
+     C  N90N91   RMODE     CASEQ'*LIVE'   DOLIVE
+     C                     GOTO SKIPUPD
+     C           DOLIVE    TAG
+     C                     Z-ADDAVAIL     ZASU
+     C                     UPDATZAIKOR
+     C           SKIPUPD   TAG
+     C   MR                EXCPT
+     C                     SETON                         LR
+     OQSYSPRT E
+     O                         JUNO       6
+     O                         JUSHO     14
+     O                         JUSU      21
+     O                 90                   NOTFOUND
+     O                N90 91                SHORT
+     O                N90N91                OK
