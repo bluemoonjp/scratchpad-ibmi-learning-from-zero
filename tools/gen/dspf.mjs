@@ -82,9 +82,22 @@ export function comment(text) {
 // サブファイル(SFL)系の便利関数。桁位置は他と同じ(45桁目からのキーワード欄)で、
 // 実体は keyword()/recordFormat() のラッパーにすぎない。SFLDSPCTL/SFLDSP/SFLCLR/
 // SFLEND 等のON/OFFは呼び出し側が条件標識(ind)を渡して制御する。
+// 2026-09-25 修正: 第5部の旧システム設計(TK0100D、tk0100d.dspf)で実際に使ってみた
+// ところ、以下4関数に実装ミスが見つかった(IBM公式のDDSリファレンスと照合して確認)。
+// 元の実装(コメントアウトのまま残す代わりに履歴として記載):
+//   - sflRecordFormat(name): `R name` だけで、必須のレコード・レベルSFLキーワードが
+//     無かった。
+//   - sflPgmQ(name): `SFLPGMQ(name)` というレコード・レベル呼び出しを生成していたが、
+//     実際のSFLPGMQはフィールド・レベルの裸キーワードで、丸括弧に入るのはフィールド名
+//     ではなく任意のサイズ(10または276)。
+//   - errMsgId(msgId): `ERRMSGID('msgId')` (引用符付き、メッセージ・ファイル省略)を
+//     生成していたが、実際の構文は `ERRMSGID(msgid msgfile)`(msgidは引用符なし)。
+//   - sflRcdNbr(kind='*ALL'): 既定値`*ALL`が無効な値(有効なのは`*CURSOR`/`*TOP`のみ)
+//     で、かつフィールド・レベルのキーワード(専用の数値フィールドが要る)。
 // SFLレコード様式(明細行)。件数上限は呼び出し側の SFLCTL レコードの SFLSIZ で持つ。
+// 必須のレコード・レベル SFL キーワードを付ける(上の修正1)。
 export function sflRecordFormat(name) {
-  return recordFormat(name);
+  return recordFormat(name, 'SFL');
 }
 // SFLCTL レコード様式。`sflName`: 対応する SFL レコード様式名。
 export function sflCtlRecordFormat(name, sflName) {
@@ -114,17 +127,28 @@ export function sflEnd(kind = '') {
 export function sflNxtChg() {
   return keyword('SFLNXTCHG');
 }
-export function sflRcdNbr(kind = '*ALL') {
-  // kind: '*ALL'(既定の絶対番号)| '*CURSOR' | '*NORCD'
-  return keyword(`SFLRCDNBR(${kind})`);
+// SFLRCDNBR はフィールド・レベルのキーワード(専用の数値フィールドが要る)で、
+// 有効な値は `*CURSOR`/`*TOP` のみ(`*ALL`は存在しない)。標準の keyword() 行では
+// なく、field(..., kw) の kw に渡すテキストとして返す(修正4)。
+// 例: field('RRN', 4, 'S', 0, '', '', '', sflRcdNbr('*TOP'))
+export function sflRcdNbr(kind) {
+  return `SFLRCDNBR(${kind})`;
 }
-// メッセージ・サブファイル。`sflPgmQ`: プログラム・メッセージ待ち行列名(DDS上の名前)。
-export function sflMsgRcd(recName) {
-  return keyword(`SFLMSGRCD(${recName})`);
+// メッセージ・サブファイル。SFLMSGRCD(引数は行番号。レコード・レベルのキーワードで、
+// このヘルパーの実装で問題なし)。
+export function sflMsgRcd(lineNbr) {
+  return keyword(`SFLMSGRCD(${lineNbr})`);
 }
-export function sflPgmQ(name) {
-  return keyword(`SFLPGMQ(${name})`);
+// SFLPGMQ はフィールド・レベルの裸キーワード(丸括弧に入るのはフィールド名ではなく
+// 任意のサイズ 10 か 276)。field(..., kw) の kw に渡すテキストとして返す(修正2)。
+// 例: field('PGMQ', '', '', '', '', '', '', sflPgmQ())
+export function sflPgmQ(size) {
+  return size ? `SFLPGMQ(${size})` : 'SFLPGMQ';
 }
-export function errMsgId(msgId) {
-  return keyword(`ERRMSGID('${msgId}')`);
+// ERRMSGID(msgid msgfile): msgid は引用符なし、メッセージ・ファイル名が必須
+// (修正3)。フィールド・レベル/レコード・レベルどちらでも使えるが、ここではレコード・
+// レベルのキーワード行として返す。フィールド・レベルで使う場合は呼び出し側で
+// field(..., kw) の kw に `ERRMSGID(msgid msgfile)` の文字列を直接渡すこと。
+export function errMsgId(msgId, msgFile) {
+  return keyword(`ERRMSGID(${msgId} ${msgFile})`);
 }
