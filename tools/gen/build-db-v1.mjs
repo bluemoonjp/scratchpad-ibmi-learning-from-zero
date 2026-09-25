@@ -1,6 +1,6 @@
 // サンプル DB(DBVER=1)の DDS ソースを生成する。
 // 実行: node tools/gen/build-db-v1.mjs
-import { record, field, key } from './dds.mjs';
+import { record, field, key, lfRecord } from './dds.mjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
 const RULER = "....+....1....+....2....+....3....+....4....+....5....+....6....+....7....+....8";
@@ -72,6 +72,19 @@ write('db/v1/tantom.pf', RULER, [
   field('TANTOCODE', 6, 'A', '', ["TEXT('Sales rep code')"]),
   field('TANTONAME', 20, 'A', '', ["TEXT('Sales rep name')"]),
   key('TANTOCODE'),
+]);
+
+// ---- JUCHUL1: 受注マスタを得意先+受注日の順で読む論理ファイル ----
+write('db/v1/juchul1.lf', RULER, [
+  lfRecord('JUCHUR', 'JUCHUM'),
+  key('JUTOK'),
+  key('JUDATE'),
+]);
+
+// ---- TOKUIL1: 得意先マスタを得意先名の順で読む論理ファイル ----
+write('db/v1/tokuil1.lf', RULER, [
+  lfRecord('TOKUIR', 'TOKUIM'),
+  key('TOKNM'),
 ]);
 
 console.log('done');

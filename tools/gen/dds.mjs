@@ -28,6 +28,10 @@ function line({ nameType = '', name = '', length = '', type = '', dec = '', kw =
 export function record(name, text) {
   return line({ nameType: 'R', name, kw: text ? `TEXT('${text}')` : '' });
 }
+// 論理ファイル用: 基底となる物理ファイルの様式をそのまま使う R 行(PFILE)
+export function lfRecord(name, pfile) {
+  return line({ nameType: 'R', name, kw: `PFILE(${pfile})` });
+}
 export function field(name, length, type, dec, kwList) {
   const kw = Array.isArray(kwList) ? kwList[0] || '' : (kwList || '');
   const rest = Array.isArray(kwList) ? kwList.slice(1) : [];
