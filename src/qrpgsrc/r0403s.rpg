@@ -8,11 +8,12 @@
      C                     MOVE '123456'  CODE2   6
      C                     MOVE 'AB'      CODE2
      C                     MOVEL'XX'      NAME3  10
-     C                     CLEAR          NAME3
+     C                     CLEARNAME3
      C                     MOVEL'BOB'     NAME3
      C                     EXCPT
      C                     SETON                     LR
-     OQSYSPRT E                           2 'A='
+     OQSYSPRT E
+     O                                    2 'A='
      O                         NAME1     12
      O                                   16 '  B='
      O                         NAME2     26
