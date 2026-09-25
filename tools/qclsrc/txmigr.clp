@@ -101,11 +101,20 @@
              ENDDO
              DCLF       FILE(QTEMP/TXMDBR)
 
+/* No DLTF before CRTLF here, on purpose: UNVERIFIED (see the header       */
+/* comment) whether WHFILE/WHLIB name the DEPENDENT logical file or the   */
+/* physical file DSPDBR was run against (JUCHUM itself). If it is the     */
+/* latter, DLTF FILE(&LIB/&WHFILE) would delete the just-migrated JUCHUM  */
+/* physical file and its data, not a logical file - CRTPF/CRTLF simply    */
+/* have no REPLACE parameter (confirmed: neither is in the "has REPLACE"  */
+/* group with CRTDSPF/CRTPRTF/CRT*PGM), so CRTLF alone, without a         */
+/* preceding delete, is the safe choice: it either recreates a genuinely  */
+/* missing/stale LF, or fails harmlessly under its own trailing MONMSG    */
+/* (object-already-exists, or wrong-object-type if WHFILE is JUCHUM       */
+/* itself) - never deletes anything.                                      */
 NEXTDBR:     RCVF
              MONMSG     MSGID(CPF0864) EXEC(GOTO CMDLBL(RECOMPILE))
              IF         COND(&WHLIB *NE &LIB) THEN(GOTO CMDLBL(NEXTDBR))
-             DLTF       FILE(&LIB/&WHFILE)
-             MONMSG     MSGID(CPF0000)
              CRTLF      FILE(&LIB/&WHFILE) SRCFILE(&LIB/QDDSSRC) +
                           SRCMBR(&WHFILE)
              MONMSG     MSGID(CPF0000) EXEC(SNDPGMMSG MSG('TXMIGR: could +
