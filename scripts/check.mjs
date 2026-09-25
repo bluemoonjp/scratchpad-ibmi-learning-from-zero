@@ -91,9 +91,10 @@ const FORBIDDEN_PATTERNS = [
   },
   {
     name: 'home-path-non-placeholder',
-    // /home/<USER> のようなプレースホルダーは許可し、実在しそうな具体的なパスのみ検知する
+    // /home/<USER> や /home/<自分のユーザー名> のようなプレースホルダーは許可し、
+    // 実在しそうな具体的なパスのみ検知する(実在のユーザー名に `<` は使えない)
     re: /\/home\/([^\s"'`]+)/g,
-    allowGroup: (g1) => g1.startsWith('<USER>'),
+    allowGroup: (g1) => g1.startsWith('<'),
   },
   {
     name: 'email-address',
