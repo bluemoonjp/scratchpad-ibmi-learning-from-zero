@@ -160,6 +160,58 @@ SSH が復旧してから、上記の4件を修正した版を実機で再コン
 
 **このセッションでは、SSH 接続をこれ以上重ねるリスクを避けるため、ここで実機検証を打ち切る。** `TXSETUP` 自体のロジック上の疑わしい箇所(コンパイルは0エラーだが、実行時の未知の問題)を、次回セッションの最優先課題とする。
 
+## 解決: ハングの真因が判明した(確認日 2026-09-25、遅延して届いたジョブ・ログから)
+
+**接続を切った後も PUB400 側ではジョブが動き続けており、その結果が数十分後にようやく戻ってきた。** ジョブ・ログを読んだところ、真因が判明した。
+
+```text
+CPF9801:  Object TXSTATE in library <USER>2 not found.
+       :  TXSETUP: building sample database in library <USER>2   ...
+CPF5812:  Member TOKUIM already exists in file QDDSSRC in library <USER>2.
+CPF7306:  Member TOKUIM not added to file QDDSSRC in <USER>2.
+CPF9999:  Function check. CPF7306 unmonitored by TXSETUP at statement 12600, instruction X'017C'.
+CPA0701:  CPF7306 received by TXSETUP at 12600. (C D I R)
+       :  I
+  (この後、多数の "CPC1129: Job ... changed by JOBMANAGER" が続く)
+CPD018A:  Path name contains embedded nulls.
+CPF0001:  Error found on CPYFRMSTMF command.
+CPA0701:  CPF0001 received by TXSETUP at 13100. (C D I R)
+```
+
+**真因**: `ADDPFM` が「メンバーは既に存在する」で失敗したときのメッセージIDは、`CPF7302` ではなく **`CPF7306`** だった。`MONMSG MSGID(CPF7302)` はこれを捕まえられず、**未処理のまま `CPF9999`(機能検査)に格上げされ、`(C D I R)` の応答を求める照会メッセージになった。** SSH 経由の非対話ジョブには応答できる相手がいないため、**ここで無期限に停止していた。** これは、03-12 で教えている「バッチでは照会メッセージに誰も応答できず、永遠に待ち続ける」という注意そのものが、著者自身のツールで実際に起きた実例である。
+
+**対応(修正済み)**:
+
+1. `tools/qclsrc/txsetup.clp`・`txreset.clp`・`txstatus.clp` のすべてに、**宣言の直後にプログラム・レベルの `MONMSG MSGID(CPF0000) EXEC(GOTO CMDLBL(FAILSAFE))` を追加した。** これにより、今後同様に見落としがあっても、無期限のハングではなく、`FAILSAFE:` ラベルでの即時終了(ジョブ・ログにメッセージを残して正常に抜ける)になる。**この安全策自体が、02-05や03-07で教える価値のある実例になった。**
+2. `MONMSG MSGID(CPF7302)` を `CPF7306` に修正した。
+3. `%TRIM`/`%LOWER` を実行時に呼ぶ代わりに、各呼び出し箇所で小文字のファイル名を直接 `CHGVAR` するように変更した(`CPD018A: Path name contains embedded nulls` という2件目の未解明のエラーの発生源を断つため。根本原因は特定できていないが、実行時の文字列変換をなくすことでリスクを下げた)。
+
+**まだ未確定なこと**: `CPD018A`(パス名にヌル文字が含まれる)がなぜ発生したかは、完全には解明していない。`%TRIM`/`%LOWER` を経由した文字列組み立てが疑わしいと考え、上記3で回避したが、次回、修正後の版で改めて実機確認する。
+
+**影響**: tools/qclsrc/txsetup.clp, txreset.clp, txstatus.clp(修正済み、未検証)。03-07(プログラム・レベルの MONMSG)に、この実例を反映する。
+
+## 解決: ハング修正を実機で再検証、CPD018A の真因も判明(確認日 2026-09-25)
+
+`<USER>2` を完全にクリーンな状態(`QCLSRC`/`QDDSSRC`/6物理ファイル+2論理ファイル+`TXSTATE`+3プログラムをすべて削除)に戻したうえで、修正済みの `txsetup.clp`/`txreset.clp`/`txstatus.clp` を再配置・再コンパイルし、`CALL PGM(<USER>2/TXSETUP) PARM(...)` を実行した。
+
+**結果: ハングは完全に解消した。** タイムアウトなしで数秒〜十数秒のうちに応答が返るようになった(プログラム・レベルの `MONMSG MSGID(CPF0000) EXEC(GOTO CMDLBL(FAILSAFE))` の効果を実際に確認)。
+
+**ただし1回目の実行では、想定外のエラーで `FAILSAFE:` に落ちた。** `CPD018A: Path name contains embedded nulls` が `CPYFRMSTMF` で依然として発生していた。`&SRC`/`&TOMBR` の実際の値をジョブ・ログに出力するデバッグ版を作って原因を特定したところ、次のことが分かった。
+
+```text
+DEBUG SRC=[/home/<USER>                    *YES                             
+```
+
+**真因が判明した: `CALL PGM(...) PARM('値1' '値2' '値3')` で、リテラルの長さが受け取り側の `DCL` の宣言長(`LEN(200)`)より短いと、はみ出した部分は空白で埋められず、隣接するパラメーター(この場合は3番目の `&FORCE` に渡した `'*YES'`)の内容など、意図しないメモリの中身がそのまま残る。** `&CLONEDIR` に `'/home/<USER>'`(13文字)を渡したところ、宣言長200文字のうち14文字目以降が空白埋めされず、たまたま3番目のパラメーターの文字列がその領域に写り込んでいた。`*TCAT` は末尾の空白を探して連結するため、この「空白でないゴミ」を巻き込んでパス文字列が壊れ、`CPYFRMSTMF` が「パス名にヌル文字を含む」というエラーになっていたと考えられる。
+
+**対応**: `CALL ... PARM()` でリテラルを渡すときは、**受け取り側の宣言長ぴったりに空白パディングするか、その値を省略(空にする)して内部の既定値計算に任せる**必要がある。パディングした値(`'/home/<USER>' + 187個の空白`)で渡したところ、`CPYFRMSTMF` は正しいパスで成功し、**`TXSETUP` は最後まで完走した(`TXSETUP: done. DBVER=1.`)。** `TXSTATUS` で `DBVER=0000000001` を確認し、6物理ファイルすべてに想定どおりの件数(TOKUIM=6, SHOHIM=6, JUCHUM=8, JUCHUD=12, ZAIKOM=6, TANTOM=3)が入っていることを SQL で確認した。`TXRESET` も同様に成功し、削除→再投入のログ(`SQL7955`/`SQL7956`)を確認した。2論理ファイル(`JUCHUL1`/`TOKUIL1`)も含め、`QSYS2.OBJECT_STATISTICS` で全10オブジェクトの存在を確認した。
+
+**この「リテラルを宣言長より短く渡すと未初期化領域が残る」現象は、この検証セッション固有の呼び出し方(生の `CALL PGM(...) PARM(...)`)で踏んだものである。** 実際の学習者向けフローでは `*CMD` ラッパー経由(コマンド定義の `PARM()` が自動的に宣言長へパディングする)、または `CLONEDIR` を省略して既定値計算に任せる想定であり、そちらであればこの問題は発生しないはずである。ただし、**第3部(CL)のレッスンで「`CALL` に短いリテラルを渡すと何が起きるか」を明示的な落とし穴として扱う価値が高い**(実際に著者自身がこれで長時間ハマった実例のため)。
+
+**副次的な発見: SSH 経由で `system "CALL ..."` を実行すると、ジョブのユーザーが `QUSER` になる場合がある。** `&CLONEDIR` を省略して内部の既定値計算(`RTVJOBA USER(&USRPRF)` → `/home/` + ユーザー名 + `/ibmi-kyozai`)に任せたところ、`RTVJOBA` が返したユーザーは実際にログインした `<USER>` ではなく **`QUSER`** だった(ホーム・ディレクトリーが `QUSER` 配下として組み立てられ、存在しないパスを探しにいって `CPFA0A9: Object not found` になった)。これは PASE の `system()` 経由でジョブを起動したときの挙動とみられ、**5250 で直接サインオンした場合や、SSH の対話シェルから直接コマンドを叩く場合には再現しない可能性が高い**(未確認)。ただし、SSH+`system()` を学習者にも案内する設計である以上、**`RTVJOBA USER()` によるホーム・ディレクトリーの自動検出には頼らず、`CLONEDIR` は明示的に渡す運用を基本にする**べきという設計上の教訓が得られた。02-04・03-08 に反映する。
+
+**影響**: tools/qclsrc/txsetup.clp・txreset.clp・txstatus.clp(検証済み、ハング修正・DBVER=1構築まで確認)。03-08(パラメーターと CALL の罠)に「リテラルの長さと宣言長」の実例を追加。02-04・03-08 に「SSH 経由の `system()` では `RTVJOBA USER()` が `QUSER` を返すことがあるため、`CLONEDIR` は明示的に渡す」という注意を追加。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
