@@ -1,6 +1,6 @@
 {
   "batch": "part05-legacy-probe",
-  "description": "Compiles the whole Part 5 legacy system (draft/part05) in one connection: FLDREF/FLDREFR, then the two display files, then the RPG III programs (TK0100 after TK0100D; ZA0500/ZA0510 need ZAIKOM/JUCHUD/JUCHUM/FLDREFR from TXSETUP, already in the target library), then the CL programs (MN0000C after MN0000D; JU0900C DCLFs JUCHUM). Prerequisite: TXSETUP has already built the sample DB in this library, and this manifest's 'file' steps assume src/legacy/ exists in this git working tree (draft/part05 checked out) at run time - run `node verify/run.mjs part05-legacy-probe` from that branch, not main. Does not run any of the compiled programs (no CALL steps): interactive ones (TK0100, MN0000C) cannot be exercised over SSH anyway, and running JU0900C/ZA0500 together is exactly the ticket-1 bug rehearsal, better done as its own deliberate step once compiles are confirmed clean. ZA0510 is added once its own workflow finishes (see plan progress).",
+  "description": "Compiles the whole Part 5 legacy system (draft/part05) in one connection: FLDREF/FLDREFR, then the two display files, then the RPG III programs (TK0100 after TK0100D; ZA0500/ZA0510 need ZAIKOM/JUCHUD/JUCHUM/FLDREFR from TXSETUP, already in the target library; ZA0510 also /COPYs FLDREFR at compile time, so its file step must land in QRPGSRC before ZA0510's own CRTRPGPGM step, same ordering already satisfied by FLDREFR's existing early file step), then the CL programs (MN0000C after MN0000D; JU0900C DCLFs JUCHUM). Prerequisite: TXSETUP has already built the sample DB in this library, and this manifest's 'file' steps assume src/legacy/ exists in this git working tree (draft/part05 checked out) at run time - run `node verify/run.mjs part05-legacy-probe` from that branch, not main. Does not run any of the compiled programs (no CALL steps): interactive ones (TK0100, MN0000C) cannot be exercised over SSH anyway, running JU0900C/ZA0500 together is exactly the ticket-1 bug rehearsal (better done as its own deliberate step once compiles are confirmed clean), and ZA0510's own lesson (05-04) is explicitly a debugger-trace (STRDBG, interactive) exercise, not a non-interactive CALL/compare.",
   "steps": [
     { "type": "file", "localPath": "../../src/legacy/qddssrc/fldref.pf", "remoteSrcFile": "QDDSSRC", "member": "FLDREF" },
     { "type": "file", "localPath": "../../src/legacy/qrpgsrc/fldrefr.rpg", "remoteSrcFile": "QRPGSRC", "member": "FLDREFR" },
@@ -9,6 +9,7 @@
     { "type": "file", "localPath": "../../src/legacy/qrpgsrc/tk0100.rpg", "remoteSrcFile": "QRPGSRC", "member": "TK0100" },
     { "type": "file", "localPath": "../../src/legacy/qrpgsrc/ju0300.rpg", "remoteSrcFile": "QRPGSRC", "member": "JU0300" },
     { "type": "file", "localPath": "../../src/legacy/qrpgsrc/za0500.rpg", "remoteSrcFile": "QRPGSRC", "member": "ZA0500" },
+    { "type": "file", "localPath": "../../src/legacy/qrpgsrc/za0510.rpg", "remoteSrcFile": "QRPGSRC", "member": "ZA0510" },
     { "type": "file", "localPath": "../../src/legacy/qclsrc/ju0900c.clp", "remoteSrcFile": "QCLSRC", "member": "JU0900C" },
     { "type": "file", "localPath": "../../src/legacy/qclsrc/mn0000c.clp", "remoteSrcFile": "QCLSRC", "member": "MN0000C" },
 
@@ -18,6 +19,7 @@
     { "type": "cl", "label": "CPTK0", "cmd": "CRTRPGPGM PGM(&LIB/TK0100) SRCFILE(&LIB/QRPGSRC) SRCMBR(TK0100) REPLACE(*YES)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "CPJU03", "cmd": "CRTRPGPGM PGM(&LIB/JU0300) SRCFILE(&LIB/QRPGSRC) SRCMBR(JU0300) REPLACE(*YES)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "CPZA05", "cmd": "CRTRPGPGM PGM(&LIB/ZA0500) SRCFILE(&LIB/QRPGSRC) SRCMBR(ZA0500) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPZA0510", "cmd": "CRTRPGPGM PGM(&LIB/ZA0510) SRCFILE(&LIB/QRPGSRC) SRCMBR(ZA0510) REPLACE(*YES)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "CPJU09", "cmd": "CRTCLPGM PGM(&LIB/JU0900C) SRCFILE(&LIB/QCLSRC) SRCMBR(JU0900C) REPLACE(*YES)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "CPMN0C", "cmd": "CRTCLPGM PGM(&LIB/MN0000C) SRCFILE(&LIB/QCLSRC) SRCMBR(MN0000C) REPLACE(*YES)", "monmsg": ["CPF0000"] }
   ]
