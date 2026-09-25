@@ -18,6 +18,8 @@ node verify/run.mjs <batchDir>            # 実際に1回接続し、結果を
 
 `<batchDir>` は `verify/` 直下のディレクトリー名(例: `harness-selftest`、将来 `part05` 等)。
 
+**必ず Bash 経由で実行すること(PowerShell から直接 `node verify/run.mjs` を実行しない)。** このマシンでは `ssh` という名前の実行ファイルが2つある(Git 付属の OpenSSH と Windows 標準の OpenSSH)。Bash(Git Bash)経由で node を起動した場合、`child_process.spawn('ssh', ...)` は Git 付属の OpenSSH(`C:\Program Files\Git\usr\bin\ssh.exe`)を解決する(2026-09-25 に確認済み)。PowerShell から直接起動すると Windows 標準の OpenSSH(`C:\Windows\System32\OpenSSH\ssh.exe`)が解決される可能性があり、鍵ファイルの ACL 要件などが異なるため、狙った経路と違う認証結果になりうる。
+
 **必ず `--dry-run` で送るスクリプトを確認してから、実際の接続を行うこと。** 接続の予算は極めて限られている(直近24時間で8回、遮断が起きていれば実質それ未満)。
 
 ## 接続情報の設定
@@ -83,26 +85,27 @@ ssh -i <鍵> -p 2222 -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterva
   "description": "人間向けの説明",
   "library": "<省略時は <USER>2>",
   "remoteDir": "<省略時は vfy/<batch>>",
+  "wrapperCcsid": "<省略可。CLラッパー自身のソース転送に使うCCSID。省略時はsetccsid/STMFCCSIDを出さない>",
   "steps": [
-    { "type": "file", "localPath": "src/foo.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "FOO", "ccsid": 37 },
-    { "type": "cl", "label": "COMPILE", "cmd": "CRTBNDRPG PGM(&LIB/FOO) SRCFILE(&LIB/QRPGLESRC) SRCMBR(FOO)", "monmsg": ["CPF0000"] },
+    { "type": "file", "localPath": "src/foo.rpg", "remoteSrcFile": "QRPGSRC", "member": "FOO", "ccsid": "<省略可>" },
+    { "type": "cl", "label": "COMPILE", "cmd": "CRTRPGPGM PGM(&LIB/FOO) SRCFILE(&LIB/QRPGSRC) SRCMBR(FOO)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "RUNIT", "cmd": "CALL PGM(&LIB/FOO)" },
-    { "type": "collect", "kind": "sql", "sql": "任意のSELECT文(省略時はSYSTOOLS.SPOOLED_FILE_DATAの既定クエリー)" }
+    { "type": "collect", "kind": "sql", "sql": "任意のSELECT文(cl以外の追加の回収が要る場合だけ使う)" }
   ]
 }
 ```
 
-- `file` ステップ: `localPath`(このマニフェストのディレクトリーからの相対パス)の中身を heredoc で転送し、`setccsid` で CCSID を付け、`CPYFRMSTMF` で `library` の `remoteSrcFile`/`member` に取り込む。
-- `cl` ステップ: 1本の CL ラッパー・プログラムにまとめてコンパイル・実行する(`verify/lib/clgen.mjs`)。各ステップは個別の `MONMSG` で囲み、失敗しても次のステップへ進む。`cmd` 内の `&LIB` は生成時に実際のライブラリー名へ文字列置換される(CL の実行時変数ではない。`CALL...PARM()` の32バイト・パディング問題を避けるため)。**ハングの恐れがあるステップは必ず配列の最後に置くこと。**
-- `collect` ステップ: 結果をテキストで回収する。既定は自分のジョブ・自分のユーザーに絞った `SYSTOOLS.SPOOLED_FILE_DATA` からのSELECT(`db2 -s` 経由)。
+- `file` ステップ: `localPath`(このマニフェストのディレクトリーからの相対パス)の中身を heredoc で転送し、`CPYFRMSTMF` で `library` の `remoteSrcFile`/`member` に取り込む。`ccsid` は**省略が既定**(下記「既知の未検証事項」参照)。指定した場合だけ `setccsid`/`STMFCCSID()` を出す。
+- `cl` ステップ: 1本の CL ラッパー・プログラムにまとめてコンパイル・実行する(`verify/lib/clgen.mjs`)。各ステップは個別の `MONMSG` で囲み、失敗しても次のステップへ進む。`cmd` 内の `&LIB` は生成時に実際のライブラリー名へ文字列置換される(CL の実行時変数ではない。`CALL...PARM()` の32バイト・パディング問題を避けるため)。**ハングの恐れがあるステップは必ず配列の最後に置くこと。** `cl` ステップが1つでもあれば、ラッパーは `DONE`/`FAILSAFE` のどちらで終わっても、自分のジョブ・ログをライブラリー内の永続表(`<library>/VFYLOG`、なければ自動作成)へ書き出し、接続の最後に自動でその表を `SELECT`(`===VFY:vfylog===` セクション)する。`QTEMP` ではなく永続表にしているのは、qsh の `system()` 呼び出しが同一ジョブ内で連続する保証がない(下記、未検証)ため。
+- `collect` ステップ: 上記の自動回収(vfylog)以外に、追加で結果をテキストで回収したいときだけ使う。既定は自分のジョブ・自分のユーザーに絞った `SYSTOOLS.SPOOLED_FILE_DATA` からのSELECT(`db2 -s` 経由、未検証)。
 
 ## 既知の未検証事項(次回の実接続で確認し、docs/probes.md に記録する)
 
-- `qsh` の `system()` 呼び出しが同一ジョブ内で連続するか(違えば `QTEMP` は使えない)。本ハーネスはこれに依存しない設計にしてある(1本の CL ラッパーにまとめて `CALL` する)。
-- `SYSTOOLS.SPOOLED_FILE_DATA` の実際の呼び出し方(引数の形)。`collect` の既定クエリーは最有力候補であり、失敗する可能性がある。
-- `CPYFRMSTMF ... STMFCCSID(37)` で正しく取り込めるか(CCSID 37 と 273 のどちらを使うべきかは `docs/probes.md` の既存の知見を優先し、必要なら候補を複数同じバッチで試す)。
+- `qsh` の `system()` 呼び出しが同一ジョブ内で連続するか。ラッパーの結果回収(上記 VFYLOG)はこれに依存しない設計にしてあるので、この点自体は未確定のままでもハーネスは動く。
+- `SYSTOOLS.SPOOLED_FILE_DATA` の実際の呼び出し方(引数の形)。`collect` ステップの既定クエリーは最有力候補であり、失敗する可能性がある(未使用でも問題ない設計にしてある)。
+- **heredoc で書いたファイルが実際にどの CCSID でタグ付けされるか。** これがこのハーネスで最も基礎的な未検証事項。`file`/`wrapperCcsid` の `ccsid` を省略すると `setccsid`/`STMFCCSID()` を一切出さず、`CPYFRMSTMF` にファイル自身のタグをそのまま使わせる(37 や 273 を推測で決め打ちしない)。garbled な結果になった場合は、この結果を見てから次の接続で明示的な候補を追加する。
 
-`verify/harness-selftest/` は、この確認と「INQMSGRPY(*DFT) による RPG0102 の自動応答」をまとめて行う、最初の実接続向けのバッチ。
+`verify/harness-selftest/` は、この確認と「`CHGJOB INQMSGRPY(*DFT)` による RPG0102(OPM RPG III のゼロ除算照会。Part 5 が必要とするのもこちら)の自動応答」をまとめて行う、最初の実接続向けのバッチ。RPG III(`CRTRPGPGM`)を使っている。ILE(`CRTBNDRPG`)では `RNQ0102`/`RNX0102` になり別の話になるので注意。
 
 ## 実行結果の保存
 

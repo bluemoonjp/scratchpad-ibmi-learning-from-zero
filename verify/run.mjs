@@ -81,8 +81,16 @@ async function cmdRun(batchDirName) {
   console.log(`接続を開始します(台帳 index=${ledgerIndex})...`);
 
   const result = await runSsh(cfg, script);
-  const status = classifyResult(result);
-  recordEnd(ledgerIndex, status, status === 'success' ? '' : (result.stderr || '').slice(0, 500));
+  // connectionStatus は「SSH接続・認証が成功したか」だけを表す(===VFY:start=== が
+  // 出たかどうかで判定。verify/lib/ssh.mjs 参照)。スクリプト内の各ステップ
+  // (コンパイル・実行・RPG0102の自動応答等)が実際に成功したかどうかは、
+  // これとは別に sections の中身(特に vfylog セクション)を読んで判断すること。
+  const connectionStatus = classifyResult(result);
+  recordEnd(
+    ledgerIndex,
+    connectionStatus,
+    connectionStatus === 'success' ? '' : (result.stderr || '').slice(0, 500),
+  );
 
   const sections = splitSections(result.stdout);
   const anonymizedSections = Object.fromEntries(
@@ -98,7 +106,7 @@ async function cmdRun(batchDirName) {
     JSON.stringify(
       {
         batch: manifest.batch,
-        status,
+        connectionStatus,
         exitCode: result.code,
         killedForTimeout: result.killedForTimeout,
         sections: anonymizedSections,
@@ -110,9 +118,10 @@ async function cmdRun(batchDirName) {
     'utf8',
   );
 
-  console.log(`結果: ${status}`);
+  console.log(`接続の成否: ${connectionStatus}`);
+  console.log('スクリプトの中身(各ステップの成否)は保存した結果ファイルの sections を読んで判断してください。');
   console.log(`保存先: ${path.relative(repoRoot(), resultsPath)}`);
-  if (status !== 'success') {
+  if (connectionStatus !== 'success') {
     console.log('--- stderr(実名は<USER>に置換済み) ---');
     console.log(anonymize(result.stderr, cfg).slice(0, 2000));
   }
