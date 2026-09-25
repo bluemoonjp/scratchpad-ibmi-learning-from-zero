@@ -5,12 +5,22 @@
 // F仕様書: 7-14 ファイル名 15 タイプ(I/O/U/C) 16 指定(P/S/R/T/F) 17 EOF
 //          18 順序 19 形式(F/E) 24-27 レコード長 28 限界処理 29-30 キー長
 //          (外部記述ファイルでは指定不要・誤り。実機コンパイルで確認済み:
-//          QRG2008) 31 レコード・アドレス型(外部記述のキー付きファイルに
-//          CHAINでキー・アクセスする場合はKを指定する。空欄だと相対レコード
-//          番号扱いになりCHAINのFactor1が不正になる。実機コンパイルで
-//          確認済み: QRG7055) 32 編成 33-34 オーバーフロー標識
+//          QRG2008) 31 レコード・アドレス型(外部記述のキー付きファイルを
+//          キー順に読む場合はKを指定する。CHAINなどのランダム・アクセスだけ
+//          でなく、READやプライマリー・ファイルの順次アクセスにも必要。
+//          空欄だと(相対レコード番号扱いになりCHAINのFactor1が不正になる
+//          ほか)キー付き論理ファイルでも到着順で読まれてしまう。実機
+//          コンパイル・実行で確認済み: CHAIN無指定時QRG7055、READ/
+//          プライマリー・ファイルは無指定でもコンパイルは通るが到着順に
+//          なる、DSPFD TYPE(*ACCPTH)でアクセス・パス自体は正しいことを
+//          確認したうえで判明) 32 編成 33-34 オーバーフロー標識
 //          35-38 キー開始位置 40-46 装置
-// C仕様書: 6=C 7-8 制御レベル 9-17 条件標識(3桁×3組、各組「否定N+標識2桁」
+// C仕様書: ソース順の制約として、7-8桁目が空欄(明細時)のC仕様書行は、
+//          非空欄(L1-L9、総合計時)の行より必ず前に書く必要がある。逆順で
+//          書くとQRG5002(重大度10)でコンパイル失敗する。実行順序(総合計
+//          時が明細時より先に実行される)とソース順は別物。実機コンパイルで
+//          確認済み(04-10)。
+//          6=C 7-8 制御レベル 9-17 条件標識(3桁×3組、各組「否定N+標識2桁」
 //          の順。実機コンパイルで確認済み: 桁→否定の順で書くとQRG5006/5007)
 //          18-27 Factor1 28-32 命令コード 33-42 Factor2(リテラルもこの
 //          10桁に収まる長さまで) 43-48 結果 49-51 長さ 52 小数(数値の
@@ -31,6 +41,24 @@
 //          (C仕様書と同じ「否定+標識2桁」×3組のはずだが、こちらは
 //          まだ実機未確認) 32-37 フィールド名/EXCPT名 38 編集コード
 //          40-43 終了位置 45-70 定数
+//          複数の名前付きEXCPTグループ: ファイルの最初のO仕様書行に
+//          (ファイル名+タイプEと同時に)32-37桁目のEXCPT名を書いてよい。
+//          省略すると「無名グループ」の宣言になり、対応する無名EXCPT
+//          命令(Factor2省略)がC仕様書に無いとQRG6062でコンパイル失敗
+//          する。2つ目以降の名前付きグループは、ファイル名を省略し
+//          15桁目にEを再度書いた行を独立させ、32-37桁目に別のEXCPT名を
+//          書く。実際のフィールド・定数はそれぞれの次の行(名前もタイプも
+//          空欄)に書く。実機コンパイル・実行で確認済み(04-10)。
+// I仕様書(外部記述ファイルの上書き専用。RPG/400 Reference 8章で確認):
+//          6=I。レコード行(そのレコード様式の上書き開始を宣言): 7-14に
+//          外部レコード様式名、他は空欄。フィールド行(制御レベル等を
+//          有効にする): 7-20空欄、21-30は外部フィールド名を改名する
+//          ときだけ指定、53-58にプログラムで使うフィールド名(改名しない
+//          場合でも、制御レベル等を有効にするには必須。空欄のままだと
+//          その行は何もしない)、59-60に制御レベル(L1-L9)、61-62に
+//          一致標識(M1-M9)。列位置は実機コンパイルで確認済み(04-10)。
+//          制御レベルが正しく働くには、ファイルの読み取り順がキー順に
+//          なっている必要がある(F仕様書31桁目のK参照)。
 function blank(n) { return ' '.repeat(n); }
 function put(arr, col1, text) {
   for (let i = 0; i < text.length; i++) arr[col1 - 1 + i] = text[i];
@@ -116,6 +144,29 @@ export function cSpec({ level = '', ind = '', f1 = '', op, f2 = '', result = '',
   put(l, 56, lo);
   put(l, 58, eq);
   if (cm) put(l, 60, cm);
+  return finish(l);
+}
+
+// I-spec record line (externally described files): opens an override block
+// for one external record format. `fmt`: external record format name.
+export function iSpecRecord(fmt) {
+  const l = blank(80).split('');
+  put(l, 6, 'I');
+  put(l, 7, fmt);
+  return finish(l);
+}
+
+// I-spec field line (externally described files): activates control-level
+// (`level`: 'L1'-'L9') and/or matching-field (`match`: 'M1'-'M9') for one
+// field of the record format opened by the preceding iSpecRecord() line.
+// `name` (cols 53-58) is required even when not renaming the field.
+export function iSpecField({ extName = '', name, level = '', match = '' } = {}) {
+  const l = blank(80).split('');
+  put(l, 6, 'I');
+  if (extName) put(l, 21, extName);
+  put(l, 53, name);
+  if (level) put(l, 59, level);
+  if (match) put(l, 61, match);
   return finish(l);
 }
 
