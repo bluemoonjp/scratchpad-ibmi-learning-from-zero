@@ -1,0 +1,12 @@
+      * R0407A - CHAIN: look up one customer by key (TOKCD).
+     H
+     FTOKUIM  IF  E           K        DISK
+     FQSYSPRT O   F     132            PRINTER
+     C           'C00001'  CHAINTOKUIM               99
+     C   99                MOVEL'NOTFOUND'TOKNM
+     C                     EXCPT
+     C                     SETON                     LR
+     OQSYSPRT E
+     O                         TOKCD      6
+     O                                    8 '  '
+     O                         TOKNM     38
