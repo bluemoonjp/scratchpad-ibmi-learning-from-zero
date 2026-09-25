@@ -1,0 +1,10 @@
+      * R0402A - C-spec columns and arithmetic (tax-inclusive price).
+     H
+     FQSYSPRT O   F     132            PRINTER
+     C                     Z-ADD1580      PRICE   72
+     C                     Z-ADD1.10      RATE    32
+     C           PRICE     MULT RATE      TOTAL   92
+     C                     EXCPT
+     C                     SETON                     LR
+     OQSYSPRT E
+     O                         TOTAL 1   20

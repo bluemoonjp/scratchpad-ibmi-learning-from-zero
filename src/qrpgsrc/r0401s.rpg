@@ -1,0 +1,7 @@
+      * R0401A - minimal RPG III: print one line via EXCPT.
+     H
+     FQSYSPRT O   F     132            PRINTER
+     C                     EXCPT
+     C                     SETON                     LR
+     OQSYSPRT E
+     O                                   20 'HELLO, RPG III!'
