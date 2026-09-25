@@ -1,6 +1,6 @@
 {
   "batch": "part05-txcheck-probe",
-  "description": "Confirms TXCHECK v1 (tools/qclsrc/txcheck.clp) actually compiles and runs on PUB400: creates TXCKM (tools/qddssrc/txckm.pf), inserts one self-referential test row (does TXCKM itself exist as *FILE?), compiles TXCHECK, and calls it for lesson TEST01. Expect one PASS line in the vfylog output. This manifest lives on draft/tools (not main) because it exercises unverified tools/ sources that must not reach the learner sparse-checkout before a V1 compile confirms them - run it only after checking out draft/tools.",
+  "description": "Confirms TXCHECK v1 (tools/qclsrc/txcheck.clp) actually compiles and runs on PUB400: creates TXCKM (tools/qddssrc/txckm.pf), inserts one self-referential test row (does TXCKM itself exist as *FILE?), compiles TXCHECK, and calls it for lesson TEST01. Expect one PASS line in the vfylog output. This manifest lives on draft/part05 (not main) because it exercises unverified tools/ sources that must not reach the learner sparse-checkout before a V1 compile confirms them - run it only after checking out draft/part05 (draft/tools was merged into draft/part05 on 2026-09-25 and work continues there; the draft/tools branch itself still exists but is stale - this description previously pointed at it by mistake).",
   "steps": [
     {
       "type": "file",
@@ -17,7 +17,7 @@
     {
       "type": "cl",
       "label": "CPTXCKM",
-      "cmd": "CRTPF FILE(&LIB/TXCKM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TXCKM) REPLACE(*YES)",
+      "cmd": "DLTF FILE(&LIB/TXCKM)\nMONMSG MSGID(CPF0000)\nCRTPF FILE(&LIB/TXCKM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TXCKM)",
       "monmsg": ["CPF0000"]
     },
     {
