@@ -4,10 +4,15 @@
       * this program only opens JUCHUM and ZAIKOM directly.
       * BUG (05-13 ticket 1): *ENTRY PLIST below declares MINQTY as
       * 5,0, but JU0900C declares the CL variable it passes as 3,0.
+      * FIXED (found while writing za0510.rpg): the O-specs below
+      * reference QSYSPRT, but this file had no FQSYSPRT F-spec line at
+      * all - an undeclared file reference, which would fail to
+      * compile. Added, matching ju0300.rpg's identical line.
      H
      FJUCHUD  IP  F      27            DISK
      FJUCHUM  IS  F      26            DISK
      FZAIKOM  UF  E           K        DISK
+     FQSYSPRT O   F     132            PRINTER
      IJUCHUD      01
      I                                        1   6 JUNO    M1
      I                                        7   90JULINE
