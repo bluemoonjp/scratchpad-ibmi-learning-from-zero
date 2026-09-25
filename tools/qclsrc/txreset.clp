@@ -30,8 +30,9 @@
                 RTVJOBA    CURLIB(&LIB)
              ENDDO
 
+/* CURUSER, not USER: see tools/qclsrc/txsetup.clp for why.              */
              IF         COND(&CLONEDIR *EQ ' ') THEN(DO)
-                RTVJOBA    USER(&USRPRF)
+                RTVJOBA    CURUSER(&USRPRF)
                 CHGVAR     VAR(&HOMEDIR) VALUE('/home/' *TCAT %TRIM(&USRPRF) +
                              *TCAT '/ibmi-kyozai')
                 CHGVAR     VAR(&CLONEDIR) VALUE(&HOMEDIR)

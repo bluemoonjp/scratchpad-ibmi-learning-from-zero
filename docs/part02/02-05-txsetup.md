@@ -67,11 +67,11 @@
    - `CRTCLPGM PGM(<自分のユーザー名>1/TXSETUP) SRCFILE(<自分のユーザー名>1/QCLSRC) SRCMBR(TXSETUP)`
    - `CRTCLPGM PGM(<自分のユーザー名>1/TXSTATUS) SRCFILE(<自分のユーザー名>1/QCLSRC) SRCMBR(TXSTATUS)`
    - `CRTCLPGM PGM(<自分のユーザー名>1/TXRESET) SRCFILE(<自分のユーザー名>1/QCLSRC) SRCMBR(TXRESET)`
-   - `CRTCMD CMD(<自分のユーザー名>1/TXSETUP) PGM(<自分のユーザー名>1/TXSETUP) SRCFILE(<自分のユーザー名>1/QCMDSRC) SRCMBR(TXSETUP)`
-   - `CRTCMD CMD(<自分のユーザー名>1/TXSTATUS) PGM(<自分のユーザー名>1/TXSTATUS) SRCFILE(<自分のユーザー名>1/QCMDSRC) SRCMBR(TXSTATUS)`
-   - `CRTCMD CMD(<自分のユーザー名>1/TXRESET) PGM(<自分のユーザー名>1/TXRESET) SRCFILE(<自分のユーザー名>1/QCMDSRC) SRCMBR(TXRESET)`
+   - `CRTCMD CMD(<自分のユーザー名>1/TXSETUP) PGM(*LIBL/TXSETUP) SRCFILE(<自分のユーザー名>1/QCMDSRC) SRCMBR(TXSETUP)`
+   - `CRTCMD CMD(<自分のユーザー名>1/TXSTATUS) PGM(*LIBL/TXSTATUS) SRCFILE(<自分のユーザー名>1/QCMDSRC) SRCMBR(TXSTATUS)`
+   - `CRTCMD CMD(<自分のユーザー名>1/TXRESET) PGM(*LIBL/TXRESET) SRCFILE(<自分のユーザー名>1/QCMDSRC) SRCMBR(TXRESET)`
 
-   **`*CMD`(コマンド)と `*PGM`(プログラム)は、同じ名前でも別のオブジェクトとして共存できます。** コマンドは「呼び出されたときにプログラムを実行する」だけの薄い定義で、CPP(Command Processing Program、ここでは同名の `*PGM`)に処理を委譲します。
+   **`*CMD`(コマンド)と `*PGM`(プログラム)は、同じ名前でも別のオブジェクトとして共存できます。** コマンドは「呼び出されたときにプログラムを実行する」だけの薄い定義で、CPP(Command Processing Program、ここでは同名の `*PGM`)に処理を委譲します。**`PGM()` にはライブラリー名を `<自分のユーザー名>1` と決め打ちせず `*LIBL` を指定してください。** `CRTCMD` の `PGM()` は、指定したライブラリー名をコマンド定義の中に永続的に持ちます(05-12・08-08 で、開発用ライブラリーへの参照が残っていないか確認する回があります)。`*LIBL` にしておけば、実行時の `*LIBL` にある同名の `*PGM` を毎回探すため、将来 `<自分のユーザー名>2`(本番役)へ移しても書き換えが要りません。
 
 8. `TXSETUP`(コマンド名をそのまま打つだけです。`CALL PGM(...)` は使いません)。数十秒かかることがあります。
 
@@ -105,5 +105,5 @@
 
 ## 実機メモ
 
-- 確認日: 2026-09-25。DDS(6物理ファイル+2論理ファイル)・`TXSETUP`/`TXSTATUS`/`TXRESET` の CL・**`*CMD`(コマンド定義)は、すべて `<USER>2` で実機コンパイル0エラーを確認済み。** `TXSETUP` の実行そのもの(ハングの原因だった `MONMSG` の誤りを修正した版)は、`CALL PGM(...) PARM(...)` で明示的にパラメーターを渡す形と、**`*CMD` 経由(`TXSETUP LIB(<USER>2)`)の両方で完走を確認済み**(`DBVER=1`、全6物理ファイル+2論理ファイルの件数も確認)。`*CMD` 経由では、`CALL PGM(...) PARM()` を直接使ったときに起きた2つの問題(パラメーター省略時の `CPD0172`、`RTVJOBA USER()` が `QUSER` を返す)のどちらも再現しなかった。**ただし、この手順(2〜8)が指示している「5250 の対話的コマンド行からの一連の操作」そのものの実機確認は、SSH 経由の `system()` を使った検証で代替しており、5250 の対話的コマンド行そのもので試したわけではない。** 詳細は `docs/probes.md` を参照。
+- 確認日: 2026-09-25。DDS(6物理ファイル+2論理ファイル)・`TXSETUP`/`TXSTATUS`/`TXRESET` の CL・**`*CMD`(コマンド定義)は、すべて `<USER>2` で実機コンパイル0エラーを確認済み。** `TXSETUP` の実行そのもの(ハングの原因だった `MONMSG` の誤りを修正した版)は、`CALL PGM(...) PARM(...)` で明示的にパラメーターを渡す形と、**`*CMD` 経由(`TXSETUP LIB(<USER>2)`)の両方で完走を確認済み**(`DBVER=1`、全6物理ファイル+2論理ファイルの件数も確認)。`*CMD` 経由では、パラメーター省略時の `CPD0172` は再現しなかった。**`RTVJOBA USER()` が `QUSER` を返す問題は、`*CMD` 経由でも再現することが後日の追加検証で判明し、`tools/qclsrc/txsetup.clp`/`txreset.clp` を `RTVJOBA CURUSER()` に修正した(`docs/probes.md` の「訂正」節を参照)。この修正版での完全な通し実行(`CLONEDIR` 省略・実際の `git clone --sparse` との組み合わせ)は、SSH の接続数制限のためこのセッションでは完了できていない。** また、この手順(2〜9)が指示している「5250 の対話的コマンド行からの一連の操作」そのものの実機確認は、SSH 経由の `system()` を使った検証で代替しており、5250 の対話的コマンド行そのもので試したわけではない。詳細は `docs/probes.md` を参照。
 - 食い違いに気づいたら [Issue](https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero/issues) で教えてください。

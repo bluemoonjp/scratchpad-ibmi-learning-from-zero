@@ -99,7 +99,7 @@ HAVING SUM(JUCHUD.JUSU) >= 5
 
 ## 片付け
 
-5250 のコマンド行から `CALL PGM(TXRESET)` を実行し、データを初期状態に戻してください。`STRSQL` で `SELECT ZASHO, ZASU FROM ZAIKOM WHERE ZASHO IN ('P00001', 'P00003')` を実行し、`45` と `250` に戻っていることを確認してください。
+5250 のコマンド行から `TXRESET`(02-05 で作った、パラメーターなしで使えるコマンドです。`CALL PGM(TXRESET)` は使いません)を実行し、データを初期状態に戻してください。`STRSQL` で `SELECT ZASHO, ZASU FROM ZAIKOM WHERE ZASHO IN ('P00001', 'P00003')` を実行し、`45` と `250` に戻っていることを確認してください。
 
 ## まとめ
 
