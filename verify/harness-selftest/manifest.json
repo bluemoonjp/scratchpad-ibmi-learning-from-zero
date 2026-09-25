@@ -1,18 +1,17 @@
 {
   "batch": "harness-selftest",
-  "description": "検証ハーネスそのものの確認(heredoc転送・CCSID・CPYFRMSTMF・CLラッパー生成・CRTBNDRPGコンパイル・INQMSGRPY(*DFT)によるRPG0102自動応答)。第5部着手前の最初の実接続で流す想定(実行計画ステップ1)。",
+  "description": "Verify the harness itself: heredoc transfer, CPYFRMSTMF into QRPGSRC, CRTRPGPGM (OPM RPG III, matching the technique Part 5 needs), and whether CHGJOB INQMSGRPY(*DFT) auto-answers the RPG0102 divide-by-zero inquiry instead of hanging. Intended as the very first real connection before Part 5 work starts (execution plan step 1). ccsid is intentionally left unset on the file step: CPYFRMSTMF will use the stream file's own CCSID tag, since no prior session in this repo recorded which CCSID a heredoc-written file actually gets tagged with over this exact SSH/qsh path. If this run shows CPYFRMSTMF picked the wrong CCSID (garbled compile), the fix is to add an explicit ccsid candidate here and retry in the next connection - not to guess one now.",
   "steps": [
     {
       "type": "file",
-      "localPath": "src/t0zero.rpgle",
-      "remoteSrcFile": "QRPGLESRC",
-      "member": "T0ZERO",
-      "ccsid": 37
+      "localPath": "src/t0zero.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "T0ZERO"
     },
     {
       "type": "cl",
       "label": "COMPILE",
-      "cmd": "CRTBNDRPG PGM(&LIB/T0ZERO) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T0ZERO) REPLACE(*YES)",
+      "cmd": "CRTRPGPGM PGM(&LIB/T0ZERO) SRCFILE(&LIB/QRPGSRC) SRCMBR(T0ZERO) REPLACE(*YES)",
       "monmsg": ["CPF0000"]
     },
     {
@@ -20,10 +19,6 @@
       "label": "RUNIT",
       "cmd": "CALL PGM(&LIB/T0ZERO)",
       "monmsg": ["CPF0000", "RPG0000", "MCH0000"]
-    },
-    {
-      "type": "collect",
-      "kind": "sql"
     }
   ]
 }

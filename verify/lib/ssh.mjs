@@ -55,19 +55,33 @@ export function runSsh(cfg, stdinScript, { timeoutMs = 180_000 } = {}) {
   });
 }
 
-// 台帳に書く status を、実際の結果から機械的に分類する。
+// 台帳に書く status(=接続そのものの成否)を分類する。
+//
+// 重要: stdout/stderr の全体を "Connection refused" 等の文字列で走査してはいけない。
+// リモート側の出力(例: P33 で curl が返す "Connection refused" のような通信エラー
+// メッセージ、EACCES を含むエラー行)がたまたま含まれているだけで、接続自体は
+// 成功しているのに auth_failed/refused_or_timeout に誤判定し、無期限停止や3時間
+// 停止を誤って発動してしまう(advisor 指摘)。
+//
+// 代わりに、buildQshScript() が最初に送る `echo ===VFY:start===` が stdout に
+// 現れたかどうかだけを見る。これは「SSH 認証が成功し、qsh がこちらのスクリプトを
+// 実行し始めた」ことの確実な証拠であり、そのあとリモート側で何が起きても
+// (スクリプト内の個々のステップの成否は結果ファイルの sections で別途判断する)、
+// 接続としては成功として台帳に記録する。
+const START_MARKER = '===VFY:start===';
+
 export function classifyResult({ code, stdout, stderr, killedForTimeout, spawnError }) {
-  const text = `${stdout}\n${stderr}`;
-  if (spawnError) return 'refused_or_timeout';
-  if (killedForTimeout) return 'refused_or_timeout';
-  if (/Permission denied|Authentication failed/i.test(text)) return 'auth_failed';
-  if (
-    /Connection refused|Connection timed out|Operation timed out|Could not resolve hostname|Connection closed by remote host|No route to host/i.test(
-      text,
-    )
-  ) {
-    return 'refused_or_timeout';
+  if (stdout.includes(START_MARKER)) {
+    return 'success';
   }
-  if (code === 0) return 'success';
-  return 'unknown';
+  if (spawnError) return 'refused_or_timeout';
+  // 公開鍵が拒否された場合、OpenSSH クライアントは exit 255 で
+  // "Permission denied (publickey" を stderr に出す(鍵認証のみを使う設定のため、
+  // パスワード等へのフォールバックは起きない)。
+  if (code === 255 && /Permission denied \(publickey/i.test(stderr)) {
+    return 'auth_failed';
+  }
+  // start マーカーが出る前に切れた(タイムアウトで kill された、接続確立前に
+  // 切断された等)場合は、接続そのものが失敗したとみなす。
+  return 'refused_or_timeout';
 }

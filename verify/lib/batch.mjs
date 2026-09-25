@@ -62,7 +62,13 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
     const remoteRel = `${remoteDir}/${path.basename(step.localPath)}`;
     lines.push(`echo ${MARKER(`transfer:${step.member}`)}`);
     lines.push(heredocWrite(remoteRel, content));
-    lines.push(`setccsid ${step.ccsid || 37} "${remoteAbs(remoteRel)}"`);
+    // `ccsid` を省略した場合は setccsid も STMFCCSID() も出さない(未検証の数字を
+    // 推測で決め打ちしない。CPYFRMSTMF はその場合ファイル自身のCCSIDタグを使う)。
+    // heredoc で書いたファイルの実際のCCSIDタグが何になるかは、この計画の最初の
+    // 実接続で確かめる(結果に応じて、必要ならここに明示的な候補を追加する)。
+    if (step.ccsid) {
+      lines.push(`setccsid ${step.ccsid} "${remoteAbs(remoteRel)}"`);
+    }
     if (step.ensureSrcFile) {
       // 既に存在すれば CPF7302 で失敗するだけなので無視してよい(system の終了コードは
       // 見ずに、あとの CPYFRMSTMF が成功するかどうかで判断する)。
@@ -70,23 +76,39 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
         `system "CRTSRCPF FILE(${lib}/${step.remoteSrcFile}) RCDLEN(${step.ensureSrcFile.recordLength}) TEXT('verify harness auto-create')" 2>&1`,
       );
     }
+    const stmfCcsid = step.ccsid ? ` STMFCCSID(${step.ccsid})` : '';
     lines.push(
       `system "CPYFRMSTMF FROMSTMF('${remoteAbs(remoteRel)}') ` +
-        `TOMBR('/QSYS.LIB/${lib}.LIB/${step.remoteSrcFile}.FILE/${step.member}.MBR') MBROPT(*REPLACE) STMFCCSID(${step.ccsid || 37})" 2>&1`,
+        `TOMBR('/QSYS.LIB/${lib}.LIB/${step.remoteSrcFile}.FILE/${step.member}.MBR') MBROPT(*REPLACE)${stmfCcsid}" 2>&1`,
     );
     lines.push(`echo ${MARKER(`transfer-end:${step.member}`)}`);
   }
 
   const clSteps = manifest.steps.filter((s) => s.type === 'cl');
   if (clSteps.length) {
-    const { pgmName, source } = buildClWrapperSource(manifest, cfg);
+    const { pgmName, source, logTable } = buildClWrapperSource(manifest, cfg);
     const wrapperRel = `${remoteDir}/${pgmName.toLowerCase()}.clp`;
+
+    // ラッパーが DELETE FROM/INSERT INTO する先の表。無ければ作る(存在すれば
+    // SQL0601 で失敗するだけなので、system の終了コードは見ずに無視する)。
+    // QTEMP ではなくライブラリー内の永続表にするのは、qsh の system() 呼び出しが
+    // 同一ジョブ内で連続する保証がない(未検証)ため、DONE/FAILSAFE 時点の
+    // INSERT(ラッパーと同じジョブ内)だけがジョブ・ログを確実に読める経路だから。
+    lines.push(`echo ${MARKER('ensure-log-table')}`);
+    lines.push(
+      `system "RUNSQL SQL('CREATE TABLE ${logTable} (SEQ INT, MSG VARCHAR(200))') COMMIT(*NONE)" 2>&1`,
+    );
+
     lines.push(`echo ${MARKER('wrapper-source')}`);
     lines.push(heredocWrite(wrapperRel, source));
-    lines.push(`setccsid 37 "${remoteAbs(wrapperRel)}"`);
+    // ccsid の扱いは上の file ステップと同じ方針(未検証の数字を決め打ちしない)。
+    if (manifest.wrapperCcsid) {
+      lines.push(`setccsid ${manifest.wrapperCcsid} "${remoteAbs(wrapperRel)}"`);
+    }
+    const wrapperStmfCcsid = manifest.wrapperCcsid ? ` STMFCCSID(${manifest.wrapperCcsid})` : '';
     lines.push(
       `system "CPYFRMSTMF FROMSTMF('${remoteAbs(wrapperRel)}') ` +
-        `TOMBR('/QSYS.LIB/${lib}.LIB/QCLSRC.FILE/${pgmName}.MBR') MBROPT(*REPLACE) STMFCCSID(37)" 2>&1`,
+        `TOMBR('/QSYS.LIB/${lib}.LIB/QCLSRC.FILE/${pgmName}.MBR') MBROPT(*REPLACE)${wrapperStmfCcsid}" 2>&1`,
     );
     lines.push(`echo ${MARKER('compile')}`);
     lines.push(
@@ -95,6 +117,10 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
     lines.push(`echo ${MARKER('run')}`);
     lines.push(`system "CALL PGM(${lib}/${pgmName})" 2>&1`);
     lines.push(`echo ${MARKER('run-end')}`);
+
+    lines.push(`echo ${MARKER('vfylog')}`);
+    lines.push(`echo "SELECT MSG FROM ${logTable} ORDER BY SEQ" | db2 -s 2>&1`);
+    lines.push(`echo ${MARKER('vfylog-end')}`);
   }
 
   const collectSteps = manifest.steps.filter((s) => s.type === 'collect');

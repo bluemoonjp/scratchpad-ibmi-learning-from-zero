@@ -1,0 +1,9 @@
+      * T0ZERO - harness self-test: force RPG0102 (divide by zero) and
+      * confirm CHGJOB INQMSGRPY(*DFT) auto-answers it instead of hanging.
+      * Same technique as lesson 04-12 (R0412S guards against this; this
+      * program deliberately omits the guard).
+     H
+     C                     Z-ADD10        NUM     30
+     C                     Z-ADD0         ZERO    30
+     C           NUM       DIV  ZERO      ANSWER  30
+     C                     SETON                         LR
