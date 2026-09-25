@@ -85,9 +85,9 @@ ssh -i <鍵> -p 2222 -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterva
   "description": "人間向けの説明",
   "library": "<省略時は <USER>2>",
   "remoteDir": "<省略時は vfy/<batch>>",
-  "wrapperCcsid": "<省略可。CLラッパー自身のソース転送に使うCCSID。省略時はsetccsid/STMFCCSIDを出さない>",
+  "wrapperCcsid": "<省略可。CLラッパー自身のソース転送に使うCCSID。省略時は既定値1208、falseで無指定>",
   "steps": [
-    { "type": "file", "localPath": "src/foo.rpg", "remoteSrcFile": "QRPGSRC", "member": "FOO", "ccsid": "<省略可>" },
+    { "type": "file", "localPath": "src/foo.rpg", "remoteSrcFile": "QRPGSRC", "member": "FOO", "ccsid": "<省略時は既定値1208、falseで無指定>" },
     { "type": "cl", "label": "COMPILE", "cmd": "CRTRPGPGM PGM(&LIB/FOO) SRCFILE(&LIB/QRPGSRC) SRCMBR(FOO)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "RUNIT", "cmd": "CALL PGM(&LIB/FOO)" },
     { "type": "collect", "kind": "sql", "sql": "任意のSELECT文(cl以外の追加の回収が要る場合だけ使う)" }
@@ -103,7 +103,7 @@ ssh -i <鍵> -p 2222 -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterva
 
 - `qsh` の `system()` 呼び出しが同一ジョブ内で連続するか。ラッパーの結果回収(上記 VFYLOG)はこれに依存しない設計にしてあるので、この点自体は未確定のままでもハーネスは動く。
 - `SYSTOOLS.SPOOLED_FILE_DATA` の実際の呼び出し方(引数の形)。`collect` ステップの既定クエリーは最有力候補であり、失敗する可能性がある(未使用でも問題ない設計にしてある)。
-- **heredoc で書いたファイルが実際にどの CCSID でタグ付けされるか。** これがこのハーネスで最も基礎的な未検証事項。`file`/`wrapperCcsid` の `ccsid` を省略すると `setccsid`/`STMFCCSID()` を一切出さず、`CPYFRMSTMF` にファイル自身のタグをそのまま使わせる(37 や 273 を推測で決め打ちしない)。garbled な結果になった場合は、この結果を見てから次の接続で明示的な候補を追加する。
+- **heredoc で書いたファイルが実際にどの CCSID でタグ付けされるか。** `file`/`wrapperCcsid` の `ccsid` を省略すると既定値 1208(`verify/lib/batch.mjs` の `DEFAULT_CCSID`)を使う。これは `tools/qclsrc/txsetup.clp` が git clone で届いたソースの `CPYFRMSTMF` に実際に使い、実機で完走を確認済みの値をそのまま踏襲したもので、推測ではない。ただし heredoc 経由(git clone 経由ではなく)でも同じ既定でよいかどうかは、このハーネスではまだ確認していない。`ccsid: false` を明示すれば `setccsid`/`STMFCCSID()` を一切出さない(候補比較用)。garbled な結果になった場合は、この結果を見てから次の接続で別の候補を追加する。
 
 `verify/harness-selftest/` は、この確認と「`CHGJOB INQMSGRPY(*DFT)` による RPG0102(OPM RPG III のゼロ除算照会。Part 5 が必要とするのもこちら)の自動応答」をまとめて行う、最初の実接続向けのバッチ。RPG III(`CRTRPGPGM`)を使っている。ILE(`CRTBNDRPG`)では `RNQ0102`/`RNX0102` になり別の話になるので注意。
 
