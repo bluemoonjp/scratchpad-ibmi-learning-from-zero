@@ -1,0 +1,15 @@
+      * R0406A - read TOKUIM sequentially and print each customer.
+     H
+     FTOKUIM  IF  E                    DISK
+     FQSYSPRT O   F     132            PRINTER
+     C           LOOP      TAG
+     C                     READ TOKUIM                   99
+     C   99                GOTO ENDLP
+     C                     EXCPT
+     C                     GOTO LOOP
+     C           ENDLP     TAG
+     C                     SETON                     LR
+     OQSYSPRT E
+     O                         TOKCD      6
+     O                                    8 '  '
+     O                         TOKNM     38
