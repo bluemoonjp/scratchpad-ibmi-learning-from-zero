@@ -1,0 +1,6 @@
+     A          R JUCHUR                    TEXT('Order master')
+     A            JUNO           6A         TEXT('Order number')
+     A            JUTOK          6A         TEXT('Customer code')
+     A            JUDATE         8S 0       TEXT('Order date YYYYMMDD')
+     A            JUTAN          6A         TEXT('Sales rep code')
+     A          K JUNO

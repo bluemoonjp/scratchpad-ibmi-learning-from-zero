@@ -1,0 +1,6 @@
+     A          R SHOHIR                    TEXT('Product master')
+     A            SHOCD          6A         TEXT('Product code')
+     A            SHONM         30A         TEXT('Product name')
+     A            SHOTNK         7S 2       TEXT('Unit price')
+     A            SHOHAT         5S 0       TEXT('Reorder point')
+     A          K SHOCD

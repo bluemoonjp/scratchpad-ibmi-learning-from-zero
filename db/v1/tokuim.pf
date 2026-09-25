@@ -1,0 +1,7 @@
+     A          R TOKUIR                    TEXT('Customer master')
+     A            TOKCD          6A         TEXT('Customer code')
+     A            TOKNM         30A         TEXT('Customer name')
+     A            TOKZIP         7A         TEXT('Zip code')
+     A            TOKTAN         6A         TEXT('Sales rep code')
+     A            TOKUPD         8S 0       TEXT('Updated date YYYYMMDD')
+     A          K TOKCD

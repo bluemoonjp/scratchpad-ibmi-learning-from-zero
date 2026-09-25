@@ -1,0 +1,5 @@
+     A          R ZAIKOR                    TEXT('Stock master')
+     A            ZASHO          6A         TEXT('Product code')
+     A            ZASU           7S 0       TEXT('Stock quantity')
+     A            ZAUPD          8S 0       TEXT('Updated date YYYYMMDD')
+     A          K ZASHO

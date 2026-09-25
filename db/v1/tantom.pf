@@ -1,0 +1,4 @@
+     A          R TANTOR                    TEXT('Sales rep master')
+     A            TANTOCODE      6A         TEXT('Sales rep code')
+     A            TANTONAME     20A         TEXT('Sales rep name')
+     A          K TANTOCODE

@@ -1,0 +1,8 @@
+     A          R JUCHDR                    TEXT('Order detail')
+     A            JUNO           6A         TEXT('Order number')
+     A            JULINE         3S 0       TEXT('Line number')
+     A            JUSHO          6A         TEXT('Product code')
+     A            JUSU           5S 0       TEXT('Quantity')
+     A            JUTNK          7S 2       TEXT('Unit price at order time')
+     A          K JUNO
+     A          K JULINE
