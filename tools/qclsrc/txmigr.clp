@@ -104,8 +104,10 @@
 NEXTDBR:     RCVF
              MONMSG     MSGID(CPF0864) EXEC(GOTO CMDLBL(RECOMPILE))
              IF         COND(&WHLIB *NE &LIB) THEN(GOTO CMDLBL(NEXTDBR))
+             DLTF       FILE(&LIB/&WHFILE)
+             MONMSG     MSGID(CPF0000)
              CRTLF      FILE(&LIB/&WHFILE) SRCFILE(&LIB/QDDSSRC) +
-                          SRCMBR(&WHFILE) REPLACE(*YES)
+                          SRCMBR(&WHFILE)
              MONMSG     MSGID(CPF0000) EXEC(SNDPGMMSG MSG('TXMIGR: could +
                           not recreate ' *CAT %TRIM(&WHFILE) *CAT '.'))
              GOTO       CMDLBL(NEXTDBR)

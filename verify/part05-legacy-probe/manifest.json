@@ -13,7 +13,7 @@
     { "type": "file", "localPath": "../../src/legacy/qclsrc/ju0900c.clp", "remoteSrcFile": "QCLSRC", "member": "JU0900C" },
     { "type": "file", "localPath": "../../src/legacy/qclsrc/mn0000c.clp", "remoteSrcFile": "QCLSRC", "member": "MN0000C" },
 
-    { "type": "cl", "label": "CPFLDRF", "cmd": "CRTPF FILE(&LIB/FLDREF) SRCFILE(&LIB/QDDSSRC) SRCMBR(FLDREF) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPFLDRF", "cmd": "DLTF FILE(&LIB/FLDREF)\nMONMSG MSGID(CPF0000)\nCRTPF FILE(&LIB/FLDREF) SRCFILE(&LIB/QDDSSRC) SRCMBR(FLDREF)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "CPTK0D", "cmd": "CRTDSPF FILE(&LIB/TK0100D) SRCFILE(&LIB/QDDSSRC) SRCMBR(TK0100D) REPLACE(*YES)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "CPMN0D", "cmd": "CRTDSPF FILE(&LIB/MN0000D) SRCFILE(&LIB/QDDSSRC) SRCMBR(MN0000D) REPLACE(*YES)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "CPTK0", "cmd": "CRTRPGPGM PGM(&LIB/TK0100) SRCFILE(&LIB/QRPGSRC) SRCMBR(TK0100) REPLACE(*YES)", "monmsg": ["CPF0000"] },
