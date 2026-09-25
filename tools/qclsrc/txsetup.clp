@@ -131,8 +131,11 @@ SUBR       SUBR(LOADPF)
                           '.MBR')
              CPYFRMSTMF FROMSTMF(&SRC) TOMBR(&TOMBR) MBROPT(*REPLACE) +
                           STMFCCSID(1208)
-             CRTPF      FILE(&LIB/&P1) SRCFILE(&LIB/QDDSSRC) SRCMBR(&P1) +
-                          TEXT(&P2)
+             /* Do not overwrite a file the learner may already have built  */
+             /* by hand (02-02). Only create it if it is not there yet.     */
+             CHKOBJ     OBJ(&LIB/&P1) OBJTYPE(*FILE)
+             MONMSG     MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/&P1) +
+                          SRCFILE(&LIB/QDDSSRC) SRCMBR(&P1) TEXT(&P2))
 ENDSUBR
 
 SUBR       SUBR(LOADLF)
@@ -147,8 +150,9 @@ SUBR       SUBR(LOADLF)
                           '.MBR')
              CPYFRMSTMF FROMSTMF(&SRC) TOMBR(&TOMBR) MBROPT(*REPLACE) +
                           STMFCCSID(1208)
-             CRTLF      FILE(&LIB/&P1) SRCFILE(&LIB/QDDSSRC) SRCMBR(&P1) +
-                          TEXT(&P2)
+             CHKOBJ     OBJ(&LIB/&P1) OBJTYPE(*FILE)
+             MONMSG     MSGID(CPF9801) EXEC(CRTLF FILE(&LIB/&P1) +
+                          SRCFILE(&LIB/QDDSSRC) SRCMBR(&P1) TEXT(&P2))
 ENDSUBR
 
 TXEND:       ENDPGM
