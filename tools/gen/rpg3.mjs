@@ -172,6 +172,61 @@ export function iSpecField({ extName = '', name, level = '', match = '' } = {}) 
   return finish(l);
 }
 
+// I-spec record identification line (PROGRAM DESCRIBED files; RPG/400
+// Reference ch.8 "Program Described Files"). Distinct from iSpecRecord()
+// above, which is for externally described files only.
+// `file`: file name (7-14; only needed on the first record-id line for a
+// file - omit on continuation lines for the same file). `ind`: record
+// identifying indicator (19-20): '01'-'99' | 'L1'-'L9' | 'LR' | 'H1'-'H9' |
+// 'U1'-'U8' | 'RT' | '**' (lookahead). Sequence-checking (15-18) and
+// multi-record-type identification codes (21-41) are not implemented here
+// (not needed by any lesson so far) - add them if a future object needs
+// more than one record type per program-described file.
+export function progISpecRecord({ file = '', ind = '' } = {}) {
+  const l = blank(80).split('');
+  put(l, 6, 'I');
+  if (file) put(l, 7, file);
+  if (ind) put(l, 19, ind);
+  return finish(l);
+}
+
+// I-spec field description line (PROGRAM DESCRIBED files). Must follow a
+// progISpecRecord() line for the same file.
+// `format`: '' (zoned/char) | 'P' | 'B' | 'L' | 'R' (43). `from`/`to`: field
+// position within the record, right-adjusted (44-47/48-51). `decimals`: ''
+// for a character field, else decimal positions (52). `name`: field name
+// (53-58). `level`: control level 'L1'-'L9' (59-60). `match`: matching
+// field 'M1'-'M9' (61-62).
+export function progISpecField({ format = '', from, to, decimals = '', name, level = '', match = '' }) {
+  const l = blank(80).split('');
+  put(l, 6, 'I');
+  if (format) put(l, 43, format);
+  put(l, 44, String(from).padStart(4, ' '));
+  put(l, 48, String(to).padStart(4, ' '));
+  if (decimals !== '') put(l, 52, String(decimals));
+  put(l, 53, name);
+  if (level) put(l, 59, level);
+  if (match) put(l, 61, match);
+  return finish(l);
+}
+
+// /COPY compiler directive (RPG/400 Reference ch.1, "Introduction to
+// RPG/400"): columns 7-11 literally "/COPY", column 12 blank, columns
+// 13-44 the member location. Column 6 is NOT fixed to any one spec letter -
+// the reference's own examples use C/I/O depending on what kind of
+// specifications the copied member contains (e.g. 'I' when copying I-spec
+// field/DS definitions); pass whichever form-type letter matches the
+// copied member's content.
+// `location`: 'MBR' (QRPGSRC, searched via the library list) |
+// 'SRCFIL,MBR' | 'SRCLIB/SRCFIL,MBR'.
+export function copyDirective(formType, location) {
+  const l = blank(80).split('');
+  put(l, 6, formType);
+  put(l, 7, '/COPY');
+  put(l, 13, location);
+  return finish(l);
+}
+
 // O-spec factory (basic: EXCPT/detail lines with field list handled by caller as raw text after col 32 if needed)
 // `ind`: conditioning indicator(s) for this output line, same format as cSpec's `ind` (see putCondInd()).
 export function oSpec({ name = '', type = '', ind = '', field = '', editCode = '', endPos = '', constant = '', blankAfter = '' } = {}) {
