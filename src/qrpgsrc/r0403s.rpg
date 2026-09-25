@@ -1,0 +1,24 @@
+      * R0403A - MOVE/MOVEL leave old data behind; CLEAR first to avoid it.
+     H
+     FQSYSPRT O   F     132            PRINTER
+     C                     MOVEL'JOHNSON' NAME1  10
+     C                     MOVEL'JOHNSON' NAME2  10
+     C                     MOVEL'AL'      NAME2
+     C                     MOVE '123456'  CODE1   6
+     C                     MOVE '123456'  CODE2   6
+     C                     MOVE 'AB'      CODE2
+     C                     MOVEL'XX'      NAME3  10
+     C                     CLEAR          NAME3
+     C                     MOVEL'BOB'     NAME3
+     C                     EXCPT
+     C                     SETON                     LR
+     OQSYSPRT E                           2 'A='
+     O                         NAME1     12
+     O                                   16 '  B='
+     O                         NAME2     26
+     O                                   30 '  C='
+     O                         CODE1     36
+     O                                   40 '  D='
+     O                         CODE2     46
+     O                                   50 '  E='
+     O                         NAME3     60
