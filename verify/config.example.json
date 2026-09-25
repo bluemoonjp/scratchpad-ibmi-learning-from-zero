@@ -1,0 +1,6 @@
+{
+  "user": "YOUR_PUB400_USER",
+  "keyPath": "~/.ssh/pub400",
+  "host": "pub400.com",
+  "port": 2222
+}
