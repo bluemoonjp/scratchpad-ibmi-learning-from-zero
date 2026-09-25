@@ -1,0 +1,20 @@
+      * T0EDS - harness probe: E-spec compile-time array + DS subfields.
+      * Confirms tools/gen/rpg3.mjs eSpec/compileTimeArrayData/iSpecDS/
+      * iSpecSubfield column positions against a real CRTRPGPGM compile.
+     H
+     FQSYSPRT O   F     132            PRINTER
+     E                    CLRARR  3   3  6
+     IDSWRK      IDS                              9
+     I                                        1   30DSNUM
+     I                                        4   9 DSNAME
+     C                     Z-ADD42        DSNUM   30
+     C                     MOVEL'ABCDEF'  DSNAME  6
+     C                     MOVELCLRARR,2  COLOR   6
+     C                     EXCPT
+     C                     SETON                         LR
+**
+RED   GREEN BLUE  
+     OQSYSPRT E
+     O                         DSNUM      5
+     O                         DSNAME    12
+     O                         COLOR     20

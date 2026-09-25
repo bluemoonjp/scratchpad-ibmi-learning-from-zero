@@ -1,0 +1,15 @@
+     A*                                     T0SFL probe: cond ind + SFL.
+     A*                                     See tools/gen/dspf.mjs. V1 only.
+     A                                      CA03(03)
+     A          R SFL1
+     A            KNAME         10A  O  5 10
+     A          R SFL1CTL                   SFLCTL(SFL1)
+     A                                      SFLSIZ(10)
+     A                                      SFLPAG(5)
+     A  91                                  SFLDSP
+     A  90                                  SFLDSPCTL
+     A  92                                  SFLCLR
+     A                                      SFLEND
+     A                                      SFLRCDNBR(*ALL)
+     A  95                              3 10NO DATA
+     AON95                              3 10MORE DATA
