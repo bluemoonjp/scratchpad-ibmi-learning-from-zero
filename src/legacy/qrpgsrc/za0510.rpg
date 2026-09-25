@@ -18,24 +18,36 @@
       *    890-904) requires H-F-E-L-I-C-O source order; data-structure specs
       *    "as a whole must come after all record-level I-specs" (rpg3.mjs
       *    iSpecDS() comment) - so FLDREFR's copied-in CMNFLD DS, and this
-      *    program's own CMDDS/PSDS/PRIDS data structures, all sit after the
-      *    ZAIKOR block and before the first C-spec.
+      *    program's own CMDDS/PSDS/ZAINF/PRIDS data structures, all sit
+      *    after the ZAIKOR block and before the first C-spec.
       *
       *    IMPORTANT: CMNFLD (copied in from FLDREFR) defines subfields named
       *    ZASHO and ZASU (src/legacy/qrpgsrc/fldrefr.rpg) - the exact same
-      *    names as ZAIKOM's own external fields ZASHO/ZASU (db/v1/zaikom.pf).
-      *    RPG/400 Reference p.6 ("A symbolic name must be unique") states
-      *    uniqueness as a rule common to fields, subfields and data-structure
-      *    names alike (lines 1180-1207 list them together under one rule
-      *    set), so leaving ZAIKOM's fields under their natural external names
-      *    would collide with CMNFLD's subfields of the same name - two
-      *    different definitions of one symbol, not legal. This program
-      *    renames them via I-spec field override (cols 21-30 external name
-      *    -> cols 53-58 program name, RPG/400 Reference p.149/153, same
-      *    mechanism tk0100.rpg uses for TANTOM's TANTOCODE/TANTONAME - itself
-      *    flagged there as reference-based/not yet compiled for this specific
-      *    rename form) to ZKSHO/ZKSU before FLDREFR is copied in, freeing the
-      *    ZASHO/ZASU names for CMNFLD.
+      *    names as ZAIKOM's own external fields ZASHO/ZASU (db/v1/zaikom.pf),
+      *    and they match field-for-field: both ZASHO are 6A, and both ZASU
+      *    are numeric, length 7, 0 decimal positions (db/v1/zaikom.pf "7S 0"
+      *    zoned decimal; fldrefr.rpg's CMNFLD subfield has no format letter
+      *    and 0 decimals, i.e. zoned too). RPG/400 Reference's Field Names
+      *    rule (p.6-7) is not a flat uniqueness ban for a matching pair like
+      *    this: "A field name can appear on more than one field definition
+      *    statement if each definition using that name has the same data
+      *    type, the same length, and the same number of decimal positions.
+      *    All definitions using the same name refer to a single field (that
+      *    is, the same area in storage)." Since ZASHO/ZASU's type/length/
+      *    decimals already match between ZAIKOM and CMNFLD, reusing the
+      *    names as-is would compile fine - but it would NOT give two
+      *    independent values: it would make ZAIKOM's own per-record ZASHO/
+      *    ZASU and CMNFLD's common-field ZASHO/ZASU the SAME storage area,
+      *    so whichever one is assigned last would silently overwrite the
+      *    other's value, even though they mean different things (this
+      *    record's own product code/quantity vs. FLDREFR's general-purpose
+      *    common fields). This program renames ZAIKOM's fields via I-spec
+      *    field override (cols 21-30 external name -> cols 53-58 program
+      *    name, RPG/400 Reference p.149/153, same mechanism tk0100.rpg uses
+      *    for TANTOM's TANTOCODE/TANTONAME - itself flagged there as
+      *    reference-based/not yet compiled for this specific rename form) to
+      *    ZKSHO/ZKSU before FLDREFR is copied in, so the two meanings get
+      *    two separate names/storage areas instead of colliding into one.
       *
       * 2. Compile-time TABLE pair (product code -> priority), not a single
       *    alternating-format table pair - and where its "**" data actually
@@ -137,22 +149,20 @@
       *    by ACQ (p.205) and OUT (p.317); tk0100.rpg's H1 (LOCK IN) is the
       *    same convention for a different opcode. Indicator 85 here.
       *
-      * 7. Program status DS (PSDS), not INFDS.
+      * 7. Program status DS (PSDS) - and a real per-file INFDS, ZAINF.
       *    The design brief's item 7 calls this "INFDS (program status data
       *    structure)", but RPG/400 Reference reserves "INFDS" specifically
       *    for the FILE information data structure (p.25, "A file information
       *    data structure (INFDS) can be defined for EACH FILE..."; F-spec
       *    continuation line, cols 53=K/54-59=INFDS/60-65=name). The
-      *    construct rpg3.mjs's iSpecDS(option:'S') actually builds is the
-      *    separate "Program Status Data Structure" (p.42-43) - not file-
-      *    specific, declared on an I-spec (option 'S' in col 18), and never
-      *    called "INFDS" anywhere this session found in rpg400ref.txt. The
-      *    design brief's own parenthetical Japanese gloss (program-state-
-      *    data-structure) does describe this construct correctly even though
-      *    its preceding English label does not; that is what is built here,
-      *    named PSDS. A true per-file INFDS is NOT coded for ZAIKOM, for the
-      *    same reason noted in item 8 below (fSpec() has no continuation-
-      *    line support).
+      *    construct rpg3.mjs's iSpecDS(option:'S') builds is the separate
+      *    "Program Status Data Structure" (p.42-43) - not file-specific,
+      *    declared on an I-spec (option 'S' in col 18), and never called
+      *    "INFDS" anywhere this session found in rpg400ref.txt. The design
+      *    brief's own parenthetical Japanese gloss (program-state-data-
+      *    structure) does describe this construct correctly even though its
+      *    preceding English label does not; that is what is built here,
+      *    named PSDS.
       *
       *    STATUS and a routine-name subfield (named RTN here) are declared
       *    at their predefined From/To byte positions from Table 8 (STATUS=
@@ -163,33 +173,69 @@
       *    not read by any logic below (kept available for a human debugging
       *    a real compile/run).
       *
-      * 8. INFSR / *PSSR: this program relies on a single, program-wide *PSSR
-      *    subroutine as its error handler, without a per-file F-spec INFSR
-      *    continuation line (RPG/400 Reference p.37: col 53=K, cols 54-59=
-      *    INFSR, cols 60-65=subroutine name - not coded here because
-      *    rpg3.mjs's fSpec() does not implement those continuation columns,
-      *    and this script does not hand-derive columns outside the
-      *    generator; per p.37 itself, INFSR's subroutine name "can be PSSR",
-      *    so this is a legitimate, if less explicit, way to let one
-      *    subroutine cover both roles).
+      *    A true per-file INFDS for ZAIKOM is also coded now, named ZAINF
+      *    (I-spec DS below, next to PSDS). rpg3.mjs's fSpec() had no way to
+      *    emit an F-spec continuation line, so this fix adds a companion
+      *    generator function, fSpecCont(), that does: col 53=K, cols 54-59=
+      *    INFDS, cols 60-65=ZAINF (p.25), emitted right after FZAIKOM's main
+      *    F-spec line and before FQSYSPRT's - still inside the F-spec block,
+      *    per p.25's "make the following entries on a continuation line ...
+      *    for the file description specifications" and Figure 1's H-F-E-...
+      *    source order. ZAINF's two subfields sit at the predefined Table 1
+      *    byte offsets (p.28, "Contents of the File Feedback Information ...
+      *    (INFDS)"): FSTAT = zoned 5,0 at 11-15 (status code), FRTN =
+      *    character 8 at 22-29 (name of the RPG/400 routine in which the
+      *    exception/error occurred). FSTAT/FRTN are deliberately NOT named
+      *    STATUS/RTN (PSDS's own subfield names): by the Field Names rule
+      *    quoted in note 1 above, giving PSDS's STATUS (zoned 5,0 at 11-15
+      *    within PSDS) and INFDS's status field (also zoned 5,0 at 11-15,
+      *    but within the different DS ZAINF) the same name would make RPG
+      *    treat them as ONE shared storage area, silently aliasing two
+      *    unrelated values (program status vs. file status). Like PSDS,
+      *    ZAINF is not read by any logic below (kept available for a human
+      *    debugging a real compile/run).
+      *
+      * 8. INFSR: a real per-file F-spec INFSR continuation line, naming the
+      *    same *PSSR subroutine used as the error handler below.
+      *    Also emitted via fSpecCont() (note 7), right after the INFDS
+      *    continuation line: col 53=K, cols 54-59=INFSR, cols 60-65=*PSSR
+      *    (RPG/400 Reference p.37: col 53=K, cols 54-59=INFSR, cols 60-65=
+      *    subroutine name). p.37 is explicit that this is not a free-form
+      *    label: "Factor 1 of the BEGSR operation and factor 2 of the EXSR
+      *    operation must contain the name of the subroutine that receives
+      *    control (same name as specified in positions 60 through 65 of the
+      *    file description specifications continuation line)" - so cols
+      *    60-65 here MUST equal the BEGSR factor 1 and EXSR factor 2 used by
+      *    the *PSSR subroutine below (both *PSSR per note 10's starred
+      *    reading), and are coded *PSSR accordingly. p.37's own
+      *    prose sentence ("The subroutine name can be PSSR...") drops the
+      *    leading "*" the same way note 10 already documents this OCR doing
+      *    to *CANCL in this same p.37-38 passage (lines 3096/3108) - so that
+      *    sentence is read here as *PSSR, not as evidence for an un-starred
+      *    PSSR, consistent with note 10 rather than contradicting it. This
+      *    INFSR entry explicitly routes ZAIKOM's file exception/errors to
+      *    the same *PSSR subroutine used for the LOKUP-not-found case below,
+      *    rather than relying only on the "no INFSR present" default-to-
+      *    PSSR behavior.
       *
       *    Chapter 2's general exception/error dispatch (p.24, Figure 7 steps
-      *    1-4, lines 2202-2214) is explicit that *PSSR DOES act as the
-      *    catch-all when no per-file INFSR is present: step 3 asks only
-      *    "whether the appropriate exception/error subroutine (INFSR or
-      *    PSSR) is present" - a single combined check, not "INFSR, and only
-      *    PSSR if INFSR is also present". So *PSSR here also catches
-      *    unhandled runtime exceptions while reading ZAIKOM (e.g. a decimal
-      *    data error), not only the LOKUP-not-found case. The one confirmed
-      *    exception to this (p.38, lines 3127-3129: "If a file
+      *    1-4, lines 2202-2214) is explicit that "the appropriate
+      *    exception/error subroutine (INFSR or PSSR)" (step 3) receives
+      *    control - a single combined check, and here the two are the same
+      *    routine anyway, since ZAIKOM's own INFSR entry above explicitly
+      *    names *PSSR. So *PSSR here also catches unhandled runtime
+      *    exceptions while reading ZAIKOM (e.g. a decimal data error), not
+      *    only the LOKUP-not-found case. The one
+      *    confirmed exception to this (p.38, lines 3127-3129: "If a file
       *    exception/error occurs during the start or end of a program,
       *    control passes to the RPG/400 default error handler, and not to
       *    the user-written file exception/error subroutine (INFSR)") is
       *    OPEN/CLOSE-time failures, which bypass INFSR *and* PSSR alike -
       *    exactly what probes.md's 04-06 finding shows on real hardware
-      *    ("*PSSR ... did not solve" an implicit-open failure). That narrow
-      *    case is out of scope here (ZAIKOM's F-spec is unchanged from the
-      *    already-working pattern used elsewhere in this repo).
+      *    ("*PSSR ... did not solve" an implicit-open failure). Coding an
+      *    explicit INFDS/INFSR pair does not change this: p.38's OPEN/
+      *    CLOSE-time rule bypasses INFSR/PSSR regardless of whether INFSR is
+      *    coded, so that narrow case remains out of scope here.
       *
       *    The LOKUP-not-found case is not an RPG-raised exception at all
       *    (LOKUP just leaves its indicator off - p.286), so it is routed to
@@ -249,24 +295,28 @@
       *     The design brief's ticket-3 note (part05-legacy-design.json) says
       *     "ENDSR *CANCL". Within rpg400ref.txt itself: BEGSR's own opcode
       *     entry (p.208, lines 13006-13008, "the keyword PSSR used in factor
-      *     1") and the File Exception/Error Subroutine return-point list
+      *     1"), the File Exception/Error Subroutine return-point list
       *     (p.18 lines 1840-1841, p.37-38 lines 3096/3108, "a literal with
-      *     the value CANCL"/"CANCL Cancel the processing of the program")
-      *     give these WITHOUT a leading star. But EXSR's own opcode entry
-      *     (p.263, lines 15806-15807, "*PSSR used in factor 2 ... *INZSR
-      *     used in factor 2") gives PSSR/INZSR WITH a star, consistently as
-      *     a pair; Figure 4's program-cycle diagram (lines 1613-1650) also
-      *     stars *DETC/*TOTC/*TOTL/*TERM/*CANCL throughout; and the index
-      *     (lines 25116, 25638, 25127, 26262, 26366) lists both *PSSR and
-      *     *CANCL starred. tk0100.rpg's header already documents this same
-      *     OCR text dropping leading "*" inconsistently on special words. No
-      *     single reading is fully self-consistent within this document, so
-      *     this program follows the more specific/more frequent starred
-      *     reading (EXSR's own definition names *PSSR by exact, deliberate
-      *     pairing with *INZSR; the diagram and index agree) - *PSSR in
-      *     BEGSR factor 1 and EXSR factor 2, and '*CANCL' in ENDSR factor 2
-      *     - rather than treating the design brief as wrong. This remains
-      *     unverified against a real compile either way.
+      *     the value CANCL"/"CANCL Cancel the processing of the program"),
+      *     and that same p.37 passage's INFSR prose ("The subroutine name
+      *     can be PSSR...", see note 8 above) give these WITHOUT a leading
+      *     star. But EXSR's own opcode entry (p.263, lines 15806-15807,
+      *     "*PSSR used in factor 2 ... *INZSR used in factor 2") gives
+      *     PSSR/INZSR WITH a star, consistently as a pair; Figure 4's
+      *     program-cycle diagram (lines 1613-1650) also stars *DETC/*TOTC/
+      *     *TOTL/*TERM/*CANCL throughout; and the index (lines 25116, 25638,
+      *     25127, 26262, 26366) lists both *PSSR and *CANCL starred.
+      *     tk0100.rpg's header already documents this same OCR text dropping
+      *     leading "*" inconsistently on special words. No single reading is
+      *     fully self-consistent within this document, so this program
+      *     follows the more specific/more frequent starred reading (EXSR's
+      *     own definition names *PSSR by exact, deliberate pairing with
+      *     *INZSR; the diagram and index agree) - *PSSR in BEGSR factor 1,
+      *     EXSR factor 2, AND the F-spec INFSR continuation line's cols
+      *     60-65 (note 8; p.37's own matching rule requires all three to be
+      *     the same literal name), and '*CANCL' in ENDSR factor 2 - rather
+      *     than treating the design brief as wrong. This remains unverified
+      *     against a real compile either way.
       *
       * 11. F-spec for QSYSPRT: za0500.rpg's O-specs reference QSYSPRT but
       *     that file has no FQSYSPRT F-spec line at all (checked its current
@@ -275,6 +325,8 @@
       *
      H
      FZAIKOM  IP  E           K        DISK
+     F                                              KINFDS ZAINF
+     F                                              KINFSR *PSSR
      FQSYSPRT O   F     132            PRINTER
      E                    TABPCD  6   6  6
      E                    TABPRI  6   6  1 0
@@ -296,6 +348,9 @@
      IPSDS       SDS
      I                                       11  150STATUS
      I                                       29  36 RTN
+     IZAINF       DS
+     I                                       11  150FSTAT
+     I                                       22  29 FRTN
      IPRIDS       DS                             21
      I                                        1   70PQ1
      I                                        8  140PQ2
