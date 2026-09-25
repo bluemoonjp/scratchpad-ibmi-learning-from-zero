@@ -1,0 +1,163 @@
+      * ZA0500 - allocate stock for order lines (JUCHUD) matched to
+      * their order header (JUCHUM), M1/MR processing. Legacy system
+      * (Part 5). JUCHUD is opened by JU0900C via OVRDBF SHARE(*YES);
+      * this program only opens JUCHUM and ZAIKOM directly.
+      * BUG (05-13 ticket 1): *ENTRY PLIST below declares MINQTY as
+      * 5,0, but JU0900C declares the CL variable it passes as 3,0.
+      * FIXED (found while writing za0510.rpg): the O-specs below
+      * reference QSYSPRT, but this file had no FQSYSPRT F-spec line at
+      * all - an undeclared file reference, which would fail to
+      * compile. Added, matching ju0300.rpg's identical line.
+      * FIXED (adversarial review, 2026-09-26): four more real bugs in
+      * the C/O-specs below, found by re-deriving every line's opcode
+      * semantics and column layout against RPG/400 Reference instead of
+      * trusting the earlier hand-typed source. Regenerated via
+      * tools/gen/rpg3.mjs's cSpec()/oSpec() rather than hand-edited.
+      *   - CABEQ, not CASEQ: DOLIVE below is a TAG (GOTO target), not a
+      *     BEGSR/ENDSR subroutine - CASxx's result field must name a
+      *     subroutine and CASxx needs an ENDCS, neither of which applies
+      *     here; CABxx's result field is a label, matching this GOTO/TAG
+      *     idiom.
+      *   - O-spec constants NOTFOUND/SHORT/OK now quoted with an end
+      *     position (cols 40-43); the original bare, unquoted words with
+      *     no end position would not compile (ju0300.rpg's OK/MISMATCH
+      *     pair is the correct precedent, followed here).
+      *   - No unconditional SETON LR: JUCHUD is the primary file (F-spec
+      *     IP), so RPG/400 sets LR on automatically once it is
+      *     exhausted. An unconditional SETON LR in detail calculations
+      *     sets LR on the very first cycle, and the cycle does not read
+      *     another primary record once LR is on - JU0900C calls ZA0500
+      *     once and relies on ZA0500's own cycle to walk every matched
+      *     order line, so this would have allocated stock for only the
+      *     first line then returned.
+      *   - Gated the allocation block on record-identifying indicator
+      *     01 (JUCHUD's own turn) in addition to MR: a matched primary/
+      *     secondary pair is processed as two separate detail cycles
+      *     (rpg400ref.txt, matching-record Table 41), and MR stays on
+      *     for both, so without the 01 gate the JUCHUM side of the same
+      *     matched pair re-ran CHAIN/allocate/UPDAT/EXCPT against
+      *     whatever JUSHO/JUSU were still sitting from the JUCHUD cycle
+      *     (JUCHUM's own I-specs don't touch them), double-deducting
+      *     stock and printing a duplicate line every time a match
+      *     occurred.
+     H
+     FJUCHUD  IP  F      27            DISK
+     FJUCHUM  IS  F      26            DISK
+     FZAIKOM  UF  E           K        DISK
+     FQSYSPRT O   F     132            PRINTER
+     IJUCHUD      01
+     I                                        1   6 JUNO    M1
+     I                                        7   90JULINE
+     I                                       10  15 JUSHO
+     I                                       16  200JUSU
+     I                                       21  272JUTNK
+     IJUCHUM      02
+     I                                        1   6 JUNO    M1
+     I                                        7  12 JUTOK
+     I                                       13  200JUDATE
+     I                                       21  26 JUTAN
+      * TICKET3 SOLUTION (05-13 checkpoint model answer, not the
+      * as-shipped src/legacy/qrpgsrc/za0500.rpg): adds a program-wide
+      * *PSSR that catches an unhandled runtime exception during detail
+      * calculations (e.g. the SUB below, if fed corrupted JUSU data via
+      * the 05-11 injection technique) and notifies the caller instead of
+      * letting the job hang on an unanswered inquiry message (04-06/
+      * 04-12's finding: unhandled severity-99 exception -> INQUIRY ->
+      * indefinite hang in a non-interactive job).
+      *
+      * Scope judgment (ticket3's own hint: some errors are in *PSSR's
+      * reach and some are not): this *PSSR is IN SCOPE for exceptions
+      * raised during detail-calculation arithmetic (SUB/COMP/CHAIN with
+      * no 56-57 indicator) - it is NOT in scope for OPEN/CLOSE-time
+      * failures, which bypass INFSR *and* PSSR alike (RPG/400 Reference
+      * p.38 lines 3127-3129, already cited in za0510.rpg's header note
+      * 8; also matches docs/probes.md's 04-06 finding that *PSSR "did
+      * not solve" an implicit-open failure). No per-file INFSR
+      * continuation line is added here for that reason - only the
+      * program-wide default-handler role (Chapter 2, Figure 7 step 3:
+      * "the appropriate exception/error subroutine (INFSR or PSSR)",
+      * already cited in za0510.rpg's header note 8) is relevant.
+      *
+      * QCMDEXC command text (RPG III cannot call a CL command directly -
+      * ticket3's own hint): built via runtime MOVEL into CMDDS, same
+      * technique and same reasoning as za0510.rpg's header note 9 (PARM
+      * cannot take a DS with I-spec-initialized subfields, RPG/400
+      * Reference p.318; each MOVEL chunk fits the C-spec Factor2 field's
+      * 10-column width). JUM0002 (new message, added to the existing
+      * JUMSGF via ADDMSGD as part of this fix - JUMSGF itself already
+      * exists, created by tools/qclsrc/txmsgf.clp since Part 3) is sent
+      * with MSGTYPE(*INFO), not *ESCAPE: docs/probes.md's CPD2489
+      * finding is that *ESCAPE needs a registered MSGID (which JUM0002
+      * now is, unlike za0510.rpg's free-text case) - *INFO is used
+      * anyway here to avoid a second exception (from the *ESCAPE itself)
+      * recursing back into this same *PSSR while it is still running.
+      * MSGF(JUMSGF) is left unqualified (found via *LIBL, like every
+      * other object this program references) rather than hardcoded to
+      * one library, since this program runs against whichever role
+      * library (<USER>1/<USER>2/<USER>B) called it. The CALL itself
+      * carries its own 56-57 error indicator (85, same convention
+      * za0510.rpg uses on its own CALL 'QCMDEXC'): if QCMDEXC fails
+      * while *PSSR is already running, this stops that failure from
+      * re-invoking *PSSR (RPG/400 Reference p.38: "if an
+      * exception/error occurs on the file already in error while the
+      * subroutine is running, the subroutine is called again; this
+      * will result in a program loop unless the programmer codes the
+      * subroutine to avoid this problem").
+      *
+      * Fix procedure this solution assumes (run once per target
+      * library, before calling this program):
+      *   ADDMSGD MSGID(JUM0002) MSGF(<LIB>/JUMSGF) MSG('ZA0500 caught
+      *     an unexpected error and stopped safely.')
+     ICMDDS       DS                             65
+     I                                        1   8 C1
+     I                                        9  16 C2
+     I                                       17  24 C3
+     I                                       25  32 C4
+     I                                       33  40 C5
+     I                                       41  48 C6
+     I                                       49  56 C7
+     I                                       57  64 C8
+     I                                       65  65 C9
+     C           *ENTRY    PLIST
+     C                     PARM           RMODE  10
+     C                     PARM           MINQTY  50
+     C   01 MR             GOTO PROCLN
+     C                     GOTO SKPALL
+     C           PROCLN    TAG
+     C                     SETOF                     9091
+     C           JUSHO     CHAINZAIKOM               90
+     C  N90                Z-ADDZASU      AVAIL   70
+     C  N90                SUB  JUSU      AVAIL
+     C  N90      AVAIL     COMP MINQTY                 91
+     C  N90N91   RMODE     CABEQ'*LIVE'   DOLIVE
+     C                     GOTO SKPUPD
+     C           DOLIVE    TAG
+     C                     Z-ADDAVAIL     ZASU
+     C                     UPDATZAIKOR
+     C           SKPUPD    TAG
+     C                     EXCPT
+     C           SKPALL    TAG
+      * *PSSR: see the header note above for scope/design.
+     C           *PSSR     BEGSR
+     C                     MOVEL'SNDPGMMS'C1
+     C                     MOVEL'G MSGID('C2
+     C                     MOVEL'JUM0002)'C3
+     C                     MOVEL' MSGF(JU'C4
+     C                     MOVEL'MSGF) TO'C5
+     C                     MOVEL'PGMQ(*EX'C6
+     C                     MOVEL'T) MSGTY'C7
+     C                     MOVEL'PE(*INFO'C8
+     C                     MOVEL')'       C9
+     C                     Z-ADD65        CMDLEN 155
+     C                     CALL 'QCMDEXC'              85
+     C                     PARM           CMDDS
+     C                     PARM           CMDLEN
+     C                     ENDSR'*CANCL'
+     OQSYSPRT E
+     O                         JUNO       6
+     O                         JUSHO     14
+     O                         JUSU      21
+     O                 90                30 'NOTFOUND'
+     O                N90 91             30 'SHORT'
+     O                N90N91             30 'OK'
+
