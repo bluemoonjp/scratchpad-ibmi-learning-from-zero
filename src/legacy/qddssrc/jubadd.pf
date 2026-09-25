@@ -1,0 +1,37 @@
+     A*                                     JUBADD - deliberately mis-typed
+     A*                                     "staging" file for 05-11 (decimal
+     A*                                     data error). Same field names/
+     A*                                     lengths as db/v1/juchud.pf's
+     A*                                     JUCHDR record EXCEPT JUSU, which
+     A*                                     is 5A here instead of JUCHUD's
+     A*                                     5S 0 - same total record length
+     A*                                     (27 bytes) but a different type
+     A*                                     for that one field.
+     A*
+     A*                                     Used by src/legacy/qclsrc/
+     A*                                     c0511s.clp with CPYF FMTOPT(*NOCHK)
+     A*                                     (general IBM i knowledge, NOT
+     A*                                     confirmed against any primary
+     A*                                     source in work/design/refs/ or a
+     A*                                     real compile this session -
+     A*                                     verify before relying on this):
+     A*                                     FMTOPT(*NOCHK) is documented
+     A*                                     (outside this repo) to copy
+     A*                                     records between mismatched
+     A*                                     formats without the normal field-
+     A*                                     type check, so a row inserted
+     A*                                     here with JUSU='ABCDE' (valid for
+     A*                                     THIS file's own 5A field) lands
+     A*                                     as invalid zoned-decimal bytes in
+     A*                                     JUCHUD.JUSU once copied across -
+     A*                                     simulating the *NOCHK-caused
+     A*                                     corruption path the 05-11
+     A*                                     syllabus entry names.
+     A          R JUCHDR                    TEXT('05-11 mis-typed staging')
+     A            JUNO           6A         TEXT('Order number')
+     A            JULINE         3S 0       TEXT('Line number')
+     A            JUSHO          6A         TEXT('Product code')
+     A            JUSU           5A         TEXT('Quantity (5A on purpose)')
+     A            JUTNK          7S 2       TEXT('Unit price at order time')
+     A          K JUNO
+     A          K JULINE
