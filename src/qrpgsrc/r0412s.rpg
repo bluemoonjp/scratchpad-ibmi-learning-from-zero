@@ -1,0 +1,13 @@
+      * R0412A - check the divisor before DIV (avoid RPG0102 inquiry).
+     H
+     FQSYSPRT O   F     132            PRINTER
+     C                     Z-ADD10        NUM     30
+     C                     Z-ADD0         ZERO    30
+     C           ZERO      COMP 0                        60
+     C  N60      NUM       DIV  ZERO      ANSWER  30
+     C   60                MOVEL'DIV0ERR' MSG    10
+     C                     EXCPT
+     C                     SETON                         LR
+     OQSYSPRT E
+     O                N60      ANSWER    10
+     O                 60      MSG       25
