@@ -98,13 +98,12 @@ BUILD:       SNDPGMMSG  MSG('TXSETUP: building sample database in library ' +
              CHGVAR     VAR(&P2) VALUE('Customer by name')
              CALLSUBR   SUBR(LOADLF)
 
-/* --- Initial data --- */
+/* --- Initial data. No MONMSG here on purpose: if RUNSQLSTM fails, let    */
+/* its own unmonitored escape message end the program (SNDPGMMSG with     */
+/* MSGTYPE(*ESCAPE) needs a real MSGID, not free text, so a custom        */
+/* message here would need its own message file).                        */
              RUNSQLSTM  SRCSTMF(&CLONEDIR *TCAT '/db/data/load_v1.sql') +
                           COMMIT(*NONE) NAMING(*SYS) DFTRDBCOL(&LIB)
-             MONMSG     MSGID(CPF0000) EXEC(DO)
-                SNDPGMMSG  MSG('TXSETUP: loading initial data failed. See +
-                             the job log for details.') MSGTYPE(*ESCAPE)
-             ENDDO
 
 /* --- Create the DBVER state data area (DBVER=1) --- */
              CHKOBJ     OBJ(&LIB/TXSTATE) OBJTYPE(*DTAARA)
