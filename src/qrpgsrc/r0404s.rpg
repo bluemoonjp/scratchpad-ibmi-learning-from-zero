@@ -1,0 +1,13 @@
+      * R0404A - indicators and COMP: is stock below the reorder point?
+     H
+     FQSYSPRT O   F     132            PRINTER
+     C                     Z-ADD15        STOCK   50
+     C                     Z-ADD20        THRESH  50
+     C           STOCK     COMP THRESH               303132
+     C   30                MOVEL'OVER'    MSG    10
+     C   31                MOVEL'REORDER' MSG
+     C   32                MOVEL'EQUAL'   MSG
+     C                     EXCPT
+     C                     SETON                     LR
+     OQSYSPRT E
+     O                         MSG       40
