@@ -1,0 +1,28 @@
+      * R0409A - ZAHIK3: allocate stock for one product (UPDATE + lock).
+     H
+     FZAIKOM  UF  E           K        DISK
+     FQSYSPRT O   F     132            PRINTER
+     C                     MOVEL'P00001'  PROD    6
+     C                     Z-ADD2         QTY     50
+     C           PROD      CHAINZAIKOM               99
+     C   99                GOTO NOTFND
+     C           ZASU      COMP QTY                    98
+     C   98                GOTO SHORT
+     C                     SUB  QTY       ZASU
+     C                     UPDATZAIKOR
+     C                     MOVEL'OK'      MSG    10
+     C                     GOTO ENDPGM
+     C           SHORT     TAG
+     C                     MOVEL'SHORT'   MSG
+     C                     GOTO ENDPGM
+     C           NOTFND    TAG
+     C                     MOVEL'NOTFOUND'MSG
+     C           ENDPGM    TAG
+     C                     EXCPT
+     C                     SETON                     LR
+     OQSYSPRT E
+     O                         PROD       6
+     O                                    8 '  '
+     O                         ZASU      15
+     O                                   17 '  '
+     O                         MSG       27
