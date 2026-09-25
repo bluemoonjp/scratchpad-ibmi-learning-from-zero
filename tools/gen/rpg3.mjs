@@ -6,15 +6,38 @@
 //          18 順序 19 形式(F/E) 24-27 レコード長 28 限界処理 29-30 キー長
 //          31 レコード・アドレス型 32 編成 33-34 オーバーフロー標識
 //          35-38 キー開始位置 40-46 装置
-// C仕様書: 6=C 7-8 制御レベル 9-17 条件標識(9,12,15 + N) 18-27 Factor1
-//          28-32 命令コード 33-42 Factor2 43-48 結果 49-51 長さ 52 小数
-//          53 拡張 54-59 結果標識(HI/LO/EQ、各2桁) 60-74 コメント
+// C仕様書: 6=C 7-8 制御レベル 9-17 条件標識(3桁×3組、各組「否定N+標識2桁」
+//          の順。実機コンパイルで確認済み: 桁→否定の順で書くとQRG5006/5007)
+//          18-27 Factor1 28-32 命令コード 33-42 Factor2(リテラルもこの
+//          10桁に収まる長さまで) 43-48 結果 49-51 長さ 52 小数(数値の
+//          結果フィールドを新規定義するときは両方明示しないと英数字型に
+//          なる。実機コンパイルで確認済み: QRG7044) 53 拡張
+//          54-59 結果標識(HI/LO/EQ、各2桁) 60-74 コメント
 // O仕様書: 7-14 ファイル/レコード名 15 タイプ(H/D/T/E) 23-31 出力標識
-//          32-37 フィールド名/EXCPT名 38 編集コード 40-43 終了位置
-//          45-70 定数
+//          (C仕様書と同じ「否定+標識2桁」×3組のはずだが、こちらは
+//          まだ実機未確認) 32-37 フィールド名/EXCPT名 38 編集コード
+//          40-43 終了位置 45-70 定数
 function blank(n) { return ' '.repeat(n); }
 function put(arr, col1, text) {
   for (let i = 0; i < text.length; i++) arr[col1 - 1 + i] = text[i];
+}
+
+// Conditioning-indicator groups (C-spec 9-17, O-spec 23-31): 3 groups of 3
+// columns each, and within each group the layout is [N][digit][digit] -
+// the N (negation) flag comes BEFORE the 2-digit indicator number, not
+// after (confirmed by real compilation: putting the digits first produced
+// QRG5006 "Not entry not N or blank" / QRG5007 "Conditioning-Indicator
+// entry invalid", because the first digit landed in the N-flag column).
+// `inds` is an array of up to 3 strings, each either '30' or 'N30'.
+function putCondInd(arr, groupStartCol, inds) {
+  inds.forEach((raw, i) => {
+    if (!raw) return;
+    const neg = raw.startsWith('N');
+    const num = neg ? raw.slice(1) : raw;
+    const base = groupStartCol + i * 3;
+    if (neg) put(arr, base, 'N');
+    put(arr, base + 1, num);
+  });
 }
 function finish(arr, maxCol = 80) {
   const out = arr.join('').replace(/\s+$/, '');
@@ -61,11 +84,13 @@ export function fSpec({ name, type, designation = ' ', eof = ' ', seq = ' ', for
 }
 
 // C-spec factory. All fields optional strings; caller supplies exact text.
+// `ind`: conditioning indicator(s), e.g. '30', 'N30', or ['30','N31'] for
+// up to 3 (AND'ed). See putCondInd() for the column layout within 9-17.
 export function cSpec({ level = '', ind = '', f1 = '', op, f2 = '', result = '', len = '', dec = '', ext = '', hi = '', lo = '', eq = '', comment: cm = '' } = {}) {
   const l = blank(80).split('');
   put(l, 6, 'C');
   put(l, 7, level);
-  put(l, 9, ind);
+  putCondInd(l, 9, Array.isArray(ind) ? ind : [ind]);
   put(l, 18, f1);
   put(l, 28, op);
   put(l, 33, f2);
@@ -81,12 +106,13 @@ export function cSpec({ level = '', ind = '', f1 = '', op, f2 = '', result = '',
 }
 
 // O-spec factory (basic: EXCPT/detail lines with field list handled by caller as raw text after col 32 if needed)
+// `ind`: conditioning indicator(s) for this output line, same format as cSpec's `ind` (see putCondInd()).
 export function oSpec({ name = '', type = '', ind = '', field = '', editCode = '', endPos = '', constant = '', blankAfter = '' } = {}) {
   const l = blank(80).split('');
   put(l, 6, 'O');
   if (name) put(l, 7, name);
   if (type) put(l, 15, type);
-  if (ind) put(l, 23, ind);
+  putCondInd(l, 23, Array.isArray(ind) ? ind : [ind]);
   put(l, 32, field);
   if (editCode) put(l, 38, editCode);
   if (blankAfter) put(l, 39, blankAfter);
