@@ -218,9 +218,29 @@ DEBUG SRC=[/home/<USER>                    *YES
 
 **実機確認**: `<USER>2` で3つの `*CMD` を `CRTCMD CMD(<LIB>/TXSETUP) PGM(<LIB>/TXSETUP) SRCFILE(<LIB>/QCMDSRC) SRCMBR(TXSETUP)`(TXRESET・TXSTATUSも同様)でコンパイルし、**3本とも0エラーで作成できた。** 途中、`PROMPT()` の値が30文字を超えると `CPD0074` になる(CMD定義の `PROMPT()` は30文字が上限)という、これも一次資料通りの制約を実機で確認した。
 
-**実行確認(確認日 2026-09-25、SSH復旧後)**: SSH の接続数制限が解除された後、`<USER>2/TXSETUP LIB(<USER>2)` のようにライブラリー修飾したコマンド名で実行したところ、**正常に動作した**(`TXSETUP: already initialized in this library.` と表示され、既存の状態を正しく検出した)。**`CALL PGM(...) PARM()` で踏んだ2つの問題(パラメーター省略時のCPD0172、`RTVJOBA USER()` が `QUSER` を返す)のどちらも、`*CMD` 経由では再現しなかった。** これは `*CMD` のパラメーター処理が、コマンド定義の宣言長どおりに値を構築するためと考えられる(32バイトの罠を含め、raw `CALL...PARM()` 特有の問題を`*CMD`経由の呼び出しが回避できることを実証した)。
+**実行確認(確認日 2026-09-25、SSH復旧後)**: SSH の接続数制限が解除された後、`<USER>2/TXSETUP LIB(<USER>2)` のようにライブラリー修飾したコマンド名で実行したところ、**正常に動作した**(`TXSETUP: already initialized in this library.` と表示され、既存の状態を正しく検出した)。**この時点では「`RTVJOBA USER()` が `QUSER` を返す問題も `*CMD` 経由では再現しなかった」と記録したが、これは誤りだった(下記「訂正」を参照)。** `*CMD` 経由でも、パラメーター省略時の `CPD0172` は起きなかった(こちらは実証できている)。
 
-**影響**: tools/qcmdsrc/(コンパイル・実行とも確認済み)。02-05 は次回、レッスン本文を「`CALL PGM(TXSETUP)`」から「`TXSETUP`(コマンドとして直接入力、`CRTCMD` の手順を追加)」に書き換える予定(現時点ではまだ本文は未更新)。
+**影響**: tools/qcmdsrc/(コンパイル・実行とも確認済み)。02-05 のレッスン本文を「`CALL PGM(TXSETUP)`」から「`TXSETUP`(コマンドとして直接入力、`CRTCMD` の手順を追加)」に書き換えた。
+
+## 訂正: QUSER 問題は *CMD 経由でも再現し、真因は RTVJOBA USER の仕様だった(確認日 2026-09-25)
+
+上記「実行確認」で「QUSER 問題も `*CMD` 経由では再現しなかった」と書いたのは、**検証が不十分だった。** そのときの `TXSETUP LIB(<USER>2)` 呼び出しは `TXSTATE` が既に存在していたため `CHKOBJ` の直後で「already initialized」となって早期終了しており、**`CLONEDIR` の既定値計算(`RTVJOBA USER`)が実際に使われる `BUILD:` 以降のコードには到達していなかった。** つまり QUSER 問題が起きるかどうかを検証できていない状態で「再現しなかった」と誤って記録してしまった。
+
+**あらためて、`FORCE(*YES)` を指定して `BUILD:` を強制的に通す診断用ラッパー(`ADDLIBLE` してから `*CMD` 経由で `TXSETUP LIB(<USER>2) FORCE(*YES)` を呼ぶ CL プログラム)を作って実行したところ、`*CMD` 経由でも `CLONEDIR` はホーム・ディレクトリーが `QUSER` 配下(実在しないパス)として組み立てられ、`CPFA0A9: Object not found` になった。** つまり QUSER 問題は `CALL` か `*CMD` かに関係なく、**PASE の `system()` 経由でジョブを起動したときに共通して起きる**、ということが確定した。
+
+**真因の切り分け**: `RTVJOBA USER(&VAR)` と `RTVJOBA CURUSER(&VAR)` の両方を1本の診断用 CL プログラムで実行して比較したところ、次の結果になった。
+
+```text
+USER=[QUSER     ] CURUSER=[<USER>    ]
+```
+
+**`RTVJOBA` の `USER` キーワードは、そのジョブの「ジョブ名のユーザー部分」を返す(PASE `system()` が起動するジョブは `QUSER` という名前になるため、常に `QUSER` が返る)。`CURUSER` キーワードは、実際にサインオン(または `system()` の場合は SSH 認証)した「現在のユーザー・プロファイル」を返し、こちらは正しく `<USER>` になる。** `USER` と `CURUSER` は別物であり、この教材のように「実際にログインした人の名前」が欲しい場合は **`CURUSER` を使わなければならない。**
+
+**対応(修正済み)**: `tools/qclsrc/txsetup.clp`・`txreset.clp` の `RTVJOBA USER(&USRPRF)` を、両方とも **`RTVJOBA CURUSER(&USRPRF)`** に修正した。**この修正後の完全な通し(クリーンな状態から `FORCE(*YES)`・`CLONEDIR` 省略で `TXSETUP` を実行し、実際に `git clone --sparse` した `~/ibmi-kyozai` を正しく見つけられるか)は、SSH が再び接続数制限に触れたため、このセッションでは完了できていない。** 次回セッションの最優先事項とする。
+
+**教訓**: 「`*CMD` でラップしたから、`CALL` 由来の問題はすべて解決した」と早合点したのが今回の誤りの原因。`*CMD` が解決するのは**パラメーターの受け渡し**(32バイトの罠、`CPD0172`)の問題であり、**ジョブそのものがどのユーザーで動いているか**(`RTVJOBA USER` の挙動)は、呼び出し方法(`CALL`/`*CMD`)に関係ない、別のレイヤーの問題だった。検証は、実際に問題のコード経路(`BUILD:` 以降、`FORCE(*YES)` が必要)を通るところまで行わないと意味がない。
+
+**影響**: tools/qclsrc/txsetup.clp・txreset.clp(`CURUSER` に修正、コンパイル確認済み・完全な通し実行は未完了)。02-05・03-08 の「QUSER 問題は `*CMD` 経由では起きない可能性が高い」という記述があれば訂正が必要(次回確認)。
 
 ## RPG III 生成器(tools/gen/rpg3.mjs)の実機検証(確認日 2026-09-25)
 

@@ -47,8 +47,12 @@
                           VALUE('*NO'))
 
 /* --- Build the default CLONEDIR (your home directory + /ibmi-kyozai) --- */
+/* CURUSER, not USER: when this job was started via PASE system() (e.g.  */
+/* SSH -> qsh -> system "CALL ..."), RTVJOBA USER() returns the JOB      */
+/* NAME's user portion (often QUSER), not the profile you signed on as.  */
+/* CURUSER always returns the real current user profile.                 */
              IF         COND(&CLONEDIR *EQ ' ') THEN(DO)
-                RTVJOBA    USER(&USRPRF)
+                RTVJOBA    CURUSER(&USRPRF)
                 CHGVAR     VAR(&HOMEDIR) VALUE('/home/' *TCAT %TRIM(&USRPRF) +
                              *TCAT '/ibmi-kyozai')
                 CHGVAR     VAR(&CLONEDIR) VALUE(&HOMEDIR)
