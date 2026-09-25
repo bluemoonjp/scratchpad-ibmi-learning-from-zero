@@ -122,10 +122,17 @@ BUILD:       SNDPGMMSG  MSG('TXSETUP: building sample database in library ' +
              CHGVAR     VAR(&P2) VALUE('Customer by name')
              CALLSUBR   SUBR(LOADLF)
 
-/* --- Initial data. No MONMSG here on purpose: if RUNSQLSTM fails, let    */
-/* its own unmonitored escape message end the program (SNDPGMMSG with     */
-/* MSGTYPE(*ESCAPE) needs a real MSGID, not free text, so a custom        */
+/* --- Initial data. Delete first, in case this is a FORCE(*YES) rerun    */
+/* on a library that already has data: without this, a second run would  */
+/* silently duplicate every row (some of these tables, e.g. JUCHUM, have  */
+/* no UNIQUE keyword on their key, so DDS does not reject the duplicate   */
+/* insert). Safe on a first-time build too: DELETE on an empty table      */
+/* just deletes 0 rows. No MONMSG here on purpose: if RUNSQLSTM fails,    */
+/* let its own unmonitored escape message end the program (SNDPGMMSG     */
+/* with MSGTYPE(*ESCAPE) needs a real MSGID, not free text, so a custom   */
 /* message here would need its own message file).                        */
+             RUNSQLSTM  SRCSTMF(&CLONEDIR *TCAT '/db/data/reset_v1.sql') +
+                          COMMIT(*NONE) NAMING(*SYS) DFTRDBCOL(&LIB)
              RUNSQLSTM  SRCSTMF(&CLONEDIR *TCAT '/db/data/load_v1.sql') +
                           COMMIT(*NONE) NAMING(*SYS) DFTRDBCOL(&LIB)
 
