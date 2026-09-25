@@ -148,7 +148,13 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
         `JOB_NAME => '*', JOB_USER => CURRENT_USER, JOB_NUMBER => '*', ` +
         `SPOOLED_FILE_NAME => '*', SPOOLED_FILE_NUMBER => -1)) X ` +
         `ORDER BY ORDINAL_POSITION`;
-    lines.push(`echo "${sql.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('$', '\\$')}" | db2 -s 2>&1`);
+    // collect ステップは別の db2 呼び出し(接続先ジョブと同一かどうか未検証)で
+    // 走るため、clSteps と違い CURRENT_SCHEMA 等の対象ライブラリー文脈に頼れない。
+    // clSteps の substLib() と同じ置換をここでも行い、manifest 側で &LIB と
+    // 書けるようにする(cl ステップとの一貫性、決め打ちの絶対ライブラリー名を
+    // manifest に書かずに済ませるため)。
+    const substitutedSql = sql.replaceAll('&LIB', lib);
+    lines.push(`echo "${substitutedSql.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('$', '\\$')}" | db2 -s 2>&1`);
     lines.push(`echo ${MARKER(`collect-end:${i}`)}`);
   }
 
