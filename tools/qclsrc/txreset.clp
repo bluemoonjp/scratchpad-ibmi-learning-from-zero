@@ -8,6 +8,12 @@
              DCL        VAR(&USRPRF) TYPE(*CHAR) LEN(10)
              DCL        VAR(&HOMEDIR) TYPE(*CHAR) LEN(200)
 
+             /* Safety net: an unmonitored *ESCAPE becomes a function check */
+             /* that sends an INQUIRY message nobody can answer from a      */
+             /* non-interactive job, which hangs forever instead of        */
+             /* failing. See tools/qclsrc/txsetup.clp for the full story.  */
+             MONMSG     MSGID(CPF0000) EXEC(GOTO CMDLBL(FAILSAFE))
+
              IF         COND(&LIB *EQ ' ') THEN(CHGVAR VAR(&LIB) +
                           VALUE('*CURLIB'))
 
@@ -41,4 +47,9 @@
                           COMMIT(*NONE) NAMING(*SYS) DFTRDBCOL(&LIB)
 
              SNDPGMMSG  MSG('TXRESET: data restored to the initial state.')
-             ENDPGM
+             GOTO       CMDLBL(TXEND)
+
+FAILSAFE:    SNDPGMMSG  MSG('TXRESET: stopped on an unexpected error. See +
+                          the job log for the real message.') MSGTYPE(*COMP)
+
+TXEND:       ENDPGM

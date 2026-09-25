@@ -18,8 +18,10 @@
              DCL        VAR(&FORCE) TYPE(*CHAR) LEN(4)
 
              /* CALLSUBR cannot pass arguments (a subroutine shares the   */
-             /* caller's variables), so &P1 (object name) and &P2        */
-             /* (description) are set before each call.                  */
+             /* caller's variables), so &P1 (member name) / &P1LC (the    */
+             /* matching lowercase repo file name, hardcoded at each call */
+             /* site - no runtime %TRIM/%LOWER) / &P2 (description) are   */
+             /* set before each call.                                    */
              DCL        VAR(&P1) TYPE(*CHAR) LEN(10)
              DCL        VAR(&P1LC) TYPE(*CHAR) LEN(10)
              DCL        VAR(&P2) TYPE(*CHAR) LEN(50)
@@ -27,6 +29,16 @@
              DCL        VAR(&HOMEDIR) TYPE(*CHAR) LEN(200)
              DCL        VAR(&SRC) TYPE(*CHAR) LEN(200)
              DCL        VAR(&TOMBR) TYPE(*CHAR) LEN(200)
+
+             /* Safety net: on IBM i, an *ESCAPE message left unmonitored   */
+             /* becomes a function check (CPF9999), which on a default     */
+             /* job sends an INQUIRY message (C/D/I/R). Nobody can answer  */
+             /* that from a non-interactive job (SSH/system), so it HANGS  */
+             /* forever instead of failing. This program-level MONMSG      */
+             /* turns any such unmonitored error into a clean, fast exit   */
+             /* instead. (This is exactly how the original CPF7302/CPF7306 */
+             /* bug below caused a real, multi-hour hang during testing.)  */
+             MONMSG     MSGID(CPF0000) EXEC(GOTO CMDLBL(FAILSAFE))
 
 /* --- Fill in defaults for omitted/blank parameters --- */
              IF         COND(&LIB *EQ ' ') THEN(CHGVAR VAR(&LIB) +
@@ -67,21 +79,27 @@ BUILD:       SNDPGMMSG  MSG('TXSETUP: building sample database in library ' +
 
 /* --- Physical files first (logical files depend on them) --- */
              CHGVAR     VAR(&P1) VALUE('TOKUIM')
+             CHGVAR     VAR(&P1LC) VALUE('tokuim')
              CHGVAR     VAR(&P2) VALUE('Customer master')
              CALLSUBR   SUBR(LOADPF)
              CHGVAR     VAR(&P1) VALUE('SHOHIM')
+             CHGVAR     VAR(&P1LC) VALUE('shohim')
              CHGVAR     VAR(&P2) VALUE('Product master')
              CALLSUBR   SUBR(LOADPF)
              CHGVAR     VAR(&P1) VALUE('JUCHUM')
+             CHGVAR     VAR(&P1LC) VALUE('juchum')
              CHGVAR     VAR(&P2) VALUE('Order master')
              CALLSUBR   SUBR(LOADPF)
              CHGVAR     VAR(&P1) VALUE('JUCHUD')
+             CHGVAR     VAR(&P1LC) VALUE('juchud')
              CHGVAR     VAR(&P2) VALUE('Order detail')
              CALLSUBR   SUBR(LOADPF)
              CHGVAR     VAR(&P1) VALUE('ZAIKOM')
+             CHGVAR     VAR(&P1LC) VALUE('zaikom')
              CHGVAR     VAR(&P2) VALUE('Stock master')
              CALLSUBR   SUBR(LOADPF)
              CHGVAR     VAR(&P1) VALUE('TANTOM')
+             CHGVAR     VAR(&P1LC) VALUE('tantom')
              CHGVAR     VAR(&P2) VALUE('Sales rep master')
              CALLSUBR   SUBR(LOADPF)
 
@@ -92,9 +110,11 @@ BUILD:       SNDPGMMSG  MSG('TXSETUP: building sample database in library ' +
              MONMSG     MSGID(CPF2103)
 
              CHGVAR     VAR(&P1) VALUE('JUCHUL1')
+             CHGVAR     VAR(&P1LC) VALUE('juchul1')
              CHGVAR     VAR(&P2) VALUE('Order by customer/date')
              CALLSUBR   SUBR(LOADLF)
              CHGVAR     VAR(&P1) VALUE('TOKUIL1')
+             CHGVAR     VAR(&P1LC) VALUE('tokuil1')
              CHGVAR     VAR(&P2) VALUE('Customer by name')
              CALLSUBR   SUBR(LOADLF)
 
@@ -116,15 +136,18 @@ BUILD:       SNDPGMMSG  MSG('TXSETUP: building sample database in library ' +
              SNDPGMMSG  MSG('TXSETUP: done. DBVER=1. Run TXSTATUS to check.')
              GOTO       CMDLBL(TXEND)
 
+FAILSAFE:    SNDPGMMSG  MSG('TXSETUP: stopped on an unexpected error. See +
+                          the job log for the real message.') MSGTYPE(*COMP)
+             GOTO       CMDLBL(TXEND)
+
 /* ==================== Subroutines ==================== */
-/* Use &P1 (object name = member name) and &P2 (description). No return. */
+/* Use &P1 (member name), &P1LC (matching lowercase repo file name, set   */
+/* by the caller - see above), &P2 (description). No return value.       */
 SUBR       SUBR(LOADPF)
-             CHGVAR     VAR(&P1LC) VALUE(%TRIM(&P1))
-             CHGVAR     VAR(&P1LC) VALUE(%LOWER(&P1LC))
              CHGVAR     VAR(&SRC) VALUE(&CLONEDIR *TCAT '/db/v1/' *TCAT +
                           %TRIM(&P1LC) *TCAT '.pf')
              ADDPFM     FILE(&LIB/QDDSSRC) MBR(&P1) SRCTYPE(PF) TEXT(&P2)
-             MONMSG     MSGID(CPF7302)
+             MONMSG     MSGID(CPF7306)
              CHGVAR     VAR(&TOMBR) VALUE('/QSYS.LIB/' *TCAT %TRIM(&LIB) +
                           *TCAT '.LIB/QDDSSRC.FILE/' *TCAT %TRIM(&P1) *TCAT +
                           '.MBR')
@@ -138,12 +161,10 @@ SUBR       SUBR(LOADPF)
 ENDSUBR
 
 SUBR       SUBR(LOADLF)
-             CHGVAR     VAR(&P1LC) VALUE(%TRIM(&P1))
-             CHGVAR     VAR(&P1LC) VALUE(%LOWER(&P1LC))
              CHGVAR     VAR(&SRC) VALUE(&CLONEDIR *TCAT '/db/v1/' *TCAT +
                           %TRIM(&P1LC) *TCAT '.lf')
              ADDPFM     FILE(&LIB/QDDSSRC) MBR(&P1) SRCTYPE(LF) TEXT(&P2)
-             MONMSG     MSGID(CPF7302)
+             MONMSG     MSGID(CPF7306)
              CHGVAR     VAR(&TOMBR) VALUE('/QSYS.LIB/' *TCAT %TRIM(&LIB) +
                           *TCAT '.LIB/QDDSSRC.FILE/' *TCAT %TRIM(&P1) *TCAT +
                           '.MBR')
