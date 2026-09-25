@@ -1,0 +1,399 @@
+     A*                                     TK0100D - inquiry screen for TK0100.
+     A*                                     Page-at-a-time SFL (TOKUIM list)
+     A*                                     plus
+     A*                                     a message subfile. Part 5 (legacy
+     A*                                     system). See work/design/part05-
+     A*                                     legacy-design.json
+     A*                                     design.objects[1].
+     A*
+     A*                                     NOT COMPILED ON REAL HARDWARE: SSH
+     A*                                     connection budget is exhausted this
+     A*                                     session. Verify with CRTDSPF first.
+     A*
+     A*                                     Base columns (6/17/19-28/30-34/35/
+     A*                                     36-37/38/39-41/42-44/45-) confirmed
+     A*                                     by CRTDSPF in probe 04-11 (see
+     A*                                     docs/probes.md). SFL/message-
+     A*                                     subfile columns are UNVERIFIED - see
+     A*                                     tools/gen/dspf.mjs header comment
+     A*                                     and
+     A*                                     verify/part05-gen-probe/ (T0SFL,
+     A*                                     also
+     A*                                     not yet compiled).
+     A*
+     A*                                     No DDS conditioning indicators (cols
+     A*                                     7-16) anywhere in this file, by
+     A*                                     instruction: 04-11 tried that layout
+     A*                                     for error text and failed (CPD7410/
+     A*                                     CPD7606/CPD5238); this file avoids
+     A*                                     stacking that unresolved risk onto
+     A*                                     the separately-unverified SFL
+     A*                                     columns. "Not found" etc. is shown
+     A*                                     by
+     A*                                     TK0100 (RPG) MOVEL into an output
+     A*                                     field, same technique as R0411A
+     A*                                     (src/qrpgsrc/r0411s.rpg, confirmed
+     A*                                     04-11) - not by this DDS file.
+     A*
+     A*                                     Generator gaps found this session
+     A*                                     (checked against IBM i 7.4/7.5 DDS
+     A*                                     reference docs, docs.ibm.com/docs/
+     A*                                     en/i/ - "SFL keyword", "SFLMSGRCD",
+     A*                                     "SFLMSGKEY/SFLPGMQ", "ERRMSGID",
+     A*                                     "SFLRCDNBR" topics). Not fixed here
+     A*                                     (out of scope: only this .dspf was
+     A*                                     asked for) - flagged for a future
+     A*                                     tools/gen/dspf.mjs fix:
+     A*                                     1) sflRecordFormat(name) emits only
+     A*                                     "R name", missing the mandatory
+     A*                                     record-level SFL keyword. Worked
+     A*                                     around below via plain
+     A*                                     recordFormat(name,'SFL').
+     A*                                     2) sflPgmQ(name) emits
+     A*                                     "SFLPGMQ(name)" as a bare/
+     A*                                     record-level call with a FIELD
+     A*                                     NAME in the parens. Real
+     A*                                     SFLPGMQ is a field-level
+     A*                                     keyword on the PGMQ field
+     A*                                     itself (paired with MSGKEY/
+     A*                                     SFLMSGKEY, same record); its
+     A*                                     own optional paren argument is
+     A*                                     a SIZE (10 or 276 byte field),
+     A*                                     never a field name. Worked
+     A*                                     around below via field()'s kw
+     A*                                     param instead of this helper.
+     A*                                     3) errMsgId(msgId) emits
+     A*                                     "ERRMSGID('msgId')": quoted, and
+     A*                                     missing the required message-
+     A*                                     file parameter (real syntax:
+     A*                                     ERRMSGID(msgid msgfile) -
+     A*                                     msgid UNQUOTED). Not usable as-
+     A*                                     is, so ERRMSGID is left out of
+     A*                                     this file entirely; TK0100
+     A*                                     error text goes through the
+     A*                                     message subfile (QMHSNDPM ->
+     A*                                     PGMQ) below instead.
+     A*                                     4) sflRcdNbr(kind='*ALL') defaults
+     A*                                     to a parameter that does not
+     A*                                     exist (valid values are CURSOR /
+     A*                                     *TOP only), and it is field-
+     A*                                     level (needs a companion numeric
+     A*                                     field), not the bare record-
+     A*                                     level keyword this helper
+     A*                                     writes. Not in this object's
+     A*                                     rpgConstructsUsed, so omitted
+     A*                                     here rather than half-fixed.
+     A*
+     A*                                     SFLCLR and SFLEND: canonical IBM
+     A*                                     examples condition SFLDSP/SFLCLR by
+     A*                                     indicators that toggle between the
+     A*                                     clear-and-load step and the display
+     A*                                     step. Unconditioned (this file's
+     A*                                     rule), SFLCLR would clear on every
+     A*                                     single write to SFL1CTL/MSGCTL,
+     A*                                     including the write that is supposed
+     A*                                     to show what was just loaded. So
+     A*                                     SFL1CTL/MSGCTL below do NOT carry
+     A*                                     SFLCLR or SFLEND at all - not even
+     A*                                     as a comment claiming a real column
+     A*                                     position this file never computed.
+     A*                                     The tradeoff is discussed in prose
+     A*                                     at each record instead. "More.../
+     A*                                     Bottom" is shown by a plain MORE
+     A*                                     output field TK0100 MOVELs into,
+     A*                                     same MOVEL technique as above.
+     A*                                     TK0100 should rewrite RRN 1..SFLPAG
+     A*                                     in place each page (CHAIN
+     A*                                     RRN/UPDAT, blank-filling a short
+     A*                                     last page) so the subfile never
+     A*                                     needs an actual clear.
+     A*
+     A*                                     Three consequences of "no
+     A*                                     indicators" for TK0100 (RPG, not
+     A*                                     this file) and this file's own
+     A*                                     MSGCTL, below:
+     A*                                     SFLDSP is unconditioned on SFL1CTL,
+     A*                                     so TK0100 must WRITE at least one
+     A*                                     SFL1 record before the first
+     A*                                     EXFMT/WRITE of SFL1CTL (nothing to
+     A*                                     show otherwise).
+     A*                                     SFLNXTCHG is unconditioned too, so
+     A*                                     READC returns every SFL1 record on
+     A*                                     each call, not just user-changed
+     A*                                     ones; fine here, but TK0100 must
+     A*                                     test OPT on every row READC returns
+     A*                                     each call, since READC's usual
+     A*                                     changed-only filtering is defeated.
+     A*                                     And MSGCTL's own SFLDSP/SFLDSPCTL
+     A*                                     (below) are unconditioned as well,
+     A*                                     but MSGSFL normally holds ZERO
+     A*                                     records (TK0100 only QMHSNDPMs a
+     A*                                     message to PGMQ on an error screen)
+     A*                                     - IBM's own SFLDSP reference warns
+     A*                                     an unconditioned SFLDSP errors if
+     A*                                     the subfile was never activated (by
+     A*                                     adding records to it or by using
+     A*                                     SFLINZ). MSGCTL below pairs SFLINZ
+     A*                                     with a control-level SFLPGMQ field,
+     A*                                     which IBM's SFLINZ reference says
+     A*                                     lets a program "build a message
+     A*                                     subfile with a single output
+     A*                                     operation" - so MSGCTL both stays
+     A*                                     activated and rebuilds MSGSFL from
+     A*                                     PGMQ, automatically, on every write,
+     A*                                     even when PGMQ is currently empty.
+     A*
+     A*                                     SFLNXTCHG is record-level on the SFL
+     A*                                     DETAIL record (SFL1), not SFLCTL -
+     A*                                     confirmed against the IBM i
+     A*                                     SFLNXTCHG
+     A*                                     reference page this session.
+     A*
+     A*                                     KSFILE: RPG/400 Reference calls this
+     A*                                     the SFILE F-spec continuation-line
+     A*                                     option (ch. on continuation lines;
+     A*                                     READC op-code description repeats
+     A*                                     it). It links WORKSTN to a subfile
+     A*                                     record format + its RRN field and
+     A*                                     is required before READC will
+     A*                                     compile against that format. It
+     A*                                     belongs on TK0100 (RPG), not this
+     A*                                     DDS file - tk0100.rpg's own header
+     A*                                     already flags this as deferred, not
+     A*                                     yet added there either.
+     A*
+     A*                                     Contract with tk0100.rpg (that
+     A*                                     program is the other half of this
+     A*                                     interface; see its header comment):
+     A*                                     - TOKUPD NOT added to INQFMT: an
+     A*                                     earlier version of this file claimed
+     A*                                     tk0100.rpg's header asks for it, but
+     A*                                     tk0100.rpg's actual header says
+     A*                                     INQFMT has only 4 fields
+     A*                                     (TOKCD/TOKNM/TOKZIP/TOKTAN) and that
+     A*                                     "TOKUPD was never meant to be
+     A*                                     shown"; the design doc
+     A*                                     (design.objects[1]) never mentions
+     A*                                     TOKUPD either. Corrected per
+     A*                                     critique - INQFMT now matches both
+     A*                                     source-of-truth documents.
+     A*                                     - TANNM (sales rep name) NOT added:
+     A*                                     design.objects[1] stages that
+     A*                                     output field for 05-10. tk0100.rpg
+     A*                                     already computes TANNM as a plain
+     A*                                     program field (I-spec rename) with
+     A*                                     or without a screen counterpart,
+     A*                                     so this does not block its
+     A*                                     compile - the value is just not
+     A*                                     shown yet, same as the design
+     A*                                     intends.
+     A*                                     - CF03(03) kept (not "CF03(KC)" -
+     A*                                     not valid DDS; response
+     A*                                     indicators are 01-99 only). Per
+     A*                                     IBM i "Function Key Indicators":
+     A*                                     CF03 always sets indicator KC when
+     A*                                     F3 is pressed, regardless of the
+     A*                                     parenthesized number - the number
+     A*                                     is an ADDITIONAL indicator, not a
+     A*                                     replacement for KC. tk0100.rpg's
+     A*                                     "C KC ..." test works against
+     A*                                     plain CF03(03) as-is.
+     A*                                     - TOKCD changed from usage I to B
+     A*                                     (below): I-only carried no value
+     A*                                     back from the program, so a
+     A*                                     looked-up code - typed directly, or
+     A*                                     replayed via DFLTSR's LASTCD "repeat
+     A*                                     last search" path - went blank again
+     A*                                     on redisplay even though
+     A*                                     TOKNM/TOKZIP/TOKTAN correctly showed
+     A*                                     the looked-up customer's data.
+     A*                                     tk0100.rpg's own header already
+     A*                                     flagged this ("TOKCD is I-only on
+     A*                                     INQFMT, so just moving LASTCD into
+     A*                                     it here would not even show up");
+     A*                                     usage B lets TK0100 MOVEL the code
+     A*                                     back into TOKCD before the next
+     A*                                     EXFMT. Follow-up (out of scope here,
+     A*                                     only this .dspf was asked for):
+     A*                                     tk0100.rpg's header (its own lines
+     A*                                     35-36 and 167-168) still calls TOKCD
+     A*                                     "input" / "I-only" and needs a
+     A*                                     matching correction, same
+     A*                                     flagged-not-fixed pattern as the
+     A*                                     tools/gen/dspf.mjs gaps above.
+     A                                      DSPSIZ(24 80 *DS3)
+     A          R INQFMT
+     A*                                     CF03(03): F3 exit. TK0100 reads
+     A*                                     *IN03 (no INDARA), same as R0411A.
+     A                                      CF03(03)
+     A                                  1  2'TK0100 - Customer inquiry'
+     A                                  3  2'Customer code:'
+     A*                                     TOKCD: 6A to match TOKUIM.TOKCD
+     A*                                     exactly (QRG6033 if lengths differ,
+     A*                                     confirmed 04-11).
+     A*                                     Usage B (not I, see Contract note
+     A*                                     above): TK0100 can now MOVEL a
+     A*                                     looked-up/repeated code back into
+     A*                                     this field before the next EXFMT,
+     A*                                     instead of it always redisplaying
+     A*                                     blank.
+     A            TOKCD          6A  B  3 17
+     A                                  5  2'Name:'
+     A            TOKNM         30A  O  5  9
+     A                                  6  2'Zip:'
+     A            TOKZIP         7A  O  6  9
+     A                                  7  2'Sales rep:'
+     A            TOKTAN         6A  O  7 13
+     A                                 22  2'F3=Exit'
+     A*                                     SFL1: sflRecordFormat() gap #1 above
+     A*                                     - using recordFormat(name,'SFL')
+     A*                                     directly so the mandatory SFL
+     A*                                     keyword is actually present.
+     A          R SFL1                      SFL
+     A*                                     SFLNXTCHG here (not on SFL1CTL) per
+     A*                                     gap note above.
+     A                                      SFLNXTCHG
+     A*                                     OPT: not in rpgConstructsUsed by
+     A*                                     name, but READC/SFLNXTCHG need some
+     A*                                     input-capable field to make READC
+     A*                                     meaningful - TK0100 can read a "1"
+     A*                                     here to switch to INQFMT for that
+     A*                                     row's customer (CHAIN by its TOKCD).
+     A            OPT            1A  B  4  2
+     A            TOKCD          6A  O  4  5
+     A            TOKNM         30A  O  4 13
+     A          R SFL1CTL                   SFLCTL(SFL1)
+     A                                      SFLSIZ(10)
+     A                                      SFLPAG(10)
+     A*                                     SFLDSP/SFLDSPCTL unconditioned: no
+     A*                                     DDS conditioning indicators in this
+     A*                                     file (see header). Always-on is safe
+     A*                                     for these two (unlike SFLCLR/
+     A*                                     SFLEND - see header).
+     A                                      SFLDSP
+     A                                      SFLDSPCTL
+     A*                                     SFLCLR would go here, conditioned
+     A*                                     on a clear/load-vs-display toggle
+     A*                                     indicator in the canonical pattern -
+     A*                                     see header for why it is left out
+     A*                                     (not written as a keyword at all,
+     A*                                     to avoid implying a real column
+     A*                                     position this file did not compute).
+     A*                                     SFLEND likewise: the canonical
+     A*                                     "SFLPAG=SFLSIZ" example omits it
+     A*                                     too. MORE field below stands in for
+     A*                                     the "+"/Bottom indicator.
+     A*                                     ROLLUP=PAGEDOWN, ROLLDOWN=PAGEUP
+     A*                                     (same physical key pair, different
+     A*                                     names). Both required for a single-
+     A*                                     page (SFLSIZ=SFLPAG) subfile.
+     A                                      ROLLUP(25)
+     A                                      ROLLDOWN(26)
+     A                                      CF03(03)
+     A                                  1  2'TK0100 - Customer list (TOKUIM)'
+     A                                  3  2'Op'
+     A                                  3  5'Code'
+     A                                  3 13'Name'
+     A*                                     MORE: TK0100 MOVELs 'MORE...' or
+     A*                                     'BOTTOM' here (plain output field,
+     A*                                     same MOVEL technique as INQFMT -
+     A*                                     stands in for SFLEND, see header).
+     A            MORE          10A  O 15  3
+     A                                 23  2'F3=Exit  Roll=Page'
+     A*                                     MSGSFL: same sflRecordFormat() gap
+     A*                                     as SFL1 above.
+     A          R MSGSFL                    SFL
+     A*                                     SFLMSGRCD(24): messages grow upward
+     A*                                     from line 24 (bottom of a 24-line
+     A*                                     screen). Using sflMsgRcd() correctly
+     A*                                     here - its arg is a line number, not
+     A*                                     a record name despite the JS param
+     A*                                     being called recName.
+     A                                      SFLMSGRCD(24)
+     A*                                     MSGKEY/PGMQ: gap #2 above - real
+     A*                                     SFLPGMQ is a bare field keyword, not
+     A*                                     SFLPGMQ(name). No length/type/row/
+     A*                                     col: the system supplies them.
+     A            MSGKEY                    SFLMSGKEY
+     A            PGMQ                      SFLPGMQ
+     A          R MSGCTL                    SFLCTL(MSGSFL)
+     A                                      SFLSIZ(2)
+     A                                      SFLPAG(1)
+     A*                                     SFLDSP/SFLDSPCTL unconditioned here
+     A*                                     too (see header's "no indicators"
+     A*                                     policy). Unlike SFL1 - which TK0100
+     A*                                     always WRITEs at least one row into
+     A*                                     first - MSGSFL is normally EMPTY
+     A*                                     (TK0100 only QMHSNDPMs a message to
+     A*                                     PGMQ on an error screen). IBM's
+     A*                                     SFLDSP reference: an output op to
+     A*                                     SFLCTL "when the subfile is not
+     A*                                     activated (by adding records to it
+     A*                                     or by using SFLINZ)" errors. SFLINZ
+     A*                                     below (paired with the control-level
+     A*                                     SFLPGMQ field also below - IBM's
+     A*                                     SFLINZ reference requires that
+     A*                                     pairing for a message subfile) keeps
+     A*                                     MSGCTL activated AND rebuilds MSGSFL
+     A*                                     from PGMQ, on every write, even at
+     A*                                     zero messages. This is additive
+     A*                                     (build/reinitialize), not the same
+     A*                                     as SFLCLR (a clear step) that this
+     A*                                     file avoids above - no
+     A*                                     contradiction.
+     A                                      SFLDSP
+     A                                      SFLDSPCTL
+     A                                      SFLINZ
+     A*                                     PGMQ/SFLPGMQ here too (field-level,
+     A*                                     on MSGCTL itself - separate from
+     A*                                     MSGSFL's own MSGKEY/PGMQ pair
+     A*                                     above). IBM's SFLINZ reference:
+     A*                                     "SFLINZ cannot be specified on the
+     A*                                     subfile-control record format for a
+     A*                                     message subfile...unless the SFLPGMQ
+     A*                                     keyword is also specified at the
+     A*                                     field level in the same
+     A*                                     subfile-control record format." Real
+     A*                                     working examples of this exact
+     A*                                     pairing reuse one field name (here:
+     A*                                     PGMQ) with SFLPGMQ in BOTH record
+     A*                                     formats.
+     A*                                     RPG-side requirement this DDS file
+     A*                                     cannot itself enforce, same
+     A*                                     deferred-to-TK0100 pattern as KSFILE
+     A*                                     above: this MSGCTL-level PGMQ field
+     A*                                     must be set to '*' before TK0100
+     A*                                     WRITEs/EXFMTs MSGCTL, so SFLINZ
+     A*                                     knows which program message queue to
+     A*                                     rebuild MSGSFL from.
+     A            PGMQ                      SFLPGMQ
+     A*                                     OVERLAY: MSGCTL is written on top of
+     A*                                     whichever main record (INQFMT or
+     A*                                     SFL1CTL) is already on screen,
+     A*                                     without erasing it.
+     A                                      OVERLAY
+     A*                                     SFLCLR: left out. TK0100 clears old
+     A*                                     messages by removing them from PGMQ
+     A*                                     (RMVMSG/QMHRMVPM), not by SFLCLR -
+     A*                                     so, same as SFL1CTL above, no
+     A*                                     clear/load-vs-display toggle
+     A*                                     indicator is needed here either (see
+     A*                                     header: no conditioning indicators
+     A*                                     anywhere in this file).
+     A*                                     Correction: the plain IBM i
+     A*                                     message-subfile example
+     A*                                     (docs.ibm.com "Example: A message
+     A*                                     subfile using DDS") does NOT omit
+     A*                                     SFLCLR/SFLEND as an earlier version
+     A*                                     of this comment claimed - it uses
+     A*                                     both, conditioned on indicators. It
+     A*                                     omits only SFLINZ. This file's
+     A*                                     SFLCLR omission is grounded on the
+     A*                                     RMVMSG/QMHRMVPM rationale above, not
+     A*                                     on matching that example; conversely
+     A*                                     this file DOES add SFLINZ (unlike
+     A*                                     that example), paired with the
+     A*                                     control-level SFLPGMQ field above,
+     A*                                     for the empty-subfile-activation
+     A*                                     reason given at MSGCTL's
+     A*                                     SFLDSP/SFLDSPCTL above.

@@ -1,0 +1,54 @@
+     A*                                     MN0000D - MN0000C main menu.
+     A*                                     Part 5 (legacy system).
+     A*
+     A*                                     NOT COMPILED ON REAL HARDWARE:
+     A*                                     SSH connection budget is
+     A*                                     exhausted this session.
+     A*                                     Verify with CRTDSPF first.
+     A*
+     A*                                     Columns from tools/gen/
+     A*                                     dspf.mjs; base columns
+     A*                                     confirmed by CRTDSPF in
+     A*                                     probe 04-11. See
+     A*                                     docs/probes.md.
+     A*
+     A*                                     No DDS conditioning
+     A*                                     indicators here: 04-11
+     A*                                     tried that for the error
+     A*                                     message and failed
+     A*                                     (CPD7410/CPD7606/
+     A*                                     CPD5238). See probes.md.
+     A*
+     A*                                     MSGTXT below is a plain
+     A*                                     output field instead.
+     A*                                     MN0000C (CL) sets &MSGTXT
+     A*                                     with CHGVAR before
+     A*                                     SNDRCVF - the CL
+     A*                                     equivalent of the RPG
+     A*                                     MOVEL rewrite verified
+     A*                                     in 04-11 (R0411A /
+     A*                                     src/qrpgsrc/r0411s.rpg).
+     A*
+     A                                      DSPSIZ(24 80 *DS3)
+     A          R MNUFMT
+     A*                                     CF03(03): F3 exit.
+     A*                                     mn0000c.clp reads it as
+     A*                                     &IN03 (declared by DCLF,
+     A*                                     no INDARA) and GOTOs
+     A*                                     TXEND.
+     A                                      CF03(03)
+     A                                  1 30'MN0000C MENU'
+     A                                  3  5'1. TK0100  - CUSTOMER LOOKUP'
+     A                                  4  5'2. JU0300  - ORDER SUMMARY'
+     A                                  5  5'3. JU0900C - STOCK ALLOCATION'
+     A                                  7  5'SELECTION . . . . . . :'
+     A*                                     SELNO: usage B (in+out),
+     A*                                     not separately confirmed
+     A*                                     by CRTDSPF - verify first.
+     A            SELNO          1  0B  7 30
+     A*                                     MSGTXT: plain output
+     A*                                     field, no conditioning.
+     A*                                     MN0000C overwrites its
+     A*                                     content directly.
+     A            MSGTXT        40A  O 10  5
+     A                                 23  2'F3=EXIT'
