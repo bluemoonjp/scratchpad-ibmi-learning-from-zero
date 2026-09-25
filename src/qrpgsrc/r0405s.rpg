@@ -1,0 +1,25 @@
+      * R0405A - structured opcodes (IFxx/ANDxx/DOWxx) and a subroutine.
+     H
+     FQSYSPRT O   F     132            PRINTER
+     C                     Z-ADD82        SCORE   30
+     C                     Z-ADD0         SUM     50
+     C                     Z-ADD1         I       30
+     C           SCORE     IFGE 80
+     C           SCORE     ANDLE100
+     C                     MOVEL'A'       GRADE  10
+     C                     ELSE
+     C                     MOVEL'B'       GRADE
+     C                     ENDIF
+     C           I         DOWLE5
+     C                     ADD  I         SUM
+     C                     ADD  1         I
+     C                     ENDDO
+     C                     EXSR PRTOUT
+     C                     SETON                     LR
+     C           PRTOUT    BEGSR
+     C                     EXCPT
+     C                     ENDSR
+     OQSYSPRT E
+     O                         GRADE     10
+     O                                   18 '  SUM='
+     O                         SUM       24
