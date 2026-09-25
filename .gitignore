@@ -22,3 +22,6 @@ pub400.pub
 # 実機とのやり取りで生じる作業ファイル
 work/
 *.savf.bin
+
+# Claude Code のローカル・ランタイム状態(リポジトリーの内容ではない)
+.claude/
