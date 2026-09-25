@@ -1,0 +1,36 @@
+{
+  "batch": "part05-gen-probe",
+  "description": "Second connection: confirm the RPG III/DDS generator features added for Part 5 (tools/gen/rpg3.mjs E-spec/DS, tools/gen/dspf.mjs conditioning indicators + SFL) actually compile on PUB400. T0EDS is compiled AND run (no divide, no interactive I/O, so no hang risk - prints via QSYSPRT/EXCPT like the already-verified r0412s.rpg). T0SFL is compile-only (CRTDSPF): interactive subfile behavior needs a real 5250 device and cannot be checked over SSH batch (same V1-only limitation as lesson 04-11). Run after harness-selftest confirms the transfer/CCSID/INQMSGRPY basics.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "src/t0eds.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "T0EDS"
+    },
+    {
+      "type": "file",
+      "localPath": "src/t0sfl.dspf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "T0SFL"
+    },
+    {
+      "type": "cl",
+      "label": "CPEDS",
+      "cmd": "CRTRPGPGM PGM(&LIB/T0EDS) SRCFILE(&LIB/QRPGSRC) SRCMBR(T0EDS) REPLACE(*YES)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "RUNEDS",
+      "cmd": "CALL PGM(&LIB/T0EDS)",
+      "monmsg": ["CPF0000", "RPG0000", "MCH0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CPSFL",
+      "cmd": "CRTDSPF FILE(&LIB/T0SFL) SRCFILE(&LIB/QDDSSRC) SRCMBR(T0SFL) REPLACE(*YES)",
+      "monmsg": ["CPF0000"]
+    }
+  ]
+}
