@@ -1,0 +1,17 @@
+      * R0410A - JUCHUL1: order list with per-customer subtotal (L1).
+     H
+     FJUCHUL1 IP  E           K        DISK
+     FQSYSPRT O   F     132            PRINTER
+     IJUCHUR
+     I                                              JUTOK L1
+     C                     ADD  1         CNT     30
+     C                     EXCPTDTL
+     CL1                   EXCPTBRK
+     CL1                   Z-ADD0         CNT     30
+     OQSYSPRT E                DTL
+     O                         JUTOK     10
+     O                         JUNO      20
+     O        E                BRK
+     O                                   10 '  SUBTOTAL'
+     O                         JUTOK     25
+     O                         CNT       30
