@@ -236,11 +236,11 @@ USER=[QUSER     ] CURUSER=[<USER>    ]
 
 **`RTVJOBA` の `USER` キーワードは、そのジョブの「ジョブ名のユーザー部分」を返す(PASE `system()` が起動するジョブは `QUSER` という名前になるため、常に `QUSER` が返る)。`CURUSER` キーワードは、実際にサインオン(または `system()` の場合は SSH 認証)した「現在のユーザー・プロファイル」を返し、こちらは正しく `<USER>` になる。** `USER` と `CURUSER` は別物であり、この教材のように「実際にログインした人の名前」が欲しい場合は **`CURUSER` を使わなければならない。**
 
-**対応(修正済み)**: `tools/qclsrc/txsetup.clp`・`txreset.clp` の `RTVJOBA USER(&USRPRF)` を、両方とも **`RTVJOBA CURUSER(&USRPRF)`** に修正した。**この修正後の完全な通し(クリーンな状態から `FORCE(*YES)`・`CLONEDIR` 省略で `TXSETUP` を実行し、実際に `git clone --sparse` した `~/ibmi-kyozai` を正しく見つけられるか)は、SSH が再び接続数制限に触れたため、このセッションでは完了できていない。** 次回セッションの最優先事項とする。
+**対応(修正・完全に検証済み)**: `tools/qclsrc/txsetup.clp`・`txreset.clp` の `RTVJOBA USER(&USRPRF)` を、両方とも **`RTVJOBA CURUSER(&USRPRF)`** に修正した。**この修正後、完全な通し実行を実機で確認した**: `<USER>2` を完全にクリーンな状態に戻し、02-04 のレッスンどおりに実際に `git clone --filter=blob:none --sparse` + `git sparse-checkout set src db tools` で `~/ibmi-kyozai` を作り、`CLONEDIR` を省略・`FORCE(*YES)` で `TXSETUP` を実行したところ、**`TXSETUP: done. DBVER=1.` まで完走した。** `TXSTATUS` で `DBVER=0000000001`、`TOKUIM`=6件・`JUCHUD`=12件、6物理ファイル+2論理ファイルすべての存在も SQL で確認した。**これで、学習者が実際に体験する経路(`~/ibmi-kyozai` への実クローン→ `CLONEDIR` 省略 → `TXSETUP` 実行)に最も近い形での通し検証が完了した。**
 
-**教訓**: 「`*CMD` でラップしたから、`CALL` 由来の問題はすべて解決した」と早合点したのが今回の誤りの原因。`*CMD` が解決するのは**パラメーターの受け渡し**(32バイトの罠、`CPD0172`)の問題であり、**ジョブそのものがどのユーザーで動いているか**(`RTVJOBA USER` の挙動)は、呼び出し方法(`CALL`/`*CMD`)に関係ない、別のレイヤーの問題だった。検証は、実際に問題のコード経路(`BUILD:` 以降、`FORCE(*YES)` が必要)を通るところまで行わないと意味がない。
+**教訓**: 「`*CMD` でラップしたから、`CALL` 由来の問題はすべて解決した」と早合点したのが今回の誤りの原因。`*CMD` が解決するのは**パラメーターの受け渡し**(32バイトの罠、`CPD0172`)の問題であり、**ジョブそのものがどのユーザーで動いているか**(`RTVJOBA USER` の挙動)は、呼び出し方法(`CALL`/`*CMD`)に関係ない、別のレイヤーの問題だった。検証は、実際に問題のコード経路(`BUILD:` 以降、`FORCE(*YES)` が必要)を通るところまで行わないと意味がない、という教訓も含めて記録しておく。
 
-**影響**: tools/qclsrc/txsetup.clp・txreset.clp(`CURUSER` に修正、コンパイル確認済み・完全な通し実行は未完了)。02-05・03-08 の「QUSER 問題は `*CMD` 経由では起きない可能性が高い」という記述があれば訂正が必要(次回確認)。
+**影響**: tools/qclsrc/txsetup.clp・txreset.clp(`CURUSER` に修正、完全な通し実行を実機で確認済み)。02-05 の実機メモを更新した。
 
 ## RPG III 生成器(tools/gen/rpg3.mjs)の実機検証(確認日 2026-09-25)
 
