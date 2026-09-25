@@ -187,3 +187,94 @@ export function oSpec({ name = '', type = '', ind = '', field = '', editCode = '
   if (constant) put(l, 45, constant);
   return finish(l);
 }
+
+// E-spec (compile-time array/table header; RPG/400 Reference chapter 6, positions
+// 6/11-18/19-26/27-32/33-35/36-39/40-42/43/44/45). Positions 11-26 (from/to file
+// name) are left blank here because this generator only targets compile-time
+// arrays/tables (loaded at compile time, not from a prerun-time file).
+// `name`: array/table name (27-32). `entriesPerRecord`: entries per compile-time
+// data record (33-35, right-adjusted). `maxEntries`: total elements (36-39,
+// right-adjusted). `length`: element length in bytes (40-42). `format`: ''
+// (zoned/character) | 'P' (packed) | 'B' (binary). `decimals`: '' for a
+// character array, else the number of decimal positions (44). `sequence`: ''
+// (unsequenced) | 'A' | 'D' (required if the array is searched with a
+// high/low LOKUP or sorted with SORTA).
+export function eSpec({ name, entriesPerRecord, maxEntries, length, format = '', decimals = '', sequence = '' }) {
+  const l = blank(80).split('');
+  put(l, 6, 'E');
+  put(l, 27, name);
+  put(l, 33, String(entriesPerRecord).padStart(3, ' '));
+  put(l, 36, String(maxEntries).padStart(4, ' '));
+  put(l, 40, String(length).padStart(3, ' '));
+  if (format) put(l, 43, format);
+  if (decimals !== '') put(l, 44, String(decimals));
+  if (sequence) put(l, 45, sequence);
+  return finish(l);
+}
+
+// Compile-time array/table data records (RPG/400 Reference, "Loading a
+// Compile-Time Array"): a record with `**` in positions 1-3 must precede the
+// first data record of each array, then each entry is written left-adjusted
+// at a fixed `length`, `entriesPerRecord` entries per line, starting at
+// position 1 (not through the normal spec-form column layout, so these lines
+// do NOT start with a form-type letter in column 6). `entries` are already
+// formatted to `length` characters by the caller (e.g. zero-padded numeric
+// literals, or character strings) so this function does not right/left-pad
+// them itself - only groups them into records and adds the `**` header.
+export function compileTimeArrayData(entries, { entriesPerRecord, length }) {
+  for (const e of entries) {
+    if (e.length !== length) {
+      throw new Error(`compile-time array entry length mismatch: expected ${length}, got ${e.length} ("${e}")`);
+    }
+  }
+  const lines = ['**'];
+  for (let i = 0; i < entries.length; i += entriesPerRecord) {
+    lines.push(entries.slice(i, i + entriesPerRecord).join(''));
+  }
+  return lines;
+}
+
+// I-spec data-structure header (RPG/400 Reference chapter 8, "Data Structure
+// Specification Entries"). Must be followed immediately by iSpecSubfield()
+// lines for its subfields, and data-structure specifications as a whole must
+// come after all record-level I-specs in the source.
+// `name`: DS name, up to 6 chars (7-12; optional, blank = unnamed/global DS).
+// `option`: '' | 'I' (initialize all subfields on program start) | 'S'
+// (program status DS) | 'U' (data area DS) (18). `occurrences`: '' or 1-9999
+// for a multiple-occurrence DS (44-47, right-adjusted). `length`: '' (derived
+// from the highest subfield `to` position) or an explicit length (48-51,
+// right-adjusted).
+export function iSpecDS({ name = '', option = '', occurrences = '', length = '' } = {}) {
+  const l = blank(80).split('');
+  put(l, 6, 'I');
+  if (name) put(l, 7, name);
+  if (option) put(l, 18, option);
+  put(l, 19, 'DS');
+  if (occurrences !== '') put(l, 44, String(occurrences).padStart(4, ' '));
+  if (length !== '') put(l, 48, String(length).padStart(4, ' '));
+  return finish(l);
+}
+
+// I-spec data-structure subfield line (RPG/400 Reference, "Data Structure
+// Subfield Specifications"). One line per subfield, immediately after the
+// iSpecDS() header (or the previous subfield of the same DS).
+// `init`: '' | 'I' with `initValue` set (8, 21-42) to initialize the subfield
+// to a literal/named constant. `format`: '' (zoned/character) | 'P' (packed)
+// | 'B' (binary) (43). `from`/`to`: subfield position within the DS,
+// right-adjusted, leading zeros optional (44-47/48-51). `decimals`: '' for a
+// character subfield, else decimal positions (52). `name`: subfield name,
+// required (53-58).
+export function iSpecSubfield({ init = '', initValue = '', format = '', from, to, decimals = '', name }) {
+  const l = blank(80).split('');
+  put(l, 6, 'I');
+  if (init) {
+    put(l, 8, init);
+    if (initValue) put(l, 21, initValue);
+  }
+  if (format) put(l, 43, format);
+  put(l, 44, String(from).padStart(4, ' '));
+  put(l, 48, String(to).padStart(4, ' '));
+  if (decimals !== '') put(l, 52, String(decimals));
+  put(l, 53, name);
+  return finish(l);
+}
