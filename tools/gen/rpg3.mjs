@@ -127,6 +127,32 @@ export function fSpec({ name, type, designation = ' ', eof = ' ', seq = ' ', for
   return finish(l);
 }
 
+// F-spec continuation line (RPG/400 Reference "File Information Data
+// Structure" p.25 and "File Exception/Error Subroutine (INFSR)" p.37): a
+// SECOND F-spec line for a file already described by a plain fSpec() line
+// above it, used only to declare that file's INFDS (file information data
+// structure) and/or INFSR (file exception/error subroutine name). Emit it
+// immediately after that file's fSpec() line and before the next file's
+// F-spec, so it stays inside the F-spec block (Figure 1's H-F-E-L-I-C-O
+// source order).
+// Position 6 F, 7-52 blank (both references are explicit: "7-52 Blank (if
+// the information is specified on a separate continuation line)" - the
+// file name/type/etc. are NOT repeated here), 53 K (continuation code),
+// 54-59 the literal keyword, 60-65 the name.
+// `entry`: 'INFDS' | 'INFSR'. `name`: the data-structure name (INFDS) or
+// subroutine name (INFSR - p.37 requires this to be the SAME name used in
+// factor 1 of that subroutine's BEGSR and factor 2 of its EXSR, e.g.
+// '*PSSR' to route the file's exception/errors to the program status
+// subroutine).
+export function fSpecCont({ entry, name }) {
+  const l = blank(80).split('');
+  put(l, 6, 'F');
+  put(l, 53, 'K');
+  put(l, 54, entry);
+  put(l, 60, name);
+  return finish(l);
+}
+
 // C-spec factory. All fields optional strings; caller supplies exact text.
 // `ind`: conditioning indicator(s), e.g. '30', 'N30', or ['30','N31'] for
 // up to 3 (AND'ed). See putCondInd() for the column layout within 9-17.
