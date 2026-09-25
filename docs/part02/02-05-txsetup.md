@@ -1,6 +1,6 @@
 # 02-05 TXSETUP で DB を完成させる
 
-> 所要時間: 75分(長め)/ 前提レッスン: 02-04 / 目標番号: 1 / 観測方法: `TXSTATUS` の表示 / 道具: 5250 / 同時接続数: 5250×1 / 作る・変えるオブジェクト: `<USER>1` に `TXSETUP`・`TXSTATUS`・`TXRESET`(プログラム)、6物理ファイル+2論理ファイル、`TXSTATE`(データ域)/ DBVER: **この時点で 1 になる** / 依存するプローブ: P07, P13 / PTF 依存: なし / 容量の目安: 数百 KB
+> 所要時間: 75分(長め)/ 前提レッスン: 02-04 / 目標番号: 1 / 観測方法: `TXSTATUS` の表示 / 道具: 5250 / 同時接続数: 5250×1 / 作る・変えるオブジェクト: `<USER>1` に `TXSETUP`・`TXSTATUS`・`TXRESET`(プログラム、同名のコマンド)、6物理ファイル+2論理ファイル、`TXSTATE`(データ域)/ DBVER: **この時点で 1 になる** / 依存するプローブ: P07, P13 / PTF 依存: なし / 容量の目安: 数百 KB
 
 ## ゴール
 
@@ -27,6 +27,7 @@
 - `TXSETUP`・`TXSTATUS`・`TXRESET`(この教材専用のツール)
 - `RUNSQLSTM`(SQL スクリプトをまとめて実行する)
 - 状態データ域 `TXSTATE`(`DBVER` を保持する)
+- `CRTCMD`(CL プログラムを、専用のコマンドとして使えるようにする。詳しい書き方は03-11で学びます)
 
 ## 説明
 
@@ -49,24 +50,34 @@
 2. 5250 のコマンド行に `ADDPFM FILE(<自分のユーザー名>1/QCLSRC) MBR(TXSETUP) SRCTYPE(CLP) TEXT('Build sample DB')` と打ち、Enter を押す。
 3. `ADDPFM FILE(<自分のユーザー名>1/QCLSRC) MBR(TXSTATUS) SRCTYPE(CLP) TEXT('Show DB version')` を実行する。
 4. `ADDPFM FILE(<自分のユーザー名>1/QCLSRC) MBR(TXRESET) SRCTYPE(CLP) TEXT('Reset DB data')` を実行する。
-5. SSH でもう一度接続し、次の3つを実行してソースを取り込む(1回の接続でまとめて行います)。
+5. 5250 のコマンド行に `CRTSRCPF FILE(<自分のユーザー名>1/QCMDSRC) RCDLEN(92) TEXT('Command sources')` と打つ(`QCLSRC` は `<USER>1` に最初から入っていますが、`QCMDSRC`(**コマンド定義**のソース)はありません。01-06 で `QRPGSRC` を作ったのと同じ要領です)。
+6. SSH でもう一度接続し、次の6つを実行してソースを取り込む(1回の接続でまとめて行います)。
 
    ```sh
    system "CPYFRMSTMF FROMSTMF('/home/<自分のユーザー名>/ibmi-kyozai/tools/qclsrc/txsetup.clp') TOMBR('/QSYS.LIB/<自分のユーザー名>1.LIB/QCLSRC.FILE/TXSETUP.MBR') MBROPT(*REPLACE) STMFCCSID(1208)"
    system "CPYFRMSTMF FROMSTMF('/home/<自分のユーザー名>/ibmi-kyozai/tools/qclsrc/txstatus.clp') TOMBR('/QSYS.LIB/<自分のユーザー名>1.LIB/QCLSRC.FILE/TXSTATUS.MBR') MBROPT(*REPLACE) STMFCCSID(1208)"
    system "CPYFRMSTMF FROMSTMF('/home/<自分のユーザー名>/ibmi-kyozai/tools/qclsrc/txreset.clp') TOMBR('/QSYS.LIB/<自分のユーザー名>1.LIB/QCLSRC.FILE/TXRESET.MBR') MBROPT(*REPLACE) STMFCCSID(1208)"
+   system "CPYFRMSTMF FROMSTMF('/home/<自分のユーザー名>/ibmi-kyozai/tools/qcmdsrc/txsetup.cmd') TOMBR('/QSYS.LIB/<自分のユーザー名>1.LIB/QCMDSRC.FILE/TXSETUP.MBR') MBROPT(*REPLACE) STMFCCSID(1208)"
+   system "CPYFRMSTMF FROMSTMF('/home/<自分のユーザー名>/ibmi-kyozai/tools/qcmdsrc/txstatus.cmd') TOMBR('/QSYS.LIB/<自分のユーザー名>1.LIB/QCMDSRC.FILE/TXSTATUS.MBR') MBROPT(*REPLACE) STMFCCSID(1208)"
+   system "CPYFRMSTMF FROMSTMF('/home/<自分のユーザー名>/ibmi-kyozai/tools/qcmdsrc/txreset.cmd') TOMBR('/QSYS.LIB/<自分のユーザー名>1.LIB/QCMDSRC.FILE/TXRESET.MBR') MBROPT(*REPLACE) STMFCCSID(1208)"
    ```
 
-6. 5250 に戻り、3本ともコンパイルする。
+7. 5250 に戻り、3本の CL プログラムと、3本の**コマンド**をコンパイルする。
 
    - `CRTCLPGM PGM(<自分のユーザー名>1/TXSETUP) SRCFILE(<自分のユーザー名>1/QCLSRC) SRCMBR(TXSETUP)`
    - `CRTCLPGM PGM(<自分のユーザー名>1/TXSTATUS) SRCFILE(<自分のユーザー名>1/QCLSRC) SRCMBR(TXSTATUS)`
    - `CRTCLPGM PGM(<自分のユーザー名>1/TXRESET) SRCFILE(<自分のユーザー名>1/QCLSRC) SRCMBR(TXRESET)`
+   - `CRTCMD CMD(<自分のユーザー名>1/TXSETUP) PGM(<自分のユーザー名>1/TXSETUP) SRCFILE(<自分のユーザー名>1/QCMDSRC) SRCMBR(TXSETUP)`
+   - `CRTCMD CMD(<自分のユーザー名>1/TXSTATUS) PGM(<自分のユーザー名>1/TXSTATUS) SRCFILE(<自分のユーザー名>1/QCMDSRC) SRCMBR(TXSTATUS)`
+   - `CRTCMD CMD(<自分のユーザー名>1/TXRESET) PGM(<自分のユーザー名>1/TXRESET) SRCFILE(<自分のユーザー名>1/QCMDSRC) SRCMBR(TXRESET)`
 
-7. `CALL PGM(TXSETUP)`(パラメーターは省略でき、既定で `*CURLIB` と、ホーム・ディレクトリー配下の `ibmi-kyozai` が使われます)。数十秒かかることがあります。
-8. `CALL PGM(TXSTATUS)` を実行し、`DBVER=1` と表示されることを確認する。
+   **`*CMD`(コマンド)と `*PGM`(プログラム)は、同じ名前でも別のオブジェクトとして共存できます。** コマンドは「呼び出されたときにプログラムを実行する」だけの薄い定義で、CPP(Command Processing Program、ここでは同名の `*PGM`)に処理を委譲します。
 
-**もし手順7で `CPD0172`(渡されたパラメーターが必要なものと一致しない)というエラーになったら**、`DSPJOBLOG` の内容を控えたうえで、[Issue](https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero/issues) で教えてください。**パラメーターを手で直接指定するのは避けてください**(文字リテラルは32バイトまでしか正しく渡らないという CL の落とし穴があり、`CLONEDIR` のような長いパラメーターを直接指定すると、かえって別のエラーを引き起こす可能性があります。詳細は 03-08 を参照)。
+8. `TXSETUP`(コマンド名をそのまま打つだけです。`CALL PGM(...)` は使いません)。数十秒かかることがあります。
+
+   **なぜ `CALL PGM(TXSETUP) PARM(...)` ではなく、専用のコマンドを経由するのか**: `CALL` にコマンド行から直接リテラルを渡すと、文字リテラルは32バイトまでしか正しく渡らないという CL の落とし穴があります(03-08 で詳しく学びます)。`TXSETUP` の `CLONEDIR` パラメーター(200桁)のような長いパラメーターを `CALL ... PARM()` に直接書くと、この罠にかかってエラーになることがあります。**`*CMD` 経由の呼び出しは、コマンド定義の宣言どおりにパラメーターを組み立てるため、この罠が起きません。** これが、CL プログラムを直接 `CALL` させず、専用のコマンドでラップして配布している理由です。
+
+9. `TXSTATUS` を実行し、`DBVER=1` と表示されることを確認する。
 
 ## 演習
 
@@ -94,5 +105,5 @@
 
 ## 実機メモ
 
-- 確認日: 2026-09-25。DDS(6物理ファイル+2論理ファイル)・`TXSETUP`/`TXSTATUS`/`TXRESET` の CL は `<USER>2` で実機コンパイル0エラーを確認済み。**`TXSETUP` の実行そのもの(ハングの原因だった `MONMSG` の誤りを修正した版)も、`CALL PGM(...) PARM(...)` で明示的にパラメーターを渡す形で完走を確認済み**(`DBVER=1`、全6物理ファイル+2論理ファイルの件数も確認)。ただし**この手順(7・8)が指示している「パラメーターを省略した `CALL PGM(TXSETUP)`」そのものの実機確認(特に5250の対話的コマンド行での挙動)はまだ済んでいない**。SSH 経由の `system()` で同様に試したところ `CPD0172` になったが、これが5250でも再現するかは未確認。詳細は `docs/probes.md` を参照。
+- 確認日: 2026-09-25。DDS(6物理ファイル+2論理ファイル)・`TXSETUP`/`TXSTATUS`/`TXRESET` の CL・**`*CMD`(コマンド定義)は、すべて `<USER>2` で実機コンパイル0エラーを確認済み。** `TXSETUP` の実行そのもの(ハングの原因だった `MONMSG` の誤りを修正した版)は、`CALL PGM(...) PARM(...)` で明示的にパラメーターを渡す形と、**`*CMD` 経由(`TXSETUP LIB(<USER>2)`)の両方で完走を確認済み**(`DBVER=1`、全6物理ファイル+2論理ファイルの件数も確認)。`*CMD` 経由では、`CALL PGM(...) PARM()` を直接使ったときに起きた2つの問題(パラメーター省略時の `CPD0172`、`RTVJOBA USER()` が `QUSER` を返す)のどちらも再現しなかった。**ただし、この手順(2〜8)が指示している「5250 の対話的コマンド行からの一連の操作」そのものの実機確認は、SSH 経由の `system()` を使った検証で代替しており、5250 の対話的コマンド行そのもので試したわけではない。** 詳細は `docs/probes.md` を参照。
 - 食い違いに気づいたら [Issue](https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero/issues) で教えてください。
