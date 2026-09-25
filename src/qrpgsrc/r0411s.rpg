@@ -1,0 +1,10 @@
+      * R0411A - TOKUIM inquiry screen (WORKSTN, EXFMT, F3=exit).
+     H
+     FR0411A  CF  E                    WORKSTN
+     FTOKUIM  IF  E           K        DISK
+     C           *IN03     DOWEQ*OFF
+     C                     EXFMTINQFMT
+     C  N03      TOKCD     CHAINTOKUIM               50
+     C  N03 50             MOVEL'NOTFOUND'TOKNM
+     C                     ENDDO
+     C                     SETON                         LR

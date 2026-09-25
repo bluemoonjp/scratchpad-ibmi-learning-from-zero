@@ -1,0 +1,8 @@
+     A                                      DSPSIZ(24 80 *DS3)
+     A          R INQFMT
+     A                                      CF03(03)
+     A                                  1  2'Customer code:'
+     A            TOKCD          6A  I  1 17
+     A                                  3  2'Name:'
+     A            TOKNM         30A  O  3  8
+     A                                  5  2'F3=Exit'
