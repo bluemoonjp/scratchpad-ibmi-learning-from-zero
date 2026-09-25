@@ -31,19 +31,14 @@
                 CHGVAR     VAR(&CLONEDIR) VALUE(&HOMEDIR)
              ENDDO
 
+/* No MONMSG on these two: let an unhandled failure end the program with  */
+/* its own real error message (SNDPGMMSG MSGTYPE(*ESCAPE) needs a real    */
+/* MSGID, not free text).                                                 */
              RUNSQLSTM  SRCSTMF(&CLONEDIR *TCAT '/db/data/reset_v1.sql') +
                           COMMIT(*NONE) NAMING(*SYS) DFTRDBCOL(&LIB)
-             MONMSG     MSGID(CPF0000) EXEC(DO)
-                SNDPGMMSG  MSG('TXRESET: clearing data failed. See the job +
-                             log for details.') MSGTYPE(*ESCAPE)
-             ENDDO
 
              RUNSQLSTM  SRCSTMF(&CLONEDIR *TCAT '/db/data/load_v1.sql') +
                           COMMIT(*NONE) NAMING(*SYS) DFTRDBCOL(&LIB)
-             MONMSG     MSGID(CPF0000) EXEC(DO)
-                SNDPGMMSG  MSG('TXRESET: reloading data failed. See the job +
-                             log for details.') MSGTYPE(*ESCAPE)
-             ENDDO
 
              SNDPGMMSG  MSG('TXRESET: data restored to the initial state.')
              ENDPGM
