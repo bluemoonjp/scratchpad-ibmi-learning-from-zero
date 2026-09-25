@@ -3,10 +3,13 @@
 /*           changes and TXSETUP for the first-time build.                */
              PGM        PARM(&LIB &CLONEDIR)
 
-             DCL        VAR(&LIB) TYPE(*CHAR) LEN(10) VALUE('*CURLIB')
-             DCL        VAR(&CLONEDIR) TYPE(*CHAR) LEN(200) VALUE(' ')
+             DCL        VAR(&LIB) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&CLONEDIR) TYPE(*CHAR) LEN(200)
              DCL        VAR(&USRPRF) TYPE(*CHAR) LEN(10)
              DCL        VAR(&HOMEDIR) TYPE(*CHAR) LEN(200)
+
+             IF         COND(&LIB *EQ ' ') THEN(CHGVAR VAR(&LIB) +
+                          VALUE('*CURLIB'))
 
              CHKOBJ     OBJ(&LIB/TXSTATE) OBJTYPE(*DTAARA)
              MONMSG     MSGID(CPF9801) EXEC(DO)
@@ -15,8 +18,14 @@
                 RETURN
              ENDDO
 
+/* --- *CURLIB is only valid as a qualifier on object references; RUNSQLSTM */
+/* DFTRDBCOL below needs the real name. --- */
+             IF         COND(&LIB *EQ '*CURLIB') THEN(DO)
+                RTVJOBA    CURLIB(&LIB)
+             ENDDO
+
              IF         COND(&CLONEDIR *EQ ' ') THEN(DO)
-                RTVJOBA    USRPRF(&USRPRF)
+                RTVJOBA    USER(&USRPRF)
                 CHGVAR     VAR(&HOMEDIR) VALUE('/home/' *TCAT %TRIM(&USRPRF) +
                              *TCAT '/ibmi-kyozai')
                 CHGVAR     VAR(&CLONEDIR) VALUE(&HOMEDIR)

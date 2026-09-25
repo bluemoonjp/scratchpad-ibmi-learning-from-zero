@@ -10,26 +10,42 @@
 /*   FORCE    *YES rebuilds even if already initialized.                 */
              PGM        PARM(&LIB &CLONEDIR &FORCE)
 
-             DCL        VAR(&LIB) TYPE(*CHAR) LEN(10) VALUE('*CURLIB')
-             DCL        VAR(&CLONEDIR) TYPE(*CHAR) LEN(200) VALUE(' ')
-             DCL        VAR(&FORCE) TYPE(*CHAR) LEN(4) VALUE('*NO')
+             /* Parameters must not have an initial VALUE; the caller     */
+             /* supplies it (blank/omitted if not passed). Defaults are   */
+             /* filled in below.                                         */
+             DCL        VAR(&LIB) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&CLONEDIR) TYPE(*CHAR) LEN(200)
+             DCL        VAR(&FORCE) TYPE(*CHAR) LEN(4)
 
              /* CALLSUBR cannot pass arguments (a subroutine shares the   */
              /* caller's variables), so &P1 (object name) and &P2        */
              /* (description) are set before each call.                  */
              DCL        VAR(&P1) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&P1LC) TYPE(*CHAR) LEN(10)
              DCL        VAR(&P2) TYPE(*CHAR) LEN(50)
              DCL        VAR(&USRPRF) TYPE(*CHAR) LEN(10)
              DCL        VAR(&HOMEDIR) TYPE(*CHAR) LEN(200)
              DCL        VAR(&SRC) TYPE(*CHAR) LEN(200)
              DCL        VAR(&TOMBR) TYPE(*CHAR) LEN(200)
 
+/* --- Fill in defaults for omitted/blank parameters --- */
+             IF         COND(&LIB *EQ ' ') THEN(CHGVAR VAR(&LIB) +
+                          VALUE('*CURLIB'))
+             IF         COND(&FORCE *EQ ' ') THEN(CHGVAR VAR(&FORCE) +
+                          VALUE('*NO'))
+
 /* --- Build the default CLONEDIR (your home directory + /ibmi-kyozai) --- */
              IF         COND(&CLONEDIR *EQ ' ') THEN(DO)
-                RTVJOBA    USRPRF(&USRPRF)
+                RTVJOBA    USER(&USRPRF)
                 CHGVAR     VAR(&HOMEDIR) VALUE('/home/' *TCAT %TRIM(&USRPRF) +
                              *TCAT '/ibmi-kyozai')
                 CHGVAR     VAR(&CLONEDIR) VALUE(&HOMEDIR)
+             ENDDO
+
+/* --- *CURLIB is only valid as a qualifier on object references; some    */
+/* commands below (ADDLIBLE, RUNSQLSTM DFTRDBCOL) need the real name.     */
+             IF         COND(&LIB *EQ '*CURLIB') THEN(DO)
+                RTVJOBA    CURLIB(&LIB)
              ENDDO
 
 /* --- Has this library already been set up? (state data area TXSTATE) --- */
@@ -69,7 +85,12 @@ BUILD:       SNDPGMMSG  MSG('TXSETUP: building sample database in library ' +
              CHGVAR     VAR(&P2) VALUE('Sales rep master')
              CALLSUBR   SUBR(LOADPF)
 
-/* --- Logical files --- */
+/* --- Logical files. PFILE() in the LF's DDS has no library name (the   */
+/* DDS is shared, deployed source), so it resolves through *LIBL. Add    */
+/* the target library to the top of the library list first.             */
+             ADDLIBLE   LIB(&LIB) POSITION(*FIRST)
+             MONMSG     MSGID(CPF2103)
+
              CHGVAR     VAR(&P1) VALUE('JUCHUL1')
              CHGVAR     VAR(&P2) VALUE('Order by customer/date')
              CALLSUBR   SUBR(LOADLF)
@@ -99,9 +120,11 @@ BUILD:       SNDPGMMSG  MSG('TXSETUP: building sample database in library ' +
 /* ==================== Subroutines ==================== */
 /* Use &P1 (object name = member name) and &P2 (description). No return. */
 SUBR       SUBR(LOADPF)
+             CHGVAR     VAR(&P1LC) VALUE(%TRIM(&P1))
+             CHGVAR     VAR(&P1LC) VALUE(%LOWER(&P1LC))
              CHGVAR     VAR(&SRC) VALUE(&CLONEDIR *TCAT '/db/v1/' *TCAT +
-                          %LOWER(%TRIM(&P1)) *TCAT '.pf')
-             ADDPFM     FILE(&LIB/QDDSSRC) MBR(&P1) SRCTYPE(*PF) TEXT(&P2)
+                          %TRIM(&P1LC) *TCAT '.pf')
+             ADDPFM     FILE(&LIB/QDDSSRC) MBR(&P1) SRCTYPE(PF) TEXT(&P2)
              MONMSG     MSGID(CPF7302)
              CHGVAR     VAR(&TOMBR) VALUE('/QSYS.LIB/' *TCAT %TRIM(&LIB) +
                           *TCAT '.LIB/QDDSSRC.FILE/' *TCAT %TRIM(&P1) *TCAT +
@@ -113,9 +136,11 @@ SUBR       SUBR(LOADPF)
 ENDSUBR
 
 SUBR       SUBR(LOADLF)
+             CHGVAR     VAR(&P1LC) VALUE(%TRIM(&P1))
+             CHGVAR     VAR(&P1LC) VALUE(%LOWER(&P1LC))
              CHGVAR     VAR(&SRC) VALUE(&CLONEDIR *TCAT '/db/v1/' *TCAT +
-                          %LOWER(%TRIM(&P1)) *TCAT '.lf')
-             ADDPFM     FILE(&LIB/QDDSSRC) MBR(&P1) SRCTYPE(*LF) TEXT(&P2)
+                          %TRIM(&P1LC) *TCAT '.lf')
+             ADDPFM     FILE(&LIB/QDDSSRC) MBR(&P1) SRCTYPE(LF) TEXT(&P2)
              MONMSG     MSGID(CPF7302)
              CHGVAR     VAR(&TOMBR) VALUE('/QSYS.LIB/' *TCAT %TRIM(&LIB) +
                           *TCAT '.LIB/QDDSSRC.FILE/' *TCAT %TRIM(&P1) *TCAT +
