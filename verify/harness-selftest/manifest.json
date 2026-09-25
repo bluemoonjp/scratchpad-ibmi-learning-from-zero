@@ -1,0 +1,29 @@
+{
+  "batch": "harness-selftest",
+  "description": "検証ハーネスそのものの確認(heredoc転送・CCSID・CPYFRMSTMF・CLラッパー生成・CRTBNDRPGコンパイル・INQMSGRPY(*DFT)によるRPG0102自動応答)。第5部着手前の最初の実接続で流す想定(実行計画ステップ1)。",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "src/t0zero.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "T0ZERO",
+      "ccsid": 37
+    },
+    {
+      "type": "cl",
+      "label": "COMPILE",
+      "cmd": "CRTBNDRPG PGM(&LIB/T0ZERO) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T0ZERO) REPLACE(*YES)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "RUNIT",
+      "cmd": "CALL PGM(&LIB/T0ZERO)",
+      "monmsg": ["CPF0000", "RPG0000", "MCH0000"]
+    },
+    {
+      "type": "collect",
+      "kind": "sql"
+    }
+  ]
+}
