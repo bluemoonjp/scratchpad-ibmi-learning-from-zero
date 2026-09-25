@@ -34,4 +34,4 @@ RPG III(RPG/400)で、小さなプログラムを自分で書けるようにな�
 - [04-10 RPG サイクルと制御レベル](04-10-cycle-and-control-levels.md)
 - [04-11 表示装置ファイルを手書きして照会画面を作る](04-11-display-file-inquiry.md)
 - [04-12 デバッグと実行時エラー](04-12-debugging-runtime-errors.md)
-- 04-13 チェックポイント: 商品別在庫一覧表(準備中)
+- [04-13 チェックポイント: 商品別在庫一覧表](04-13-checkpoint-stock-list.md)

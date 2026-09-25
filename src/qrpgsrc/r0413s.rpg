@@ -1,0 +1,15 @@
+      * R0413A - product-wise stock list, flag low-stock items.
+     H
+     FZAIKOM  IP  E           K        DISK
+     FSHOHIM  IF  E           K        DISK
+     FQSYSPRT O   F     132            PRINTER
+     C           ZASHO     CHAINSHOHIM               50
+     C           ZASU      COMP SHOHAT                 60
+     C                     EXCPT
+     OQSYSPRT E
+     O                         ZASHO      8
+     O                                   10 '  '
+     O                         SHONM     42
+     O                                   45 '  '
+     O                         ZASU      55
+     O                 60                70 'LOWSTOCK'
