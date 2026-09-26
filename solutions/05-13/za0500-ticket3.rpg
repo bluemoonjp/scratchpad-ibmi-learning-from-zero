@@ -8,6 +8,13 @@
       * reference QSYSPRT, but this file had no FQSYSPRT F-spec line at
       * all - an undeclared file reference, which would fail to
       * compile. Added, matching ju0300.rpg's identical line.
+      * FIXED (2026-09-27, found via advisor review while writing a
+      * verification manifest): IJUCHUD/IJUCHUM below left the Sequence
+      * entry (cols 15-16) blank - the same QRG4008 bug already found and
+      * fixed in the as-shipped src/legacy/qrpgsrc/za0500.rpg (see that
+      * file's own header for the full citation), just never ported to
+      * this independently-typed model solution. Added 'AA' to both
+      * lines, matching za0500.rpg exactly.
       * FIXED (adversarial review, 2026-09-26): four more real bugs in
       * the C/O-specs below, found by re-deriving every line's opcode
       * semantics and column layout against RPG/400 Reference instead of
@@ -45,13 +52,13 @@
      FJUCHUM  IS  F      26            DISK
      FZAIKOM  UF  E           K        DISK
      FQSYSPRT O   F     132            PRINTER
-     IJUCHUD      01
+     IJUCHUD  AA  01
      I                                        1   6 JUNO    M1
      I                                        7   90JULINE
      I                                       10  15 JUSHO
      I                                       16  200JUSU
      I                                       21  272JUTNK
-     IJUCHUM      02
+     IJUCHUM  AA  02
      I                                        1   6 JUNO    M1
      I                                        7  12 JUTOK
      I                                       13  200JUDATE
