@@ -11,22 +11,24 @@ const LOCK_PATH = `${LEDGER_PATH}.lock`;
 const LOCK_STALE_MS = 60_000; // ロック取得者がクラッシュした場合に無期限で詰まらないための猶予
 
 const INTERVAL_MS = 15 * 60 * 1000; // 接続の間隔は15分以上
-const WINDOW_MS = 24 * 60 * 60 * 1000; // 直近24時間で数える
 const REFUSED_HALT_MS = 3 * 60 * 60 * 1000; // 拒否/タイムアウトで3時間停止
-const CAP_DEFAULT = 8; // 直近24時間に拒否/タイムアウトがあれば8回まで
-const CAP_RELAXED = 24; // 直近24時間に拒否/タイムアウトが一度も無ければ24回まで緩めてよい
 
-// 2026-09-26、台帳174件(実測)の分析に基づく緩和(ユーザー承認済み、実行計画
-// wise-frolicking-pony.md の P0-1 参照)。根拠:
-//   - 2026-09-25の1日で162回接続し、拒否は6回だけだった。
-//   - 6回とも「直前30分に9〜21回・直前10分に4〜13回」という短時間の集中の
-//     直後に起きており、24時間の累計回数(最大148回)そのものとは相関しない。
-//   - 15分間隔を守れば30分に最大2回で、観測された最小の集中閾値(30分に9回)
-//     の4分の1以下に収まる。
-// つまり PUB400 の遮断は日次回数ではなく短時間の集中で起きる、という実測に
-// 基づき、日次上限だけを 8→24 に引き上げる。15分間隔・3時間停止・認証失敗時の
-// 全停止は変更しない(いずれも集中や認証失敗そのものへの直接の歯止めなので、
-// この根拠では緩める理由がない)。
+// 2026-09-26、台帳174件(実測)の分析に基づき8→24へ緩和(P0-1)。
+// 2026-09-26夜、台帳198件(その後の実測)を再分析した結果、24時間の累計上限
+// そのものを撤廃(ユーザー承認済み)。根拠:
+//   - 拒否/タイムアウトが起きた6件は、いずれも「直前30分に9〜21回・直前10分に
+//     4〜13回」という短時間の集中の直後に起きている。
+//   - 24時間の累計回数が148回・174回に達した時点でも、拒否は一度も起きて
+//     いない(174回/24時間は無事故)。つまり24時間の累計回数そのものは、
+//     PUB400側が実際に見ている制限ではないと判断できる。
+//   - 15分間隔を厳守すれば、どの1時間を切り取っても最大4回にしかならず、
+//     観測された最小の集中閾値(30分に9回=1時間に18回相当)の4分の1以下に
+//     常に収まる。つまり15分間隔の遵守自体が、実質的な「時間あたりの上限」
+//     として十分に機能している。
+// この根拠に基づき、24時間の累計上限は完全に撤廃し、15分間隔(=事実上の
+// 時間あたり上限)・拒否後3時間停止・認証失敗時の全停止の3つだけで歯止めを
+// かける。この3つは集中や認証失敗そのものへの直接の歯止めであり、今回の
+// 根拠では緩める理由がないため変更しない。
 
 function emptyLedger() {
   return {
@@ -99,18 +101,6 @@ export function withLedgerLock(fn) {
   }
 }
 
-// 直近24時間以内に拒否/タイムアウト/ブロックが記録されていれば true。
-// 「過去に一度でも」ではなく「直近24時間に」に変更(2026-09-26、P0-1)。
-// 3時間停止のロジックと同じ status 集合を見る(auth_failed は別途
-// authFailedEver で無期限に扱うのでここには含めない)。
-function recentlyBlocked(ledger, nowMs) {
-  return ledger.connections.some((c) => {
-    if (c.status !== 'refused_or_timeout' && c.status !== 'blocked') return false;
-    const t = new Date(c.endedAt || c.startedAt).getTime();
-    return !Number.isNaN(t) && t > nowMs - WINDOW_MS;
-  });
-}
-
 // 接続してよいか(接続の間隔・24時間の回数上限・拒否後の停止・認証失敗後の全停止)を判定する。
 // 4つの歯止めはすべて独立に評価し、最も遅い nextAllowedAt を採用する(いずれか1つでも
 // 満たされていなければ接続不可、という意図)。
@@ -119,8 +109,6 @@ export function computeGate(ledger, now = new Date()) {
     return {
       allowed: false,
       nextAllowedAt: null,
-      cap: null,
-      countInWindow: null,
       reasons: [
         '認証に1回でも失敗した記録があるため、この状態のままでは SSH を完全に停止しています。' +
           '台帳(work/verify/ledger.json)の authFailedEver を確認し、ユーザーに報告してから対応してください。',
@@ -160,25 +148,10 @@ export function computeGate(ledger, now = new Date()) {
     }
   }
 
-  const cap = recentlyBlocked(ledger, nowMs) ? CAP_DEFAULT : CAP_RELAXED;
-  const inWindowStartTimes = allStartTimes.filter((t) => t > nowMs - WINDOW_MS).sort((a, b) => a - b);
-  if (inWindowStartTimes.length >= cap) {
-    const idx = inWindowStartTimes.length - cap; // この位置の接続が24時間の外に出るまで待つ
-    const until = inWindowStartTimes[idx] + WINDOW_MS;
-    if (until > gateAt) {
-      gateAt = until;
-      reasons.push(
-        `直近24時間の接続数が上限(${cap}回、現在${inWindowStartTimes.length}回)に達しているため`,
-      );
-    }
-  }
-
   const allowed = gateAt <= nowMs;
   return {
     allowed,
     nextAllowedAt: allowed ? now : new Date(gateAt),
-    cap,
-    countInWindow: inWindowStartTimes.length,
     reasons,
   };
 }
