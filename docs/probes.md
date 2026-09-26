@@ -580,8 +580,8 @@ V2穴埋めで別途検証する)。
 
 RPG IV/**FREE の12段階機能梯子(T0LAD01〜T0LAD12、CRTBNDRPG)と、12段目を
 CRTSQLRPGIでも再コンパイルするT0LAD12Qの、計13オブジェクトを検証した。
-**3回の接続で3件の実バグを発見・修正、4回目の接続で自己修正1件を経て
-決着させる。**
+**3回の接続で3件の実バグを発見・修正、4回目の接続で自己修正1件を経て、
+5回目の接続でP24の答え(下記CONFIRMED)を確定した。**
 
 **バグ1(接続1回目で発見): 13ファイル全てに
 `ctl-opt dftactgrp(*no) actgrp(*new);`が欠落していた。** 全13ファイルが
@@ -651,18 +651,24 @@ Definitionが実行文=Calculationより前)は変わらない。(このメモ�
 出現していないか、メインラインと各`dcl-proc`本体の両方を対象に確認)。
 検出ロジック自体は、修正前のT0LAD02(bug3修正前のコミット)に対して
 実際にバグを検出できることを確認したうえで、他の全ファイルには
-該当なしという結果を得た。** また、rung12(ASSERT-T)の
-`%msg('単一文字列')`という書き方自体は、`ilerpgref75.txt`786〜787行目
-付近(Free-Form Syntax一覧の`ASSERT-T{(A)} condition %MSG(message-text)`、
-および`ASSERT-F price = 0 OR qty = 0 %MSG('price, qty cannot be zero');`
-という一次資料の例)で正しいと確認済み——3回目の接続でrung12にも出た
-`RNF5347`/`RNF7030(ASSERT)`は、バグ3(宣言と実行文の順序崩壊)の連鎖
-であり、%MSGの書き方自体の誤りではないと判断した(3回目接続の
-listingを全件確認: 出現したメッセージIDは`RNF0724`とその連鎖
-(`RNF5347`/`RNF7030`/`RNF7503`/`RNF5410`)・情報レベルの`RNF7031`のみで、
-他の12機能いずれについても、これら以外の独立したメッセージは
-一件も出ていない——バグ3を直せば全機能がPTFの壁に当たらず通る
-可能性が高いことを示す傍証)。
+該当なしという結果を得た。** rung12(ASSERT-T)の`%msg('単一文字列')`
+という書き方自体は、`ilerpgref75.txt`786〜787行目付近(Free-Form Syntax
+一覧の`ASSERT-T{(A)} condition %MSG(message-text)`、および
+`ASSERT-F price = 0 OR qty = 0 %MSG('price, qty cannot be zero');`という
+一次資料の例)で正しいと確認済み。**訂正(advisor指摘): 3回目接続時点
+では「rung12のRNF5347/RNF7030(ASSERT)はバグ3の連鎖」と判断したが、
+これは誤りだった。** 他の11機能の失敗パターン(未定義オペランドの
+`RNF7030`/`RNF7503`のみ、命令自体は認識されている)と、rung12の失敗
+パターン(`RNF5347`「代入演算子が必要」+ `RNF7030`「ASSERTという名前/
+標識が未定義」)は質的に異なり、後者は「`assert-t`という命令自体が
+認識されず、`assert`が変数名であるかのように解釈された」ことを示す。
+5回目の接続(下記CONFIRMED参照)で実際に確定: バグ1〜3・自己ミストを
+全て修正した状態でも、rung1〜11は完全に成功し、rung12(T0LAD12・
+T0LAD12Qの両方)だけが、他の全てから孤立した形でこの同じ
+`RNF5347`+`RNF7030(ASSERT未定義)`のみで失敗した(宣言(`ladTotal`
+`ladMax`、enumの`RED`/`BLUE`)は全て`D`=定義済みと確認され、順序崩壊の
+再発ではないことも確認済み)。**したがって結論はPTFの壁であり、この
+教材のミスではない。**
 
 **4回目の接続: 自分自身のミスを発見・修正(実機側の新発見ではない)。**
 バグ3の修正で使ったスクリプトが、宣言と実行文を並べ直す際に
@@ -673,6 +679,32 @@ T0LAD01は(前段が無いため)実行文がそのまま`dcl-proc`に流れ込�
 現在のファイルを、コメント・空行を除いた行の多重集合として比較し、
 `ctl-opt`追加以外に内容の欠落・重複が無いことを確認したうえで、
 全13ファイルに`*inlr = *on;`/`return;`を復元した。
+
+**5回目の接続: CONFIRMED、P24の答えを確定。** rung1〜11
+(T0LAD01〜T0LAD11)は全て`Highest Severity 00`でコンパイル・実行に
+成功し、しかも各段が送るメッセージの**計算結果の値まで正しい**ことを
+確認した(バグ1〜3のせいで、1〜3回目の接続では変数が軒並み未定義
+だったため、rung2〜11の意味検査はこの5回目が初めてだった):
+`DIM(*AUTO:10)`(rung2、%elem after 2 assigns = 2)、
+`FOR-EACH/%LIST/IN`(rung3、count = 3, hit = Y)、`%SPLIT/%UPPER`
+(rung4、upper(parts(1)) = CAT, parts(2) = dog)、
+`SND-MSG/ON-EXCP/MONITOR/CALLP`(rung5、3件のメッセージとも到達)、
+`%CONCAT`(rung6、result = cat, dog, fish)、`WHEN-IS`(rung7、
+branch = owner-branch)、`DCL-ENUM`(rung8、green = 2)、`CONST`(rung9、
+LAD_MAX_RETRY = 3)、`%HIVAL`(rung10、hival(ladColors) = 3)、
+`%DATE(*YYMD)`(rung11、date = 2026-09-26)。**rung12(ASSERT-T、
+T0LAD12・T0LAD12Qの両方)だけが、他の全てから孤立した形で
+`RNF5347`(代入演算子が必要)+`RNF7030`(ASSERTという名前/標識が
+未定義)で失敗し続けた。** 宣言(`ladTotal`/`ladMax`/enumの`RED`/
+`BLUE`)は全て`D`=定義済みと確認されており、順序崩壊の再発ではない。
+
+**P24の結論: PUB400の現在のPTFレベルでは、`ASSERT-F`/`ASSERT-T`
+命令自体が認識されない(`ilerpgref75.txt`の該当節が明記する
+「2026年前半のコンパイル時PTFで追加」に、このインスタンスはまだ
+達していない)。それ以外(**FREE、DIM(*AUTO)、FOR-EACH/%LIST/IN、
+%SPLIT/%UPPER、SND-MSG/ON-EXCP、%CONCAT、WHEN-IS、DCL-ENUM、CONST、
+%HIVAL、%DATE(*YYMD))は全て実機確認済みで、第6部以降のレッスンで
+安心して使ってよい。ASSERT-T/ASSERT-Fはこの教材では使用しないこと。**
 
 ## 未実施のプローブ
 
