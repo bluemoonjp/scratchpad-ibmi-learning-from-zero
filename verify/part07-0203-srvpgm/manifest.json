@@ -16,7 +16,8 @@
     { "type": "cl", "label": "CPF0703A", "cmd": "CRTBNDRPG PGM(&LIB/F0703A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0703A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
     { "type": "cl", "label": "RUNF0703A", "cmd": "CALL PGM(&LIB/F0703A) PARM('C00001')", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
 
-    { "type": "cl", "label": "VSRVPGM", "cmd": "DSPSRVPGM SRVPGM(&LIB/JUCSRV) OUTPUT(*PRINT)\nDSPPGM PGM(&LIB/F0702A) DETAIL(*SRVPGM) OUTPUT(*OUTFILE) OUTFILE(&LIB/VFYSRV)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "VDSPSRV", "cmd": "DSPSRVPGM SRVPGM(&LIB/JUCSRV) OUTPUT(*PRINT)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "VSRVPGM", "cmd": "DSPPGM PGM(&LIB/F0702A) DETAIL(*SRVPGM) OUTPUT(*OUTFILE) OUTFILE(&LIB/VFYSRV)", "monmsg": ["CPF0000"] },
 
     { "type": "collect", "kind": "sql", "sql": "SELECT COLUMN_NAME, DATA_TYPE, LENGTH FROM QSYS2.SYSCOLUMNS WHERE SYSTEM_TABLE_SCHEMA = '&LIB' AND SYSTEM_TABLE_NAME = 'VFYSRV' ORDER BY ORDINAL_POSITION" },
     { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSRV" }

@@ -9,15 +9,18 @@
 
     { "type": "cl", "label": "CPJUCQC", "cmd": "CRTCLPGM PGM(&LIB/JUCINQC) SRCFILE(&LIB/QCLSRC) SRCMBR(JUCINQC) REPLACE(*YES)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "CPJUCQCMD", "cmd": "CHKOBJ OBJ(&LIB/JUCINQ) OBJTYPE(*CMD)\nMONMSG MSGID(CPF9801) EXEC(CRTCMD CMD(&LIB/JUCINQ) PGM(&LIB/JUCINQC) SRCFILE(&LIB/QCMDSRC) SRCMBR(JUCINQ))", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "PRESWAP", "cmd": "CHGCMD CMD(&LIB/JUCINQ) PGM(&LIB/JUCINQC)\nJUCINQ TOKCD('C00001')", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "PRESWAPSET", "cmd": "CHGCMD CMD(&LIB/JUCINQ) PGM(&LIB/JUCINQC)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "PRESWAPRUN", "cmd": "JUCINQ TOKCD('C00001')", "monmsg": ["CPF0000"] },
 
     { "type": "cl", "label": "CPP0612A", "cmd": "CRTPRTF FILE(&LIB/P0612A) SRCFILE(&LIB/QDDSSRC) SRCMBR(P0612A) REPLACE(*YES)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "CPF0612A", "cmd": "CRTBNDRPG PGM(&LIB/F0612A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0612A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
     { "type": "cl", "label": "VSPLPF", "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 6 spooled-file text capture'))", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "RUNF0612A", "cmd": "CALL PGM(&LIB/F0612A) PARM('C00001')\nCPYSPLF FILE(P0612A) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "RUNF0612A", "cmd": "CALL PGM(&LIB/F0612A) PARM('C00001')", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPF0612A", "cmd": "CPYSPLF FILE(P0612A) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
 
     { "type": "cl", "label": "CPPSWAP", "cmd": "CHGCMD CMD(&LIB/JUCINQ) PGM(&LIB/F0612A)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "POSTSWAP", "cmd": "JUCINQ TOKCD('C00001')\nCPYSPLF FILE(P0612A) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "POSTSWAPRUN", "cmd": "JUCINQ TOKCD('C00001')", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPPOSTSWAP", "cmd": "CPYSPLF FILE(P0612A) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
 
     { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSPL" }
   ]

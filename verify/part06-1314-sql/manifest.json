@@ -8,9 +8,11 @@
     { "type": "cl", "label": "VSPLPF", "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 6 spooled-file text capture'))", "monmsg": ["CPF0000"] },
 
     { "type": "cl", "label": "CPQ0613A", "cmd": "CRTSQLRPGI OBJ(&LIB/Q0613A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0613A) OBJTYPE(*PGM) COMMIT(*NONE)", "monmsg": ["CPF0000", "RNF0000", "SQL0000", "MCH0000"] },
-    { "type": "cl", "label": "RUNQ0613A", "cmd": "CALL PGM(&LIB/Q0613A)\nCPYSPLF FILE(Q0613A) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "RUNQ0613A", "cmd": "CALL PGM(&LIB/Q0613A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPQ0613A", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "CPQ0614A", "cmd": "CRTSQLRPGI OBJ(&LIB/Q0614A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0614A) OBJTYPE(*PGM) COMMIT(*NONE)", "monmsg": ["CPF0000", "RNF0000", "SQL0000", "MCH0000"] },
-    { "type": "cl", "label": "RUNQ0614A", "cmd": "CALL PGM(&LIB/Q0614A)\nCPYSPLF FILE(Q0614A) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "RUNQ0614A", "cmd": "CALL PGM(&LIB/Q0614A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPQ0614A", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
 
     { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSPL" }
   ]
