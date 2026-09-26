@@ -613,11 +613,20 @@ sequence for the main procedure」)がT0LAD02の`dcl-s ladArr...`行で発生。
 「各段は前の段のソースを100%そのまま残し、末尾に1ブロック追加する」
 という梯子の作り方そのものが原因: 新しい段の`dcl-s`宣言が、前の段の
 実行文(`sendToJobLog(...)`呼び出し)の**後ろ**に追加されていた。
-一次資料`ilerpgprogguide75.txt`3万4326行目付近で確認:「In RPG IV,
-definition specifications must precede input specifications」——この
-規則は自由形式のメイン・プロシージャーにも及び、宣言は実行文より
-**前**でなければならない。全13ファイルを再構成し、各段までの宣言を
-全て先頭にまとめ、その後に各段までの実行文をまとめる形に直した。
+一次証拠は実機が実際に出した`RNF0724`そのもの。裏付けとして
+`ilerpgref75.txt`23082〜23096行目、Table 99「Source Records and Their
+Order in an RPG IV Source Program」を確認:「The RPG IV source must be
+entered into the system in the order shown in Table 99」——Main Source
+Sectionの並び順はControl→File Description/Definition→Input→
+Calculation→Output。「Fully free-format specifications are allowed for
+Control, File Description, Definition, and Procedure statements」
+(23071〜23073行目付近)とあり、自由形式でもこの区分の並び順(宣言=
+Definitionが実行文=Calculationより前)は変わらない。(このメモの
+以前の版は`ilerpgprogguide75.txt`3万4326行目付近を根拠として引用して
+いたが、これはCVTRPGSRCで変換した/COPYメンバーのD仕様書がI仕様書より
+下に挿入される問題についての記述であり、この規則の根拠として誤り
+だったため訂正した。)全13ファイルを再構成し、各段までの宣言を全て
+先頭にまとめ、その後に各段までの実行文をまとめる形に直した。
 
 **影響**: 4回目の接続で決着させる。CP12Qの`monmsg`一覧(現状
 `CPF0000/RNF0000/SQL0000/MCH0000`)には接続1〜3回目で実際に出た
@@ -635,6 +644,24 @@ definition specifications must precede input specifications」——この
 `dcl-proc`を含む全`.rpgle`/`.sqlrpgle`ファイルを対象に、全ての
 `dcl-proc`が最後の`*inlr = *on;`より後にあることを機械的に確認する
 掃討を行い、他に該当ファイルが無いことを確認済み。
+
+**バグ3についても同様に、advisorの助言を受けてリポジトリー全体を
+機械的に掃討した(宣言文が同じスコープ内の最初の実行文より後に
+出現していないか、メインラインと各`dcl-proc`本体の両方を対象に確認)。
+検出ロジック自体は、修正前のT0LAD02(bug3修正前のコミット)に対して
+実際にバグを検出できることを確認したうえで、他の全ファイルには
+該当なしという結果を得た。** また、rung12(ASSERT-T)の
+`%msg('単一文字列')`という書き方自体は、`ilerpgref75.txt`786〜787行目
+付近(Free-Form Syntax一覧の`ASSERT-T{(A)} condition %MSG(message-text)`、
+および`ASSERT-F price = 0 OR qty = 0 %MSG('price, qty cannot be zero');`
+という一次資料の例)で正しいと確認済み——3回目の接続でrung12にも出た
+`RNF5347`/`RNF7030(ASSERT)`は、バグ3(宣言と実行文の順序崩壊)の連鎖
+であり、%MSGの書き方自体の誤りではないと判断した(3回目接続の
+listingを全件確認: 出現したメッセージIDは`RNF0724`とその連鎖
+(`RNF5347`/`RNF7030`/`RNF7503`/`RNF5410`)・情報レベルの`RNF7031`のみで、
+他の12機能いずれについても、これら以外の独立したメッセージは
+一件も出ていない——バグ3を直せば全機能がPTFの壁に当たらず通る
+可能性が高いことを示す傍証)。
 
 ## 未実施のプローブ
 
