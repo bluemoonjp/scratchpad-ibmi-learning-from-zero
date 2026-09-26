@@ -1,0 +1,128 @@
+     A*                                     P0612A - printer file for F0612A
+     A*                                     (nickname JUCINQ4), Part 6 lesson
+     A*                                     06-12. See f0612s.rpgle (qrpglesrc)
+     A*                                     for the full design rationale (CPP
+     A*                                     swap onto the JUCINQ command) - this
+     A*                                     file only covers the DDS/PRTF side.
+     A*
+     A*                                     STATUS: hardware-UNTESTED (Part 6
+     A*                                     draft, draft/part06 branch). Not
+     A*                                     yet compiled or run on PUB400.
+     A*
+     A*                                     Ports R0408A/JUCINQ3 (04-08,
+     A*                                     src/qrpgsrc/r0408s.rpg) O-spec
+     A*                                     column printing to DDS keywords.
+     A*
+     A*                                     VERIFICATION STATUS OF THE DDS
+     A*                                     KEYWORDS BELOW:
+     A*
+     A*                                     EDTCDE - CONFIRMED in
+     A*                                     work/design/refs/
+     A*                                     ilerpgprogguide75.txt, lines
+     A*                                     27051/27097/27143-27146 (edit-code
+     A*                                     examples on DDS fields; line 27146:
+     A*                                     for an externally described output
+     A*                                     file, the edit code comes from the
+     A*                                     DDS and cannot be overridden in the
+     A*                                     RPG program).
+     A*
+     A*                                     SPACEB / SKIPB - NOT confirmed.
+     A*                                     Grepped for these two keywords
+     A*                                     across ALL 10 files in
+     A*                                     work/design/refs/ (ilerpgref75,
+     A*                                     ilerpgprogguide75, cl_commands_75,
+     A*                                     rpg400ref, rbafy75, rzajp75,
+     A*                                     secref75, iws_server, iwsclient,
+     A*                                     wsclient - .txt each): zero
+     A*                                     matches in any of them - none is
+     A*                                     a DDS printer-file keyword
+     A*                                     reference (same gap
+     A*                                     src/legacy/qddssrc/fldref.pf
+     A*                                     already flags for REFFLD). SPACEB
+     A*                                     (space N lines before the record
+     A*                                     is written) and SKIPB (skip to a
+     A*                                     given line before the record is
+     A*                                     written) are used below based on
+     A*                                     general, well-established DDS
+     A*                                     knowledge, NOT on a primary source
+     A*                                     fetched into this repo. Flagged
+     A*                                     here explicitly per the task
+     A*                                     instructions, the same way this
+     A*                                     repo already flags REFFLD.
+     A*
+     A*                                     COLUMN LAYOUT - taken from this
+     A*                                     repo's OWN existing DDS sources
+     A*                                     (src/qddssrc/r0411s.dspf and
+     A*                                     src/legacy/qddssrc/fldref.pf),
+     A*                                     confirmed by direct byte-offset
+     A*                                     inspection, not from an IBM
+     A*                                     reference (no DDS Reference manual
+     A*                                     is in work/design/refs/ either):
+     A*                                     name 19-28, length 30-34 (right-
+     A*                                     justified), type 35, decimal
+     A*                                     positions 36-37, usage 38,
+     A*                                     position 42-44, keywords 45+.
+     A*
+     A*                                     PRINTER FILES HAVE NO 'LINE'
+     A*                                     FIELD (columns 39-41 left blank
+     A*                                     below, unlike r0411s.dspf's DSPF
+     A*                                     fields, which use 39-41 for the
+     A*                                     screen line number): this follows
+     A*                                     general DDS knowledge (a printer
+     A*                                     file has no fixed screen grid to
+     A*                                     address by row+column, only a
+     A*                                     running position on the CURRENT
+     A*                                     line, advanced by SPACEB/SKIPB),
+     A*                                     again NOT directly confirmed
+     A*                                     against a fetched primary source.
+     A*
+     A*                                     FIELD NAMES (RPTNM/RPTJUNO/
+     A*                                     RPTJUDT/RPTCUST/RPTCNT) are
+     A*                                     deliberately DIFFERENT from
+     A*                                     TOKUIM/JUCHUM's own field names
+     A*                                     (TOKNM/JUNO/JUDATE/TOKCD/JUTOK),
+     A*                                     so that RPG's automatic same-name
+     A*                                     field sharing across dcl-f'd files
+     A*                                     cannot silently merge this report's
+     A*                                     output fields with the database
+     A*                                     files' own input fields.
+     A*
+     A*                                     RPTHDR - banner + echoed
+     A*                                     customer code. SKIPB(1): skip to
+     A*                                     line 1 (top of a fresh page) before
+     A*                                     this record prints - UNCONFIRMED
+     A*                                     syntax, see header above.
+     A          R RPTHDR
+     A                                      SKIPB(1)
+     A                                     2'JUCINQ4 - ORDER INQUIRY REPORT'
+     A                                    40'CUSTOMER:'
+     A            RPTCUST        6A  O    50
+     A*
+     A*                                     RPTDTL - one line per matching
+     A*                                     JUCHUM order (ports R0408A's
+     A*                                     EXCPT/O-spec detail line).
+     A*                                     SPACEB(1): space 1 line before
+     A*                                     each detail line - UNCONFIRMED
+     A*                                     syntax, see header above.
+     A          R RPTDTL
+     A                                      SPACEB(1)
+     A            RPTNM         30A  O     2
+     A            RPTJUNO        6A  O    34
+     A            RPTJUDT        8S 0O    42EDTCDE(3)
+     A*
+     A*                                     RPTTOT - per-customer order-
+     A*                                     count subtotal: an explicit
+     A*                                     accumulator + explicit WRITE,
+     A*                                     with no RPG-cycle total time
+     A*                                     (see f0612s.rpgle). EDTCDE(4),
+     A*                                     not (3), so a zero count still
+     A*                                     prints "0" instead of blank
+     A*                                     (04-08 lesson prose: edit code
+     A*                                     3 blanks zero, 4 keeps it).
+     A*                                     SPACEB(2): blank line then this
+     A*                                     total line - UNCONFIRMED syntax,
+     A*                                     see header above.
+     A          R RPTTOT
+     A                                      SPACEB(2)
+     A            RPTCNT         5S 0O     2EDTCDE(4)
+     A                                    10'ORDER(S) FOR THIS CUSTOMER'
