@@ -66,7 +66,7 @@ CPYSPLF    FILE(&SPLF) TOFILE(&LIB/TXSNAPT) JOB(&JOB) +
              SPLNBR(&SPLNBR) TOMBR(&LABEL) MBROPT(*REPLACE)
 ```
 
-**このリポジトリー内に、`TXSNAPT` の作られ方について2つの食い違う記述があります。** `txsnap.clp` 自身のコメントは「`CPYSPLF` が `TOFILE` の指定先を自分で作る」ことを前提にした書き方です。一方、この教材の設計メモ(プローブ P17)は、同じ用途のファイルを `CRTPF ... RCDLEN(133)` で**先に作ってから** `CPYSPLF` する、という計画です。**どちらが正しいとしても対応できるように、このレッスンでは最初の `TXSNAP` 呼び出しより前に、あらかじめ `CRTPF FILE(<USER>1/TXSNAPT) RCDLEN(133) MAXMBRS(*NOMAX)` を1回実行しておきます。** `CPYSPLF` が自動作成する場合、既にファイルがあるのでその自動作成は起きないだけで害はありません。自動作成が普通の `CRTPF` の既定値(`MAXMBRS(1)`)で行われるとしたら、`BEFORE` の次に `AFTER` という2つ目のメンバーを追加しようとして失敗するはずなので、いずれにせよ `MAXMBRS(*NOMAX)` で先回りしておくのが安全です。実機で確認でき次第、この食い違いを解消します。
+**`TXSNAPT` は `CPYSPLF` 自身では作られません。** IBM の公式 `CPYSPLF` リファレンスで確認済みです: `TOFILE` に指定したデータベース・ファイルが実在しないと、コピー自体が失敗します(「the copy will fail」)。自動的に作られるのは**メンバー**(`TOMBR`)だけです。そのため、このレッスンでは最初の `TXSNAP` 呼び出しより前に、あらかじめ `CRTPF FILE(<USER>1/TXSNAPT) RCDLEN(133) MAXMBRS(*NOMAX)` を1回実行しておきます。`MAXMBRS(*NOMAX)` にしておくのは、`BEFORE` の次に `AFTER` という2つ目のメンバーを追加できるようにするためです(既定の `MAXMBRS(1)` のままだと2つ目のメンバー追加で失敗します)。
 
 ### `src/sql/05-08-compare.sql` を読む — 見つかった不具合と直した理由
 
