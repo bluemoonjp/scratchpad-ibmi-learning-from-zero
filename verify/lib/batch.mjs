@@ -204,7 +204,11 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
   const shSteps = manifest.steps.filter((s) => s.type === 'sh');
   for (const step of shSteps) {
     lines.push(`echo ${MARKER(`sh:${step.label || 'step'}`)}`);
-    lines.push(step.cmd);
+    // collectステップと同じ理由で&LIBを置換する(2026-09-27、advisor指摘: 実装
+    // 漏れがあり、マニフェストに実ライブラリー名を決め打ちで書く=私的パターン
+    // 露出の恐れがあった)。cl ステップと違い1行のCL文をwrapClStatement()で
+    // 折り返す仕組みは経由しないため、`&LIB/`形も単純な文字列置換で済ませる。
+    lines.push(step.cmd.replaceAll('&LIB/', `${lib}/`).replaceAll('&LIB', lib));
     lines.push(`echo ${MARKER(`sh-end:${step.label || 'step'}`)}`);
   }
 
