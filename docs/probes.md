@@ -706,6 +706,34 @@ T0LAD12・T0LAD12Qの両方)だけが、他の全てから孤立した形で
 %HIVAL、%DATE(*YYMD))は全て実機確認済みで、第6部以降のレッスンで
 安心して使ってよい。ASSERT-T/ASSERT-Fはこの教材では使用しないこと。**
 
+## 第6部 CVTRPGSRC の実機検証: `part06-01-cvtrpgsrc`(確認日 2026-09-26)
+
+06-01レッスン用に、R0408A(RPG III、`src/qrpgsrc/r0408s.rpg`)を
+`CVTRPGSRC`でQRPGLESRCへ変換し(メンバー名V0601A)、`CRTBNDRPG`で
+コンパイル、変換結果の全文をSQLで取り出した。**接続1回で成功。**
+変換: 「0 highest severity, 1 converted, 0 converted with errors」。
+コンパイル: 「Program V0601A placed in library...00 highest severity」。
+
+**発見: CVTRPGSRCは命令コードのロジックそのものは書き換えず、
+(1) 桁位置の詰まった書式を余裕を持った書式に正規化し、(2) 一部の
+命令コードをRPG IVの正式名に置き換える。** R0408Aの`EXCPT`(RPG III/
+OPMの綴り)が、変換後は`EXCEPT`(RPG IVの正式名、`ilerpgref75.txt`
+56693行目「EXCEPT (Calculation Time Output)」で確認)になっていた。
+それ以外の命令コード(MOVEL・CHAIN・IFEQ・READ・GOTO・TAG・SETON)は
+無変更。DOW/EVAL等の自由形式・現代的な書き方への書き換えは一切
+行われない——CVTRPGSRCは「CRTBNDRPGでコンパイルできる形にする」
+ことが目的で、コードを現代化するツールではないと確認できた。
+
+**副産物(既知の無害な失敗、2件ともMONMSGで捕捉済み)**: VSPLPF
+(VFYSPL作成)は既に存在するため失敗(過去の接続の残骸、無害)。
+CPSPL(変換レポートのCPYSPLF)は、`system "CALL PGM(...)"`経由の
+ジョブが実スプール・ファイルを作らないという`part06-0103-freeform`の
+既知の発見どおり失敗(無害、想定どおり)。
+
+**影響**: 06-01レッスンの`v0601s.rpgle`(100桁)は、この変換結果を
+土台に書くこと。CVTRPGSRCが「魔法のように現代化してくれる」わけでは
+ないという事実自体が、06-01のレッスン内容として教える価値がある。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
