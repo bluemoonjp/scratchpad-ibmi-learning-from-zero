@@ -1,0 +1,19 @@
+{
+  "batch": "part06-0508-procs-files",
+  "description": "Compiles and runs F0605A (06-05, subprocedures: dcl-proc tax calc, dcl-pr extpgm CALLP against R0409A, QCMDEXC/SNDPGMMSG), F0606A (06-06, string/date BIFs), F0607A (06-07, DS/array %LOOKUP over SHOHIM/ZAIKOM, read-only), and F0608A (06-08 'ZAHIK4', likerec/%kds stock allocation over ZAIKOM). All four report via SNDPGMMSG/QMHSNDPM to the job log (not DSPLY, which needs an interactive job - see each source file's own header), so VFYLOG's automatic job-log dump captures every result with no extra collect step. IMPORTANT SIDE EFFECT: F0605A calls R0409A (ZAHIK3), decrementing the shared ZAIKOM row P00001 (45 -> 43 on a fresh run); F0608A's default run (WRITE/DELETE demo gated off by its own runWriteDeleteDemo indicator, per its header) also does a real CHAIN+UPDATE against ZAIKOM. Both sources' own headers already require TXRESET afterward - this manifest does NOT run TXRESET itself (that is a separate, already-existing tool this manifest assumes the operator runs next, same as 04-09/06-08's own documented requirement), so whoever runs this batch must follow it with TXRESET before relying on ZAIKOM's values again (06-07's own exercise, 06-11b, and 06-15's checkpoint all read ZAIKOM/SHOHIM).",
+  "steps": [
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0605s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0605A", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0606s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0606A" },
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0607s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0607A" },
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0608s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0608A" },
+
+    { "type": "cl", "label": "CPF0605A", "cmd": "CRTBNDRPG PGM(&LIB/F0605A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0605A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNF0605A", "cmd": "CALL PGM(&LIB/F0605A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "CPF0606A", "cmd": "CRTBNDRPG PGM(&LIB/F0606A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0606A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNF0606A", "cmd": "CALL PGM(&LIB/F0606A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "CPF0607A", "cmd": "CRTBNDRPG PGM(&LIB/F0607A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0607A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNF0607A", "cmd": "CALL PGM(&LIB/F0607A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "CPF0608A", "cmd": "CRTBNDRPG PGM(&LIB/F0608A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0608A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNF0608A", "cmd": "CALL PGM(&LIB/F0608A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] }
+  ]
+}

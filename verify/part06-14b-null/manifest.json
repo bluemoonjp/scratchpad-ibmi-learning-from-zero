@@ -1,0 +1,13 @@
+{
+  "batch": "part06-14b-null",
+  "description": "Compiles and runs Q0614BA (06-14b: DATE/NULL handling, ALWNULL(*USRCTL) ctl-opt + NULLIND D-spec keyword + %nullind, bridged to a separate SQL indicator host variable for FETCH). Per the design's own requirement, this program creates its own QTEMP-scoped work table (W0614BA, a reduced TOKUIM copy plus one NULL-capable date column) via embedded CREATE TABLE and never touches the shared sample-DB schema - confirmed as the ONLY Part 6 lesson whose object lives entirely in QTEMP, so no TXRESET dependency applies here. Since QTEMP is job-scoped, this only works because verify/lib/clgen.mjs's cl steps all run inside one single wrapper job (confirmed in part06-01-cvtrpgsrc's manifest description) - the CREATE TABLE and the later CALL both happen in that same job, so QTEMP/W0614BA survives between them. Reports via QSYSPRT, captured as spooled-file text.",
+  "steps": [
+    { "type": "file", "localPath": "../../src/qrpglesrc/q0614bs.sqlrpgle", "remoteSrcFile": "QRPGLESRC", "member": "Q0614BA", "ensureSrcFile": { "recordLength": 112 } },
+
+    { "type": "cl", "label": "VSPLPF", "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 6 spooled-file text capture'))", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPQ0614BA", "cmd": "CRTSQLRPGI OBJ(&LIB/Q0614BA) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0614BA) OBJTYPE(*PGM) COMMIT(*NONE)", "monmsg": ["CPF0000", "RNF0000", "SQL0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNQ0614BA", "cmd": "CALL PGM(&LIB/Q0614BA)\nCPYSPLF FILE(Q0614BA) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+
+    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSPL" }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "batch": "part06-11-11b-screens",
+  "description": "Compile-only (V1) check for the two subfile lessons: D0611A/F0611A (06-11, JUCLST4 load-all order list with row-select option 5 -> F0604A) and D0611BA/F0611BA (06-11b, SHOHIM add/change/delete maintenance subfile with exclusive-lock discipline). No CALL steps - both are interactive WORKSTN/subfile programs, same non-interactive-SSH limitation as part06-04-10-screens (04-11's established finding). F0611A references F0604A by name (CALL) on option 5 - F0604A itself is compiled by part06-04-10-screens; this manifest does not re-verify that dependency exists, only that D0611A/F0611A/D0611BA/F0611BA themselves compile.",
+  "steps": [
+    { "type": "file", "localPath": "../../src/qddssrc/d0611s.dspf", "remoteSrcFile": "QDDSSRC", "member": "D0611A" },
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0611s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0611A", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "../../src/qddssrc/d0611bs.dspf", "remoteSrcFile": "QDDSSRC", "member": "D0611BA" },
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0611bs.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0611BA" },
+
+    { "type": "cl", "label": "CPD0611A", "cmd": "CRTDSPF FILE(&LIB/D0611A) SRCFILE(&LIB/QDDSSRC) SRCMBR(D0611A) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPF0611A", "cmd": "CRTBNDRPG PGM(&LIB/F0611A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0611A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "CPD0611BA", "cmd": "CRTDSPF FILE(&LIB/D0611BA) SRCFILE(&LIB/QDDSSRC) SRCMBR(D0611BA) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPF0611BA", "cmd": "CRTBNDRPG PGM(&LIB/F0611BA) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0611BA) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] }
+  ]
+}

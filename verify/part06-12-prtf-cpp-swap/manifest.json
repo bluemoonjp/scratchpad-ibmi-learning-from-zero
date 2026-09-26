@@ -1,0 +1,24 @@
+{
+  "batch": "part06-12-prtf-cpp-swap",
+  "description": "The single most structurally important Part 6 batch: compiles JUCINQC (03-09, solutions/03-09/jucinqc.clp) and the JUCINQ command (03-11, src/qcmdsrc/jucinq.cmd) for the first time in this library (neither has been compiled in <USER>2 before, per docs/part03/03-09/03-11's own 実機メモ), pointing JUCINQ's CPP at JUCINQC as a baseline. Calls JUCINQ TOKCD('C00001') once as a baseline (JUCINQC's own SNDPGMMSG-per-order output, captured via VFYLOG). Then compiles P0612A (PRTF, DDS keywords SPACEB/SKIPB/EDTCDE - EDTCDE confirmed via ilerpgprogguide75.txt, SPACEB/SKIPB NOT confirmed against either fetched RPG reference per f0612s.rpgle's own header) and F0612A (**FREE, program-entry dcl-pi matching JUCINQC's exact CHAR(6) interface, verified against jucinqc.clp/jucinq.cmd/03-09's lesson text directly - see f0612s.rpgle's header), calls F0612A directly with the same TOKCD to compare against R0408A's already-verified output (ACME TRADING CO / J00001 / J00003) via its own printed report, captured as spooled-file text (same CPYSPLF-to-permanent-PF technique verify/part06-01-cvtrpgsrc/manifest.json already established, since PRTF output is a spooled file, not a job-log message). FINALLY performs the CPP swap itself: CHGCMD CMD(&LIB/JUCINQ) PGM(&LIB/F0612A) - per cl_commands_75.txt, this does not alter JUCINQ's own parameter validity checking, so the same TOKCD('C00001') call should now run F0612A instead of JUCINQC. Calls JUCINQ once more post-swap to confirm this - the first real V2 confirmation of the CPP-swap mechanism this repo has attempted (design doc section 0.4).",
+  "steps": [
+    { "type": "file", "localPath": "../../src/qcmdsrc/jucinq.cmd", "remoteSrcFile": "QCMDSRC", "member": "JUCINQ" },
+    { "type": "file", "localPath": "../../solutions/03-09/jucinqc.clp", "remoteSrcFile": "QCLSRC", "member": "JUCINQC" },
+    { "type": "file", "localPath": "../../src/qddssrc/p0612s.prtf", "remoteSrcFile": "QDDSSRC", "member": "P0612A" },
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0612s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0612A", "ensureSrcFile": { "recordLength": 112 } },
+
+    { "type": "cl", "label": "CPJUCQC", "cmd": "CRTCLPGM PGM(&LIB/JUCINQC) SRCFILE(&LIB/QCLSRC) SRCMBR(JUCINQC) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPJUCQCMD", "cmd": "CHKOBJ OBJ(&LIB/JUCINQ) OBJTYPE(*CMD)\nMONMSG MSGID(CPF9801) EXEC(CRTCMD CMD(&LIB/JUCINQ) PGM(&LIB/JUCINQC) SRCFILE(&LIB/QCMDSRC) SRCMBR(JUCINQ))", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "PRESWAP", "cmd": "CHGCMD CMD(&LIB/JUCINQ) PGM(&LIB/JUCINQC)\nJUCINQ TOKCD('C00001')", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "CPP0612A", "cmd": "CRTPRTF FILE(&LIB/P0612A) SRCFILE(&LIB/QDDSSRC) SRCMBR(P0612A) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPF0612A", "cmd": "CRTBNDRPG PGM(&LIB/F0612A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0612A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "VSPLPF", "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 6 spooled-file text capture'))", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "RUNF0612A", "cmd": "CALL PGM(&LIB/F0612A) PARM('C00001')\nCPYSPLF FILE(P0612A) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+
+    { "type": "cl", "label": "CPPSWAP", "cmd": "CHGCMD CMD(&LIB/JUCINQ) PGM(&LIB/F0612A)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "POSTSWAP", "cmd": "JUCINQ TOKCD('C00001')\nCPYSPLF FILE(P0612A) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+
+    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSPL" }
+  ]
+}
