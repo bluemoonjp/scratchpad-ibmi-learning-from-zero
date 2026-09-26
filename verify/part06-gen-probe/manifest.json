@@ -52,7 +52,7 @@
     { "type": "cl", "label": "CP12", "cmd": "CRTBNDRPG PGM(&LIB/T0LAD12) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T0LAD12) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
     { "type": "cl", "label": "RN12", "cmd": "CALL PGM(&LIB/T0LAD12)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
 
-    { "type": "cl", "label": "CP12Q", "cmd": "CRTSQLRPGI PGM(&LIB/T0LAD12Q) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T0LAD12Q) OBJTYPE(*PGM) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "SQL0000", "MCH0000"] },
+    { "type": "cl", "label": "CP12Q", "cmd": "CRTSQLRPGI OBJ(&LIB/T0LAD12Q) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T0LAD12Q) OBJTYPE(*PGM) COMMIT(*NONE)", "monmsg": ["CPF0000", "RNF0000", "SQL0000", "MCH0000"] },
     { "type": "cl", "label": "RN12Q", "cmd": "CALL PGM(&LIB/T0LAD12Q)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] }
   ]
 }
