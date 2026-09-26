@@ -3,34 +3,50 @@
       * QCMDEXC). Standalone teaching program per design.objects[4].purpose:
       * NOT wired into the JU0900C -> ZA0500 chain.
       *
-      * CONFIRMED BROKEN, NOT YET REDESIGNED (2026-09-26, real-hardware
-      * finding from part07-01-modules, a different program): this file's
-      * *PSSR builds a SNDPGMMSG command and runs it via CALL 'QCMDEXC' -
-      * the exact pattern found broken on real hardware in
-      * src/qrpglesrc/jucutl.rpgle (CPD0031 "Command SNDPGMMSG not
-      * allowed in this setting"). Confirmed against QCMDEXC's own IBM
-      * Docs (rbam6/execp.htm): "commands that can only be used in CL
-      * procedures or programs cannot be run by the QCMDEXC program," and
-      * SNDPGMMSG's own reference page lists its allowed environments as
-      * "Compiled CL program or interpreted REXX" only - never RPG, at
-      * any call depth. This has NOT been fixed here yet: 05-04's own
-      * lesson text (already written, pending publication in P3) teaches
-      * QCMDEXC specifically via this SNDPGMMSG example, so the fix is a
-      * genuine curriculum question (does 05-04 use a different command
-      * that IS allowed to run via QCMDEXC from RPG, or pivot to
-      * QMHSNDPM's own CALL-based RPG III shape instead?), not a
-      * same-shape source patch like jucutl.rpgle's - see docs/probes.md
-      * for the full finding and jucutl.rpgle for the confirmed-working
-      * QMHSNDPM replacement shape (RPG IV; would need re-deriving in
-      * fixed-form RPG III column positions for this file). Do NOT
-      * publish 05-04 until this is resolved.
+      * FIXED (2026-09-26, real-hardware finding from part07-01-modules,
+      * a different program, then redesigned here without a hardware
+      * connection - column math checked with a script, not by hand;
+      * still needs an actual CRTRPGPGM/CALL to confirm): this file's
+      * *PSSR used to build a SNDPGMMSG command and run it via CALL
+      * 'QCMDEXC'. That is categorically broken from RPG - confirmed
+      * against QCMDEXC's own IBM Docs (rbam6/execp.htm): "commands that
+      * can only be used in CL procedures or programs cannot be run by
+      * the QCMDEXC program," and SNDPGMMSG's own reference page lists
+      * its allowed environments as "Compiled CL program or interpreted
+      * REXX" only - never RPG, at any call depth (found via
+      * src/qrpglesrc/jucutl.rpgle's identical pattern, CPD0031).
+      *
+      * REPLACEMENT COMMAND: CHGDTAARA DTAARA(*LDA (1 20))
+      * VALUE('ZA0510 ERROR') - writes a fixed 20-byte error flag into
+      * bytes 1-20 of the job's own Local Data Area (*LDA), which always
+      * exists (no new object to create) and is confirmed ALLOW(*ALL) on
+      * CHGDTAARA's own IBM Docs "Where allowed to run" field - safe to
+      * run via QCMDEXC from any environment, unlike SNDPGMMSG. This is
+      * also a MORE teachable outcome than the original: 05-04's own
+      * exercise never actually verified SNDPGMMSG's message was
+      * delivered anywhere, but *LDA's new value can be checked directly
+      * afterward with DSPDTAARA DTAARA(*LDA) - real, inspectable
+      * evidence that the *PSSR/QCMDEXC path actually ran. QCMDEXC's own
+      * teaching role (arbitrary CL command from RPG, CALL+PARM with a
+      * packed 15,5 length) is unchanged; only the demonstrated command
+      * changed. CMDDS's own layout (57 bytes, 9 subfields C1-C9) and
+      * CMDLEN (57) are UNCHANGED - the new command text (51 characters)
+      * is right-padded with 6 blanks to the same 57 bytes (CL command
+      * parsing tolerates trailing blanks, same reasoning as the
+      * original), so only the 9 MOVEL literal VALUES changed below, not
+      * the DS structure itself. 05-04's lesson text (docs/part05/05-04-
+      * reading-arrays-ds-error.md) has been updated to match - see that
+      * file's own note. za0500-ticket3.rpg (05-13) has an independent,
+      * still-unfixed instance of the same SNDPGMMSG/QCMDEXC bug; see
+      * that file's own header (also fixed now - see that file's header
+      * for its own, independently-designed CHGDTAARA replacement).
       *
       * NOT YET COMPILED ON REAL HARDWARE. Column positions come only
       * from tools/gen/rpg3.mjs and, where noted below, from RPG/400
       * Reference (work/design/refs/rpg400ref.txt) by inference - not
       * from a real CRTRPGPGM. Verify with CRTRPGPGM before relying on
-      * this source (and expect the *PSSR block specifically to still
-      * fail even then, per the CONFIRMED BROKEN note above).
+      * this source, including the *PSSR block's new CHGDTAARA command
+      * above.
       *
       * 1. /COPY placement (FLDREFR).
       *    Per fldrefr.rpg's own header (the authoritative spec for this),
@@ -291,8 +307,8 @@
       *    could not legally be PARMed at all. Each MOVEL literal chunk is
       *    <=7 raw characters, so even with one embedded quote doubled
       *    (apostrophes doubled per p.7-8's "O'CLOCK" -> 'O''CLOCK' rule, for
-      *    the two literal quotes SNDPGMMSG's own MSG('...') syntax needs) its
-      *    RPG-encoded form is at most 10 characters including the two
+      *    the two literal quotes CHGDTAARA's own VALUE('...') syntax needs)
+      *    its RPG-encoded form is at most 10 characters including the two
       *    delimiting quotes - fitting the C-spec Factor2 field's 10-column
       *    width (cols 33-42) exactly, narrower than the 22-column I-spec
       *    init-value field this session first (wrongly) planned around.
@@ -301,17 +317,22 @@
       *    p.302, rule 1.d) - no truncation or padding involved. CMDDS is then
       *    passed whole to PARM (a plain, non-multi-occurrence, non-*LDA data
       *    structure is a legal PARM result field; only the excluded forms
-      *    listed above are not).
+      *    listed above are not - note this refers to CMDDS's own storage
+      *    class, unrelated to *LDA being the DATA AREA the command's own
+      *    text happens to target).
       *
-      *    MSGTYPE(*INFO)/TOPGMQ(*EXT) (send a free-text message to this job's
-      *    external message queue) is used instead of MSGTYPE(*ESCAPE) because
-      *    docs/probes.md's CPD2489 finding is that *ESCAPE specifically needs
-      *    a registered MSGID, not free MSG() text; that finding is from a CL
-      *    SNDPGMMSG call, not one driven through QCMDEXC from RPG, so
-      *    carrying it over here is inference, not a direct confirmation. No
-      *    message file is created for this task (one RPG source file only),
-      *    so a free-text-eligible MSGTYPE is used rather than a registered
-      *    MSGID.
+      *    CHGDTAARA DTAARA(*LDA (1 20)) VALUE('ZA0510 ERROR') (51
+      *    characters, right-padded with 6 blanks to CMDDS's full 57 bytes -
+      *    CL command parsing tolerates trailing blanks after a complete
+      *    command) writes a fixed 20-byte flag into the job's own Local
+      *    Data Area, confirmed ALLOW(*ALL) on CHGDTAARA's own IBM Docs
+      *    "Where allowed to run" field (unlike the SNDPGMMSG example this
+      *    replaced - see the header's FIXED note above). *LDA always
+      *    exists for every job, so no new object is created by this
+      *    exercise. DSPDTAARA DTAARA(*LDA) after a forced LOKUP failure
+      *    (05-04's own exercise) shows the flag as real, inspectable
+      *    evidence that *PSSR/QCMDEXC actually ran - stronger verification
+      *    than the original SNDPGMMSG example ever provided.
       *
       * 10. Leading "*" on PSSR/CANCL: this source's own OCR is self-
       *     contradictory, so this program follows the majority reading.
@@ -397,15 +418,15 @@
       * RPG's default error/exception handler (see header note 8).
      CSR         *PSSR     BEGSR
       * build the QCMDEXC command text into CMDDS (see header note 9)
-     C                     MOVEL'SNDPGMM' C1
-     C                     MOVEL'SG MSG(' C2
-     C                     MOVEL'''ZA0510'C3
-     C                     MOVEL' ERROR'''C4
-     C                     MOVEL') TOPGM' C5
-     C                     MOVEL'Q(*EXT)' C6
-     C                     MOVEL' MSGTYP' C7
-     C                     MOVEL'E(*INFO' C8
-     C                     MOVEL')'       C9
+     C                     MOVEL'CHGDTAA' C1
+     C                     MOVEL'RA DTAA' C2
+     C                     MOVEL'RA(*LDA' C3
+     C                     MOVEL' (1 20)' C4
+     C                     MOVEL') VALUE' C5
+     C                     MOVEL'(''ZA051'C6
+     C                     MOVEL'0 ERROR' C7
+     C                     MOVEL''')     'C8
+     C                     MOVEL' '       C9
      C                     Z-ADD57        CMDLEN 155
      C                     CALL 'QCMDEXC'              85
      C                     PARM           CMDDS

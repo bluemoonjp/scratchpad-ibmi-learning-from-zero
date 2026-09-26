@@ -78,33 +78,51 @@
       * "the appropriate exception/error subroutine (INFSR or PSSR)",
       * already cited in za0510.rpg's header note 8) is relevant.
       *
-      * CONFIRMED BROKEN, NOT YET REDESIGNED (2026-09-26, real-hardware
-      * finding from part07-01-modules, a different program): this
-      * SNDPGMMSG-via-QCMDEXC call has the exact same real-hardware
-      * failure as za0510.rpg's own *PSSR (CPD0031 "Command SNDPGMMSG
-      * not allowed in this setting" - SNDPGMMSG cannot run via QCMDEXC
-      * from RPG at all, registered MSGID or not). See za0510.rpg's own
-      * header for the full citation and docs/probes.md for the finding.
-      * Not fixed here yet - same curriculum-redesign question as
-      * za0510.rpg, since this is 05-13's own ticket-3 exercise text.
+      * FIXED (2026-09-26, real-hardware finding from part07-01-modules,
+      * a different program, then redesigned here without a hardware
+      * connection - column math checked with a script, not by hand;
+      * still needs an actual CRTRPGPGM/CALL to confirm): this *PSSR used
+      * to build a SNDPGMMSG MSGID(JUM0002) command and run it via CALL
+      * 'QCMDEXC'. That is categorically broken from RPG - SNDPGMMSG
+      * cannot run via QCMDEXC at all (registered MSGID or not), same
+      * real-hardware finding as za0510.rpg's own *PSSR (CPD0031, see
+      * that file's header for the full citation).
+      *
+      * NARRATIVE TRADE-OFF (flagged, not silently made): 05-13's own
+      * lesson text (docs/part05/05-13-checkpoint-tickets.md) suggests
+      * either "QCMDEXC-based SNDPGMMSG" or "a new JUMSGF message ID" -
+      * but BOTH still need SOME transport to actually send a message,
+      * and the only transport this repo has confirmed working from RPG
+      * (QMHSNDPM, see jucutl.rpgle/f0605s.rpgle) needs new RPG III
+      * fixed-form DS declarations (BINARY(4) fields for its length/
+      * counter parameters) that have no precedent anywhere in this
+      * repo's RPG III sources yet - deriving their exact column
+      * positions from scratch, with no hardware connection to verify
+      * them before the next commit, would be a second guess stacked on
+      * top of this one. This solution instead reuses za0510.rpg's own
+      * already-computed CHGDTAARA/*LDA replacement pattern (05-04),
+      * trading the "registered JUMSGF message" flavor for one thing
+      * that reuses an already-verified-safe command shape. If a future
+      * connection confirms the QMHSNDPM/RPG III shape independently,
+      * reconsider restoring the JUM0002 registered-message flavor here.
       *
       * QCMDEXC command text (RPG III cannot call a CL command directly -
       * ticket3's own hint): built via runtime MOVEL into CMDDS, same
       * technique and same reasoning as za0510.rpg's header note 9 (PARM
       * cannot take a DS with I-spec-initialized subfields, RPG/400
       * Reference p.318; each MOVEL chunk fits the C-spec Factor2 field's
-      * 10-column width). JUM0002 (new message, added to the existing
-      * JUMSGF via ADDMSGD as part of this fix - JUMSGF itself already
-      * exists, created by tools/qclsrc/txmsgf.clp since Part 3) is sent
-      * with MSGTYPE(*INFO), not *ESCAPE: docs/probes.md's CPD2489
-      * finding is that *ESCAPE needs a registered MSGID (which JUM0002
-      * now is, unlike za0510.rpg's free-text case) - *INFO is used
-      * anyway here to avoid a second exception (from the *ESCAPE itself)
-      * recursing back into this same *PSSR while it is still running.
-      * MSGF(JUMSGF) is left unqualified (found via *LIBL, like every
-      * other object this program references) rather than hardcoded to
-      * one library, since this program runs against whichever role
-      * library (<USER>1/<USER>2/<USER>B) called it. The CALL itself
+      * 10-column width). CHGDTAARA DTAARA(*LDA (21 20)) VALUE('ZA0500
+      * SHORT ERR') (56 characters, no padding needed - divides evenly
+      * into 8 MOVEL chunks of 7 bytes) writes a fixed 20-byte flag into
+      * bytes 21-40 of the job's own Local Data Area - a different byte
+      * range from za0510.rpg's own *LDA use (bytes 1-20) so the two
+      * programs' flags cannot collide if ever run in the same job,
+      * though this is not expected to matter in practice. CHGDTAARA is
+      * confirmed ALLOW(*ALL) on its own IBM Docs "Where allowed to run"
+      * field - safe to run via QCMDEXC from any environment, unlike
+      * SNDPGMMSG. No ADDMSGD/message-file setup is needed for this
+      * solution any more (the JUM0002 message definition this file used
+      * to require is no longer created or sent). The CALL itself
       * carries its own 56-57 error indicator (85, same convention
       * za0510.rpg uses on its own CALL 'QCMDEXC'): if QCMDEXC fails
       * while *PSSR is already running, this stops that failure from
@@ -113,21 +131,15 @@
       * subroutine is running, the subroutine is called again; this
       * will result in a program loop unless the programmer codes the
       * subroutine to avoid this problem").
-      *
-      * Fix procedure this solution assumes (run once per target
-      * library, before calling this program):
-      *   ADDMSGD MSGID(JUM0002) MSGF(<LIB>/JUMSGF) MSG('ZA0500 caught
-      *     an unexpected error and stopped safely.')
-     ICMDDS       DS                             65
-     I                                        1   8 C1
-     I                                        9  16 C2
-     I                                       17  24 C3
-     I                                       25  32 C4
-     I                                       33  40 C5
-     I                                       41  48 C6
-     I                                       49  56 C7
-     I                                       57  64 C8
-     I                                       65  65 C9
+     ICMDDS       DS                             56
+     I                                        1   7 C1
+     I                                        8  14 C2
+     I                                       15  21 C3
+     I                                       22  28 C4
+     I                                       29  35 C5
+     I                                       36  42 C6
+     I                                       43  49 C7
+     I                                       50  56 C8
      C           *ENTRY    PLIST
      C                     PARM           RMODE  10
      C                     PARM           MINQTY  50
@@ -149,16 +161,15 @@
      C           SKPALL    TAG
       * *PSSR: see the header note above for scope/design.
      C           *PSSR     BEGSR
-     C                     MOVEL'SNDPGMMS'C1
-     C                     MOVEL'G MSGID('C2
-     C                     MOVEL'JUM0002)'C3
-     C                     MOVEL' MSGF(JU'C4
-     C                     MOVEL'MSGF) TO'C5
-     C                     MOVEL'PGMQ(*EX'C6
-     C                     MOVEL'T) MSGTY'C7
-     C                     MOVEL'PE(*INFO'C8
-     C                     MOVEL')'       C9
-     C                     Z-ADD65        CMDLEN 155
+     C                     MOVEL'CHGDTAA' C1
+     C                     MOVEL'RA DTAA' C2
+     C                     MOVEL'RA(*LDA' C3
+     C                     MOVEL' (21 20' C4
+     C                     MOVEL')) VALU' C5
+     C                     MOVEL'E(''ZA05'C6
+     C                     MOVEL'00 SHOR' C7
+     C                     MOVEL'T ERR'')'C8
+     C                     Z-ADD56        CMDLEN 155
      C                     CALL 'QCMDEXC'              85
      C                     PARM           CMDDS
      C                     PARM           CMDLEN
