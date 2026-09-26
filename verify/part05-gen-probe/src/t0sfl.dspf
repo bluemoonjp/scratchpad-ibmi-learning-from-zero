@@ -1,7 +1,25 @@
      A*                                     T0SFL probe: cond ind + SFL.
      A*                                     See tools/gen/dspf.mjs. V1 only.
+     A*                                     2026-09-26 real-hw fixes:
+     A*                                     (1) R SFL1 was missing the SFL
+     A*                                     keyword (col45, same line as R -
+     A*                                     IBM Docs confirmed), so SFL1CTL's
+     A*                                     SFLCTL(SFL1) could not find a
+     A*                                     valid subfile record (CPD7835),
+     A*                                     which then invalidated every
+     A*                                     other SFL*-keyword on SFL1CTL.
+     A*                                     (2) the MORE DATA line wrongly
+     A*                                     had col7='O' (an A/O relation
+     A*                                     marker, valid only when
+     A*                                     continuing indicator conditions
+     A*                                     for the SAME preceding field/
+     A*                                     constant) - removed, since this
+     A*                                     is its own independent constant.
+     A*                                     Cond-ind column position itself
+     A*                                     (col8-16, see dspf.mjs) is STILL
+     A*                                     unconfirmed pending a re-run.
      A                                      CA03(03)
-     A          R SFL1
+     A          R SFL1                      SFL
      A            KNAME         10A  O  5 10
      A          R SFL1CTL                   SFLCTL(SFL1)
      A                                      SFLSIZ(10)
@@ -12,4 +30,4 @@
      A                                      SFLEND
      A                                      SFLRCDNBR(*ALL)
      A  95                              3 10NO DATA
-     AON95                              3 10MORE DATA
+     A N95                              3 10MORE DATA
