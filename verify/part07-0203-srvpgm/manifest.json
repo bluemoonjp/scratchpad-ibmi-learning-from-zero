@@ -1,0 +1,24 @@
+{
+  "batch": "part07-0203-srvpgm",
+  "description": "Builds JUCSRV (*SRVPGM) in its FINAL, already-committed state (all 3 exports: getCustName/pingJucsrv/countCustOrders, src/qrpglesrc/jucsrv.rpgle + src/qsrvsrc/jucsrv.bnd's two PGMLVL blocks) via EXPORT(*SRCFILE), creates JUCSRVBD (*BNDDIR) and binds F0702A/F0703A to it, then confirms both clients compile and run against this final state. SCOPE NOTE (intentional, not an oversight): this manifest does NOT replay 07-03's own teaching narrative (build JUCSRV with only 2 procedures under EXPORT(*ALL), watch F0702A break when pingJucsrv is added, then migrate to binder source) - per src/qrpglesrc/jucsrv.rpgle's/src/qsrvsrc/jucsrv.bnd's own header notes, this repo holds only the final committed state of these files (no separate step-1/step-2 snapshot files), so faithfully re-enacting the historical break/fix sequence would require constructing throwaway intermediate binder-source snapshots that don't exist as real lesson artifacts. That narrative is left for the actual 07-03 lesson's own real-hardware walkthrough (or a future dedicated probe) to verify by hand. This manifest verifies the one thing that actually gates writing correct lesson prose: does the FINAL state (module + both PGMLVL blocks + two independently-bound clients) actually compile and run at all.",
+  "steps": [
+    { "type": "file", "localPath": "../../src/qrpglesrc/jucsrv.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "JUCSRV", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "../../src/qsrvsrc/jucsrv.bnd", "remoteSrcFile": "QSRVSRC", "member": "JUCSRV", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0702s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0702A" },
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0703s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0703A" },
+
+    { "type": "cl", "label": "CPJUCSMOD", "cmd": "CRTRPGMOD MODULE(&LIB/JUCSRV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(JUCSRV) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "CPJUCSSRV", "cmd": "CRTSRVPGM SRVPGM(&LIB/JUCSRV) MODULE(&LIB/JUCSRV) EXPORT(*SRCFILE) SRCFILE(&LIB/QSRVSRC) SRCMBR(JUCSRV) ACTGRP(*CALLER) REPLACE(*YES)", "monmsg": ["CPF0000", "MCH0000"] },
+    { "type": "cl", "label": "CPJUCSBD", "cmd": "CHKOBJ OBJ(&LIB/JUCSRVBD) OBJTYPE(*BNDDIR)\nMONMSG MSGID(CPF9801) EXEC(CRTBNDDIR BNDDIR(&LIB/JUCSRVBD))\nADDBNDDIRE BNDDIR(&LIB/JUCSRVBD) OBJ((*LIBL/JUCSRV *SRVPGM))\nMONMSG MSGID(CPF0000)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "CPF0702A", "cmd": "CRTBNDRPG PGM(&LIB/F0702A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0702A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNF0702A", "cmd": "CALL PGM(&LIB/F0702A) PARM('C00001')", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "CPF0703A", "cmd": "CRTBNDRPG PGM(&LIB/F0703A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0703A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNF0703A", "cmd": "CALL PGM(&LIB/F0703A) PARM('C00001')", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+
+    { "type": "cl", "label": "VSRVPGM", "cmd": "DSPSRVPGM SRVPGM(&LIB/JUCSRV) OUTPUT(*PRINT)\nDSPPGM PGM(&LIB/F0702A) DETAIL(*SRVPGM) OUTPUT(*OUTFILE) OUTFILE(&LIB/VFYSRV)", "monmsg": ["CPF0000"] },
+
+    { "type": "collect", "kind": "sql", "sql": "SELECT COLUMN_NAME, DATA_TYPE, LENGTH FROM QSYS2.SYSCOLUMNS WHERE SYSTEM_TABLE_SCHEMA = '&LIB' AND SYSTEM_TABLE_NAME = 'VFYSRV' ORDER BY ORDINAL_POSITION" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSRV" }
+  ]
+}
