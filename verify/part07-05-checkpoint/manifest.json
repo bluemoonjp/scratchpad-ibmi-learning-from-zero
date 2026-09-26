@@ -1,0 +1,19 @@
+{
+  "batch": "part07-05-checkpoint",
+  "description": "Builds ZAISRV (*SRVPGM: get/reserve/release, solutions/07-05/zaisrv.rpgle + zaisrv.bnd) and a new ZAISRVBD (*BNDDIR) - kept separate from JUCSRVBD per the source's own driver.rpgle design (design doc's open §9 item 10 on JUCSRVBD-vs-ZAISRVBD reuse is left unresolved by this manifest; this reflects what the committed driver.rpgle source actually references). Compiles and runs driver.rpgle ONCE - per the design's own corrected understanding (ileconcepts75.txt: a system-named ACTGRP(*NEW) activation group is deleted the instant its oldest call-stack entry returns), every one of driver.rpgle's test steps (normal reserve, a SHORT reserve exercising the lock-release fix, a same-execution double-reserve for lock-carryover, and its own independent lock-conflict diagnostic) MUST happen inside this single CALL - never split across two separate CALL steps, which would each get an unrelated fresh activation group and could never observe anything about lock persistence either way. IMPORTANT SIDE EFFECT: this mutates the shared ZAIKOM table (same table R0409A/F0608A already write to) - per this repo's established convention (see part06-0508-procs-files/manifest.json's own note), this manifest deliberately does NOT run TXRESET itself; whoever runs this batch must follow it with the TXRESET *CMD (not CALL PGM(TXRESET)) before relying on ZAIKOM's known values again (04-13, 06-07's exercise, 06-11b, and 06-15's checkpoint all depend on them).",
+  "steps": [
+    { "type": "file", "localPath": "../../solutions/07-05/zaisrv.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "ZAISRV", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "../../solutions/07-05/zaisrv.bnd", "remoteSrcFile": "QSRVSRC", "member": "ZAISRV", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "../../solutions/07-05/driver.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "DRIVER" },
+
+    { "type": "cl", "label": "CPZAISMOD", "cmd": "CRTRPGMOD MODULE(&LIB/ZAISRV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(ZAISRV) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "CPZAISSRV", "cmd": "CRTSRVPGM SRVPGM(&LIB/ZAISRV) MODULE(&LIB/ZAISRV) EXPORT(*SRCFILE) SRCFILE(&LIB/QSRVSRC) SRCMBR(ZAISRV) ACTGRP(*CALLER) REPLACE(*YES)", "monmsg": ["CPF0000", "MCH0000"] },
+    { "type": "cl", "label": "CPZAISBD", "cmd": "CHKOBJ OBJ(&LIB/ZAISRVBD) OBJTYPE(*BNDDIR)\nMONMSG MSGID(CPF9801) EXEC(CRTBNDDIR BNDDIR(&LIB/ZAISRVBD))\nADDBNDDIRE BNDDIR(&LIB/ZAISRVBD) OBJ((*LIBL/ZAISRV *SRVPGM))\nMONMSG MSGID(CPF0000)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "CPDRIVER", "cmd": "CRTBNDRPG PGM(&LIB/DRIVER) SRCFILE(&LIB/QRPGLESRC) SRCMBR(DRIVER) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNDRIVER", "cmd": "CALL PGM(&LIB/DRIVER)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+
+    { "type": "cl", "label": "VZAISPGM", "cmd": "DSPSRVPGM SRVPGM(&LIB/ZAISRV) OUTPUT(*PRINT)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "REMINDER", "cmd": "SNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('part07-05-checkpoint DONE - TXRESET has NOT been run, ZAIKOM P00001 is left decremented, run the TXRESET *CMD before relying on ZAIKOM again') TOPGMQ(*SAME) MSGTYPE(*INFO)", "monmsg": ["CPF0000"] }
+  ]
+}
