@@ -350,17 +350,40 @@
      A                                      ROLLUP(25)
      A                                      ROLLDOWN(26)
      A                                      CF03(03)
+     A*                                     FIXED (part06-screens-compile
+     A*                                     prep, 2026-09-26, based on the
+     A*                                     confirmed real-hardware fix in
+     A*                                     src/legacy/qddssrc/tk0100d.dspf
+     A*                                     - docs/probes.md's part05-
+     A*                                     legacy-probe section): a SFLCTL
+     A*                                     record cannot carry positioned
+     A*                                     output both above (title/column
+     A*                                     headers) AND below (MORE/F3=
+     A*                                     Exit) its own subfile - CPD7812
+     A*                                     ("Subfile control record
+     A*                                     overlaps subfile record"). Split
+     A*                                     the footer into R SFL1FTR below;
+     A*                                     added OVERLAY here so SFL1FTR's
+     A*                                     own output survives once
+     A*                                     SFL1CTL is (re)written on top of
+     A*                                     it. f0611s.rpgle WRITEs SFL1FTR
+     A*                                     immediately before each EXFMT
+     A*                                     SFL1CTL.
+     A                                      OVERLAY
      A                                  1  2'JUCLST4 - Order list (JUCHUM)'
      A                                  3  2'Op'
      A                                  3  5'Order#'
      A                                  3 13'Cust'
      A                                  3 21'Date'
      A                                  3 31'Rep'
-     A*                                     MORE: F0611A MOVELs
+     A*                                     SFL1FTR: split out of SFL1CTL
+     A*                                     above (CPD7812 fix, see its
+     A*                                     comment). MORE: F0611A MOVELs
      A*                                     'MORE...'/'BOTTOM' here,
      A*                                     same plain-output-field technique as
      A*                                     tk0100d.dspf
      A*                                     (stands in for SFLEND).
+     A          R SFL1FTR
      A            MORE          10A  O 20  2
      A                                 23  2'F3=Exit  Roll=Page'
      A*                                     MSGSFL: message subfile detail line.
@@ -398,11 +421,20 @@
      A                                      SFLDSP
      A                                      SFLDSPCTL
      A                                      SFLINZ
-     A            PGMQ                      SFLPGMQ
      A*                                     OVERLAY: MSGCTL is written on top of
-     A*                                     SFL1CTL
-     A*                                     without erasing it.
+     A*                                     SFL1CTL without erasing it. FIXED
+     A*                                     (part06-screens-compile prep,
+     A*                                     2026-09-26): this keyword used to
+     A*                                     sit after the PGMQ field line
+     A*                                     below - CPD7486 ("Keyword
+     A*                                     specified at incorrect level"),
+     A*                                     same root cause and fix as
+     A*                                     tk0100d.dspf's MSGCTL (see
+     A*                                     docs/probes.md's part05-legacy-
+     A*                                     probe section). Moved back above
+     A*                                     PGMQ so it stays record-level.
      A                                      OVERLAY
+     A            PGMQ                      SFLPGMQ
      A*                                     SFLCLR intentionally omitted:
      A*                                     f0611s.rpgle clears
      A*                                     old messages by not re-sending them,

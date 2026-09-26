@@ -235,6 +235,13 @@ endif;
 more = 'BOTTOM';
 
 dow not *in03;
+  // FIXED (part06-screens-compile prep, 2026-09-26): d0611s.dspf's
+  // SFL1CTL used to also carry the MORE/F3=Exit footer directly, which
+  // CPD7812's on real hardware forbids (see tk0100d.dspf's confirmed
+  // fix, docs/probes.md). The footer now lives in its own SFL1FTR
+  // record format, and SFL1CTL carries OVERLAY - so it must be WRITEn
+  // first, every pass, before SFL1CTL is (re)EXFMT'd on top of it.
+  write sfl1ftr;
   exfmt sfl1ctl;
 
   if not *in03;
