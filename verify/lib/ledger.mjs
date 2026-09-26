@@ -13,8 +13,20 @@ const LOCK_STALE_MS = 60_000; // ロック取得者がクラッシュした場�
 const INTERVAL_MS = 15 * 60 * 1000; // 接続の間隔は15分以上
 const WINDOW_MS = 24 * 60 * 60 * 1000; // 直近24時間で数える
 const REFUSED_HALT_MS = 3 * 60 * 60 * 1000; // 拒否/タイムアウトで3時間停止
-const CAP_DEFAULT = 8; // 直近24時間で8回まで
-const CAP_RELAXED = 12; // 遮断が一度も起きていなければ12回まで緩めてよい
+const CAP_DEFAULT = 8; // 直近24時間に拒否/タイムアウトがあれば8回まで
+const CAP_RELAXED = 24; // 直近24時間に拒否/タイムアウトが一度も無ければ24回まで緩めてよい
+
+// 2026-09-26、台帳174件(実測)の分析に基づく緩和(ユーザー承認済み、実行計画
+// wise-frolicking-pony.md の P0-1 参照)。根拠:
+//   - 2026-09-25の1日で162回接続し、拒否は6回だけだった。
+//   - 6回とも「直前30分に9〜21回・直前10分に4〜13回」という短時間の集中の
+//     直後に起きており、24時間の累計回数(最大148回)そのものとは相関しない。
+//   - 15分間隔を守れば30分に最大2回で、観測された最小の集中閾値(30分に9回)
+//     の4分の1以下に収まる。
+// つまり PUB400 の遮断は日次回数ではなく短時間の集中で起きる、という実測に
+// 基づき、日次上限だけを 8→24 に引き上げる。15分間隔・3時間停止・認証失敗時の
+// 全停止は変更しない(いずれも集中や認証失敗そのものへの直接の歯止めなので、
+// この根拠では緩める理由がない)。
 
 function emptyLedger() {
   return {
@@ -87,10 +99,16 @@ export function withLedgerLock(fn) {
   }
 }
 
-function everBlocked(ledger) {
-  return ledger.connections.some(
-    (c) => c.status === 'refused_or_timeout' || c.status === 'blocked' || c.status === 'auth_failed',
-  );
+// 直近24時間以内に拒否/タイムアウト/ブロックが記録されていれば true。
+// 「過去に一度でも」ではなく「直近24時間に」に変更(2026-09-26、P0-1)。
+// 3時間停止のロジックと同じ status 集合を見る(auth_failed は別途
+// authFailedEver で無期限に扱うのでここには含めない)。
+function recentlyBlocked(ledger, nowMs) {
+  return ledger.connections.some((c) => {
+    if (c.status !== 'refused_or_timeout' && c.status !== 'blocked') return false;
+    const t = new Date(c.endedAt || c.startedAt).getTime();
+    return !Number.isNaN(t) && t > nowMs - WINDOW_MS;
+  });
 }
 
 // 接続してよいか(接続の間隔・24時間の回数上限・拒否後の停止・認証失敗後の全停止)を判定する。
@@ -121,8 +139,11 @@ export function computeGate(ledger, now = new Date()) {
   if (recentBadTimes.length) {
     const lastBad = Math.max(...recentBadTimes);
     const until = lastBad + REFUSED_HALT_MS;
-    if (until > gateAt) {
-      gateAt = until;
+    if (until > gateAt) gateAt = until;
+    // 理由は「今もまだ効いている歯止め」だけを表示する(until が既に過去なら、
+    // gateAt の計算には反映済みでも reasons には出さない - でないと解除済みの
+    // 古い歯止めが --status に紛れ込み、紛らわしい)。
+    if (until > nowMs) {
       reasons.push(`直近の拒否/タイムアウト(${new Date(lastBad).toISOString()})から3時間は停止`);
     }
   }
@@ -133,16 +154,13 @@ export function computeGate(ledger, now = new Date()) {
   if (allStartTimes.length) {
     const lastStart = Math.max(...allStartTimes);
     const until = lastStart + INTERVAL_MS;
-    if (until > gateAt) {
-      gateAt = until;
+    if (until > gateAt) gateAt = until;
+    if (until > nowMs) {
       reasons.push(`前回接続(${new Date(lastStart).toISOString()})から15分の間隔が必要`);
     }
   }
 
-  // 「遮断が一度も起きなければ12回まで緩めてよい」の「遮断」は、区別が難しい以上
-  // auth_failed/refused_or_timeout/blocked のいずれかが記録された時点で終わりとみなす
-  // (安全側に倒す。advisor の指摘どおり、緩和は自己申告しない)。
-  const cap = everBlocked(ledger) ? CAP_DEFAULT : CAP_RELAXED;
+  const cap = recentlyBlocked(ledger, nowMs) ? CAP_DEFAULT : CAP_RELAXED;
   const inWindowStartTimes = allStartTimes.filter((t) => t > nowMs - WINDOW_MS).sort((a, b) => a - b);
   if (inWindowStartTimes.length >= cap) {
     const idx = inWindowStartTimes.length - cap; // この位置の接続が24時間の外に出るまで待つ
