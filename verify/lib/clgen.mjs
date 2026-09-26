@@ -131,7 +131,16 @@ export function buildClWrapperSource(manifest, cfg) {
   // その SNDPGMMSG 自身のメッセージがジョブ・ログに乗っていないため、VFYLOG に
   // マーカーが一生載らず、「FAILSAFE で残りのステップが飛ばされた」のか「全ステップが
   // 実際に成功した」のかを VFYLOG だけから区別できなくなる(2026-09-26 advisor 指摘)。
-  const insertLog = `INSERT INTO ${logTable} SELECT ORDINAL_POSITION, SUBSTR(MESSAGE_TEXT,1,200) FROM TABLE(QSYS2.JOBLOG_INFO('*')) X`;
+  // 2026-09-26、実接続で発見・確認済みのバグ修正: PUB400 は QDECFMT が小数点を
+  // コンマにしている(ドイツ語圏ホスト)。cl_commands_75.txt 4583-4600行目の
+  // 注記どおり「コンマが小数点のときは、リスト中の数値定数はコンマの後に空白が
+  // 必要」——SUBSTR(MESSAGE_TEXT,1,200) のようにコンマの直後に数字が続く書き方は、
+  // "1,200" 全体が1個の小数リテラルとして誤読され、SQL0104(不正なトークン)に
+  // なる(実機で確認済み: harness-selftest 接続2回目)。数値の並びを含む SQL は
+  // すべて「コンマ+空白」で書くこと(このマニフェスト生成コードに限らず、
+  // src/sql/*.sql・*.sqlrpgle・レッスン本文のSQLコード例も同じ注意が要る——
+  // 教材全体への横断的な影響として docs/probes.md に記録済み)。
+  const insertLog = `INSERT INTO ${logTable} SELECT ORDINAL_POSITION, SUBSTR(MESSAGE_TEXT, 1, 200) FROM TABLE(QSYS2.JOBLOG_INFO('*')) X`;
 
   lines.push(`DONE:`);
   emit(`SNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('${manifest.batch} DONE') TOPGMQ(*SAME) MSGTYPE(*INFO)`);
