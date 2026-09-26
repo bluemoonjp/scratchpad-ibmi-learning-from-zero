@@ -24,32 +24,31 @@ stdout に現れたかどうかだけで台帳の成否を判定する(このマ
 台帳には正しく `success`(接続自体は成功)と記録される** —
 `refused_or_timeout`(3時間停止)には誤分類されない設計になっている。
 
-## 判定基準(2026-09-26、`clgen.mjs`のDONE/FAILSAFEマーカー順序修正に合わせて改訂)
+## 判定基準(2026-09-26、advisor指摘で改訂: `run`セクションを主に見る)
 
-VFYLOGの末尾には、`harness-selftest DONE` または `harness-selftest FAILSAFE`
-という終端マーカーの行が必ず現れる(マーカーを告げる`SNDPGMMSG`を、
-ジョブ・ログを読み取る`RUNSQL`より先に実行するよう修正済みなので、
-今回の接続からはこのマーカー自体がVFYLOGから読み取れる)。
+**`sections.run`(`CALL PGM(&LIB/THARNESSSE)`の直接出力)を最初に読むこと。**
+接続1・2回目の実測で、このセクションには各ステップのMONMSGメッセージ
+(`CPF9898: COMPILE FAILED`のような自前メッセージも含む)・`harness-selftest
+DONE`/`FAILSAFE`の終端マーカー・RPG0102関連メッセージが、発生順にすべて
+そのまま現れることを確認済み。VFYLOG(SQLでの読み出し)はあくまで補助
+(`run`の内容と食い違わないことの確認用)とし、判定の一次情報源は`run`にする。
 
-- **「成功」と判定する条件**: VFYLOGに`harness-selftest DONE`が現れ、
-  RPG0102関連のメッセージ(ジョブ・ログ由来)とその自動応答も一緒に
-  記録されており、かつ結果ファイルの`killedForTimeout`が`false`である。
-  `RUNIT FAILED`という行(`COMPILE`の次のステップ`RUNIT`のCPF0000/RPG0000/
-  MCH0000いずれかの監視に引っかかった場合に出る)が同時にあってもよい
-  — 既定応答がプログラムを取り消す(`C`キャンセル等)場合、`RPG0000`の
-  監視がその取り消しの結果生じるエスケープを捕まえて`RUNIT FAILED`を
-  送り、そのまま次(`DONE`)へ正常に進むだけなので、これは
-  `INQMSGRPY(*DFT)`が効いた証拠であり、失敗ではない。
+- **「成功」と判定する条件**: `run`に`harness-selftest DONE`が現れ、
+  RPG0102関連のメッセージとその自動応答が一緒に記録されており、かつ
+  結果ファイルの`killedForTimeout`が`false`である。`RUNIT FAILED`という
+  行(`RUNIT`のCPF0000/RPG0000/MCH0000いずれかの監視に引っかかった場合に
+  出る)が同時にあってもよい——既定応答がプログラムを取り消す(`C`
+  キャンセル等)場合、`RPG0000`の監視がその取り消しの結果生じるエスケープを
+  捕まえて`RUNIT FAILED`を送り、そのまま次(`DONE`)へ正常に進むだけなので、
+  これは`INQMSGRPY(*DFT)`が効いた証拠であり、失敗ではない。
   → `INQMSGRPY(*DFT)`は有効。以後のPart 5/6/7マニフェストで、ゼロ除算や
   同種の照会メッセージを起こしうるステップ(P24梯子の一部等)を安心して
   バッチの中に置いてよい。
-- **「失敗」と判定する条件**: `harness-selftest FAILSAFE`が現れた、
-  `killedForTimeout`が`true`、またはVFYLOGが空(`db2`呼び出し自体が
-  失敗している可能性、下記参照)のいずれか。この場合:
-  1. VFYLOGが空なら、まず`db2`呼び出し自体(2026-09-26に位置パラメーター
-     形式・ドット区切りへ変更済み)が原因でないかを疑う——併記した
-     `collect`(自ライブラリーのオブジェクト一覧・ZAIKOM初期値)も
-     同時に空なら、db2呼び出しそのものの問題である可能性が高い。
+- **「失敗」と判定する条件**: `run`に`harness-selftest FAILSAFE`が現れた、
+  `killedForTimeout`が`true`、または`run`自体が空(ラッパーがそもそも
+  `CALL`されなかった=`COMPILE`より前で失敗した)のいずれか。この場合:
+  1. `run`が空なら、`compile`セクションを見て`wrapper-source`の転送・
+     `CRTCLPGM`自体の失敗を疑う。
   2. `FAILSAFE`が出たか`killedForTimeout`なら、`INQMSGRPY(*DFT)`は
      この種の照会メッセージには効かない(ハングした)とみなす。以後の
      マニフェストで、ゼロ除算等の照会メッセージを起こしうるステップは
@@ -57,6 +56,13 @@ VFYLOGの末尾には、`harness-selftest DONE` または `harness-selftest FAIL
      方針を厳格に守る(1接続を犠牲にしても他のステップの結果は失わない)。
   3. `docs/probes.md` に日付付きで追記し、`work/design/part06-design-v1.md`
      の該当箇所(P24梯子・06-09の例外処理レッスン等)に影響が無いか確認する。
-- **`COMPILE` 自体が失敗した場合**(RPG III の`H`/`C`仕様書桁位置やCCSIDの
-  問題): これはハーネスの heredoc 転送・CCSID(1208)自体の問題である
-  可能性が高く、まず`verify/run.mjs`のREADME・ledgerの記録を見直す。
+- **`COMPILE`(T0ZEROのRPGコンパイル)自体が失敗した場合**: `run`セクション
+  内の`5770WDS IBM RPG/400`のコンパイル・リストを見て、`Message Summary`の
+  実際のメッセージ(QRG番号)を確認する。接続2回目はheredocの末尾に余分な
+  空行が入るバグ(`verify/lib/batch.mjs`、2026-09-26修正済み)でQRG2001
+  「Form-Type entry invalid」になった——同種の桁位置系エラーが再発したら、
+  まず転送されたソースの実際の行数・末尾を疑う。
+- **`vfylog`セクションが空だった場合**(`run`は正常なのに): `db2`呼び出し
+  自体(2026-09-26に位置パラメーター形式・ドット区切りへ変更済み)を疑う。
+  併記した`collect`(自ライブラリーのオブジェクト一覧・ZAIKOM初期値)も
+  同時に空なら、db2呼び出しそのものの問題である可能性が高い。

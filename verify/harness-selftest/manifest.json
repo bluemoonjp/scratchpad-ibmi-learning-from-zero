@@ -1,21 +1,20 @@
 {
   "batch": "harness-selftest",
   "wrapperCcsid": false,
-  "description": "RETRY (2026-09-26, connection 2 of this investigation). Connection 1 (real, work/verify/results/harness-selftest-2026-09-26T11-57-52-819Z.json) found that BOTH heredoc-written files (T0ZERO and the CL wrapper source itself) failed CPYFRMSTMF identically: CPC7305 (member added) then CPC7309 (member removed) then CPFA0A2 (information passed to this operation was not valid) then CPFA095 (stream file not copied). advisor's diagnosis, confirmed against docs/probes.md:140/152 (CPFA095 alone means 'not found', but the CPFA0A2 preceding it here means a CONVERSION failure, not a missing-file failure - a materially different signature): qsh converts the SSH-piped script's bytes into the job's own (EBCDIC) CCSID before `cat` ever sees them, so `cat > file <<'DELIM'` writes EBCDIC bytes; `setccsid 1208` then only RETAGS the file's CCSID attribute to 1208 (ASCII/UTF-8) WITHOUT converting the underlying bytes, so CPYFRMSTMF - trusting that tag (or the explicit STMFCCSID(1208) override) - tries to decode EBCDIC bytes as if they were already 1208 and fails. This connection tests the `ccsid: false` candidate (skip setccsid AND STMFCCSID entirely, both on this file step and on the wrapper source itself via the new top-level wrapperCcsid:false, letting CPYFRMSTMF fall back to its own undocumented-in-this-repo's-refs default) and adds debugCcsid diagnostics (ls -S / attr -p CCSID / od -x, both immediately after the heredoc write and - since ccsid is false here, skipping setccsid - only once) so that even if this candidate ALSO fails, the actual on-disk CCSID tag and byte pattern (2020=ASCII vs 4040=EBCDIC for RPG's leading spaces) settle the question for the next attempt rather than guessing again. Also echoes $HOME at the very start (ruled out as the cause already, since result.stderr showed no mkdir/cat/setccsid errors last time, but kept as a one-line sanity check).",
+  "description": "RETRY (2026-09-26, connection 3). Connections 1-2 (real; work/verify/results/harness-selftest-2026-09-26T{11-57-52-819Z,12-13-00-709Z}.json) found and fixed TWO independent, harness-wide bugs, both confirmed against primary sources and now fixed in verify/lib/{batch,clgen}.mjs (not just this manifest): (1) explicit setccsid+STMFCCSID broke CPYFRMSTMF (CPFA0A2/CPFA095) - fixed by making 'no CCSID handling' the harness-wide default; heredocWrite now also `rm -f`s the target path first so re-runs observe a genuinely fresh file's tag, not a stale one left over from an earlier connection's own setccsid (advisor caught this contamination in connection 2's own evidence: result.stderr showed 'mkdir: ... File exists', proving the directory/file were NOT fresh). (2) heredocWrite() appended an extra trailing blank line to every transferred file (content already ends in \\n, then .join('\\n') added another) - RPG III's compiler rejected T0ZERO's own trailing blank line as 'Form-Type entry invalid' (QRG2001), so T0ZERO never actually compiled in connection 2 despite the transfer itself succeeding. Also found (3) PUB400's QDECFMT uses a comma as the decimal point (cl_commands_75.txt:4583-4600 confirms: 'if QDECFMT specifies... a comma; any numeric constants in lists... must be separated by a comma followed by a blank') - clgen.mjs's own SUBSTR(MESSAGE_TEXT,1,200) in the VFYLOG-insert SQL hit exactly this (SQL0104 'Token ,1 was not valid'), fixed to SUBSTR(MESSAGE_TEXT, 1, 200). This connection re-tests all three fixes together on a batch whose files/dir will genuinely be fresh (never transferred under the OLD code), and finally answers this manifest's ORIGINAL question (does INQMSGRPY(*DFT) auto-answer RPG0102?), which connections 1-2 never reached. debugCcsid stays on (now ls -S + od -x only, attr -p CCSID dropped - wrong syntax, connection 2 confirmed: 'attr: 001-2249 Attribute ... is not valid').",
   "steps": [
     {
       "type": "file",
       "localPath": "src/t0zero.rpg",
       "remoteSrcFile": "QRPGSRC",
       "member": "T0ZERO",
-      "ccsid": false,
       "debugCcsid": true
     },
     {
       "type": "cl",
       "label": "COMPILE",
       "cmd": "CRTRPGPGM PGM(&LIB/T0ZERO) SRCFILE(&LIB/QRPGSRC) SRCMBR(T0ZERO) REPLACE(*YES)",
-      "monmsg": ["CPF0000"]
+      "monmsg": ["CPF0000", "QRG0000"]
     },
     {
       "type": "cl",
