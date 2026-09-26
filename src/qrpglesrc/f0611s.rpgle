@@ -237,7 +237,12 @@ dow not *in03;
 
   if not *in03;
     readc sfl1;
-    dow not %eof(sfl1);
+    // FIXED (part06-screens-compile, 2026-09-26, real-hardware
+    // CRTBNDRPG): %EOF takes the WORKSTN FILE name (d0611a), not the
+    // subfile RECORD FORMAT name (sfl1) - RNF0391 ("Parameter SFL1 is
+    // not valid for built-in function %EOF"). Confirmed against
+    // ilerpgref75.txt line 45624: "%EOF{(file_name)}".
+    dow not %eof(d0611a);
       select;
         when opt = '5';
           callp f0604a();

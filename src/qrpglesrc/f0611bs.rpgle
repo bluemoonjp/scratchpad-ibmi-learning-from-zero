@@ -204,7 +204,16 @@ dow not *in03;
     endif;
   else;
     readc sfl2;
-    dow not %eof(sfl2);
+    // FIXED (part06-screens-compile, 2026-09-26, real-hardware
+    // CRTBNDRPG): %EOF/%FOUND take the WORKSTN FILE name (d0611ba), not
+    // the subfile RECORD FORMAT name (sfl2) - RNF0391/RNF0394
+    // ("Parameter SFL2 is not valid for built-in function %EOF/
+    // %FOUND"). Confirmed against ilerpgref75.txt lines 45624/46001:
+    // "%EOF{(file_name)}" / "%FOUND{(file_name)}". Same fix applied
+    // below at the two %found(d0611ba) calls (CHAIN rrn2/fillRrn sfl2
+    // still targets the record format - only the feedback BIF's own
+    // parameter needed to change).
+    dow not %eof(d0611ba);
       select;
         when opt = '2';
           //-----------------------------------------------------------
@@ -306,7 +315,7 @@ dcl-proc reloadSfl2;
     rrn2 = r;
     opt = *blanks;
     chain rrn2 sfl2;
-    if %found(sfl2);
+    if %found(d0611ba);
       update sfl2;
     else;
       write sfl2;
@@ -322,7 +331,7 @@ dcl-proc reloadSfl2;
     fillRrn = r + 1;
     dow fillRrn <= maxRrn;
       chain fillRrn sfl2;
-      if %found(sfl2);
+      if %found(d0611ba);
         opt = *blanks;
         shocd = *blanks;
         shonm = *blanks;
