@@ -576,6 +576,32 @@ ZA0500・ZA0510(RPG、全てHighest Severity 00)、JU0900C・MN0000C・C0511S
 実行していない(この接続はDSPDBRの列名確認が目的で、TXMIGR本体はP2/2Fの
 V2穴埋めで別途検証する)。
 
+## 第6部 P24 機能梯子の実機検証: `part06-gen-probe`(確認日 2026-09-26)
+
+RPG IV/**FREE の12段階機能梯子(T0LAD01〜T0LAD12、CRTBNDRPG)と、12段目を
+CRTSQLRPGIでも再コンパイルするT0LAD12Qの、計13オブジェクトを1回の接続で
+検証した。1回目の接続で**13オブジェクト全てが同一の根本原因で
+コンパイル失敗**(再接続で決着させる)。
+
+**バグ: 13ファイル全てに`ctl-opt dftactgrp(*no) actgrp(*new);`が
+欠落していた。** 全13ファイルが`dcl-proc`(`sendToJobLog`)を定義しているが、
+既定の活動グループ(`DFTACTGRP(*YES)`)ではプロシージャーを定義できない。
+実機のエラー・メッセージ自体がこれを直接裏付ける: `RNF1520`
+「The procedure cannot be defined with DFTACTGRP(*YES).」。これに続く
+`RNF0256`(「Specification found between procedures」)・`RNF7023`
+(「The Compiler cannot determine how the program can end」)は、いずれも
+同じ根本原因からの連鎖と判断した。このリポジトリー内で既に同じ
+QMHSNDPMパターンを引用元としているf0609s.rpgle(t0lad01.rpgle自身の
+ヘッダーが引用)には`ctl-opt dftactgrp(*no) actgrp(*new) option(*srcstmt);`
+が最初から入っており、13ファイルはこの行を写し忘れていたと判明。
+全13ファイルの同じ位置(共有のQMHSNDPMブロックの直前)に追加して修正。
+
+**影響**: 次回接続で決着させる。CP12Qの`monmsg`一覧(現状
+`CPF0000/RNF0000/SQL0000/MCH0000`)には実際に出た`RNS9310`が含まれて
+いなかったが、根本原因(ctl-opt欠落)を直せばCP12Qのコンパイル自体が
+成功するはずなので、`RNS9310`を先回りしてmonmsgに追加することはせず、
+次回接続の結果を見てから要否を判断する。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:

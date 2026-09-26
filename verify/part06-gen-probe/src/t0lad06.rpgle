@@ -10,6 +10,8 @@
 //     least three operands" - separator plus two strings minimum)
 //=======================================================================
 
+ctl-opt dftactgrp(*no) actgrp(*new);
+
 dcl-ds qmhsndpmMsgFile qualified template;
   *n char(10) inz('QCPFMSG');
   *n char(10) inz('*LIBL');
