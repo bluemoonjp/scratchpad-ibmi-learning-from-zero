@@ -88,14 +88,25 @@
 //      sat right after rung 1's sendToJobLog() call), not grouped
 //      before them. RNF0724 ("The statement type is out of sequence
 //      for the main procedure") at rung 2's dcl-s line, on the 3rd
-//      connection (after bugs 1-2 were fixed) - confirmed against
-//      ilerpgprogguide75.txt line 34326: "In RPG IV, definition
-//      specifications must precede input specifications" (the same
-//      ordering rule extends to free-form: all declarations before any
-//      executable statement in the main procedure). Reordered every
-//      rung's file so ALL of its accumulated declarations come first,
-//      then ALL of its accumulated executable statements, then the
-//      *inlr/return closer, then the sendToJobLog procedure.
+//      connection (after bugs 1-2 were fixed) - the real-hardware
+//      RNF0724 itself is the primary evidence. Confirmed against
+//      ilerpgref75.txt lines 23082-23096, Table 99 ("Source Records
+//      and Their Order in an RPG IV Source Program"): "The RPG IV
+//      source must be entered into the system in the order shown in
+//      Table 99" - for the Main Source Section, that order is Control,
+//      then File Description/Definition, then Input, then Calculation,
+//      then Output; "Fully free-format specifications are allowed for
+//      Control, File Description, Definition, and Procedure
+//      statements" (~line 23071-23073), i.e. free-form keeps the same
+//      section order, just without fixed-column spec letters -
+//      Definition (declarations) before Calculation (executable
+//      statements). (An earlier draft of this note cited
+//      ilerpgprogguide75.txt line 34326, which is actually about
+//      CVTRPGSRC placing a /COPY member's converted D-specs below an
+//      existing I-spec, not about this rule - corrected.) Reordered
+//      every rung's file so ALL of its accumulated declarations come
+//      first, then ALL of its accumulated executable statements, then
+//      the *inlr/return closer, then the sendToJobLog procedure.
 //=======================================================================
 
 ctl-opt dftactgrp(*no) actgrp(*new);
