@@ -13,6 +13,8 @@
 // へ INSERT してから終わる。collect ステップは、接続が終わったあとにこの表を SELECT
 // するだけでよい。
 
+import { resolveLibrary } from './config.mjs';
+
 const PGM_NAME_MAX = 10;
 const CL_MAX_COL = 80;
 const CL_INDENT = 13; // 既存の tools/qclsrc/*.clp に合わせた、命令コード開始桁の見た目
@@ -72,7 +74,7 @@ function sqlLit(sql) {
 export function buildClWrapperSource(manifest, cfg) {
   const pgmName = sanitizePgmName(manifest.batch);
   const clSteps = manifest.steps.filter((s) => s.type === 'cl');
-  const lib = manifest.library || `${cfg.user.toUpperCase()}2`; // 既定は開発役 <USER>2
+  const lib = resolveLibrary(manifest, cfg); // 既定は開発役 <USER>2、"*B" なら <USER>B
   const logTable = `${lib}/VFYLOG`;
 
   const lines = [];
