@@ -42,9 +42,19 @@
              IF         COND(&SPLNBR *EQ ' ') THEN(CHGVAR VAR(&SPLNBR) +
                           VALUE('*LAST'))
 
-             /* CPYSPLF creates &LIB/TXSNAPT itself (matching the spooled  */
-             /* file's own line format) the first time it is used; later   */
-             /* calls with a new LABEL just add another member to it.      */
+             /* FIXED (2026-09-27): this comment used to claim CPYSPLF     */
+             /* creates &LIB/TXSNAPT itself the first time it is used.     */
+             /* Confirmed wrong via IBM's own CPYSPLF reference: "If the   */
+             /* user specifies the name of a database file and the file    */
+             /* does not exist at the time of the copy, the copy will      */
+             /* fail" - TOFILE must already exist. Only TOMBR auto-creates */
+             /* ("If this member does not exist, a member is created and   */
+             /* the copy continues"). &LIB/TXSNAPT must be created by the  */
+             /* caller before the first TXSNAP call (05-08's own lesson    */
+             /* text already does this correctly: CRTPF ... RCDLEN(133)    */
+             /* MAXMBRS(*NOMAX) before the first TXSNAP call - that hedge   */
+             /* was the right call, this comment's claim was not). Later   */
+             /* calls with a new LABEL do just add another member.         */
              CPYSPLF    FILE(&SPLF) TOFILE(&LIB/TXSNAPT) JOB(&JOB) +
                           SPLNBR(&SPLNBR) TOMBR(&LABEL) MBROPT(*REPLACE)
 
