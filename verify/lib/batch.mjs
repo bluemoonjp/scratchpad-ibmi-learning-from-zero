@@ -90,6 +90,7 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
   const lines = [];
 
   lines.push(`echo ${MARKER('start')}`);
+  lines.push(`echo HOME=$HOME`);
   lines.push(`mkdir -p "${remoteAbs(remoteDir)}"`);
 
   const fileSteps = manifest.steps.filter((s) => s.type === 'file');
@@ -99,9 +100,29 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
     const remoteRel = `${remoteDir}/${path.basename(step.localPath)}`;
     lines.push(`echo ${MARKER(`transfer:${step.member}`)}`);
     lines.push(heredocWrite(remoteRel, content));
+    // 2026-09-26、advisor指摘: heredoc(`cat > ... <<DELIM`)で書いた直後のファイルが
+    // 実際にどのCCSIDでタグ付けされ、どんなバイト列になっているかを、setccsidで
+    // 上書きする前に見る診断(harness-selftest失敗の原因調査用、step.debugCcsid で
+    // 明示的に有効にしたときだけ出す。既定はオフで他のマニフェストへの影響なし)。
+    if (step.debugCcsid) {
+      const p = remoteAbs(remoteRel);
+      lines.push(`echo ${MARKER(`debug-ccsid:${step.member}:before`)}`);
+      lines.push(`ls -S "${p}" 2>&1`);
+      lines.push(`attr -p CCSID "${p}" 2>&1`);
+      lines.push(`od -x "${p}" 2>&1 | head -2`);
+      lines.push(`echo ${MARKER(`debug-ccsid:${step.member}:before-end`)}`);
+    }
     const ccsid = resolveCcsid(step.ccsid);
     if (ccsid) {
       lines.push(`setccsid ${ccsid} "${remoteAbs(remoteRel)}"`);
+    }
+    if (step.debugCcsid) {
+      const p = remoteAbs(remoteRel);
+      lines.push(`echo ${MARKER(`debug-ccsid:${step.member}:after`)}`);
+      lines.push(`ls -S "${p}" 2>&1`);
+      lines.push(`attr -p CCSID "${p}" 2>&1`);
+      lines.push(`od -x "${p}" 2>&1 | head -2`);
+      lines.push(`echo ${MARKER(`debug-ccsid:${step.member}:after-end`)}`);
     }
     if (step.ensureSrcFile) {
       // 既に存在すれば CPF7302 で失敗するだけなので無視してよい(system の終了コードは
