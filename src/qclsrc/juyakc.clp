@@ -10,7 +10,7 @@
 
              MONMSG     MSGID(CPF0000) EXEC(GOTO CMDLBL(FAILED))
 
-             RTVJOBA    CURLIB(&LIB) USER(&USRPRF)
+             RTVJOBA    CURLIB(&LIB) CURUSER(&USRPRF)
 
 /* --- Front: allocate the next order number exclusively --- */
              ALCOBJ     OBJ((&LIB/JUNODA *DTAARA)) WAIT(10)
