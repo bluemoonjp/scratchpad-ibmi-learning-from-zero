@@ -36,10 +36,10 @@
       * original), so only the 9 MOVEL literal VALUES changed below, not
       * the DS structure itself. 05-04's lesson text (docs/part05/05-04-
       * reading-arrays-ds-error.md) has been updated to match - see that
-      * file's own note. za0500-ticket3.rpg (05-13) has an independent,
-      * still-unfixed instance of the same SNDPGMMSG/QCMDEXC bug; see
-      * that file's own header (also fixed now - see that file's header
-      * for its own, independently-designed CHGDTAARA replacement).
+      * file's own note. za0500-ticket3.rpg (05-13) had an independent
+      * instance of the same SNDPGMMSG/QCMDEXC bug, also fixed now - see
+      * that file's own header for its own, independently-designed
+      * CHGDTAARA replacement.
       *
       * NOT YET COMPILED ON REAL HARDWARE. Column positions come only
       * from tools/gen/rpg3.mjs and, where noted below, from RPG/400
