@@ -13,11 +13,11 @@
     { "type": "cl", "label": "CPDIAGCL", "cmd": "CRTCLPGM PGM(&LIB/DIAGCURLIB) SRCFILE(&LIB/QCLSRC) SRCMBR(DIAGCURLIB) REPLACE(*YES)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "RUNDIAGCL", "cmd": "CALL PGM(&LIB/DIAGCURLIB)", "monmsg": ["CPF0000"] },
 
-    { "type": "cl", "label": "CPTXMSGF", "cmd": "CRTCLPGM PGM(&LIB/TXMSGF) SRCFILE(&LIB/QCLSRC) SRCMBR(TXMSGF) REPLACE(*YES)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "RUNTXMSGF", "cmd": "CALL PGM(&LIB/TXMSGF)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "CPJUNODA", "cmd": "CHKOBJ OBJ(&LIB/JUNODA) OBJTYPE(*DTAARA)\nMONMSG MSGID(CPF9801) EXEC(CRTDTAARA DTAARA(&LIB/JUNODA) TYPE(*DEC) LEN(6 0) VALUE(0))", "monmsg": ["CPF0000"] },
 
     { "type": "cl", "label": "CHGCURLIB1", "cmd": "CHGCURLIB CURLIB(&LIB)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPTXMSGF", "cmd": "CRTCLPGM PGM(&LIB/TXMSGF) SRCFILE(&LIB/QCLSRC) SRCMBR(TXMSGF) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "RUNTXMSGF", "cmd": "CALL PGM(&LIB/TXMSGF) PARM('&LIB')", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "CPJUYAKL", "cmd": "CRTBNDCL PGM(&LIB/JUYAKL) SRCFILE(&LIB/QCLSRC) SRCMBR(JUYAKL) REPLACE(*YES)", "monmsg": ["CPF0000", "MCH0000"] },
     { "type": "cl", "label": "RUNJUYAKL", "cmd": "CALL PGM(&LIB/JUYAKL)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] }
   ]
