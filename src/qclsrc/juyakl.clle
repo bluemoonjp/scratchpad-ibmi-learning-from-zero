@@ -1,0 +1,291 @@
+/* JUYAKL - ILE CL (CRTBNDCL) rewrite of JUYAKC (03-13, published on     */
+/* main/Part 3: src/qclsrc/juyakc.clp). Part 7, lesson 07-04.            */
+/*                                                                       */
+/* STATUS: hardware-UNTESTED (Part 7 draft, draft/part06 branch). This   */
+/* file has not been compiled or run on PUB400 yet, and neither has      */
+/* Part 6, which this Part 7 draft otherwise depends on (see             */
+/* part07-design-v1.md section 0). Treat every runtime claim below as    */
+/* "should work per the cited IBM i 7.5 references / in-repo evidence",  */
+/* not as a verified fact.                                               */
+/*                                                                       */
+/* WHAT THIS CHANGES FROM JUYAKC (juyakc.clp), and why:                  */
+/*  1. GOTO+label front/main/back/error flow -> SUBR/ENDSUBR/CALLSUBR,   */
+/*     per the design's instruction to restructure this way.            */
+/*  2. RTVJOBA bug fix: CURUSER(&USRPRF) instead of USER(&USRPRF) - see  */
+/*     note 1 below. juyakc.clp itself is left unfixed (Part 3 content,  */
+/*     out of scope for Part 7 - part07-design-v1.md section 0.5).      */
+/*  3. NEW: binds to JUCSRV's getCustName procedure via CALLPRC, using   */
+/*     DCLPRCOPT (a CL SOURCE declaration, not a CRTBNDCL command-line   */
+/*     parameter) to name the service program - see notes 2 and 3.      */
+/*                                                                       */
+/* ----------------------------------------------------------------------*/
+/* NOTE 1 - RTVJOBA CURUSER fix (confirmed against in-repo evidence,     */
+/* not guessed; grepped for RTVJOBA/CURUSER across EVERY file in         */
+/* work/design/refs/, not just section headers - RTVJOBA appears only    */
+/* incidentally in secref75.txt lines 4898/14374/14424/14438/28502/      */
+/* 64369, none of which mention CURUSER or USER's own keyword semantics, */
+/* and CURUSER has zero hits anywhere in work/design/refs/. So this is    */
+/* verified against this repo's own in-repo primary evidence instead):   */
+/*                                                                       */
+/*   juyakc.clp line 13 uses RTVJOBA CURLIB(&LIB) USER(&USRPRF). This is */
+/*   the exact bug documented in docs/appendix/c-troubleshooting.md      */
+/*   section 3 (lines 58-70) and docs/probes.md (lines 225-243): USER()  */
+/*   returns the JOB NAME's user part, which is QUSER for a PASE         */
+/*   system()-launched job (this repo's verify/ harness uses SSH ->      */
+/*   system() - part07-design-v1.md section 0.5); CURUSER() returns the  */
+/*   actual signed-on/authenticated user profile. probes.md line 234     */
+/*   records the measured contrast: USER=[QUSER] / CURUSER=[the real     */
+/*   user]. c-troubleshooting.md line 70 explicitly lists juyakc.clp as  */
+/*   NOT YET fixed, and the fix here applies ONLY to this new object.    */
+/* ----------------------------------------------------------------------*/
+/* NOTE 2 - CRTBNDCL has NO BNDSRVPGM/NO BNDDIR parameter (confirmed):   */
+/*                                                                       */
+/*   work/design/refs/cl_commands_75.txt lines 11022-11143 list EVERY    */
+/*   CRTBNDCL parameter: PGM, SRCFILE, SRCMBR, SRCSTMF, TEXT, DFTACTGRP, */
+/*   ACTGRP, STGMDL, OUTPUT, OPTION, USRPRF, LOG, ALWRTVSRC, REPLACE,    */
+/*   TGTRLS, AUT, SRTSEQ, LANGID, OPTIMIZE, DBGVIEW, DBGENCKEY,          */
+/*   ENBPFRCOL, INCFILE, INCDIR - no BNDSRVPGM, no BNDDIR. An earlier    */
+/*   design draft wrote "CRTBNDCL ... BNDSRVPGM(...)" - that command/    */
+/*   parameter combination does not exist and is NOT used here.         */
+/*                                                                       */
+/*   The correct mechanism is DCLPRCOPT (Declare Processing Options), a  */
+/*   declare command written INSIDE the CL source (full parameter table  */
+/*   at cl_commands_75.txt lines 12454-12581). Per lines 12501-12510,    */
+/*   DCLPRCOPT must follow PGM and precede all other commands (it can be */
+/*   intermixed in any order with DCL/DCLF/COPYRIGHT, but only ONE       */
+/*   DCLPRCOPT is allowed per program - a second one causes CPD0323).    */
+/*   It is placed here immediately after PGM, before any DCL.            */
+/*                                                                       */
+/*   DCLPRCOPT's BNDSRVPGM parameter (table at lines 12547-12565, prose  */
+/*   at 12825-12896): element 1 is a QUALIFIED service program name      */
+/*   (qualifier 1 = program name; qualifier 2 = library, choices         */
+/*   "Name , *LIBL" - unlike BNDDIR, BNDSRVPGM's library qualifier has   */
+/*   NO *CURLIB choice). Element 2 (*IMMED/*DEFER activation timing) is  */
+/*   optional and defaults when omitted - the qualified-name slash       */
+/*   format (library/object) matches DCLPRCOPT's own worked BNDDIR       */
+/*   example at lines 12979-12980: "BNDDIR(MYAPPLIB/MYBNDDIR)". So       */
+/*   BNDSRVPGM(*LIBL/JUCSRV) below means: search *LIBL for a service     */
+/*   program named JUCSRV, default activation timing.                   */
+/*                                                                       */
+/*   DFTACTGRP(*NO) is REQUIRED alongside BNDSRVPGM/CALLPRC: per         */
+/*   cl_commands_75.txt lines 11249-11259 (CRTBNDCL's own DFTACTGRP      */
+/*   note), DFTACTGRP(*YES) forbids ACTGRP and "the resulting program    */
+/*   can only contain a single *MODULE object" - a CALLPRC target        */
+/*   resolved via a bound service program is necessarily more than a     */
+/*   single *MODULE, so DFTACTGRP(*NO) is required. PRECISION NOTE: the  */
+/*   FOLLOW-ON sentence in that same paragraph (and its near-duplicate   */
+/*   under DCLPRCOPT's own BNDDIR prose, lines 12906-12911) names the    */
+/*   BNDDIR parameter specifically ("If ... a DCLPRCOPT command that     */
+/*   specifies A BINDING DIRECTORY for the BNDDIR parameter ..."), not   */
+/*   BNDSRVPGM by name - this file relies on the GENERAL "single         */
+/*   *MODULE object" restriction quoted above (which does not name      */
+/*   either parameter and so covers both), not on text that literally    */
+/*   names BNDSRVPGM, since no such BNDSRVPGM-specific sentence was      */
+/*   found in cl_commands_75.txt - disclosed here rather than papered    */
+/*   over.                                                               */
+/*                                                                       */
+/*   CRTBNDCL's OWN default, when DFTACTGRP is omitted from the CRTBNDCL */
+/*   command line, is *YES - the same note's wording "If DFTACTGRP(*YES) */
+/*   is specified (OR DEFAULTED) ..." confirms *YES is what you get if   */
+/*   you say nothing on the command line.                               */
+/*                                                                       */
+/*   ACTGRP DEFAULT (disclosed, since this IS the activation-group       */
+/*   lesson): neither the CRTBNDCL command line below nor DCLPRCOPT      */
+/*   specifies ACTGRP, so CRTBNDCL's own default applies - ACTGRP        */
+/*   choices at cl_commands_75.txt lines 11058-11062 list *STGMDL first, */
+/*   and its prose (lines 11274-11278) says "IF STGMDL(*SNGLVL) ...      */
+/*   this program will be activated into the QILE activation group" -    */
+/*   STGMDL itself also defaults to *SNGLVL when omitted (same table,    */
+/*   lines 11061-11063). So JUYAKL runs in QILE, the WIDELY-SHARED       */
+/*   single-level-storage activation group used by many unrelated ILE   */
+/*   programs system-wide - fine for this lesson (JUYAKL is a simple,    */
+/*   single-shot batch program with no need for isolation), but worth    */
+/*   stating explicitly rather than leaving implicit, since F0704A (the  */
+/*   OTHER file in this lesson) is specifically about choosing a         */
+/*   DIFFERENT (named) activation group on purpose.                      */
+/*                                                                       */
+/*   OVERRIDE PRECEDENCE (verified, not left ambiguous): cl_commands_    */
+/*   75.txt lines 12482-12492 states: "Setting a parameter value on      */
+/*   DCLPRCOPT will override any value specified OR DEFAULTED for the    */
+/*   corresponding parameter on the CRTCLPGM, CRTCLMOD, or CRTBNDCL      */
+/*   command." So the DCLPRCOPT DFTACTGRP(*NO) below wins regardless of  */
+/*   what the CRTBNDCL command line says or omits. For that reason the   */
+/*   compile command shown below does NOT repeat DFTACTGRP(*NO) - it     */
+/*   would be harmless but redundant - and it shows ONLY parameters      */
+/*   CRTBNDCL genuinely has (no BNDSRVPGM/BNDDIR - see above).           */
+/*                                                                       */
+/*   Compile with (BNDSRVPGM/BNDDIR intentionally absent):              */
+/*     CRTBNDCL   PGM(mylib/JUYAKL) SRCFILE(mylib/QCLSRC) +              */
+/*                  SRCMBR(JUYAKL)                                      */
+/* ----------------------------------------------------------------------*/
+/* NOTE 3 - CALLPRC syntax (verified against cl_commands_75.txt):        */
+/*                                                                       */
+/*   cl_commands_75.txt lines 11893-11927 (parameter table) and          */
+/*   11928-12157 (prose): PRC is the PROCEDURE NAME (positional 1),      */
+/*   PARM is the argument list (positional 2), RTNVAL is the CL          */
+/*   variable for the returned value (positional 3) - NOT "RTNVAR". An   */
+/*   earlier design draft used RTNVAR; per part07-design-v1.md's own     */
+/*   07-04 note, that came from ilerpgref75.txt's OLDER CALLPRC figures  */
+/*   (around lines 31580-31654), which also show RTNVAR. cl_commands_    */
+/*   75.txt (the newer, dedicated CL command reference, fetched          */
+/*   specifically to settle this) is authoritative here and shows        */
+/*   RTNVAL in its own parameter table and in every worked example that  */
+/*   specifies a return value at all (Examples 3-8 and 13, e.g. line     */
+/*   12216: "CALLPRC PRC(RTNINT) RTNVAL(&VAR2)" - Examples 1, 2, and     */
+/*   9-12 pass no return-value parameter, so they show neither spelling).*/
+/*   RTNVAL is used below.                                               */
+/*                                                                       */
+/*   PRC note (cl_commands_75.txt lines 11930-11937): "the procedure     */
+/*   name will be CASE SENSITIVE." src/qrpglesrc/jucsrv.rpgle did NOT    */
+/*   YET EXIST when this file's writing began (checked - zero matches    */
+/*   in src/qrpglesrc/ at that point); it was RE-CHECKED before this     */
+/*   file was finished and BY THEN EXISTED (a concurrent agent had       */
+/*   added it for 07-02/07-03). Its getCustName is declared:             */
+/*     dcl-proc getCustName export;                                      */
+/*       dcl-pi *n char(30) extproc(*dclcase);                          */
+/*         custCode char(6) const;                                       */
+/*   EXTPROC(*DCLCASE) pins the external/export name to EXACTLY the      */
+/*   DCL-PROC spelling, "getCustName" (mixed case) - NOT the compiler's   */
+/*   uppercase default (ilerpgref75.txt lines 31676-31711, "Specifying   */
+/*   *DCLCASE as the External Name"; jucsrv.rpgle's own header cites     */
+/*   the same rationale). CALLPRC's case sensitivity means the exact     */
+/*   literal PRC('getCustName') below (mixed case, matching the real     */
+/*   file) is required - PRC('GETCUSTNAME') (the all-upper-case form     */
+/*   this lesson's design note originally specified, written before      */
+/*   jucsrv.rpgle existed) would FAIL to resolve at bind time against    */
+/*   this real export name, and has been corrected here accordingly.     */
+/*                                                                       */
+/*   getCustName's signature - char(30) returned, custCode char(6)       */
+/*   const parameter - matches part07-design-v1.md's 07-02 entry AND     */
+/*   the real jucsrv.rpgle above exactly. &CUST/&NAME below are          */
+/*   explicitly DCL'd CHAR(6)/CHAR(30) CL variables (never a bare        */
+/*   literal passed directly to CALLPRC) specifically to                 */
+/*   avoid the 32-byte literal-padding trap documented in                */
+/*   docs/part03/03-08-parameters-and-call.md line 42 (rule) and line    */
+/*   114 (hardware-confirmed 2026-09-25). 'C00001' is the curriculum's   */
+/*   own long-established TOKUIM test key (-> ACME TRADING CO;           */
+/*   db/data/load_v1.sql line 11; used by R0408A/JUCINQC/F0612A and      */
+/*   others), given as &CUST's DCL VALUE() so the CALLPRC call itself    */
+/*   only ever touches a declared variable, never a literal.             */
+/* ----------------------------------------------------------------------*/
+/* NOTE 4 - SUBR/ENDSUBR/CALLSUBR (sourcing gap, disclosed):             */
+/*                                                                       */
+/*   None of work/design/refs/*.txt contains a dedicated SUBR/ENDSUBR/   */
+/*   CALLSUBR command reference (grepped - zero section headers for any */
+/*   of these three exist in cl_commands_75.txt; only DCLPRCOPT's own    */
+/*   SUBRSTACK parameter description, lines 12583-12599, mentions them   */
+/*   by name and confirms CALLSUBR/ENDSUBR/RTNSUBR push/pop a subroutine */
+/*   stack). SUBR/ENDSUBR/CALLSUBR below follow standard, long-          */
+/*   established ILE CL syntax, not independently re-verified against a  */
+/*   fetched primary source in this repo - flagged here for              */
+/*   transparency, since notes 2 and 3 above WERE directly checked       */
+/*   line-by-line against cl_commands_75.txt but this construct could    */
+/*   not be (the fetched reference dump simply does not cover it).       */
+/*                                                                       */
+/*   A MONMSG coded before the first executable command (as juyakc.clp   */
+/*   itself already does) establishes a default error monitor for the    */
+/*   rest of the program. DELIBERATE, DISCLOSED EXCEPTION: this file     */
+/*   keeps ONE GOTO - the top-level MONMSG CPF0000 still uses            */
+/*   EXEC(GOTO CMDLBL(FAILED)), exactly as juyakc.clp itself does,        */
+/*   rather than EXEC(CALLSUBR SUBR(ERRSUBR)) directly. Reason: MONMSG    */
+/*   has NO section at all in cl_commands_75.txt (grepped, zero section   */
+/*   headers), so whether a program-level MONMSG's EXEC() parameter can   */
+/*   validly target CALLSUBR (as opposed to GOTO, DO, or a small set of   */
+/*   commands documented elsewhere) could not be checked against any      */
+/*   fetched primary source - rather than guess, the FAILED: label is     */
+/*   kept in the mainline (after RETURN, before the first SUBR block)     */
+/*   and its ONLY job is CALLSUBR SUBR(ERRSUBR), so the error-handling    */
+/*   BODY itself is still a SUBR block, not inline GOTO-target code, and  */
+/*   the front/main/back business logic is fully CALLSUBR-based with NO  */
+/*   GOTO at all - only this one, single, top-level dispatch keeps the    */
+/*   GOTO+label idiom, and only because it could not be safely verified   */
+/*   another way. TODO: verify - whether MONMSG EXEC() can target         */
+/*   CALLSUBR directly (which would let this last GOTO be removed too).   */
+/* ----------------------------------------------------------------------*/
+/* NOTE 5 - RTVJOBA CURLIB(&LIB) depends on the CALLER having set the    */
+/* current library FIRST (part07-design-v1.md section 0.6, a gap found   */
+/* in the verify/ harness, not in this source): verify/lib/clgen.mjs     */
+/* line 86 issues ADDLIBLE LIB(...) before calling a compiled program,    */
+/* which adds a library to the LIBRARY LIST - it does NOT change the      */
+/* job's CURRENT LIBRARY attribute (a separate, distinct job attribute).  */
+/* RTVJOBA CURLIB(&LIB) below reads THAT attribute, not the library      */
+/* list, so ADDLIBLE alone does not make &LIB resolve to the intended     */
+/* library - an explicit CHGCURLIB must run before CALLing this program   */
+/* (a verify-manifest/operational concern, not fixed inside this CL       */
+/* source itself, per the design doc's own scoping of this gap).         */
+/* ----------------------------------------------------------------------*/
+             PGM
+
+             DCLPRCOPT  DFTACTGRP(*NO) BNDSRVPGM(*LIBL/JUCSRV)
+
+             DCL        VAR(&LIB) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&USRPRF) TYPE(*CHAR) LEN(10)
+             DCL        VAR(&NEXTNO) TYPE(*DEC) LEN(6 0)
+             DCL        VAR(&TOSTMF) TYPE(*CHAR) LEN(200)
+             DCL        VAR(&CUST) TYPE(*CHAR) LEN(6) VALUE('C00001')
+             DCL        VAR(&NAME) TYPE(*CHAR) LEN(30)
+
+             MONMSG     MSGID(CPF0000) EXEC(GOTO CMDLBL(FAILED))
+
+             RTVJOBA    CURLIB(&LIB) CURUSER(&USRPRF)
+
+             CALLSUBR   SUBR(FRONT)
+             CALLSUBR   SUBR(MAIN)
+             CALLSUBR   SUBR(BACK)
+
+             RETURN
+
+FAILED:      CALLSUBR   SUBR(ERRSUBR)
+
+/* ===== Front: allocate the next order number exclusively ============ */
+             SUBR       SUBR(FRONT)
+
+             ALCOBJ     OBJ((&LIB/JUNODA *DTAARA)) WAIT(10)
+             MONMSG     MSGID(CPF1002 CPF1085) EXEC(DO)
+                SNDPGMMSG  MSGID(JUM0001) MSGF(&LIB/JUMSGF) +
+                             MSGDTA('JUNODA locked') MSGTYPE(*ESCAPE)
+             ENDDO
+
+             RTVDTAARA  DTAARA(&LIB/JUNODA) RTNVAR(&NEXTNO)
+             CHGVAR     VAR(&NEXTNO) VALUE(&NEXTNO + 1)
+             CHGDTAARA  DTAARA(&LIB/JUNODA) VALUE(&NEXTNO)
+             DLCOBJ     OBJ((&LIB/JUNODA *DTAARA))
+
+             ENDSUBR
+
+/* ===== Main: business processing (Part 4 onward) + NEW getCustName == */
+/* ===== via CALLPRC (JUYAKC never had this - see NOTE 3 above) ======= */
+             SUBR       SUBR(MAIN)
+
+/* Business processing plugs in here, same placeholder role as          */
+/* juyakc.clp's own "Main" comment.                                     */
+
+             CALLPRC    PRC('getCustName') PARM(&CUST) RTNVAL(&NAME)
+
+             SNDPGMMSG  MSG('JUYAKL: getCustName(' *BCAT &CUST *BCAT +
+                          ') = ''' *BCAT %TRIM(&NAME) *BCAT '''.')
+
+             ENDSUBR
+
+/* ===== Back: export today's order count as CSV for the report queue = */
+             SUBR       SUBR(BACK)
+
+             CHGVAR     VAR(&TOSTMF) VALUE('/home/' *TCAT %TRIM(&USRPRF) +
+                          *TCAT '/work/juchum_export.csv')
+             CPYTOIMPF  FROMFILE(&LIB/JUCHUM) TOSTMF(&TOSTMF) +
+                          MBROPT(*REPLACE) STMFCCSID(1208)
+
+             SNDPGMMSG  MSG('JUYAKL: done. Next order number is now ' +
+                          *BCAT %CHAR(&NEXTNO) *BCAT '.')
+
+             ENDSUBR
+
+/* ===== Error: notify via the curriculum message file ================ */
+             SUBR       SUBR(ERRSUBR)
+
+             SNDPGMMSG  MSGID(JUM0001) MSGF(&LIB/JUMSGF) +
+                          MSGDTA('JUYAKL failed') MSGTYPE(*ESCAPE)
+
+             ENDSUBR
+
+             ENDPGM
