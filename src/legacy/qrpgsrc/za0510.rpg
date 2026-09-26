@@ -3,11 +3,34 @@
       * QCMDEXC). Standalone teaching program per design.objects[4].purpose:
       * NOT wired into the JU0900C -> ZA0500 chain.
       *
-      * NOT YET COMPILED ON REAL HARDWARE (this session is out of its SSH
-      * connection-count budget). Column positions come only from
-      * tools/gen/rpg3.mjs and, where noted below, from RPG/400 Reference
-      * (work/design/refs/rpg400ref.txt) by inference - not from a real
-      * CRTRPGPGM. Verify with CRTRPGPGM before relying on this source.
+      * CONFIRMED BROKEN, NOT YET REDESIGNED (2026-09-26, real-hardware
+      * finding from part07-01-modules, a different program): this file's
+      * *PSSR builds a SNDPGMMSG command and runs it via CALL 'QCMDEXC' -
+      * the exact pattern found broken on real hardware in
+      * src/qrpglesrc/jucutl.rpgle (CPD0031 "Command SNDPGMMSG not
+      * allowed in this setting"). Confirmed against QCMDEXC's own IBM
+      * Docs (rbam6/execp.htm): "commands that can only be used in CL
+      * procedures or programs cannot be run by the QCMDEXC program," and
+      * SNDPGMMSG's own reference page lists its allowed environments as
+      * "Compiled CL program or interpreted REXX" only - never RPG, at
+      * any call depth. This has NOT been fixed here yet: 05-04's own
+      * lesson text (already written, pending publication in P3) teaches
+      * QCMDEXC specifically via this SNDPGMMSG example, so the fix is a
+      * genuine curriculum question (does 05-04 use a different command
+      * that IS allowed to run via QCMDEXC from RPG, or pivot to
+      * QMHSNDPM's own CALL-based RPG III shape instead?), not a
+      * same-shape source patch like jucutl.rpgle's - see docs/probes.md
+      * for the full finding and jucutl.rpgle for the confirmed-working
+      * QMHSNDPM replacement shape (RPG IV; would need re-deriving in
+      * fixed-form RPG III column positions for this file). Do NOT
+      * publish 05-04 until this is resolved.
+      *
+      * NOT YET COMPILED ON REAL HARDWARE. Column positions come only
+      * from tools/gen/rpg3.mjs and, where noted below, from RPG/400
+      * Reference (work/design/refs/rpg400ref.txt) by inference - not
+      * from a real CRTRPGPGM. Verify with CRTRPGPGM before relying on
+      * this source (and expect the *PSSR block specifically to still
+      * fail even then, per the CONFIRMED BROKEN note above).
       *
       * 1. /COPY placement (FLDREFR).
       *    Per fldrefr.rpg's own header (the authoritative spec for this),

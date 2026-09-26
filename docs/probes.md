@@ -785,8 +785,10 @@ valid for built-in function %EOF」・`RNF0394`「...%FOUND」で確認。
 
 M0701A(メイン・モジュール)・M0701B(JUCUTL、NOMAINユーティリティー・
 モジュール)を別々にCRTRPGMODし、両方をF0701AへCRTPGM ACTGRP(*NEW)で
-結合、実行するところまでは正しく設計されていたが、**マニフェストの
-ラッパー自体がコンパイル失敗**(接続1回目、再接続で決着させる)。
+結合、実行するところまでは正しく設計されていたが、**接続1回目は
+マニフェストのラッパー自体がコンパイル失敗、接続2回目はモジュール・
+結合は全て成功したものの実行時に別の実バグで失敗(3回目の接続で
+決着させる)。**
 
 **バグ: `DSPPGM`は`OUTPUT(*OUTFILE)`に対応していない(DETAIL値に
 関わらず)。** `CPD0043`「Keyword OUTFILE not valid for this command」で
@@ -802,6 +804,44 @@ OUTPUT(*OUTFILE)`)にも発見、まだ実機接続していないが先回り�
 済み。** 全マニフェストを`DSPPGM.*OUTFILE`で検索し、他に該当が無い
 ことを確認済み(`DSPDBR`/`DSPOBJD`は既に実機確認済みでOUTFILE対応、
 `DSPSRVPGM`は元から`OUTPUT(*PRINT)`でOUTFILEを使っていない)。
+
+**接続2回目: モジュール分割・結合(このバッチの本来の目的)は完全に
+成功した(M0701B・M0701A・F0701Aとも作成、`QSYS2.BOUND_MODULE_INFO`も
+期待どおり2行返した)。しかし実行時に別の実バグが見つかった。**
+
+**バグ: `SNDPGMMSG`は`QCMDEXC`経由では(呼び出し元がRPGでもCLでも、
+どんな呼び出しの深さでも)絶対に実行できない。** `CPD0031`
+「Command SNDPGMMSG not allowed in this setting」で確認。IBM公式
+Docsを2箇所直接引用で確認: QCMDEXC自体のDocs(`rbam6/execp.htm`)は
+「commands that can only be used in CL procedures or programs cannot
+be run by the QCMDEXC program」と明記し、`SNDPGMMSG`自身のDocsは
+実行を許される環境を「Compiled CL program or interpreted REXX」だけと
+定める——RPGは実行元言語である以上、`QCMDEXC`をどう経由してもここには
+入れない。**`jucutl.rpgle`(M0701B)自身の以前のヘッダー・コメントは
+これを「呼び出しの深さの問題」と誤って推測していたが、実際には深さは
+無関係で、`f0605s.rpgle`/`f0606s.rpgle`の直接(1段)呼び出しも同様に
+壊れている。**
+
+**全リポジトリーをQCMDEXC呼び出しで検索し、影響範囲を確定した:**
+`f0605s.rpgle`・`f0606s.rpgle`・`jucutl.rpgle`(いずれもRPG IV、
+`sendMsg`サブプロシージャー)は、**T0LAD梯子で既に実機確認済みの
+QMHSNDPM(Send Program Message API)へ書き換えて修正**(呼び出し側の
+シグネチャーは一切変えていない。3ファイルの`sendMsg`本体は完全に
+同一内容に揃えた——07-01自身の「無改変で移植した」という教える要点を
+保つため)。**`src/legacy/qrpgsrc/za0510.rpg`(第5部05-04、レッスン
+本文執筆済み・P3で公開予定)と`solutions/05-13/za0500-ticket3.rpg`
+(05-13のチケット3演習)にも同じ壊れたパターンを発見したが、
+まだ修正していない。** どちらもレッスンの教える要点そのものが
+`QCMDEXC`/`SNDPGMMSG`なので、単純なソース差し替えでは済まず、
+カリキュラム上の再設計(`QCMDEXC`で実際に許される別のコマンドを
+教えるか、`QMHSNDPM`のRPG III形("CALL"+DS)に教材ごと切り替えるか)
+が必要——両ファイルに`CONFIRMED BROKEN`の注記を追加し、公開(P3)前に
+解決すべき課題として明記した。
+
+**影響**: `docs/design/part06-design-v1.md`が`QMHSNDPM`の新出構文を
+06-09に置いている点との整合性は未解決(`f0605s.rpgle`/`f0606s.rpgle`
+=06-05/06-06が06-09より前に`QMHSNDPM`を使うことになった)。P4(第6部
+本文執筆)の前に、批評パネル等でこの前倒しの扱いを決めること。
 
 ## 未実施のプローブ
 

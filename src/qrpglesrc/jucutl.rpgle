@@ -24,15 +24,17 @@
 // NO main procedure at all (ctl-opt nomain below). This is the first
 // consolidation, in this whole repo, of logic that Part 6 had to
 // duplicate: F0605A's calcTaxTotal (R0402A's tax-inclusive total) and
-// F0605A's/F0606A's sendMsg (the QCMDEXC/SNDPGMMSG-based job-log
-// observation channel used because DSPLY defaults to QSYSOPR for a
-// batch job - see f0605s.rpgle's own "Why not DSPLY" header note, not
-// repeated in full here). Both bodies are ported UNCHANGED from
-// src/qrpglesrc/f0605s.rpgle (calcTaxTotal:
-// lines 211-228; sendMsg: lines 238-257) - same computation, same
-// QCMDEXC prototype and call shape, per this lesson's own teaching
-// point: here is logic that was duplicated in Part 6, now properly
-// modularized instead of reinvented.
+// F0605A's/F0606A's sendMsg (a job-log observation channel used because
+// DSPLY defaults to QSYSOPR for a batch job - see f0605s.rpgle's own
+// "Why not DSPLY" header note, not repeated in full here). calcTaxTotal
+// is ported UNCHANGED from src/qrpglesrc/f0605s.rpgle (lines 211-228).
+// sendMsg's own IMPLEMENTATION changed on all three files (F0605A/
+// F0606A/here) after this module's own real-hardware connection found
+// its original QCMDEXC/SNDPGMMSG body categorically broken - see the
+// FIXED note further down, at the current sendMsg. Its call signature
+// (text char(60) const) is unchanged, so this remains a faithful port
+// from the caller's point of view - here is logic that was duplicated
+// in Part 6, now properly modularized instead of reinvented.
 //
 // NOMAIN and CRTBNDRPG: ilerpgref75.txt lines 25473-25480 state, of the
 // NOMAIN keyword: "It also means that the module in which it is coded
@@ -75,12 +77,31 @@
 // rate-limited as of 2026-09-26). Treat every runtime claim here as
 // "should work per the ILE RPG Language Reference", not a verified
 // fact.
-// TODO: verify - F0605A's own header already flags that its QCMDEXC-
-// based sendMsg is untested at ITS call depth (RPG program -> QCMDEXC).
-// Here it goes one level deeper again (M0701A -> bound call into
-// M0701B -> QCMDEXC), which is a NEW, not-yet-tested combination on top
-// of an already-untested one. Confirm with an actual V1/V2 run before
-// treating any sendMsg output from F0701A as observed fact.
+// FIXED (part07-01-modules, 2026-09-26, real-hardware CRTPGM/CALL):
+// sendMsg's original QCMDEXC/SNDPGMMSG body failed with CPD0031
+// ("Command SNDPGMMSG not allowed in this setting"). This was NOT the
+// "call depth" risk this note used to flag - confirmed against
+// QCMDEXC's own IBM Docs page (rbam6/execp.htm): "commands that can
+// only be used in CL procedures or programs cannot be run by the
+// QCMDEXC program," and SNDPGMMSG's own reference page states its
+// allowed environments as "Compiled CL program or interpreted REXX"
+// only - never RPG, at ANY call depth, via QCMDEXC or otherwise. This
+// means F0605A/F0606A's own direct (one-level) use of the same pattern
+// is equally broken, not just this module's deeper nesting - both
+// already flagged their own risk correctly, just not this precisely.
+// Replaced with QMHSNDPM (Send Program Message API), the same
+// technique already hardware-confirmed in this repo's T0LAD ladder
+// (verify/part06-gen-probe) and already used directly (no QCMDEXC) in
+// this same Part's F0702A-F0704A (07-02/07-03/07-04). CURRICULUM NOTE
+// for whoever writes 06-05/06-06's lesson prose (P4): work/design/
+// part06-design-v1.md places QMHSNDPM as new syntax first introduced in
+// 06-09, and SND-MSG as first introduced in 06-11 (f0611s.rpgle's own
+// header) - using QMHSNDPM here (07-01, which claims to port F0605A/
+// F0606A's sendMsg "unchanged") means F0605A/F0606A must ALSO switch to
+// QMHSNDPM (done - see their own files), which surfaces QMHSNDPM before
+// its planned 06-09 slot. This is a real curriculum-sequencing question
+// this fix does not resolve on its own; flag it for the design-review
+// panel before finalizing 06-05/06-06/06-09's lesson text.
 //
 // Verified against work/design/refs/ilerpgref75.txt (IBM i 7.5 ILE RPG
 // Language Reference, 73451 lines):
@@ -92,15 +113,15 @@
 //                                                            38503
 //   /COPY or /INCLUDE (self-include Tip - see also         lines 7773-7822
 //     jucutlp.rpgleinc's own header)
-//   DCL-PR / prototype for QCMDEXC (Figure 275, same        lines 52625-
-//     worked example F0605A/F0606A already cite)            52648
 //   DFTACTGRP/ACTGRP ctl-opt keywords "valid only if the    lines 24185,
 //     CRTBNDRPG command is used" (why this file has no      25080
 //     activation-group ctl-opt at all - see m0701s.rpgle
 //     for the fuller ACTGRP discussion)
-//   DSPLY default queue for a batch job (why sendMsg uses   line 55828
-//     QCMDEXC/SNDPGMMSG instead, same reasoning as F0605A/
-//     F0606A)
+//   DSPLY default queue for a batch job (why sendMsg does   line 55828
+//     not use it, same reasoning as F0605A/F0606A)
+//   QMHSNDPM prototype shape (copied from T0LAD01's own,     see
+//     already real-hardware-confirmed declaration -          verify/part06-gen-probe/
+//     verify/README.md's "P24" ladder)                       src/t0lad01.rpgle
 //=======================================================================
 
 ctl-opt nomain;
@@ -111,18 +132,34 @@ ctl-opt nomain;
 /INCLUDE jucutlp
 
 //-----------------------------------------------------------------------
-// dcl-pr / EXTPGM: a prototype for the system API QCMDEXC, needed only
-// internally by sendMsg's own implementation below. This is NOT part of
-// this module's public interface (callers of sendMsg never see or need
-// QCMDEXC), so it is declared privately here rather than placed in
-// jucutlp.rpgleinc - copied exactly (types and lengths) from
-// ilerpgref75.txt's own worked example at "Figure 275. Calling a
-// Prototyped Program Using CALLP" (approx. lines 52637-52644), same as
-// F0605A/F0606A's own local copies of this same prototype.
+// dcl-ds/dcl-pr for QMHSNDPM (Send Program Message API), needed only
+// internally by sendMsg's own implementation below. Not part of this
+// module's public interface, so declared privately here rather than in
+// jucutlp.rpgleinc. Same shape as verify/part06-gen-probe/src/
+// t0lad01.rpgle's own already real-hardware-confirmed declaration.
 //-----------------------------------------------------------------------
-dcl-pr qcmdexc extpgm('QCMDEXC');
-  cmd    char(200) options(*varsize) const;
-  cmdlen packed(15:5) const;
+dcl-ds qmhsndpmMsgFile qualified template;
+  *n char(10) inz('QCPFMSG');
+  *n char(10) inz('*LIBL');
+end-ds;
+
+dcl-ds qmhsndpmErrCode template;
+  bytesProvided int(10) inz(0);
+  bytesAvailable int(10);
+  msgId char(7);
+  *n char(1);
+end-ds;
+
+dcl-pr qmhsndpm extpgm;
+  msgId          char(7) const;
+  msgFile        likeds(qmhsndpmMsgFile) const;
+  msgData        char(1000) const;
+  dataLen        int(10) const;
+  msgType        char(10) const;
+  callStackEntry char(10) const;
+  callStackCtr   int(10) const;
+  msgKey         char(4);
+  errorCode      likeds(qmhsndpmErrCode);
 end-pr;
 
 //=======================================================================
@@ -156,23 +193,24 @@ dcl-proc calcTaxTotal export;
 end-proc;
 
 //=======================================================================
-// sendMsg: faithful, unmodified port of F0605A's subprocedure of the
-// same name (src/qrpglesrc/f0605s.rpgle lines 238-257) - the QCMDEXC/
-// SNDPGMMSG-based observation channel reused (not reinvented) here,
-// with TOPGMQ(*SAME) and MSGTYPE(*INFO) matching this repo's own
-// verify/ harness convention exactly, same as F0605A/F0606A (see those
-// files' headers for the full justification, including the TODO:
-// verify about this technique's call-depth risk, which now applies one
-// level deeper still - see this file's own header above).
+// sendMsg: same call signature as F0605A's/F0606A's subprocedure of the
+// same name - see this file's header FIXED note for why the body now
+// calls QMHSNDPM directly instead of QCMDEXC/SNDPGMMSG (real-hardware
+// CPD0031, confirmed categorically broken from RPG regardless of call
+// depth).
 //=======================================================================
 dcl-proc sendMsg export;
   dcl-pi *n;
     text char(60) const;
   end-pi;
 
-  dcl-s cmdString char(200);
+  dcl-ds msgFile likeds(qmhsndpmMsgFile) inz(*likeds);
+  dcl-ds errCode likeds(qmhsndpmErrCode) inz(*likeds);
+  dcl-s  msgKey  char(4);
 
-  cmdString = 'SNDPGMMSG MSG(''' + %trim(text)
-    + ''') TOPGMQ(*SAME) MSGTYPE(*INFO)';
-  callp qcmdexc(cmdString : 200);
+  // 60, not %len(%trimr(text)): text's own full declared length - see
+  // f0605s.rpgle's identical sendMsg for the full reasoning (this body
+  // is ported unchanged from there, per 07-01's own teaching point).
+  qmhsndpm('CPF9898' : msgFile : text : 60
+             : '*INFO' : '*' : 0 : msgKey : errCode);
 end-proc;
