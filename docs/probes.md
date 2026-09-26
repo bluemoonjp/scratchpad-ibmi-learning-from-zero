@@ -787,8 +787,8 @@ M0701A(メイン・モジュール)・M0701B(JUCUTL、NOMAINユーティリテ�
 モジュール)を別々にCRTRPGMODし、両方をF0701AへCRTPGM ACTGRP(*NEW)で
 結合、実行するところまでは正しく設計されていたが、**接続1回目は
 マニフェストのラッパー自体がコンパイル失敗、接続2回目はモジュール・
-結合は全て成功したものの実行時に別の実バグで失敗(3回目の接続で
-決着させる)。**
+結合は全て成功したものの実行時に別の実バグで失敗、接続3回目で
+2件とも修正が効いて完全成功(CONFIRMED SUCCESS)。**
 
 **バグ: `DSPPGM`は`OUTPUT(*OUTFILE)`に対応していない(DETAIL値に
 関わらず)。** `CPD0043`「Keyword OUTFILE not valid for this command」で
@@ -837,6 +837,15 @@ QMHSNDPM(Send Program Message API)へ書き換えて修正**(呼び出し側の
 教えるか、`QMHSNDPM`のRPG III形("CALL"+DS)に教材ごと切り替えるか)
 が必要——両ファイルに`CONFIRMED BROKEN`の注記を追加し、公開(P3)前に
 解決すべき課題として明記した。
+
+**確認(3回目の接続)**: M0701B・M0701A・F0701Aとも
+Highest Severity 00で作成され、`RUNF0701A`も成功(3つの`sendMsg`呼び出し
+全てが正しい値で到達: `M0701A: 1580 at default rate = 1738.00.`・
+`M0701A: 1580 at rate 1.08 = 1706.40.`・
+`M0701A: calcTaxTotal/sendMsg ran via M0701B.`、モジュール境界を跨いだ
+`sendMsg`呼び出しも問題なく動作)。`QSYS2.BOUND_MODULE_INFO`も期待どおり
+M0701A/M0701Bの2行を返した。`part07-01-modules DONE`まで到達
+(FAILSAFEに落ちず)。**CONFIRMED SUCCESS。**
 
 **影響**: `docs/design/part06-design-v1.md`が`QMHSNDPM`の新出構文を
 06-09に置いている点との整合性は未解決(`f0605s.rpgle`/`f0606s.rpgle`
