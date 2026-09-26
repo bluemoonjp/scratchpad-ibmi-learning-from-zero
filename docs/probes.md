@@ -740,7 +740,8 @@ CPSPL(変換レポートのCPYSPLF)は、`system "CALL PGM(...)"`経由の
 D0611A/F0611A・D0611BA/F0611BA)をコンパイルした。**接続1回目でD0604A/
 F0604A・D0610A/F0610Aは成功(Highest Severity 00)。DDS(D0611A・
 D0611BA)は事前修正(CPD7486/CPD7812)どおり成功。RPG(F0611A・
-F0611BA)は別の実バグで失敗(再接続で決着させる)。**
+F0611BA)は別の実バグで失敗。接続2回目で8オブジェクト全て
+Highest Severity 00を確認(CONFIRMED SUCCESS)。**
 
 **バグ: `%EOF`/`%FOUND`にサブファイルの**レコード様式名**(`sfl1`/
 `sfl2`)を渡していた。実際は**表示装置ファイル名**(`d0611a`/
