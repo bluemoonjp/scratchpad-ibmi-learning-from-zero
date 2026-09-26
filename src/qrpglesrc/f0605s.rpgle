@@ -26,12 +26,18 @@
 //       to 43 (or reports SHORT if already short). Run <USER>1/TXRESET
 //       afterward, same as 04-09 and 06-08 require.
 //
-//   (c) QCMDEXC / SNDPGMMSG - a new, independent example (NOT the
-//       Part 5 ZA0510 MOVEL-chunking technique). The command string is
-//       built directly with %TRIM and string concatenation, per the
-//       task instructions for this lesson. Generalized below into a
-//       small sendMsg subprocedure, reused as this program's ONLY
-//       observation channel (see the DSPLY note below for why).
+//   (c) A job-log observation channel - a new, independent example (NOT
+//       the Part 5 ZA0510 MOVEL-chunking technique). Generalized below
+//       into a small sendMsg subprocedure, reused as this program's
+//       ONLY observation channel (see the DSPLY note below for why).
+//       FIXED (2026-09-26, real-hardware CRTBNDRPG/CALL): the task's
+//       original QCMDEXC/SNDPGMMSG design (command string built with
+//       %TRIM and string concatenation) is categorically broken from
+//       RPG - see the FIXED note at sendMsg's own declaration below for
+//       the full real-hardware finding and citations. sendMsg now calls
+//       QMHSNDPM directly; %TRIM and string concatenation are still
+//       exercised (building the message text passed to QMHSNDPM), so
+//       this lesson's own BIF-usage point still stands.
 //
 // Why not DSPLY: ilerpgref75.txt line 55828 states "For a batch job, if
 // no message-queue value is specified, the default is QSYSOPR" for
@@ -39,29 +45,19 @@
 // same as this repo's verify/ harness), so a bare DSPLY here would
 // silently send to QSYSOPR - exactly what style-guide.md's "PUB400
 // etiquette" section forbids (no SNDMSG to QSYSOPR/other users).
-// SNDPGMMSG via QCMDEXC is used instead for every observable value in
-// this file, with TOPGMQ(*SAME) and MSGTYPE(*INFO) specified explicitly
-// - this exact combination (not *EXT) is what this repo's own verify/
-// harness already relies on: verify/lib/clgen.mjs's generated CL
-// wrapper (lines 106, 120, 125) sends its own step-result messages with
-// `SNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA(...) TOPGMQ(*SAME)
-// MSGTYPE(*INFO)`, a pattern the wrapper's own comment (clgen.mjs line
-// 2) says follows tools/qclsrc/txsetup.clp's already hardware-verified
-// convention. That wrapper then reads the WHOLE job's log back with
-// `SELECT ... FROM TABLE(QSYS2.JOBLOG_INFO('*'))` (clgen.mjs line 115)
-// at its DONE/FAILSAFE labels, so a message sent this way should be
-// picked up by the harness's existing VFYLOG capture with no extra
-// "collect" step needed. The one difference from the harness's own
-// proven usage: there, SNDPGMMSG runs directly in CL at the wrapper's
-// own (outermost) call level; here, it runs one call level deeper,
-// from inside a CALLed RPG program, via QCMDEXC rather than directly
-// from CL. That specific combination is NOT yet hardware-verified -
-// see the TODO below.
+// QMHSNDPM is used instead for every observable value in this file -
+// see sendMsg's own FIXED note for why, and its real-hardware
+// confirmation (verify/part06-gen-probe's T0LAD ladder, and this
+// program's own connection).
 //
-// STATUS: hardware-UNTESTED (Part 6 draft; SSH access is rate-limited
-// as of this writing, 2026-09-26). This source has not been compiled
-// or run on PUB400 yet. Treat every runtime claim below as "should
-// work per the ILE RPG Language Reference", not as a verified fact.
+// STATUS: hardware-UNTESTED (Part 6 draft). This source has not itself
+// been compiled or run on PUB400 yet - only sendMsg's technique has
+// been fixed here, based on the real-hardware finding from a sibling
+// file (jucutl.rpgle/M0701B, part07-01-modules, 2026-09-26 - see that
+// file's own FIXED note and docs/probes.md). This file's own connection
+// is still pending (part06-0509-procs-files). Treat every other
+// runtime claim below as "should work per the ILE RPG Language
+// Reference", not as a verified fact.
 //
 // Verified against work/design/refs/ilerpgref75.txt (the real IBM i 7.5
 // ILE RPG Language Reference, 73451 lines) at approximately these line
@@ -88,41 +84,13 @@
 //   DCL-PR / EXTPGM (call to a program)        lines 29340-29368,
 //                                               31307-31326, 48741
 //   CALLP                                      lines 52579-52599
-//   QCMDEXC prototype (exact primary-source    lines 52625-52648
-//     worked example - "Figure 275. Calling    (this is the reference's
-//     a Prototyped Program Using CALLP")       OWN example for QCMDEXC,
-//                                               not a guess)
 //   %CHAR (numeric to character)               lines 44254-44306
 //   DSPLY default queue for a batch job        line 55828 (why DSPLY
 //                                               is *not* used in this
 //                                               file)
-//
-// Cross-checked against a second primary source, work/design/refs/
-// ilerpgprogguide75.txt (the ILE RPG Programmer's Guide, a different
-// manual in the same refs/ directory): its own QCMDEXC prototype
-// (Figures 69 and 73, lines 13982-13990 and 14437-14445) confirms the
-// same shape (cmd CONST OPTIONS(*VARSIZE), cmdlen 15P 5 CONST), though
-// it declares cmd as 3000A rather than ilerpgref75.txt's 200A - both
-// are valid; 200A is kept here since it comfortably fits every command
-// string actually built in this file.
-//
-// Also grounded against this repo's own verify/ harness (not the ILE
-// RPG reference, since SNDPGMMSG itself is a CL command, not an RPG
-// construct):
-//   TOPGMQ(*SAME) / MSGTYPE(*INFO) and the    verify/lib/clgen.mjs
-//     QSYS2.JOBLOG_INFO capture technique     lines 106, 115, 120, 125
-//
-// TODO: verify - the harness's own SNDPGMMSG usage (cited above) is
-// itself only a *convention this repo already trusts* (inherited from
-// tools/qclsrc/txsetup.clp), not something confirmed by a primary
-// source in work/design/refs/ - SNDPGMMSG is not documented in either
-// cl_commands_75.txt or ilerpgprogguide75.txt in that directory (both
-// checked, zero matches). More importantly, this file calls SNDPGMMSG
-// one call level deeper than the harness's own proven usage (from
-// inside a CALLed RPG program via QCMDEXC, not directly from the CL
-// wrapper), which has not been hardware-verified. Confirm with an
-// actual V1/V2 run, and adjust TOPGMQ if messages sent from this depth
-// do not show up in QSYS2.JOBLOG_INFO.
+//   QMHSNDPM prototype shape (copied from       see verify/part06-gen-probe/
+//     T0LAD01's own, already real-hardware-      src/t0lad01.rpgle
+//     confirmed declaration)
 //
 // A program-entry dcl-pi (the free-form replacement for a fixed-form
 // *ENTRY PLIST) is intentionally NOT used in this file - see the note
@@ -142,16 +110,34 @@ ctl-opt dftactgrp(*no) actgrp(*new);
 dcl-pr r0409a extpgm('R0409A') end-pr;
 
 //-----------------------------------------------------------------------
-// dcl-pr / EXTPGM: a prototype for the system API QCMDEXC. Copied
-// exactly (types and lengths) from ilerpgref75.txt's own worked example
-// at "Figure 275. Calling a Prototyped Program Using CALLP" (approx.
-// lines 52637-52644). This is a system API, not an RPG IV language
-// feature, but this exact declaration is the reference's own text, so
-// no TODO: verify is needed for the prototype shape itself.
+// dcl-ds/dcl-pr for QMHSNDPM (Send Program Message API), needed only
+// internally by sendMsg's own implementation further below. Same shape
+// as verify/part06-gen-probe/src/t0lad01.rpgle's own already
+// real-hardware-confirmed declaration. See sendMsg's own FIXED note for
+// why this replaced the originally-planned QCMDEXC/SNDPGMMSG.
 //-----------------------------------------------------------------------
-dcl-pr qcmdexc extpgm('QCMDEXC');
-  cmd    char(200) options(*varsize) const;
-  cmdlen packed(15:5) const;
+dcl-ds qmhsndpmMsgFile qualified template;
+  *n char(10) inz('QCPFMSG');
+  *n char(10) inz('*LIBL');
+end-ds;
+
+dcl-ds qmhsndpmErrCode template;
+  bytesProvided int(10) inz(0);
+  bytesAvailable int(10);
+  msgId char(7);
+  *n char(1);
+end-ds;
+
+dcl-pr qmhsndpm extpgm;
+  msgId          char(7) const;
+  msgFile        likeds(qmhsndpmMsgFile) const;
+  msgData        char(1000) const;
+  dataLen        int(10) const;
+  msgType        char(10) const;
+  callStackEntry char(10) const;
+  callStackCtr   int(10) const;
+  msgKey         char(4);
+  errorCode      likeds(qmhsndpmErrCode);
 end-pr;
 
 dcl-s taxTotal1 packed(9:2);
@@ -229,29 +215,39 @@ end-proc;
 
 //=======================================================================
 // sendMsg: this program's only observation channel (see the "Why not
-// DSPLY" note in the header). Builds one SNDPGMMSG command with %TRIM
-// and string concatenation and runs it through QCMDEXC - this is task
-// (c) for this lesson, generalized into a small subprocedure so every
-// demonstrated value in this program can be observed the same, safe
-// way instead of repeating the command-building code three times.
+// DSPLY" note in the header).
+//
+// FIXED (2026-09-26, real-hardware CRTBNDRPG/CALL, found via this
+// module's own port into jucutl.rpgle/M0701B, part07-01-modules): the
+// original body built a SNDPGMMSG command string with %TRIM and string
+// concatenation and ran it through QCMDEXC. This fails with CPD0031
+// ("Command SNDPGMMSG not allowed in this setting") - confirmed against
+// QCMDEXC's own IBM Docs page (rbam6/execp.htm): "commands that can
+// only be used in CL procedures or programs cannot be run by the
+// QCMDEXC program," and SNDPGMMSG's own reference page states its
+// allowed environments as "Compiled CL program or interpreted REXX"
+// only - never RPG, regardless of call depth or how QCMDEXC is reached.
+// Replaced with QMHSNDPM (Send Program Message API), already
+// real-hardware-confirmed in this repo's T0LAD ladder
+// (verify/part06-gen-probe) and already used directly in this Part's
+// F0702A-F0704A (07-02/07-03/07-04). %TRIM and string concatenation are
+// still exercised, just building the message text passed to QMHSNDPM
+// instead of a CL command string.
 //=======================================================================
 dcl-proc sendMsg;
   dcl-pi *n;
     text char(60) const;
   end-pi;
 
-  dcl-s cmdString char(200);
+  dcl-ds msgFile likeds(qmhsndpmMsgFile) inz(*likeds);
+  dcl-ds errCode likeds(qmhsndpmErrCode) inz(*likeds);
+  dcl-s  msgKey  char(4);
 
-  // '' inside a string literal is how RPG IV escapes a literal single
-  // quote inside a character constant. TOPGMQ(*SAME)/MSGTYPE(*INFO)
-  // match this repo's own verify/ harness convention exactly (see the
-  // header comment above) rather than being invented here.
-  cmdString = 'SNDPGMMSG MSG(''' + %trim(text)
-    + ''') TOPGMQ(*SAME) MSGTYPE(*INFO)';
-  // The full declared length (200), not %len(%trim(cmdString)): CL
-  // command parsing tolerates trailing blank padding after a complete
-  // command, and this keeps the BIF list in this file to exactly what
-  // task (c) asked for (%trim and concatenation) without also reaching
-  // for %len.
-  callp qcmdexc(cmdString : 200);
+  // 60, not %len(%trimr(text)): text's own full declared length,
+  // same "trailing blank padding is fine" reasoning the original
+  // cmdString version used for its own literal 200 - msgData is plain
+  // text, not a parsed command, so padding costs nothing and this
+  // avoids reaching for a BIF this lesson does not otherwise need.
+  qmhsndpm('CPF9898' : msgFile : text : 60
+             : '*INFO' : '*' : 0 : msgKey : errCode);
 end-proc;

@@ -105,10 +105,11 @@ dcl-pr calcTaxTotal packed(9:2);
 end-pr;
 
 //-----------------------------------------------------------------------
-// sendMsg - the QCMDEXC/SNDPGMMSG-based observation channel from
-// Part 6 (used because DSPLY defaults to QSYSOPR for a batch job -
-// see jucutl.rpgle for the faithful port of the body). Same signature
-// as F0605A's sendMsg (src/qrpglesrc/f0605s.rpgle lines 238-257): one
+// sendMsg - the QMHSNDPM-based observation channel from Part 6 (used
+// because DSPLY defaults to QSYSOPR for a batch job - see jucutl.rpgle
+// for the implementation, and its header's FIXED note for why this is
+// QMHSNDPM and not the originally-planned QCMDEXC/SNDPGMMSG). Same
+// signature as F0605A's sendMsg (src/qrpglesrc/f0605s.rpgle): one
 // CONST char(60) parameter, no return value.
 //-----------------------------------------------------------------------
 dcl-pr sendMsg;
