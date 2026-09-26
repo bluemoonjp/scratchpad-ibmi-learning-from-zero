@@ -40,22 +40,23 @@ dcl-pr qmhsndpm extpgm;
   errorCode      likeds(qmhsndpmErrCode);
 end-pr;
 
-sendToJobLog('T0LAD01: **FREE rung compiled and ran.');
-
+//-----------------------------------------------------------------------
+// Rung 2's new feature: DIM(*AUTO:10). The array starts with 0 elements
+// and grows as elements are assigned (ilerpgref75.txt line 3282-3286).
+//-----------------------------------------------------------------------
 dcl-s ladArr char(10) dim(*auto:10);
+
+dcl-s ladItem varchar(20);
+dcl-s ladCount int(10) inz(0);
+dcl-s ladHitText char(1) inz('N');
+
+sendToJobLog('T0LAD01: **FREE rung compiled and ran.');
 
 ladArr(1) = 'AAA';
 ladArr(2) = 'BBB';
 
 sendToJobLog('T0LAD02: DIM(*AUTO:10) OK - %elem after 2 assigns = '
   + %char(%elem(ladArr)));
-
-//-----------------------------------------------------------------------
-// Rung 3's new feature: FOR-EACH over a %LIST, and the IN operator.
-//-----------------------------------------------------------------------
-dcl-s ladItem varchar(20);
-dcl-s ladCount int(10) inz(0);
-dcl-s ladHitText char(1) inz('N');
 
 for-each ladItem in %list('AAA' : 'BBB' : 'CCC');
   ladCount += 1;
@@ -67,9 +68,6 @@ endif;
 
 sendToJobLog('T0LAD03: FOR-EACH/%LIST/IN OK - count = ' + %char(ladCount)
   + ', hit = ' + ladHitText);
-
-*inlr = *on;
-return;
 
 dcl-proc sendToJobLog;
   dcl-pi *n;

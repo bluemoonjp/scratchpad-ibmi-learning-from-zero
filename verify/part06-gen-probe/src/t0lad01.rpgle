@@ -56,8 +56,8 @@
 //   on the still-unverified SYSTOOLS.SPOOLED_FILE_DATA path that spooled
 //   printer output would have required.
 //
-// FIXED (part06-gen-probe, 2026-09-26, real-hardware CRTBNDRPG, 2 real
-// bugs found across both connections - applied to all 13 files in this
+// FIXED (part06-gen-probe, 2026-09-26, real-hardware CRTBNDRPG, 3 real
+// bugs found across 3 connections - applied to all 13 files in this
 // ladder, T0LAD01-12/12Q, which all copy this same QMHSNDPM/
 // sendToJobLog block):
 //   1. Missing the ctl-opt line below. Without it, DFTACTGRP defaults
@@ -82,6 +82,20 @@
 //      order (mainline, then *inlr/return, then its dcl-procs); moved
 //      sendToJobLog's dcl-proc/end-proc block to the end of every file
 //      here to match.
+//   3. Wrong statement order WITHIN the mainline itself: each rung's
+//      new dcl-s/dcl-ds/dcl-c/dcl-enum was interleaved among earlier
+//      rungs' executable statements (e.g. rung 2's "dcl-s ladArr..."
+//      sat right after rung 1's sendToJobLog() call), not grouped
+//      before them. RNF0724 ("The statement type is out of sequence
+//      for the main procedure") at rung 2's dcl-s line, on the 3rd
+//      connection (after bugs 1-2 were fixed) - confirmed against
+//      ilerpgprogguide75.txt line 34326: "In RPG IV, definition
+//      specifications must precede input specifications" (the same
+//      ordering rule extends to free-form: all declarations before any
+//      executable statement in the main procedure). Reordered every
+//      rung's file so ALL of its accumulated declarations come first,
+//      then ALL of its accumulated executable statements, then the
+//      *inlr/return closer, then the sendToJobLog procedure.
 //=======================================================================
 
 ctl-opt dftactgrp(*no) actgrp(*new);
@@ -110,15 +124,8 @@ dcl-pr qmhsndpm extpgm;
   errorCode      likeds(qmhsndpmErrCode);
 end-pr;
 
-//-----------------------------------------------------------------------
-// Rung 1's own feature: nothing beyond **FREE itself. If this member
-// fails to compile, PUB400's PTF level cannot even accept a bare **FREE
-// source member, which would make every later rung moot.
-//-----------------------------------------------------------------------
-sendToJobLog('T0LAD01: **FREE rung compiled and ran.');
 
-*inlr = *on;
-return;
+sendToJobLog('T0LAD01: **FREE rung compiled and ran.');
 
 dcl-proc sendToJobLog;
   dcl-pi *n;

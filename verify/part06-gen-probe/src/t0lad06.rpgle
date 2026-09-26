@@ -36,19 +36,32 @@ dcl-pr qmhsndpm extpgm;
   errorCode      likeds(qmhsndpmErrCode);
 end-pr;
 
-sendToJobLog('T0LAD01: **FREE rung compiled and ran.');
-
+//-----------------------------------------------------------------------
+// Rung 2's new feature: DIM(*AUTO:10). The array starts with 0 elements
+// and grows as elements are assigned (ilerpgref75.txt line 3282-3286).
+//-----------------------------------------------------------------------
 dcl-s ladArr char(10) dim(*auto:10);
+
+dcl-s ladItem varchar(20);
+dcl-s ladCount int(10) inz(0);
+dcl-s ladHitText char(1) inz('N');
+
+dcl-s ladParts varchar(10) dim(10);
+dcl-s ladUpper varchar(10);
+
+dcl-ds ladMsgFile likeds(qmhsndpmMsgFile) inz(*likeds);
+dcl-ds ladErrCode likeds(qmhsndpmErrCode) inz(*likeds);
+dcl-s  ladMsgKey  char(4);
+
+dcl-s ladConcat varchar(50);
+
+sendToJobLog('T0LAD01: **FREE rung compiled and ran.');
 
 ladArr(1) = 'AAA';
 ladArr(2) = 'BBB';
 
 sendToJobLog('T0LAD02: DIM(*AUTO:10) OK - %elem after 2 assigns = '
   + %char(%elem(ladArr)));
-
-dcl-s ladItem varchar(20);
-dcl-s ladCount int(10) inz(0);
-dcl-s ladHitText char(1) inz('N');
 
 for-each ladItem in %list('AAA' : 'BBB' : 'CCC');
   ladCount += 1;
@@ -61,18 +74,11 @@ endif;
 sendToJobLog('T0LAD03: FOR-EACH/%LIST/IN OK - count = ' + %char(ladCount)
   + ', hit = ' + ladHitText);
 
-dcl-s ladParts varchar(10) dim(10);
-dcl-s ladUpper varchar(10);
-
 ladParts = %split('cat.dog.fish' : '.');
 ladUpper = %upper(ladParts(1));
 
 sendToJobLog('T0LAD04: %SPLIT/%UPPER OK - upper(parts(1)) = ' + ladUpper
   + ', parts(2) = ' + %trim(ladParts(2)));
-
-dcl-ds ladMsgFile likeds(qmhsndpmMsgFile) inz(*likeds);
-dcl-ds ladErrCode likeds(qmhsndpmErrCode) inz(*likeds);
-dcl-s  ladMsgKey  char(4);
 
 snd-msg *info 'T0LAD05: native SND-MSG opcode compiled and executed.';
 
@@ -87,17 +93,9 @@ endmon;
 
 sendToJobLog('T0LAD05: SND-MSG/ON-EXCP/MONITOR/CALLP compiled and ran.');
 
-//-----------------------------------------------------------------------
-// Rung 6's new feature: %CONCAT.
-//-----------------------------------------------------------------------
-dcl-s ladConcat varchar(50);
-
 ladConcat = %concat(', ' : 'cat' : 'dog' : 'fish');
 
 sendToJobLog('T0LAD06: %CONCAT OK - result = ' + ladConcat);
-
-*inlr = *on;
-return;
 
 dcl-proc sendToJobLog;
   dcl-pi *n;
