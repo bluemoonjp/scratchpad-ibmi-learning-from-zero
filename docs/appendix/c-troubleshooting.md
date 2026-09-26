@@ -67,7 +67,7 @@
 
 **対処**: `CURUSER` を使う。`tools/qclsrc/txsetup.clp`/`txreset.clp` はこの修正を実機で確認済み(修正後、`~/ibmi-kyozai` への実クローンからの通し実行まで完走)。
 
-**修正済み(2026-09-26、ソース・本文とも)**: `src/qclsrc/setenv.clp`([03-11](../part03/03-11-custom-commands.md))と `src/qclsrc/juyakc.clp`([03-13](../part03/03-13-batch-practice-juyakc.md))も `RTVJOBA CURUSER(&USRPRF)` に直した(レッスン本文中のソース掲載箇所も同時に更新済み)。**ただしこの修正自体はまだ実機で確認していない**(`verify/part03-rtvjoba-fix` を用意済み、実機検証待ち)。5250 の対話的コマンド行からであれば `USER`/`CURUSER` の違いが表面化しない可能性が高いが、これも未確認のまま。
+**修正済み・実機確認済み(2026-09-26、ソース・本文とも)**: `src/qclsrc/setenv.clp`([03-11](../part03/03-11-custom-commands.md))と `src/qclsrc/juyakc.clp`([03-13](../part03/03-13-batch-practice-juyakc.md))も `RTVJOBA CURUSER(&USRPRF)` に直した(レッスン本文中のソース掲載箇所も同時に更新済み)。`verify/part03-rtvjoba-fix` で実機検証済み: `SETENV *DEV` を実際に CALL し、正しいカレント・ライブラリー値(`SETENV: now *DEV (curlib=...)`)が出力されることを確認した。5250 の対話的コマンド行からの違いは未確認のまま。
 
 **関連レッスン**: [02-05](../part02/02-05-txsetup.md), `docs/probes.md`(この節の一次情報源)。
 
