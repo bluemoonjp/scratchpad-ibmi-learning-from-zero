@@ -1,0 +1,91 @@
+/* JUCSRV binder source (Part 7, lesson 07-03).                        */
+/*                                                                     */
+/* This is a NEW directory in this repo - src/qsrvsrc/ did not exist   */
+/* before this lesson (confirmed by directory listing before writing  */
+/* this file). It maps to a QSRVSRC source file/member the same way   */
+/* src/qrpglesrc/ maps to QRPGLESRC - see this repo's build notes for  */
+/* the exact CRTSRCPF used to create it on PUB400 (not repeated here; */
+/* TODO: verify the harness actually creates a src/qsrvsrc -> QSRVSRC  */
+/* member mapping, since every other src/ subdirectory in this repo    */
+/* maps to an already-existing source file).                          */
+/*                                                                     */
+/* Binder-language syntax (STRPGMEXP/EXPORT SYMBOL/ENDPGMEXP) and the  */
+/* PGMLVL(*CURRENT)/PGMLVL(*PRV) mechanics below are verified against  */
+/* work/design/refs/ileconcepts75.txt, "Binder Language" section:      */
+/*   STRPGMEXP/EXPORT/ENDPGMEXP command list        lines 3902-3925    */
+/*   Only one PGMLVL(*CURRENT) allowed; all other    lines 3994-3999   */
+/*     STRPGMEXP commands must say PGMLVL(*PRV)                       */
+/*   Quoted symbol keeps its exact case; unquoted     lines 4043-4050  */
+/*     is forced to uppercase                                         */
+/*   "Do not remove/rearrange existing names;         lines 3964-3968  */
+/*     additional blocks must contain the same                       */
+/*     symbols in the same order; new symbols only                    */
+/*     at the end of the (*CURRENT) list"                             */
+/*   Worked "Binder Language Example 3" (adding       lines 4241-4317  */
+/*     OpenAccount/CloseAccount to an existing        (this file's own */
+/*     FINANCIAL service program): duplicate the      shape is modeled */
+/*     PGMLVL(*CURRENT) block, relabel the DUPLICATE  directly on this */
+/*     PGMLVL(*PRV), and add the new export(s) only   worked example)  */
+/*     to the end of the ORIGINAL (*CURRENT) block    also lines       */
+/*                                                     4508-4519       */
+/*                                                     ("steps needed") */
+/*                                                                     */
+/* IMPORTANT CORRECTION vs. an earlier, ambiguous reading of this      */
+/* lesson's own task instructions: the NEW procedure (countCustOrders) */
+/* is added to the END of the EXISTING PGMLVL(*CURRENT) block below,   */
+/* NOT into the newly-added PGMLVL(*PRV) block. The block that is      */
+/* genuinely NEW in this file (relative to 07-03 step 2, before         */
+/* countCustOrders existed) is the PGMLVL(*PRV) one - it is a verbatim */
+/* DUPLICATE of what PGMLVL(*CURRENT) used to contain (getCustName,    */
+/* pingJucsrv only, same order), preserving F0702A's old signature so  */
+/* F0702A keeps working without being recompiled. This matches         */
+/* ileconcepts75.txt's own worked example (Example 3, cited above)     */
+/* exactly.                                                            */
+/*                                                                     */
+/* EXPORT SYMBOL names are all QUOTED, mixed-case, and match           */
+/* jucsrv.rpgle's own EXTPROC(*DCLCASE) choice on each procedure's      */
+/* DCL-PI exactly (getCustName, pingJucsrv, countCustOrders) - see     */
+/* that file's header comment for why *DCLCASE was used instead of     */
+/* relying on the compiler's default (uppercase) export name.          */
+/* TODO: verify - the case-matching behavior between a module's        */
+/* *DCLCASE-derived export name and a quoted EXPORT SYMBOL string has  */
+/* not been hardware-tested in this repo.                              */
+/*                                                                     */
+/* Snapshot note (this repo holds only ONE state of this file, the     */
+/* final one, per commit): the 07-03-step-2 intermediate state (a      */
+/* single PGMLVL(*CURRENT) block with just getCustName and pingJucsrv, */
+/* no PGMLVL(*PRV) yet) is NOT a separate file in this repo - it is the */
+/* state of THIS block alone, before the PGMLVL(*PRV) block below and  */
+/* the "EXPORT SYMBOL('countCustOrders')" line existed. The lesson     */
+/* prose narrates that earlier state by pointing at (or temporarily    */
+/* deleting) those specific lines, the same way jucsrv.rpgle's own     */
+/* header comment does for pingJucsrv/countCustOrders.                 */
+/*                                                                     */
+/* Used on:                                                            */
+/*   CRTSRVPGM SRVPGM(<USER>1/JUCSRV) MODULE(<USER>1/JUCSRV)           */
+/*             EXPORT(*SRCFILE) SRCFILE(<USER>1/QSRVSRC)               */
+/*             SRCMBR(JUCSRV)                                          */
+/*   UPDSRVPGM SRVPGM(<USER>1/JUCSRV) MODULE(<USER>1/JUCSRV)           */
+/*             EXPORT(*SRCFILE) SRCFILE(<USER>1/QSRVSRC)               */
+/*             SRCMBR(JUCSRV)                                          */
+
+STRPGMEXP PGMLVL(*CURRENT)
+
+   EXPORT SYMBOL('getCustName')
+   EXPORT SYMBOL('pingJucsrv')
+   EXPORT SYMBOL('countCustOrders')
+
+ENDPGMEXP
+
+/* PGMLVL(*PRV): the signature F0702A was rebound against in 07-03     */
+/* step 2 (after pingJucsrv existed, before countCustOrders did).      */
+/* Same two symbols, same order, as the block above had BEFORE         */
+/* countCustOrders was appended to it - required so this block's       */
+/* generated signature matches what F0702A already has saved           */
+/* (ileconcepts75.txt lines 3964-3968).                                */
+STRPGMEXP PGMLVL(*PRV)
+
+   EXPORT SYMBOL('getCustName')
+   EXPORT SYMBOL('pingJucsrv')
+
+ENDPGMEXP
