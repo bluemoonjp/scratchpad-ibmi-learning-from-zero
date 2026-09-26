@@ -76,6 +76,18 @@ CL2                   Z-ADD0         L2CNT
 
 `ZA0500` は、受注明細 `JUCHUD`(プライマリー・ファイル、F仕様書16桁目 `P`)と受注ヘッダー `JUCHUM`(セカンダリー・ファイル、16桁目 `S`)を、両方とも `JUNO`(注文番号)をキーに組み合わせます。
 
+**用語: プログラム記述ファイル vs 外部記述ファイル。** F仕様書19桁目(File Format)には、**`F` か `E` のどちらかを必ず書きます**(RPG/400 Reference "Position 19 (File Format)": 「An entry is required in position 19」)。
+
+```text
+FJUCHUD  IP  F      27            DISK
+FTOKUIM  IF  E           K        DISK
+```
+
+- **`F`(プログラム記述)**: 「レコードの中身(フィールドの桁位置・型)が、この RPG プログラム自身の I 仕様書に書かれている」という意味です(同リファレンス: 「records for the file are described within the RPG/400 program on input/output specifications」)。`JUCHUD`/`JUCHUM` はこちらで、そのため `IJUCHUD`/`IJUCHUM` に手書きの桁位置指定(`1 6 JUNO`)が必要です。24-27桁目のレコード長(`JUCHUD` なら27)も、プログラム記述ファイルだけが持つ欄です(外部記述ファイルではこの欄は空欄でなければなりません)。
+- **`E`(外部記述)**: 「レコードの中身は、`DDS` 側(`db/v1/*.pf`)に定義済みで、コンパイル時にコンパイラーが自動的に取り込む」という意味です(同リファレンス: 「the compiler obtains these descriptions at compilation time」)。05-02 で読んだ `TOKUIM`/`TANTOM`(`FTOKUIM IF E K DISK`)はこちらです。フィールド名をそのまま使うか、`TANCD`/`TANNM` のように I 仕様書でリネームするだけで済み、桁位置を自分で数える必要がありません。
+
+**この違いが実際に効いてくるのは05-09です**(様式レベル ID による自動チェックは外部記述ファイルにしか効かず、プログラム記述の `JUCHUM` はそのチェックの外側にいます)。ここでは「19桁目の1文字で、フィールド定義の出どころが変わる」という事実だけ押さえてください。
+
 ```text
 IJUCHUD      01
 I                                        1   6 JUNO    M1
