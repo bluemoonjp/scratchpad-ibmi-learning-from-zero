@@ -1,12 +1,15 @@
 {
   "batch": "harness-selftest",
-  "description": "Verify the harness itself: heredoc transfer, CPYFRMSTMF into QRPGSRC, CRTRPGPGM (OPM RPG III, matching the technique Part 5 needs), and whether CHGJOB INQMSGRPY(*DFT) auto-answers the RPG0102 divide-by-zero inquiry instead of hanging. Intended as the very first real connection before Part 5 work starts (execution plan step 1). ccsid is left unset on the file step so it resolves to the harness default (1208), which mirrors tools/qclsrc/txsetup.clp's own already-verified STMFCCSID(1208) for CPYFRMSTMF - not a guess, but not yet confirmed for a heredoc-written (as opposed to git-cloned) source file either. If this run shows CPYFRMSTMF picked the wrong CCSID (garbled compile), add an explicit ccsid candidate here and retry in the next connection.",
+  "wrapperCcsid": false,
+  "description": "RETRY (2026-09-26, connection 2 of this investigation). Connection 1 (real, work/verify/results/harness-selftest-2026-09-26T11-57-52-819Z.json) found that BOTH heredoc-written files (T0ZERO and the CL wrapper source itself) failed CPYFRMSTMF identically: CPC7305 (member added) then CPC7309 (member removed) then CPFA0A2 (information passed to this operation was not valid) then CPFA095 (stream file not copied). advisor's diagnosis, confirmed against docs/probes.md:140/152 (CPFA095 alone means 'not found', but the CPFA0A2 preceding it here means a CONVERSION failure, not a missing-file failure - a materially different signature): qsh converts the SSH-piped script's bytes into the job's own (EBCDIC) CCSID before `cat` ever sees them, so `cat > file <<'DELIM'` writes EBCDIC bytes; `setccsid 1208` then only RETAGS the file's CCSID attribute to 1208 (ASCII/UTF-8) WITHOUT converting the underlying bytes, so CPYFRMSTMF - trusting that tag (or the explicit STMFCCSID(1208) override) - tries to decode EBCDIC bytes as if they were already 1208 and fails. This connection tests the `ccsid: false` candidate (skip setccsid AND STMFCCSID entirely, both on this file step and on the wrapper source itself via the new top-level wrapperCcsid:false, letting CPYFRMSTMF fall back to its own undocumented-in-this-repo's-refs default) and adds debugCcsid diagnostics (ls -S / attr -p CCSID / od -x, both immediately after the heredoc write and - since ccsid is false here, skipping setccsid - only once) so that even if this candidate ALSO fails, the actual on-disk CCSID tag and byte pattern (2020=ASCII vs 4040=EBCDIC for RPG's leading spaces) settle the question for the next attempt rather than guessing again. Also echoes $HOME at the very start (ruled out as the cause already, since result.stderr showed no mkdir/cat/setccsid errors last time, but kept as a one-line sanity check).",
   "steps": [
     {
       "type": "file",
       "localPath": "src/t0zero.rpg",
       "remoteSrcFile": "QRPGSRC",
-      "member": "T0ZERO"
+      "member": "T0ZERO",
+      "ccsid": false,
+      "debugCcsid": true
     },
     {
       "type": "cl",
