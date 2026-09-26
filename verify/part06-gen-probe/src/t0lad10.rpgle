@@ -135,6 +135,9 @@ sendToJobLog('T0LAD09: CONST OK - LAD_MAX_RETRY = ' + %char(LAD_MAX_RETRY));
 sendToJobLog('T0LAD10: %HIVAL OK - hival(ladColors) = '
   + %char(%hival(ladColors)));
 
+*inlr = *on;
+return;
+
 dcl-proc sendToJobLog;
   dcl-pi *n;
     msg char(200) const;

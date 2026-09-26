@@ -150,6 +150,9 @@ ladDateVal = %date(ladNumDate : *yymd);
 sendToJobLog('T0LAD11: %DATE(*YYMD) OK - date = '
   + %char(ladDateVal : *iso));
 
+*inlr = *on;
+return;
+
 dcl-proc sendToJobLog;
   dcl-pi *n;
     msg char(200) const;

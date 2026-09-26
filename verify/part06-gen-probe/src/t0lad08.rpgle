@@ -138,6 +138,9 @@ ladColorVal = ladColors.green;
 
 sendToJobLog('T0LAD08: DCL-ENUM OK - green = ' + %char(ladColorVal));
 
+*inlr = *on;
+return;
+
 dcl-proc sendToJobLog;
   dcl-pi *n;
     msg char(200) const;

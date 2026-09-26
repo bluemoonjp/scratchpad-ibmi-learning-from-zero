@@ -138,6 +138,9 @@ end-pr;
 
 sendToJobLog('T0LAD01: **FREE rung compiled and ran.');
 
+*inlr = *on;
+return;
+
 dcl-proc sendToJobLog;
   dcl-pi *n;
     msg char(200) const;

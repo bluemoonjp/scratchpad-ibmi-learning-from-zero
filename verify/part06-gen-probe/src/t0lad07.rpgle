@@ -115,6 +115,9 @@ endsl;
 
 sendToJobLog('T0LAD07: WHEN-IS OK - branch = ' + ladBranch);
 
+*inlr = *on;
+return;
+
 dcl-proc sendToJobLog;
   dcl-pi *n;
     msg char(200) const;

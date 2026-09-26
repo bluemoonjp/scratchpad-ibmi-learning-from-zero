@@ -59,6 +59,9 @@ ladArr(2) = 'BBB';
 sendToJobLog('T0LAD02: DIM(*AUTO:10) OK - %elem after 2 assigns = '
   + %char(%elem(ladArr)));
 
+*inlr = *on;
+return;
+
 dcl-proc sendToJobLog;
   dcl-pi *n;
     msg char(200) const;

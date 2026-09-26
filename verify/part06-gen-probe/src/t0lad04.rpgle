@@ -74,6 +74,9 @@ ladUpper = %upper(ladParts(1));
 sendToJobLog('T0LAD04: %SPLIT/%UPPER OK - upper(parts(1)) = ' + ladUpper
   + ', parts(2) = ' + %trim(ladParts(2)));
 
+*inlr = *on;
+return;
+
 dcl-proc sendToJobLog;
   dcl-pi *n;
     msg char(200) const;
