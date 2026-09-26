@@ -31,6 +31,13 @@
 /* *LDA). MONMSG here means "TXLEGST does not exist" is reported as a     */
 /* value, not a wrapper-level step failure - TXLEGACY not having created  */
 /* it yet (e.g. it failed before reaching that point) IS the evidence.    */
+/* MONMSG right after CALL PGM(QCMDEXC) itself: without it, a QCMDEXC     */
+/* escape (e.g. TXLEGACY's own *CMD somehow wasn't created) would end     */
+/* this program before the TXLEGST report below ever runs, losing the    */
+/* best evidence line (advisor review, 2026-09-27). Label ENDIT, not the */
+/* originally-chosen TXLEGRUN_END - CL labels are limited to 10          */
+/* characters (verify/lib/clgen.mjs's own step-label handling enforces   */
+/* this the same way, `.slice(0, 10)`), and TXLEGRUN_END is 12.          */
              PGM        PARM(&LIB)
 
              DCL        VAR(&LIB) TYPE(*CHAR) LEN(10)
@@ -42,13 +49,14 @@
                           *TCAT ')')
              CHGVAR     VAR(&CMDLEN) VALUE(40)
              CALL       PGM(QCMDEXC) PARM(&CMD &CMDLEN)
+             MONMSG     MSGID(CPF0000)
 
              RTVDTAARA  DTAARA(&LIB/TXLEGST (1 1)) RTNVAR(&FLAG)
              MONMSG     MSGID(CPF0000) EXEC(DO)
                 SNDPGMMSG  MSG('TXLEGRUN: TXLEGST does not exist (TXLEGACY +
                              did not reach that point).')
-                GOTO       CMDLBL(TXLEGRUN_END)
+                GOTO       CMDLBL(ENDIT)
              ENDDO
              SNDPGMMSG  MSG('TXLEGRUN: TXLEGST=[' *CAT &FLAG *CAT ']')
 
-TXLEGRUN_END:  ENDPGM
+ENDIT:       ENDPGM
