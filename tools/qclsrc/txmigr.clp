@@ -18,12 +18,17 @@
 /* only the db/vN source path for the physical file, which the version    */
 /* number necessarily fixes anyway.                                       */
 /*                                                                        */
-/* UNVERIFIED: the exact field names in DSPDBR's and DSPOBJD's            */
-/* OUTPUT(*OUTFILE) formats below (WHFILE/WHLIB for DSPDBR, ODOBNM/       */
-/* ODOBAT for DSPOBJD) are written from general IBM i documentation, not  */
-/* a real OUTFILE dump taken on PUB400. Confirm both before relying on    */
-/* this tool; if a field name is wrong, DCLF will fail to compile (safe   */
-/* failure) rather than silently reading the wrong column.                */
+/* CONFIRMED (part05-legacy-probe, 2026-09-26, real DSPDBR/DSPOBJD        */
+/* OUTFILE dump against JUCHUM/JUCHUL1 on PUB400 - see docs/probes.md):   */
+/* DSPOBJD's ODOBNM/ODOBAT were already right. DSPDBR's were not - there  */
+/* is no WHFILE/WHLIB field at all. The base file DSPDBR was run against  */
+/* (JUCHUM itself) comes back as WHRFI/WHRLI, repeated on every row; the  */
+/* actual DEPENDENT logical file (what this tool needs) is WHREFI/WHRELI. */
+/* Confirmed dependent-row values for JUCHUL1 over JUCHUM: WHRTYP='P'     */
+/* (base file type: physical), WHREFI='JUCHUL1', WHRELI=&LIB, WHTYPE='D'  */
+/* (dependent type: data, i.e. an ordinary keyed logical file - as        */
+/* opposed to an SQL view or index, neither of which this teaching        */
+/* library has yet).                                                      */
 /*                                                                        */
 /* PARM:                                                                  */
 /*   TO    target DBVER. Only 2 is implemented (db/v2/juchum.pf exists;   */
@@ -44,7 +49,7 @@
              DCL        VAR(&SRC) TYPE(*CHAR) LEN(200)
              DCL        VAR(&TOMBR) TYPE(*CHAR) LEN(200)
              DCL        VAR(&DBVERC) TYPE(*CHAR) LEN(10)
-             /* &WHFILE/&WHLIB (DSPDBR outfile) and &ODOBNM/&ODOBAT        */
+             /* &WHREFI/&WHRELI (DSPDBR outfile) and &ODOBNM/&ODOBAT       */
              /* (DSPOBJD outfile) are NOT declared here on purpose: each   */
              /* DCLF below auto-declares its own outfile's fields under    */
              /* those exact names, and declaring them twice would be a     */
@@ -95,30 +100,28 @@
                           OUTFILE(QTEMP/TXMDBR)
              MONMSG     MSGID(CPF0000) EXEC(DO)
                 SNDPGMMSG  MSG('TXMIGR: DSPDBR failed - check the +
-                             WHFILE/WHLIB field names in this program +
+                             WHREFI/WHRELI field names in this program +
                              against a real OUTFILE dump.')
                 GOTO       CMDLBL(RECOMPILE)
              ENDDO
              DCLF       FILE(QTEMP/TXMDBR)
 
-/* No DLTF before CRTLF here, on purpose: UNVERIFIED (see the header       */
-/* comment) whether WHFILE/WHLIB name the DEPENDENT logical file or the   */
-/* physical file DSPDBR was run against (JUCHUM itself). If it is the     */
-/* latter, DLTF FILE(&LIB/&WHFILE) would delete the just-migrated JUCHUM  */
-/* physical file and its data, not a logical file - CRTPF/CRTLF simply    */
-/* have no REPLACE parameter (confirmed: neither is in the "has REPLACE"  */
-/* group with CRTDSPF/CRTPRTF/CRT*PGM), so CRTLF alone, without a         */
-/* preceding delete, is the safe choice: it either recreates a genuinely  */
-/* missing/stale LF, or fails harmlessly under its own trailing MONMSG    */
-/* (object-already-exists, or wrong-object-type if WHFILE is JUCHUM       */
-/* itself) - never deletes anything.                                      */
+/* No DLTF before CRTLF here, on purpose: CRTPF/CRTLF have no REPLACE      */
+/* parameter (confirmed: neither is in the "has REPLACE" group with       */
+/* CRTDSPF/CRTPRTF/CRT*PGM), so CRTLF alone, without a preceding delete,   */
+/* is the safe choice: it either recreates a genuinely missing/stale LF,  */
+/* or fails harmlessly under its own trailing MONMSG (object-already-     */
+/* exists) - never deletes anything. (WHREFI is confirmed to always name  */
+/* the dependent logical file, never JUCHUM itself - see header comment - */
+/* so the wrong-object-type risk this comment used to flag no longer     */
+/* applies.)                                                              */
 NEXTDBR:     RCVF
              MONMSG     MSGID(CPF0864) EXEC(GOTO CMDLBL(RECOMPILE))
-             IF         COND(&WHLIB *NE &LIB) THEN(GOTO CMDLBL(NEXTDBR))
-             CRTLF      FILE(&LIB/&WHFILE) SRCFILE(&LIB/QDDSSRC) +
-                          SRCMBR(&WHFILE)
+             IF         COND(&WHRELI *NE &LIB) THEN(GOTO CMDLBL(NEXTDBR))
+             CRTLF      FILE(&LIB/&WHREFI) SRCFILE(&LIB/QDDSSRC) +
+                          SRCMBR(&WHREFI)
              MONMSG     MSGID(CPF0000) EXEC(SNDPGMMSG MSG('TXMIGR: could +
-                          not recreate ' *CAT %TRIM(&WHFILE) *CAT '.'))
+                          not recreate ' *CAT %TRIM(&WHREFI) *CAT '.'))
              GOTO       CMDLBL(NEXTDBR)
 
 /* --- Step 3: recompile every *PGM in the library (see header comment). */
