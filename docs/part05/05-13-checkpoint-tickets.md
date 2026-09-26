@@ -85,29 +85,47 @@
 | 修正 | `*PSSR`を追加し(対象範囲内と判断した場合)、`QCMDEXC`(`ALLOW(*ALL)`のコマンドを使うこと。`SNDPGMMSG`はQCMDEXC経由では実行できないため使えない)で、呼び出し元に何らかの形でエラーを通知する仕組みを実装した(模範解答は`CHGDTAARA`で`*LDA`にフラグを書き込む方式。`solutions/05-13/za0500-ticket3.rpg`参照) |
 | 再現確認 | 05-11の手法を応用してエラーを意図的に再現させ、ハングせずに安全に終了し、原因がわかる証拠(メッセージまたはデータ域の値)が残ることを確認した |
 
-## 実演: TXCHECK で完了を機械的に確認する
+## 実演: TXCHECK でオブジェクトの存在を機械的に確認する
 
-3本のチケットすべてに着手したら、`TXCHECK`(第2部から積み上げてきた検証ツールの1つ。[付録E](../appendix/e-naming.md)参照)で、必要なオブジェクトが実際にコンパイルし直されているかを機械的に確認できます。TXCHECK は「オブジェクトが存在し、型が正しいか」だけを見る単純な道具です(v1スコープ、`tools/qclsrc/txcheck.clp`自身のコメント参照)。**ロジックが正しいかどうかまでは確認しません**——そこは演習の採点表と、05-08の回帰確認手法で自分の目で確かめてください。
+`TXCHECK`(オブジェクトの存在・型だけを見る検証ツール。[付録E](../appendix/e-naming.md)参照)を、このレッスンで初めて実際に使います。**`TXSETUP`(02-05)は `TXCHECK`/`TXCKM` を作りません**——`TXLEGACY` の完了メッセージが「`TXCHECK LESSON(05-01)` を実行してください」と予告しているだけで、実際にコンパイルする手順はこれまでどのレッスンにもありませんでした。まずここで自分のコピーにコンパイルします。
 
-1. まだ `TXCKM`(チェック項目の台帳、`tools/qddssrc/txckm.pf`)にこのレッスンの行が無ければ、次の SQL で登録します(`STRSQL` または `RUNSQL`)。二重登録を避けるため、まず同じ `LESSON` の行を消してから入れ直します。
+**TXCHECK v1 の限界を先に理解しておいてください**: `tools/qclsrc/txcheck.clp` 自身のコメントが明記するとおり、v1スコープは `CHKOBJ` によるオブジェクトの存在・型の確認だけです。**`ZA0500`/`JU0900C` は05-01の `TXLEGACY` の時点で既に存在するため、チケットに何も手を付けていなくても、このチェックは PASS します。** つまりこれは「チケットのロジックが正しく直っているか」を確認する道具ではありません。「オブジェクトを消してしまっていないか・コンパイルが割れたまま放置していないか」を確かめる、ごく軽い存在チェック(スモーク・テスト)です。**ロジックの正しさは、演習の採点表と05-08の回帰確認手法で自分の目で確かめてください。**
+
+1. `TXCKM`(チェック項目の台帳)・`TXCHECK`(本体)・その `*CMD` をまだコンパイルしていなければ、コンパイルします(`tools/qclsrc/txcheck.clp` 自身の指示どおり、`TXCKM` を先にコンパイルしてください——`TXCHECK` の `DCLF` が実在する `TXCKM` の項目定義を必要とします)。
+
+   ```text
+   ADDPFM FILE(<自分のユーザー名>1/QDDSSRC) MBR(TXCKM) SRCTYPE(PF) TEXT('TXCHECK manifest')
+   ADDPFM FILE(<自分のユーザー名>1/QCLSRC) MBR(TXCHECK) SRCTYPE(CLP) TEXT('Run per-lesson checks')
+   ADDPFM FILE(<自分のユーザー名>1/QCMDSRC) MBR(TXCHECK) SRCTYPE(CMD) TEXT('TXCHECK command')
+   ```
+
+   (`system "CPYFRMSTMF ..."` で `tools/qddssrc/txckm.pf`・`tools/qclsrc/txcheck.clp`・`tools/qcmdsrc/txcheck.cmd` を取り込む手順は、05-01 の `TXLEGACY` 取り込み手順と同じ形です。)
+
+   ```text
+   CRTPF FILE(<自分のユーザー名>1/TXCKM) SRCFILE(<自分のユーザー名>1/QDDSSRC) SRCMBR(TXCKM)
+   CRTCLPGM PGM(<自分のユーザー名>1/TXCHECK) SRCFILE(<自分のユーザー名>1/QCLSRC) SRCMBR(TXCHECK)
+   CRTCMD CMD(<自分のユーザー名>1/TXCHECK) PGM(*LIBL/TXCHECK) SRCFILE(<自分のユーザー名>1/QCMDSRC) SRCMBR(TXCHECK)
+   ```
+
+2. `TXCKM` にこのレッスンの行を登録します(`STRSQL` または `RUNSQL`)。二重登録を避けるため、まず同じ `LESSON` の行を消してから入れ直します。
 
    ```sql
-   DELETE FROM <自分のライブラリー>/TXCKM WHERE LESSON = '05-13';
+   DELETE FROM <自分のユーザー名>1/TXCKM WHERE LESSON = '05-13';
 
-   INSERT INTO <自分のライブラリー>/TXCKM
+   INSERT INTO <自分のユーザー名>1/TXCKM
      (LESSON, SEQNBR, OBJNAME, OBJTYPE, OBJATTR, CKDESC)
    VALUES
-     ('05-13', 10, 'ZA0500',  '*PGM', ' ', 'ZA0500 recompiled after tickets 1/3'),
-     ('05-13', 20, 'JU0900C', '*PGM', ' ', 'JU0900C caller still compiles');
+     ('05-13', 10, 'ZA0500',  '*PGM', ' ', 'ZA0500 still exists and compiles'),
+     ('05-13', 20, 'JU0900C', '*PGM', ' ', 'JU0900C still exists and compiles');
    ```
 
-2. `TXCHECK` を実行します。
+3. `TXCHECK` を、`*CMD` 経由で実行します(`CALL PGM(...) PARM(...)` ではありません。[付録E](../appendix/e-naming.md)が説明する32バイト・リテラルの罠を避けるためです)。
 
-   ```
-   CALL PGM(<自分のライブラリー>/TXCHECK) PARM('05-13' '<自分のライブラリー>')
+   ```text
+   TXCHECK LESSON('05-13') LIB(<自分のユーザー名>1)
    ```
 
-3. ジョブ・ログに `TXCHECK PASS: ...` が2件と、`TXCHECK: lesson 05-13 - 2 passed, 0 failed.` という要約が出れば、少なくとも「両方のオブジェクトを実際にコンパイルし直した」ことが機械的に確認できたことになります。`FAIL` が出た場合は、該当するオブジェクトをまだコンパイルしていないか、コンパイルが失敗したまま気づいていない可能性があります。
+4. ジョブ・ログに `TXCHECK PASS: ...` が2件と、`TXCHECK: lesson 05-13 - 2 passed, 0 failed.` という要約が出れば、少なくとも「両方のオブジェクトが存在し、正しい型でコンパイルされている」ことが機械的に確認できたことになります。`FAIL` が出た場合は、該当するオブジェクトを削除してしまったか、まだ一度もコンパイルしていない可能性があります。
 
 ## セルフチェック
 
@@ -128,6 +146,6 @@
 ## 実機メモ
 
 - **未検証(2026-09-26時点)。** `src/legacy/` 一式(`ZA0500`・`JU0900C`・`ZA0510` 他)はまだ実機コンパイルを確認していません(このセッションは SSH 接続の帯域が尽きています)。SSH 接続の予算が回復し次第、まずチケット1〜3を仕込む前の素のソースがコンパイルできることを確認し、その後にこのチェックポイント自体(3チケットの模範解答)を実機で検証します。
-- **TXCHECKの利用手順(上記)も未検証(2026-09-27追記)。** このレッスンが本教材で`TXCHECK`を初めて実際に使う箇所です。`TXCKM`へのINSERT文・`CALL PGM(TXCHECK)`の呼び出し方自体は`tools/qclsrc/txcheck.clp`と`tools/qddssrc/txckm.pf`の実装から素直に導いたものですが、実際にPASS/FAILメッセージが期待どおり出るかは、`TXCHECK`自身(`part05-txcheck-probe`)の実機検証(自己参照チェックのみ)止まりで、このレッスンの2行(ZA0500/JU0900C)を対象にした実行はまだ試していません。
+- **TXCHECKの利用手順(上記)も未検証(2026-09-27追記、advisorレビューで一度訂正)。** このレッスンが本教材で`TXCHECK`/`TXCKM`を初めて実際にコンパイルする箇所です(`TXSETUP`/`TXLEGACY`はどちらも`TXCHECK`/`TXCKM`を作らないと確認済み——`docs/part05/05-08`自身の実機メモも同じ疑問を未確認のまま残していました)。コンパイル手順・`*CMD`呼び出し・INSERT文は`tools/qclsrc/txcheck.clp`/`tools/qcmdsrc/txcheck.cmd`/`tools/qddssrc/txckm.pf`の実装から素直に導いたものですが、実際にPASS/FAILメッセージが期待どおり出るかは、`TXCHECK`自身(`part05-txcheck-probe`)の実機検証(自己参照チェックのみ)止まりで、このレッスンの2行(ZA0500/JU0900C)を対象にした実行はまだ試していません。**当初の版はCHKOBJが「チケットのロジックが正しく直っている」ことまで確認できるかのように書いていましたが、v1スコープ(存在・型のみ)ではそれは確認できず、誤りでした。存在チェック(スモーク・テスト)である旨に訂正済みです。**
 - チケット2の「単純な並び替えでは成立しない」という結論は、`db/v1/juchud.pf` の実際のフィールド定義(`JUNO`・`JULINE`・`JUSHO`・`JUSU`・`JUTNK`のみ、`JUDATE`なし)を直接確認した机上の反証であり、これも実機未検証です。
 - 食い違いに気づいたら [Issue](https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero/issues) で教えてください。
