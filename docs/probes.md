@@ -981,6 +981,29 @@ advisorレビューで指摘: 第5部の複数レッスン(`05-06`・`05-07`・`
 `05-09`自身の新出リストにCVTOPT/ALWNULLは元々含まれておらず、学習目標
 への影響は無い。
 
+## 第5部QCMDEXC経路の実機検証: `part05-qcmdexc-runtime`(確認日 2026-09-27)
+
+`za0510.rpg`(05-04)の`*PSSR`/`QCMDEXC`/`CHGDTAARA(*LDA)`経路を、検証専用の
+別名オブジェクト(`ZA0510V`、TABPCDの最終要素だけ`P00006`→`P09999`に
+書き換えた版)で発火させ、同一ジョブ内のCLヘルパー`VLDA`が`RTVDTAARA`で
+`*LDA`を読み戻して`SNDPGMMSG`で報告する設計。**1回の接続でCONFIRMED
+SUCCESS。**
+
+- `ZA0510V`・`VLDA`・`ZA0500T3`(05-13チケット1模範解答、コンパイルのみ
+  対象)の3オブジェクトとも Highest Severity 00 でコンパイル成功。
+- 実行結果: `VLDA: *LDA(1,20)=[ZA0510 ERROR        ]` — `expected/notes.md`
+  が期待した文字列と完全一致(12文字+空白8文字パディングの推測も実証された)。
+- **新発見**: `*PSSR`の`ENDSR '*CANCL'`実行後、ジョブ・ログには
+  `Error RPG0000 caused program ZA0510V to stop.`という異常終了メッセージが
+  記録され、呼び出し元のCLラッパーは`MONMSG MSGID(...RPG0000)`で捕捉して
+  `RUNZA1V FAILED`マーカーを送っていた。それでも`CHGDTAARA`自体は
+  `*PSSR`内で正常に実行済みで、`*LDA`への書き込みは失われていない。
+  `expected/notes.md`が事前に「`RUNZA1V FAILED`の有無は成否判定に使わない」
+  と明記していた判断は正しかった。05-04の演習7が「`DSPDTAARA`で確認する」
+  という手順のみを教え、プログラムの終了状態には触れていない点とも整合する。
+
+これでP1の#10.5は完了。次は#10.6(`part05-txlegacy-exec`)。
+
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。
