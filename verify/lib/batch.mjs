@@ -11,6 +11,16 @@
 //   - SYSTOOLS.SPOOLED_FILE_DATA の呼び出し方(引数の形)。ここでは最有力候補を既定にし、
 //     失敗したら候補を増やして次回の接続で決着させる(推測で試行錯誤しない、という方針)。
 //
+// db2 ユーティリティーの呼び出しにフラグを付けていない理由(2026-09-26、IBM Docs
+// 「Qshell db2 Utility」7.5.0のフラグ表を実際に取得して確認済み): 命名規則
+// (*SYS/*SQL)を切り替えるフラグはこのユーティリティーに存在しない(`-S`大文字は
+// 「出力の空白・パディングを抑制する」の意味で無関係)。一方 rbafy75.txt の
+// 「SQL and system naming conventions」節により、システム命名規則では
+// `schema/table` 表記がそのまま通ると確認済みなので、この harness の
+// `${lib}/${table}` 表記のために切り替える必要自体が無い。以前あった小文字 `-s`
+// はこの一覧に無い未定義フラグで、ユーティリティーが認識できず全体が失敗する
+// 恐れがあったため削除した。
+//
 // CCSID の既定値(1208): 推測ではなく、tools/qclsrc/txsetup.clp が実機で完走を確認済みの
 // CPYFRMSTMF ... STMFCCSID(1208) をそのまま踏襲している(git clone で届いたASCII/UTF-8の
 // ソースを取り込む実績)。heredocで書いたファイルもASCII/UTF-8で、同じqsh/PASE環境が
@@ -133,7 +143,7 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
     lines.push(`echo ${MARKER('run-end')}`);
 
     lines.push(`echo ${MARKER('vfylog')}`);
-    lines.push(`echo "SELECT MSG FROM ${logTable} ORDER BY SEQ" | db2 -s 2>&1`);
+    lines.push(`echo "SELECT MSG FROM ${logTable} ORDER BY SEQ" | db2 2>&1`);
     lines.push(`echo ${MARKER('vfylog-end')}`);
   }
 
@@ -154,7 +164,7 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
     // 書けるようにする(cl ステップとの一貫性、決め打ちの絶対ライブラリー名を
     // manifest に書かずに済ませるため)。
     const substitutedSql = sql.replaceAll('&LIB', lib);
-    lines.push(`echo "${substitutedSql.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('$', '\\$')}" | db2 -s 2>&1`);
+    lines.push(`echo "${substitutedSql.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('$', '\\$')}" | db2 2>&1`);
     lines.push(`echo ${MARKER(`collect-end:${i}`)}`);
   }
 
