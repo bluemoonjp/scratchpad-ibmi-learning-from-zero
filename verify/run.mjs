@@ -22,9 +22,6 @@ import { loadManifest, buildQshScript, splitSections } from './lib/batch.mjs';
 
 function printGate(gate) {
   console.log(`allowed: ${gate.allowed}`);
-  if (gate.cap !== null) {
-    console.log(`24時間の上限: ${gate.cap}回中 ${gate.countInWindow}回`);
-  }
   console.log(`next-allowed: ${gate.nextAllowedAt ? gate.nextAllowedAt.toISOString() : '(認証失敗により無期限停止)'}`);
   if (gate.reasons.length) {
     console.log('理由:');
