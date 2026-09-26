@@ -161,6 +161,9 @@ assert-t ladTotal <= ladMax %msg('T0LAD12: total should not exceed max');
 
 sendToJobLog('T0LAD12: ASSERT-T OK - assertion passed, program continued.');
 
+*inlr = *on;
+return;
+
 dcl-proc sendToJobLog;
   dcl-pi *n;
     msg char(200) const;

@@ -97,6 +97,9 @@ ladConcat = %concat(', ' : 'cat' : 'dog' : 'fish');
 
 sendToJobLog('T0LAD06: %CONCAT OK - result = ' + ladConcat);
 
+*inlr = *on;
+return;
+
 dcl-proc sendToJobLog;
   dcl-pi *n;
     msg char(200) const;

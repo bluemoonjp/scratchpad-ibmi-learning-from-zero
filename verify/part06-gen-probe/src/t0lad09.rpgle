@@ -135,6 +135,9 @@ sendToJobLog('T0LAD08: DCL-ENUM OK - green = ' + %char(ladColorVal));
 
 sendToJobLog('T0LAD09: CONST OK - LAD_MAX_RETRY = ' + %char(LAD_MAX_RETRY));
 
+*inlr = *on;
+return;
+
 dcl-proc sendToJobLog;
   dcl-pi *n;
     msg char(200) const;
