@@ -66,7 +66,7 @@ CPYSPLF    FILE(&SPLF) TOFILE(&LIB/TXSNAPT) JOB(&JOB) +
              SPLNBR(&SPLNBR) TOMBR(&LABEL) MBROPT(*REPLACE)
 ```
 
-**このリポジトリー内に、`TXSNAPT` の作られ方について2つの食い違う記述があります。** `txsnap.clp` 自身のコメントは「`CPYSPLF` が `TOFILE` の指定先を自分で作る」ことを前提にした書き方です。一方、`work/design/final_probes.json` の P17 は、同じ用途のファイルを `CRTPF ... RCDLEN(133)` で**先に作ってから** `CPYSPLF` する、という計画です。**どちらが正しいとしても対応できるように、このレッスンでは最初の `TXSNAP` 呼び出しより前に、あらかじめ `CRTPF FILE(<USER>1/TXSNAPT) RCDLEN(133) MAXMBRS(*NOMAX)` を1回実行しておきます。** `CPYSPLF` が自動作成する場合、既にファイルがあるのでその自動作成は起きないだけで害はありません。自動作成が普通の `CRTPF` の既定値(`MAXMBRS(1)`)で行われるとしたら、`BEFORE` の次に `AFTER` という2つ目のメンバーを追加しようとして失敗するはずなので、いずれにせよ `MAXMBRS(*NOMAX)` で先回りしておくのが安全です。実機で確認でき次第、この食い違いを解消します。
+**このリポジトリー内に、`TXSNAPT` の作られ方について2つの食い違う記述があります。** `txsnap.clp` 自身のコメントは「`CPYSPLF` が `TOFILE` の指定先を自分で作る」ことを前提にした書き方です。一方、この教材の設計メモ(プローブ P17)は、同じ用途のファイルを `CRTPF ... RCDLEN(133)` で**先に作ってから** `CPYSPLF` する、という計画です。**どちらが正しいとしても対応できるように、このレッスンでは最初の `TXSNAP` 呼び出しより前に、あらかじめ `CRTPF FILE(<USER>1/TXSNAPT) RCDLEN(133) MAXMBRS(*NOMAX)` を1回実行しておきます。** `CPYSPLF` が自動作成する場合、既にファイルがあるのでその自動作成は起きないだけで害はありません。自動作成が普通の `CRTPF` の既定値(`MAXMBRS(1)`)で行われるとしたら、`BEFORE` の次に `AFTER` という2つ目のメンバーを追加しようとして失敗するはずなので、いずれにせよ `MAXMBRS(*NOMAX)` で先回りしておくのが安全です。実機で確認でき次第、この食い違いを解消します。
 
 ### `src/sql/05-08-compare.sql` を読む — 見つかった不具合と直した理由
 
@@ -236,7 +236,7 @@ O                         L1CNT Z   55
 ## 実機メモ
 
 - **未検証(2026-09-26時点)。** このレッスンの手順(`CRTPF ... MAXMBRS(*NOMAX)` の事前作成、`OVRPRTF SPLFNAME`、`CHGJOB DATE`、`TXSNAP`、`src/sql/05-08-compare.sql` の `CREATE ALIAS` を使った修正版、`CMPPFM`、`JU0300` への税込み列追加)は、`tools/qclsrc/txsnap.clp`・`src/sql/05-08-compare.sql`・`src/legacy/qrpgsrc/ju0300.rpg` の実ソースと、IBM i・Db2 for i SQL の一般的な文書に基づいて組み立てたものですが、**実機での通し確認はまだ行っていません。** SSH 接続の予算が回復し次第、実機で確認します。
-- 依存するプローブ `P15`(バッチ・`CHGJOB DATE` 関連)・`P17`(印刷系・`OVRPRTF SPLFNAME`・`CPYSPLF`・`CMPPFM` 関連、いずれも `work/design/final_probes.json` に記載)は、まだ実施していません。
+- 依存するプローブ `P15`(バッチ・`CHGJOB DATE` 関連)・`P17`(印刷系・`OVRPRTF SPLFNAME`・`CPYSPLF`・`CMPPFM` 関連)は、まだ実施していません。
 - `src/sql/05-08-compare.sql` の当初のバージョンには、`FROM TXSNAPT BEFORE` を相関名ではなくメンバー指定と取り違えた誤りがありました。本文で説明した `CREATE ALIAS` を使う形に、このレッスンを書く時点で修正済みです(実機での compile/実行確認はまだです)。
 - `CPYSPLF` の自動作成が本当に `MAXMBRS(1)` の既定値を使うのか(だから事前の `CRTPF ... MAXMBRS(*NOMAX)` が必要になるのか)も、実機未確認です。もし `CPYSPLF` の自動作成が最初から複数メンバーを見込んでいることが確認できれば、この事前手順は不要になるかもしれません。
 - `TXSNAP` の初回コンパイル手順(手順0)は、02-05 の `TXSETUP` の手順をそのまま踏襲した推測です。`<USER>1/QCMDSRC` が 05-01〜05-07 の時点で既に存在するか(`TXLEGACY`/`TXCHECK` などが先に作っている可能性がある)は未確認です。
