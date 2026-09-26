@@ -1,5 +1,6 @@
      A*                                     TXCKM - manifest for TXCHECK.
      A*                                     1 row = 1 object check.
+     A            UNIQUE
      A          R TXCKMR                    TEXT('TXCHECK manifest')
      A            LESSON         6A         TEXT('Lesson id, e.g. 04-13')
      A            SEQNBR         3S 0       TEXT('Order within lesson')
@@ -9,4 +10,3 @@
      A            CKDESC        50A         TEXT('Shown in PASS/FAIL msg')
      A          K LESSON
      A          K SEQNBR
-     A                                      UNIQUE
