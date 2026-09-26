@@ -40,3 +40,12 @@ export function loadConfig() {
     port: fileConfig.port || 2222,
   };
 }
+
+// manifest.library の解決(2026-09-27追加)。既定は開発役 <USER>2。マニフェストで
+// 実ユーザー名を直接書くと私的パターン露出になるため、`"*B"` という記号だけを
+// 特別扱いし、<USER>B(SAVF/退避役、01-04で確立済みの命名)に解決する。それ以外の
+// 文字列は(将来の拡張のため)そのまま library 名として使う。
+export function resolveLibrary(manifest, cfg) {
+  if (manifest.library === '*B') return `${cfg.user.toUpperCase()}B`;
+  return manifest.library || `${cfg.user.toUpperCase()}2`;
+}

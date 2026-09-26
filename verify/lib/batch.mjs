@@ -68,6 +68,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './paths.mjs';
 import { buildClWrapperSource, pgmNameForBatch } from './clgen.mjs';
+import { resolveLibrary } from './config.mjs';
 
 const MARKER = (name) => `===VFY:${name}===`;
 
@@ -127,7 +128,7 @@ export function loadManifest(batchDirName) {
 }
 
 export function buildQshScript(manifest, cfg, { baseDir } = {}) {
-  const lib = manifest.library || `${cfg.user.toUpperCase()}2`;
+  const lib = resolveLibrary(manifest, cfg);
   const remoteDir = manifest.remoteDir || `vfy/${manifest.batch}`;
   const lines = [];
 
