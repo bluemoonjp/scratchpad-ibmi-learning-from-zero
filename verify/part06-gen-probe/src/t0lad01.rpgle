@@ -55,7 +55,20 @@
 //   is captured for free, with no extra `collect` step and no dependency
 //   on the still-unverified SYSTOOLS.SPOOLED_FILE_DATA path that spooled
 //   printer output would have required.
+//
+// FIXED (part06-gen-probe, 2026-09-26, real-hardware CRTBNDRPG): this
+// file (and every other rung 02-12/12Q, which all copy this same
+// QMHSNDPM/sendToJobLog block) was missing the ctl-opt line below.
+// Without it, DFTACTGRP defaults to *YES, and PUB400 rejected every
+// single rung identically with RNF1520 ("The procedure cannot be
+// defined with DFTACTGRP(*YES)") plus cascading RNF0256/RNF7023 errors -
+// a dcl-proc is not allowed in the default activation group. f0609s.rpgle
+// (this file's own cited QMHSNDPM source) already has this exact line;
+// it was simply dropped when copied here. Added to all 13 files in this
+// ladder.
 //=======================================================================
+
+ctl-opt dftactgrp(*no) actgrp(*new);
 
 dcl-ds qmhsndpmMsgFile qualified template;
   *n char(10) inz('QCPFMSG');

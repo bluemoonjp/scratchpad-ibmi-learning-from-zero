@@ -19,6 +19,8 @@
 //     DIM(*AUTO) increases when there is an assignment statement...")
 //=======================================================================
 
+ctl-opt dftactgrp(*no) actgrp(*new);
+
 dcl-ds qmhsndpmMsgFile qualified template;
   *n char(10) inz('QCPFMSG');
   *n char(10) inz('*LIBL');

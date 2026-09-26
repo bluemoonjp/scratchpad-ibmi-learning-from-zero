@@ -10,6 +10,8 @@
 //     lines 1069, 51234-51241
 //=======================================================================
 
+ctl-opt dftactgrp(*no) actgrp(*new);
+
 dcl-ds qmhsndpmMsgFile qualified template;
   *n char(10) inz('QCPFMSG');
   *n char(10) inz('*LIBL');
