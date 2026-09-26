@@ -34,6 +34,10 @@
 - `INFSR`/`*PSSR`(ファイルの例外/エラー・サブルーチン)
 - `QCMDEXC`(RPG から CL コマンドを実行する。長さは15,5のパック10進数)
 
+**読めればよい項目(別枠、第6部の予告)**
+
+- `CVTOPT`/`ALWNULL`(SQLのDATE/TIME/TIMESTAMP型・NULL許容列をILE RPGでどう扱うかのコンパイル・オプション。第6部06-14bで実際に使います)
+
 ## 説明
 
 ### E 仕様書: コンパイル時テーブルと実行時配列
@@ -124,6 +128,14 @@ C                     PARM           CMDLEN
 `QCMDEXC` は、RPG の特殊な機能ではなく、**任意の CL コマンドを1つ実行してくれる、ふつうのシステム・プログラム**です。他のプログラムと同じように `CALL`+`PARM` で呼び出します。パラメーターは2つ: (1) 実行したいコマンド文字列そのもの、(2) その文字列のうち**意味のある長さ**を示す、**15桁5小数のパック10進数**フィールド(このレッスンの目標にある「長さは15 5」がこれです)。`ZA0510` では、コマンド文字列を `CMDDS`(57バイトの `DS`)に `MOVEL` で1断片ずつ書き込んで組み立てています(初期値付きの `DS` は `PARM` に渡せないという規則があるため、実行時に組み立てる形を取っています)。組み立てているコマンドは `CHGDTAARA DTAARA(*LDA (1 20)) VALUE('ZA0510 ERROR')`(自分のジョブが持つローカル・データ域 `*LDA` の1〜20バイト目に、決まった文字列を書き込む)です。**「RPG からは書けない処理を CL コマンド経由でやらせる」という、今でも現場で使われる息の長いテクニック**です。
 
 **注意: `QCMDEXC` で実行できる CL コマンドには制限があります。** 実機で確認済みの事実として、`SNDPGMMSG`(メッセージ送信コマンド)は、CL プログラムまたは REXX の中でしか実行できず、`QCMDEXC` 経由では(呼び出し元が RPG でも CL でも)実行できません(`CPD0031`「Command SNDPGMMSG not allowed in this setting」)。各 CL コマンドの実行可能な環境(`ALLOW` 属性)は、IBM のコマンド解説ページの「Where allowed to run」欄で確認できます。`CHGDTAARA` はここが `*ALL`(すべての環境)なので、`QCMDEXC` から安全に呼び出せます。**「任意の CL コマンドを実行できる」わけではなく、「その環境向けに許可されたコマンドだけを実行できる」**というのが正確な理解です。
+
+### 参考: `CVTOPT`・`ALWNULL`(ここではまだ関係ない、第6部の予告)
+
+`ZAIKOM`(このレッスンで読む外部記述ファイル)には、`ZASHO`・`ZASU` のほかに `ZAUPD`(8桁の数値、`YYYYMMDD` 形式の更新日、`db/v1/zaikom.pf` 参照)という項目もあります。`ZA0510` 自身はこの項目を一度も使いませんが、**「日付に見えるが、実際にはただの8桁の数値」という、RPG III 時代によくあった表現**の実例として、ここで触れておきます。
+
+もし外部記述ファイルが(`ZAUPD` のような数値ではなく)本物の SQL の `DATE`/`TIME`/`TIMESTAMP` 型や、NULL を許す列を持っていたら、ILE RPG(RPG IV、`CRTBNDRPG`/`CRTRPGMOD`)ではそれをどう扱うかを、`CVTOPT`(型変換オプション)・`ALWNULL`(NULL 値を許すか)という**コンパイル・オプション**で制御します。`CVTOPT(*DATETIME)` を指定すると DATE/TIME/TIMESTAMP 型を固定長の文字フィールドとして宣言し(既定 `*NONE` ならネイティブな RPG の `date`/`time`/`timestamp` 型のまま)、`ALWNULL(*NO)`(既定)のままだと、NULL を含むレコードを読もうとした時点でデータ・マッピング・エラーになります(`work/design/refs/cl_commands_75.txt` の CRTBNDRPG 解説より)。
+
+**このレッスンではまだ関係ありません**: `ZA0510` は `CRTRPGPGM`(OPM RPG III)でコンパイルします。`CVTOPT`/`ALWNULL` はどちらも ILE 専用のコンパイル・オプションで、`CRTRPGPGM` にはそもそも存在しません。実際にこの2つを使うのは、RPG IV に移った後の第6部06-14bです。ここでは「外部記述ファイルに SQL の DATE/TIMESTAMP 型や NULL 許容列があると、RPG 側に特別な準備が要る」という存在だけ、先に知っておいてください。
 
 ## 実演
 
@@ -277,6 +289,7 @@ C                     PARM           CMDLEN
 - [ ] C仕様書56-57桁目のエラー標識が何を検知するか説明できる。
 - [ ] `INFSR`/`*PSSR` の関係と、それらが捕まえられない実行時エラー(ファイルのオープン/クローズ時)を説明できる。
 - [ ] `QCMDEXC` が何をするプログラムで、パラメーターが何を表すか説明できる。
+- [ ] `CVTOPT`/`ALWNULL` が(概念として)何のためのオプションで、なぜ `ZA0510`(`CRTRPGPGM`)には関係ないか説明できる。
 
 ## 片付け
 
@@ -292,6 +305,8 @@ C                     PARM           CMDLEN
 | Program status data structure | プログラム状態データ構造(PSDS) |
 | File information data structure (INFDS) | ファイル情報データ構造(INFDS) |
 | Error/exception subroutine | 例外/エラー・サブルーチン |
+| Type conversion options (CVTOPT) | 型変換オプション |
+| Allow null values (ALWNULL) | NULL値を許すか |
 
 次のレッスン(05-05)では、ページ単位サブファイルとメッセージ・サブファイルを、DDS と RPG を対応づけながら読みます。
 
