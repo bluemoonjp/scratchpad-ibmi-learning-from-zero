@@ -32,11 +32,27 @@
 //     RUNSQL(`&LIB/...`のまま)はこの変更の対象外(そちらは動作確認済みで、
 //     db2ユーティリティーへの直接の引数ではないため)。
 //
-// CCSID の既定値(1208): 推測ではなく、tools/qclsrc/txsetup.clp が実機で完走を確認済みの
-// CPYFRMSTMF ... STMFCCSID(1208) をそのまま踏襲している(git clone で届いたASCII/UTF-8の
-// ソースを取り込む実績)。heredocで書いたファイルもASCII/UTF-8で、同じqsh/PASE環境が
-// ファイル作成時に付けるCCSIDタグは同じ既定である可能性が高いと考えられるが、
-// heredoc経由でこの値が実際に正しいかどうか自体は、このハーネスではまだ確認していない。
+// CCSID の既定(2026-09-26、実接続2回・以前の既定を反転): 1回目の接続では
+// heredocで書いた直後のファイルに明示的に`setccsid 1208`+`STMFCCSID(1208)`を
+// 指定していたが、これがCPYFRMSTMF自身を失敗させた(CPC7305で一度メンバーを
+// 追加した直後にCPC7309で削除され、CPFA0A2「情報が有効でない」・CPFA095
+// 「ストリーム・ファイルはコピーされなかった」で失敗)。2回目の接続で`ccsid:false`
+// (setccsid/STMFCCSIDを一切出さない)に変えたところ成功した(`CPCA081: Stream
+// file copied to object.`)——これは実証済み。**ただし「heredocで新規作成した
+// ファイルは既定でCCSID 1208になる」という一般化はまだ実証できていない**
+// (advisor指摘: 2回目の接続時、対象パスは1回目の接続で既に`cat >`によって
+// 作成済み・かつ1回目のsetccsid呼び出しで既にCCSID 1208にタグ付け済みだった
+// [ssh結果のstderrに`mkdir: ... File exists`の警告が残っていた]。`cat >`は
+// 既存ファイルをtruncateして書き直すだけでCCSIDタグ自体は変えないため、2回目に
+// 見えた「CCSID=1208・バイト列もASCII」は「真に新規作成したファイルの既定タグ」
+// ではなく「1回目のsetccsidが残したタグ」を観測していた可能性がある)。この
+// あいまいさを解消するため、heredocWrite側で書き込み直前に`rm -f`を追加した
+// (下記)。次に確認が取れたら、この既定判断自体の根拠をここに書き足すこと。
+// 実証済みの事実として確定しているのは「setccsid+STMFCCSIDを明示するとむしろ
+// 壊れる、何もしなければ動く」という点であり、既定を「何もしない」にすること
+// 自体は変わらず正しい。将来、非ASCII/DBCSを扱うマニフェスト(第9部の09-02b等)
+// で明示的に別のCCSIDを指定する必要が生じたときのために、`ccsid`に具体的な
+// 数値を指定する経路自体は残す。
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -45,14 +61,12 @@ import { buildClWrapperSource, pgmNameForBatch } from './clgen.mjs';
 
 const MARKER = (name) => `===VFY:${name}===`;
 
-// tools/qclsrc/txsetup.clp で実機確認済みの値(上記コメント参照)。manifest の
-// file/cl ステップで `ccsid` を省略した場合はこれを使う。`ccsid: false` を明示すれば
-// setccsid/STMFCCSID を一切出さない(候補比較などで意図的に既定を外したいとき用)。
-const DEFAULT_CCSID = 1208;
-
+// manifest の file/cl ステップで `ccsid` を省略した場合や `false` を明示した場合は
+// 何も出さない(上記コメント参照、2026-09-26に既定を反転)。具体的な数値を指定した
+// 場合だけ setccsid/STMFCCSID を出す。
 function resolveCcsid(explicit) {
-  if (explicit === false) return null;
-  return explicit || DEFAULT_CCSID;
+  if (!explicit) return null;
+  return explicit;
 }
 
 // リポジトリー内で完全に統制している相対パス(バッチ名・メンバー名から機械生成)だけを
@@ -74,7 +88,25 @@ function remoteAbs(relPath) {
 function heredocWrite(relPath, content) {
   // ヒアドキュメントの終端マーカーは、教材ソース中には出てこない文字列にしておく。
   const delim = 'VFY_EOF_9f3';
-  return [`cat > "${remoteAbs(relPath)}" <<'${delim}'`, content, delim].join('\n');
+  // 2026-09-26、実接続で発見・確認済みのバグ修正: content は fs.readFileSync で
+  // 読んだファイルの中身そのままで、通常は末尾に改行(\n)を1つ持つ。それを
+  // そのまま [line1, content, delim].join('\n') すると、content 自身の末尾の
+  // \n と、join が line1/content/delim の間に挿入する \n が二重になり、
+  // 転送先のファイルに実在する余分な空行が1行増えてしまう(harness-selftest
+  // 接続2回目、T0ZERO の実機コンパイルで実際に確認: RPG III コンパイラーが
+  // その余分な空行を「Form-Type entry invalid」(QRG2001)として拒否し、
+  // T0ZERO が一度もコンパイルできなかった)。content 末尾の改行を1つ取り除いて
+  // から join することで、常にちょうど1個の改行だけが終端マーカーの前に来るようにする。
+  const trimmedContent = content.replace(/\n$/, '');
+  // 2026-09-26、advisor指摘: 同じ相対パスへ複数回接続をまたいで書く場合(このハーネスの
+  // 常用パターン)、`cat >` は既存ファイルを truncate して書き直すだけで、CCSID タグ
+  // 自体は据え置かれる(前回そのファイルに setccsid 等で付けたタグが残ったまま)。
+  // これだと「本当に新規作成したファイルの既定タグ」を毎回正しく観測できない
+  // (harness-selftest 接続2・3回目の比較でこの汚染が疑われた)。`cat >` の前に
+  // 明示的に削除してから書き直すことで、常に「真に新規作成した直後の既定タグ」を
+  // 観測できるようにする(存在しなければ rm は無視されるだけで無害)。
+  const p = remoteAbs(relPath);
+  return [`rm -f "${p}" 2>&1`, `cat > "${p}" <<'${delim}'`, trimmedContent, delim].join('\n');
 }
 
 export function loadManifest(batchDirName) {
@@ -104,11 +136,13 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
     // 実際にどのCCSIDでタグ付けされ、どんなバイト列になっているかを、setccsidで
     // 上書きする前に見る診断(harness-selftest失敗の原因調査用、step.debugCcsid で
     // 明示的に有効にしたときだけ出す。既定はオフで他のマニフェストへの影響なし)。
+    // 2026-09-26、advisor指摘(2回目): `attr -p CCSID` は誤った構文だった
+    // (接続2回目の結果: `attr: 001-2249 Attribute ... is not valid.`)。
+    // `ls -S` が既にCCSIDを1列目に出す(接続2回目で確認済み)ので、それだけで足りる。
     if (step.debugCcsid) {
       const p = remoteAbs(remoteRel);
       lines.push(`echo ${MARKER(`debug-ccsid:${step.member}:before`)}`);
       lines.push(`ls -S "${p}" 2>&1`);
-      lines.push(`attr -p CCSID "${p}" 2>&1`);
       lines.push(`od -x "${p}" 2>&1 | head -2`);
       lines.push(`echo ${MARKER(`debug-ccsid:${step.member}:before-end`)}`);
     }
@@ -120,7 +154,6 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
       const p = remoteAbs(remoteRel);
       lines.push(`echo ${MARKER(`debug-ccsid:${step.member}:after`)}`);
       lines.push(`ls -S "${p}" 2>&1`);
-      lines.push(`attr -p CCSID "${p}" 2>&1`);
       lines.push(`od -x "${p}" 2>&1 | head -2`);
       lines.push(`echo ${MARKER(`debug-ccsid:${step.member}:after-end`)}`);
     }
