@@ -6,8 +6,15 @@
 /*                                                                        */
 /* v1 scope: object existence + type only (CHKOBJ), matching the highest */
 /* -priority item from the design review ("check that the required       */
-/* objects exist, with the right type"). Not yet compiled or run on      */
-/* PUB400 - kept on draft/tools until verified.                          */
+/* objects exist, with the right type").                                 */
+/*                                                                        */
+/* 2026-09-26, real-hardware fix: the CL command to close a DCLF-declared */
+/* database file is CLOSE (OPNID parameter), not CLOF (which does not    */
+/* take a FILE keyword - PUB400 rejected it with CPD0043). DCLF FILE      */
+/* (TXCKM) below omits OPNID, so it defaults to *NONE (confirmed: IBM     */
+/* Docs DCLF reference, "the file does not have an open file identifier   */
+/* ... only one file can be declared ... with *NONE"), matching CLOSE    */
+/* OPNID(*NONE) here.                                                    */
 /*                                                                        */
 /* TODO (tracked in Issue #5's TXCHECK follow-up comment): data checks   */
 /* (row counts / hash of a SELECT result) and static source checks       */
@@ -90,7 +97,7 @@ SUMMARY:     CHGVAR     VAR(&CNTC) VALUE(&PASSCNT)
              CHGVAR     VAR(&CNTC) VALUE(&FAILCNT)
              SNDPGMMSG  MSG(%TRIM(&CNTC) *CAT ' failed.')
 
-TXCLOF:      CLOF       FILE(TXCKM)
+TXCLOF:      CLOSE      OPNID(*NONE)
              MONMSG     MSGID(CPF0000)
              DLTOVR     FILE(TXCKM)
              MONMSG     MSGID(CPF0000)
