@@ -1,6 +1,6 @@
 # 05-09 改修 (2): フィールドの追加とレベル・チェック
 
-> 所要時間: 90分(長め)/ 前提レッスン: 05-08 / 目標番号: 4 / 観測方法: コンパイル・リストとメッセージ ID(`CPF4131`)/ 道具: 5250(PDM/SEU)/ 同時接続数: 5250×1 / 作る・変えるオブジェクト: `<USER>2/JUCHUM`(PF)・`<USER>2/JUCHUL1`(LF)・`<USER>2/ZA0500`・`<USER>2/JU0300`(RPG)・`<USER>2/JU0900C`(CL)/ DBVER: 1 → 2 / 依存するプローブ: P19(未実施)/ PTF 依存: なし / 容量の目安: わずか
+> 所要時間: 90分(長め)/ 前提レッスン: 05-08 / 目標番号: 4 / 観測方法: コンパイル・リストとメッセージ ID(`CPF4131`)/ 道具: 5250(PDM/SEU)/ 同時接続数: 5250×1 / 作る・変えるオブジェクト: `<USER>1/JUCHUM`(PF)・`<USER>1/JUCHUL1`(LF)・`<USER>1/ZA0500`・`<USER>1/JU0300`(RPG)・`<USER>1/JU0900C`(CL)/ DBVER: 1 → 2 / 依存するプローブ: P19(未実施)/ PTF 依存: なし / 容量の目安: わずか
 
 ## ゴール
 
@@ -103,32 +103,32 @@ JUCHUM (PF) を直接 DCLF/CHAIN するもの
 1. 現在の状態を確認する。
 
    ```text
-   TXSTATUS LIB(<USER>2)
+   TXSTATUS LIB(<USER>1)
    ```
 
-   `TXSTATUS: DBVER=0000000001 in library <USER>2` と出るはずです(05-08 までは `DBVER=1` のまま)。
+   `TXSTATUS: DBVER=0000000001 in library <USER>1` と出るはずです(05-08 までは `DBVER=1` のまま)。
 
 2. `db/v1/juchum.pf` と `db/v2/juchum.pf` を見比べる(上の説明のとおり)。差分は `JUDLV` の追加だけであることを確認してください。
 
 3. **`CHGPF` を手作業で行い、`CPF4131` をわざと発生させる。** `TXMIGR` は最後まで一気にやってしまう道具なので、ここでは学習のためにあえて1段目だけを手で行います(`txmigr.clp` の「Step 1」と同じ内容)。
 
    ```text
-   ADDPFM FILE(<USER>2/QDDSSRC) MBR(JUCHUM) SRCTYPE(PF) TEXT('Order master (DBVER=2)')
+   ADDPFM FILE(<USER>1/QDDSSRC) MBR(JUCHUM) SRCTYPE(PF) TEXT('Order master (DBVER=2)')
    ```
 
-   (既に `JUCHUM` メンバーがある場合はこのコマンドは `CPF7306` で失敗しますが問題ありません。`db/v2/juchum.pf` の内容を `<USER>2/QDDSSRC/JUCHUM` メンバーに上書きしてから、次に進んでください。)
+   (既に `JUCHUM` メンバーがある場合はこのコマンドは `CPF7306` で失敗しますが問題ありません。`db/v2/juchum.pf` の内容を `<USER>1/QDDSSRC/JUCHUM` メンバーに上書きしてから、次に進んでください。)
 
    ```text
-   CHGPF FILE(<USER>2/JUCHUM) SRCFILE(<USER>2/QDDSSRC) SRCMBR(JUCHUM)
+   CHGPF FILE(<USER>1/JUCHUM) SRCFILE(<USER>1/QDDSSRC) SRCMBR(JUCHUM)
    ```
 
-   これで `<USER>2/JUCHUM` は新しい様式(`JUDLV` あり)になりましたが、既存の8件のデータはそのまま残っています。**この時点では、まだ `JUCHUL1` も、どのプログラムも再作成・再コンパイルしていません。**
+   これで `<USER>1/JUCHUM` は新しい様式(`JUDLV` あり)になりましたが、既存の8件のデータはそのまま残っています。**この時点では、まだ `JUCHUL1` も、どのプログラムも再作成・再コンパイルしていません。**
 
 4. **`CPF4131` を実際に見る。** `JUCHUM` を外部記述で参照しているプログラム(例: `JU0900C`)を、**同じジョブの中で** `ADDLIBLE` してから呼び出します(無修飾参照を別セッションで呼ぶと `RPG1216` の無期限ハングになるおそれがあることは 04-06 の実機メモで確認済みです。必ず同一ジョブ・ライブラリー修飾を守ってください)。
 
    ```text
-   ADDLIBLE LIB(<USER>2) POSITION(*FIRST)
-   CALL PGM(<USER>2/JU0900C) PARM('*TEST' '<USER>2')
+   ADDLIBLE LIB(<USER>1) POSITION(*FIRST)
+   CALL PGM(<USER>1/JU0900C) PARM('*TEST' '<USER>1')
    ```
 
    `JU0900C` は `DCLF FILE(JUCHUM)` しているので、`JUCHUM` を古い様式レベル ID のまま覚えています。ジョブ・ログに `CPF4131`(様式レベル ID が一致しない)が現れるはずです。これが「様式が変わったのに、プログラムが古いままだと実行時に止まる」という、このレッスンの核心です。
@@ -136,8 +136,8 @@ JUCHUM (PF) を直接 DCLF/CHAIN するもの
 5. **正しい順序で直す。** まず論理ファイルを再作成します。`JUCHUL1` は `JUCHUM` の上に作られた論理ファイル(データは持たず、`JUCHUM` へのアクセス経路だけの存在)なので、**削除しても実データは失われません**。
 
    ```text
-   DLTF FILE(<USER>2/JUCHUL1)
-   CRTLF FILE(<USER>2/JUCHUL1) SRCFILE(<USER>2/QDDSSRC) SRCMBR(JUCHUL1)
+   DLTF FILE(<USER>1/JUCHUL1)
+   CRTLF FILE(<USER>1/JUCHUL1) SRCFILE(<USER>1/QDDSSRC) SRCMBR(JUCHUL1)
    ```
 
    `JUCHUL1` 自身の DDS ソース(`PFILE(JUCHUM)` のみ)は一文字も変わっていないのに、**再作成が必要な理由は「元になっている `JUCHUM` の様式レベル ID が変わったから」**です。これが「PF を直したら、その1つ下流の LF も必ず作り直す」の具体例です。
@@ -147,14 +147,14 @@ JUCHUM (PF) を直接 DCLF/CHAIN するもの
 6. RPG を再コンパイルします(`JUCHUL1` を使う `JU0300`、`JUCHUM` を直接使う `ZA0500` の両方)。
 
    ```text
-   CRTRPGPGM PGM(<USER>2/JU0300) SRCFILE(<USER>2/QRPGSRC) SRCMBR(JU0300)
-   CRTRPGPGM PGM(<USER>2/ZA0500) SRCFILE(<USER>2/QRPGSRC) SRCMBR(ZA0500)
+   CRTRPGPGM PGM(<USER>1/JU0300) SRCFILE(<USER>1/QRPGSRC) SRCMBR(JU0300)
+   CRTRPGPGM PGM(<USER>1/ZA0500) SRCFILE(<USER>1/QRPGSRC) SRCMBR(ZA0500)
    ```
 
 7. CL を再コンパイルします(`JUCHUM` を `DCLF` している `JU0900C`)。
 
    ```text
-   CRTCLPGM PGM(<USER>2/JU0900C) SRCFILE(<USER>2/QCLSRC) SRCMBR(JU0900C)
+   CRTCLPGM PGM(<USER>1/JU0900C) SRCFILE(<USER>1/QCLSRC) SRCMBR(JU0900C)
    ```
 
 8. 手順4と同じ呼び出しを、**同一ジョブ**でもう一度行い、今度は `CPF4131` が出ずに正常終了することを確認します。
@@ -162,27 +162,27 @@ JUCHUM (PF) を直接 DCLF/CHAIN するもの
 9. `TXSTATUS` で確認します。
 
    ```text
-   TXSTATUS LIB(<USER>2)
+   TXSTATUS LIB(<USER>1)
    ```
 
    **ここで注意**: `txmigr.clp` の最後のメッセージは `TXMIGR: done. DBVER=2. Run TXSTATUS to check; update TXSTATE by hand if this tool did not.` となっており、**`TXMIGR` のソースを実際に読むと、`TXSTATE` を書き換える `CHGDTAARA` の呼び出しがどこにもありません。** つまり、ここまでの手順を終えても `TXSTATUS` はまだ `DBVER=0000000001` のままのはずです。これはバグではなく、**ツール側がまだ実装していない部分**です(この教材自身の未完成点を、正直に見つける良い練習にもなります)。手で仕上げます。
 
    ```text
-   CHGDTAARA DTAARA(<USER>2/TXSTATE) VALUE(2)
-   TXSTATUS LIB(<USER>2)
+   CHGDTAARA DTAARA(<USER>1/TXSTATE) VALUE(2)
+   TXSTATUS LIB(<USER>1)
    ```
 
-   `TXSTATUS: DBVER=0000000002 in library <USER>2` と出れば完了です。
+   `TXSTATUS: DBVER=0000000002 in library <USER>1` と出れば完了です。
 
 ## 演習
 
 次の「再作成チェックリスト」は、`JUDLV` 追加後に(架空の)同僚が作った手順書です。**1つ、大事な手順が抜けています。** どれが抜けているか、そしてこのリストどおりに実行した場合、最終的にどのプログラムで・どんな症状(メッセージ ID)が起きるかを答えてください。
 
 ```text
-□ 1. CHGPF FILE(<USER>2/JUCHUM) SRCFILE(<USER>2/QDDSSRC) SRCMBR(JUCHUM)
-□ 2. CRTRPGPGM PGM(<USER>2/ZA0500) SRCFILE(<USER>2/QRPGSRC) SRCMBR(ZA0500)
-□ 3. CRTRPGPGM PGM(<USER>2/JU0300) SRCFILE(<USER>2/QRPGSRC) SRCMBR(JU0300)
-□ 4. CRTCLPGM PGM(<USER>2/JU0900C) SRCFILE(<USER>2/QCLSRC) SRCMBR(JU0900C)
+□ 1. CHGPF FILE(<USER>1/JUCHUM) SRCFILE(<USER>1/QDDSSRC) SRCMBR(JUCHUM)
+□ 2. CRTRPGPGM PGM(<USER>1/ZA0500) SRCFILE(<USER>1/QRPGSRC) SRCMBR(ZA0500)
+□ 3. CRTRPGPGM PGM(<USER>1/JU0300) SRCFILE(<USER>1/QRPGSRC) SRCMBR(JU0300)
+□ 4. CRTCLPGM PGM(<USER>1/JU0900C) SRCFILE(<USER>1/QCLSRC) SRCMBR(JU0900C)
 ```
 
 <details><summary>解答</summary>
@@ -203,7 +203,7 @@ JUCHUM (PF) を直接 DCLF/CHAIN するもの
 
 ## 片付け
 
-このレッスンで作成・変更したオブジェクト(`<USER>2/JUCHUM`・`JUCHUL1`・`ZA0500`・`JU0300`・`JU0900C`)はそのまま残してください。05-10 でも同じ `<USER>2`(`DBVER=2` の状態)を使います。
+このレッスンで作成・変更したオブジェクト(`<USER>1/JUCHUM`・`JUCHUL1`・`ZA0500`・`JU0300`・`JU0900C`)はそのまま残してください。05-10 でも同じ `<USER>1`(`DBVER=2` の状態)を使います。
 
 ## まとめ
 
