@@ -1004,6 +1004,38 @@ SUCCESS。**
 
 これでP1の#10.5は完了。次は#10.6(`part05-txlegacy-exec`)。
 
+## 第5部TXLEGACY自体の実機検証: `part05-txlegacy-exec`(確認日 2026-09-27)
+
+これまでの検証(`part05-legacy-probe`等)は、TXLEGACYが本来やる仕事
+(CLONEDIR配下の実ツリーから自分でCPYFRMSTMFする)を一度も実行せず、同じ
+オブジェクトを`file`/`cl`ステップで直接コンパイルして代替していただけ
+だった。今回、TXLEGACYが依存する9ファイルをCLONEDIR相当の相対パスへ
+`file`ステップ(remotePath指定、CPYFRMSTMFは実行しない)で配置し、続けて
+`sh`ステップの`CPYTOSTMF`で実際にCCSID1208へバイト変換したうえで、
+TXLEGACY自身をCALLした(`RUNTXLEG`という小さなCLヘルパー経由、TXLEGACYの
+`*CMD`はラッパーのコンパイル時点ではまだ存在しないため)。**1回の接続で
+CONFIRMED SUCCESS。**
+
+- **CCSID診断(`DEBUGCCSID`ステップ)で確認**: `CPYTOSTMF`後の
+  `za0500.rpg`は実際にCCSID1208のタグが付き、バイト列も本物のASCII
+  (`od -x`実測: `2a20 5a41 3035 3030`などが`* ZA0500`と正しく対応)。
+  タグとバイト列が一致しているため、TXLEGACY自身の
+  `CPYFRMSTMF...STMFCCSID(1208)`は破損なく成功する——heredoc直書き
+  (既定でCCSID273/EBCDIC、`harness-selftest`で確認済み)とは別の経路で
+  1208を正しく再現できることを実証した。
+- **TXLEGACY本体の実行**: 8オブジェクト(FLDREF・FLDREFR・TK0100D・
+  MN0000D・TK0100・JU0300・ZA0500・JU0900C・MN0000C、うちTK0100/JU0300/
+  ZA0500はRPGでHighest Severity 00)全てがこの接続のタイムスタンプで
+  新規作成され、`TXLEGACY: done.`まで到達。状態データ域`TXLEGST`も
+  新規作成された(初回ロード)。
+- **`RUNTXLEG`ヘルパーによる確認**: 同一ジョブ内で`TXLEGST`を
+  `RTVDTAARA`し`TXLEGRUN: TXLEGST=[Y]`と報告——TXLEGACYが自分の状態
+  データ域を正しく書き込み、直後に読み戻せることを確認した。
+- 副産物: `DLTTXCMD`/`DLTTXLST`は初回実行のため「オブジェクトが無い」で
+  想定どおり失敗しMONMSGで捕捉、`CPTXLEGCMD`が`*CMD`を新規作成。
+
+これでP1の#10.6は完了。次は#10.7(`part05-ju0900c-baseline`)。
+
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。
