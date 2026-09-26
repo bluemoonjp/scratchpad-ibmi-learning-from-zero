@@ -56,16 +56,32 @@
 //   on the still-unverified SYSTOOLS.SPOOLED_FILE_DATA path that spooled
 //   printer output would have required.
 //
-// FIXED (part06-gen-probe, 2026-09-26, real-hardware CRTBNDRPG): this
-// file (and every other rung 02-12/12Q, which all copy this same
-// QMHSNDPM/sendToJobLog block) was missing the ctl-opt line below.
-// Without it, DFTACTGRP defaults to *YES, and PUB400 rejected every
-// single rung identically with RNF1520 ("The procedure cannot be
-// defined with DFTACTGRP(*YES)") plus cascading RNF0256/RNF7023 errors -
-// a dcl-proc is not allowed in the default activation group. f0609s.rpgle
-// (this file's own cited QMHSNDPM source) already has this exact line;
-// it was simply dropped when copied here. Added to all 13 files in this
-// ladder.
+// FIXED (part06-gen-probe, 2026-09-26, real-hardware CRTBNDRPG, 2 real
+// bugs found across both connections - applied to all 13 files in this
+// ladder, T0LAD01-12/12Q, which all copy this same QMHSNDPM/
+// sendToJobLog block):
+//   1. Missing the ctl-opt line below. Without it, DFTACTGRP defaults
+//      to *YES, and PUB400 rejected every rung with RNF1520 ("The
+//      procedure cannot be defined with DFTACTGRP(*YES)") - a dcl-proc
+//      is not allowed in the default activation group. f0609s.rpgle
+//      (this file's own cited QMHSNDPM source) already has this exact
+//      line; it was simply dropped when copied here.
+//   2. Wrong section order: dcl-proc sendToJobLog sat BEFORE the
+//      mainline code, not after it. ilerpgref75.txt's own "RPG IV
+//      Concepts" chapter (~line 8266) is explicit: "Main source
+//      section: the source lines from the first line...up to the
+//      first Procedure specification" and "A subprocedure is a
+//      procedure defined AFTER the main source section" - i.e. once a
+//      Procedure-Begin (dcl-proc) appears, everything from there on is
+//      part of the procedure section, so mainline statements placed
+//      after end-proc are rejected (RNF0256 "Specification found
+//      between procedures", cascading to RNF7023 "Compiler cannot
+//      determine how the program can end"). This was NOT just a
+//      cascade of bug 1 - fixing ctl-opt alone (2nd connection) left
+//      RNF0256/RNF7023 unchanged. f0609s.rpgle already has the correct
+//      order (mainline, then *inlr/return, then its dcl-procs); moved
+//      sendToJobLog's dcl-proc/end-proc block to the end of every file
+//      here to match.
 //=======================================================================
 
 ctl-opt dftactgrp(*no) actgrp(*new);
@@ -94,6 +110,16 @@ dcl-pr qmhsndpm extpgm;
   errorCode      likeds(qmhsndpmErrCode);
 end-pr;
 
+//-----------------------------------------------------------------------
+// Rung 1's own feature: nothing beyond **FREE itself. If this member
+// fails to compile, PUB400's PTF level cannot even accept a bare **FREE
+// source member, which would make every later rung moot.
+//-----------------------------------------------------------------------
+sendToJobLog('T0LAD01: **FREE rung compiled and ran.');
+
+*inlr = *on;
+return;
+
 dcl-proc sendToJobLog;
   dcl-pi *n;
     msg char(200) const;
@@ -106,13 +132,3 @@ dcl-proc sendToJobLog;
   qmhsndpm('CPF9898' : msgFile : msg : %len(%trimr(msg))
              : '*INFO' : '*' : 0 : msgKey : errCode);
 end-proc;
-
-//-----------------------------------------------------------------------
-// Rung 1's own feature: nothing beyond **FREE itself. If this member
-// fails to compile, PUB400's PTF level cannot even accept a bare **FREE
-// source member, which would make every later rung moot.
-//-----------------------------------------------------------------------
-sendToJobLog('T0LAD01: **FREE rung compiled and ran.');
-
-*inlr = *on;
-return;

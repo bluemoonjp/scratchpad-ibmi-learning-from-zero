@@ -579,28 +579,39 @@ V2穴埋めで別途検証する)。
 ## 第6部 P24 機能梯子の実機検証: `part06-gen-probe`(確認日 2026-09-26)
 
 RPG IV/**FREE の12段階機能梯子(T0LAD01〜T0LAD12、CRTBNDRPG)と、12段目を
-CRTSQLRPGIでも再コンパイルするT0LAD12Qの、計13オブジェクトを1回の接続で
-検証した。1回目の接続で**13オブジェクト全てが同一の根本原因で
-コンパイル失敗**(再接続で決着させる)。
+CRTSQLRPGIでも再コンパイルするT0LAD12Qの、計13オブジェクトを検証した。
+**2回の接続で2件の実バグを発見・修正、3回目の接続で決着させる。**
 
-**バグ: 13ファイル全てに`ctl-opt dftactgrp(*no) actgrp(*new);`が
-欠落していた。** 全13ファイルが`dcl-proc`(`sendToJobLog`)を定義しているが、
-既定の活動グループ(`DFTACTGRP(*YES)`)ではプロシージャーを定義できない。
-実機のエラー・メッセージ自体がこれを直接裏付ける: `RNF1520`
-「The procedure cannot be defined with DFTACTGRP(*YES).」。これに続く
+**バグ1(接続1回目で発見): 13ファイル全てに
+`ctl-opt dftactgrp(*no) actgrp(*new);`が欠落していた。** 全13ファイルが
+`dcl-proc`(`sendToJobLog`)を定義しているが、既定の活動グループ
+(`DFTACTGRP(*YES)`)ではプロシージャーを定義できない。実機のエラー・
+メッセージ自体がこれを直接裏付ける: `RNF1520`「The procedure cannot be
+defined with DFTACTGRP(*YES).」。このリポジトリー内で既に同じQMHSNDPM
+パターンを引用元としているf0609s.rpgle(t0lad01.rpgle自身のヘッダーが
+引用)には`ctl-opt dftactgrp(*no) actgrp(*new) option(*srcstmt);`が
+最初から入っており、13ファイルはこの行を写し忘れていたと判明。
+全13ファイルの同じ位置(共有のQMHSNDPMブロックの直前)に追加。
+
+**バグ2(接続2回目で発見: バグ1修正だけでは治らなかった)。**
 `RNF0256`(「Specification found between procedures」)・`RNF7023`
-(「The Compiler cannot determine how the program can end」)は、いずれも
-同じ根本原因からの連鎖と判断した。このリポジトリー内で既に同じ
-QMHSNDPMパターンを引用元としているf0609s.rpgle(t0lad01.rpgle自身の
-ヘッダーが引用)には`ctl-opt dftactgrp(*no) actgrp(*new) option(*srcstmt);`
-が最初から入っており、13ファイルはこの行を写し忘れていたと判明。
-全13ファイルの同じ位置(共有のQMHSNDPMブロックの直前)に追加して修正。
+(「The Compiler cannot determine how the program can end」)は、バグ1の
+連鎖ではなく**別の実バグ**だった。一次資料`ilerpgref75.txt`「RPG IV
+Concepts」章(8266行目付近)で確認: 「Main source section: ソースの
+先頭から最初のProcedure仕様書まで」「A subprocedure is a procedure
+defined AFTER the main source section」。つまり`dcl-proc`(Procedure-Begin)
+が一度出現すると、それ以降は全てプロシージャー区画として扱われ、
+`end-proc;`の後にメインラインの文を置くことはできない。13ファイル
+全てが`dcl-proc sendToJobLog; ... end-proc;`を**メインラインより前**に
+置いていた(f0609s.rpgleは逆順: メインライン→`*inlr`/`return`→
+`dcl-proc`)。全13ファイルで`sendToJobLog`のプロシージャー定義を
+ファイル末尾(`return;`の後)へ移動して修正。
 
-**影響**: 次回接続で決着させる。CP12Qの`monmsg`一覧(現状
-`CPF0000/RNF0000/SQL0000/MCH0000`)には実際に出た`RNS9310`が含まれて
-いなかったが、根本原因(ctl-opt欠落)を直せばCP12Qのコンパイル自体が
-成功するはずなので、`RNS9310`を先回りしてmonmsgに追加することはせず、
-次回接続の結果を見てから要否を判断する。
+**影響**: 3回目の接続で決着させる。CP12Qの`monmsg`一覧(現状
+`CPF0000/RNF0000/SQL0000/MCH0000`)には接続1・2回目で実際に出た
+`RNS9310`が含まれていなかったが、根本原因(バグ1・2)を直せばCP12Qの
+コンパイル自体が成功するはずなので、`RNS9310`を先回りしてmonmsgに
+追加することはせず、次回接続の結果を見てから要否を判断する。
 
 ## 未実施のプローブ
 

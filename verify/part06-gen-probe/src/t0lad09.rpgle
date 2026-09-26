@@ -44,19 +44,6 @@ dcl-pr qmhsndpm extpgm;
   errorCode      likeds(qmhsndpmErrCode);
 end-pr;
 
-dcl-proc sendToJobLog;
-  dcl-pi *n;
-    msg char(200) const;
-  end-pi;
-
-  dcl-ds msgFile likeds(qmhsndpmMsgFile) inz(*likeds);
-  dcl-ds errCode likeds(qmhsndpmErrCode) inz(*likeds);
-  dcl-s  msgKey  char(4);
-
-  qmhsndpm('CPF9898' : msgFile : msg : %len(%trimr(msg))
-             : '*INFO' : '*' : 0 : msgKey : errCode);
-end-proc;
-
 sendToJobLog('T0LAD01: **FREE rung compiled and ran.');
 
 dcl-s ladArr char(10) dim(*auto:10);
@@ -149,3 +136,16 @@ sendToJobLog('T0LAD09: CONST OK - LAD_MAX_RETRY = ' + %char(LAD_MAX_RETRY));
 
 *inlr = *on;
 return;
+
+dcl-proc sendToJobLog;
+  dcl-pi *n;
+    msg char(200) const;
+  end-pi;
+
+  dcl-ds msgFile likeds(qmhsndpmMsgFile) inz(*likeds);
+  dcl-ds errCode likeds(qmhsndpmErrCode) inz(*likeds);
+  dcl-s  msgKey  char(4);
+
+  qmhsndpm('CPF9898' : msgFile : msg : %len(%trimr(msg))
+             : '*INFO' : '*' : 0 : msgKey : errCode);
+end-proc;
