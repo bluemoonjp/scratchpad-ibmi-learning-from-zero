@@ -781,6 +781,28 @@ valid for built-in function %EOF」・`RNF0394`「...%FOUND」で確認。
 (第7部07-04、JUYAKLのILE CL版)にも発見、まだ実機接続していないが
 先回りで同様に修正済み。**
 
+## 第7部モジュール分割の実機検証: `part07-01-modules`(確認日 2026-09-26)
+
+M0701A(メイン・モジュール)・M0701B(JUCUTL、NOMAINユーティリティー・
+モジュール)を別々にCRTRPGMODし、両方をF0701AへCRTPGM ACTGRP(*NEW)で
+結合、実行するところまでは正しく設計されていたが、**マニフェストの
+ラッパー自体がコンパイル失敗**(接続1回目、再接続で決着させる)。
+
+**バグ: `DSPPGM`は`OUTPUT(*OUTFILE)`に対応していない(DETAIL値に
+関わらず)。** `CPD0043`「Keyword OUTFILE not valid for this command」で
+確認。WebSearchでIBM公式ドキュメント・フォーラム両方から「DSPPGMは
+OUTFILEをサポートしない」ことを確認(DSPOBJD/DSPDBRは対応済み、実機
+確認済みなのでDSPPGM固有の制限)。**代替として、QSYS2の SQL サービス
+`QSYS2.BOUND_MODULE_INFO`(DSPPGM DETAIL(*MODULE)のSQL版)を直接
+collectステップでクエリーする形に変更**(CL側のVMODステップ自体を
+削除、OUTFILE経由の間接参照が不要になった)。**同じ誤りを
+`part07-0203-srvpgm`のVSRVPGMステップ(`DSPPGM...DETAIL(*SRVPGM)
+OUTPUT(*OUTFILE)`)にも発見、まだ実機接続していないが先回りで
+`QSYS2.BOUND_SRVPGM_INFO`(DSPPGM DETAIL(*SRVPGM)のSQL版)に置き換え
+済み。** 全マニフェストを`DSPPGM.*OUTFILE`で検索し、他に該当が無い
+ことを確認済み(`DSPDBR`/`DSPOBJD`は既に実機確認済みでOUTFILE対応、
+`DSPSRVPGM`は元から`OUTPUT(*PRINT)`でOUTFILEを使っていない)。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
