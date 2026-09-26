@@ -401,6 +401,22 @@ F 仕様書15桁目を `U`(更新用)にし、31桁目に `K` を指定した外
 
 **影響**: 04-13(チェックポイント: 商品別在庫一覧表)完成。これで第4部(04-01〜04-13)が完成・実機検証済みとなった。
 
+## 検証ハーネス(`verify/`)自身の実機確認(確認日 2026-09-26、`harness-selftest`)
+
+第5〜7部の実機検証を始める前段として、検証ハーネス自身が正しく動くかを3回の接続で確認した(結果ファイル: `work/verify/results/harness-selftest-2026-09-26T{11-57-52-819Z,12-13-00-709Z,12-30-08-434Z}.json`)。1・2回目で見つけたハーネス自身のバグはすべて `verify/lib/{batch,clgen}.mjs` を修正し、main へ commit・push・CI green 確認済み。3回目で全項目が成功した。
+
+**1. `CHGJOB INQMSGRPY(*DFT)` は RPG0102(ゼロ除算の照会メッセージ)を自動応答し、ハングを防ぐ。** 3回目の接続の実際のジョブ・ログ: `RPG0102: T0ZERO 800 tried to divide by zero (factor 2) (C G S D F).` の直後に `:  C`(既定応答「取消」)が記録され、`RPG9001: Error RPG0102 caused program T0ZERO to stop.` という取消由来のエスケープになり、`CALL` ステップの `MONMSG MSGID(CPF0000 RPG0000 MCH0000)` がこれを正しく捕まえて「RUNIT FAILED」と報告し、そのまま次のステップ(`harness-selftest DONE`)へ正常に進んだ(ハングせず、`killedForTimeout: false`)。**これで、以後の検証マニフェストでゼロ除算や同種の照会メッセージを起こしうるステップ(第6部P24梯子の一部、旧システムの未検証コード等)を、`CHGJOB INQMSGRPY(*DFT)` の下で安心してバッチに含めてよいことが確定した。**
+
+**2. heredoc で転送したファイルの CCSID タグは既定で 273(EBCDIC、PUB400 の QCCSID そのもの)になり、実バイト列も本物の EBCDIC である。** 1回目の接続では、ここへ明示的に `setccsid 1208`+`STMFCCSID(1208)` を指定していた(=実際は EBCDIC のバイト列を ASCII/UTF-8 だと偽って上書きタグ付けすることに相当)ため、`CPYFRMSTMF` が変換失敗(`CPFA0A2`/`CPFA095`)した。何もしなければ(タグとバイト列が一致したまま)、`CPYFRMSTMF` は正しく EBCDIC として読み取り、コンパイル可能な状態でメンバーへコピーできる(`CPCA081: Stream file copied to object.`)。ハーネスの既定を「CCSID を明示しない」に修正した(`verify/lib/batch.mjs`)。**教材内の git clone 経由の転送(`tools/qclsrc/txsetup.clp` 等の `STMFCCSID(1208)`)はこれとは別の実績(git 側で ASCII/UTF-8 として送られてくる)であり、混同しないこと。**
+
+**3. heredoc の実装バグ: 転送されたファイルの末尾に、実在しない余分な空行が1行増えていた。** `content`(ファイルの中身、末尾に改行を1つ持つ)と終端マーカーの間の結合で改行が二重になっていたため。RPG III の固定形式コンパイラーはこの余分な空行を `QRG2001`(Form-Type entry invalid)として拒否した。`verify/lib/batch.mjs` を修正(`heredocWrite` が `content` 末尾の改行を1つ取り除いてから結合する)。**この修正前から存在した、教材ソース中の唯一の実例**(`solutions/05-13/za0500-ticket3.rpg` の末尾に本物の空行があった)も直接削除して修正済み。
+
+**4. PUB400 の `QDECFMT`(SQL の小数点)はコンマである(ドイツ語圏ホスト)。** `SUBSTR(x,1,200)` のようにコンマの直後へ数字を続けて書く SQL は、コンマが小数点として解釈され `SQL0104`(不正なトークン)になる。一次資料 `cl_commands_75.txt` 4583-4600行目(`RUNSQL` の `Decimal point` パラメーターの注記)で確認済み。`docs/style-guide.md` に恒久的な注意を追記した(第6部の埋め込みSQL・第8部のDDL・第9部のSQLルーチンで必ず守ること)。
+
+**5. `db2` ユーティリティー(qsh)の正しい呼び出し方が確定した。** フラグは付けない(命名規則を切り替えるフラグはそもそも存在しない)。SQL 文は標準入力へパイプするのではなく、引用符付きの位置パラメーターとして渡す(`db2 "SQL文"`)。ライブラリー修飾は `.`(ドット)にする(`/` はシステム命名規則でしか通らない可能性があるため)。3回の接続すべてで、この形式による `vfylog` の読み出しと `collect`(`QSYS2.OBJECT_STATISTICS`・`ZAIKOM` の SELECT)が安定して成功している。
+
+**影響**: 検証ハーネス(`verify/lib/*.mjs`、16本のマニフェスト全て)が実機で確認済みとなり、第5〜7部の本格的な検証接続に進める。`<USER>2` の既存オブジェクト一覧(サンプルDB・TXツール・第4部の成果物、計51件)も確認し、`TXRESET`(*CMD、*PGM 両方)・`R0409A` の存在を確認した(`part06-0509-procs-files`・`part07-05-checkpoint` の `&LIB/TXRESET LIB(&LIB)` ステップの前提が満たされている)。ただし `R0406A`・`R0407A`・`R0410A` の正式名は依然として存在せず(`*T` 系の試作名のみ)、これらに依存するマニフェストが無いことを事前に確認しておくこと。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
