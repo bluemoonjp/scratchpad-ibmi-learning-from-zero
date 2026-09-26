@@ -90,6 +90,19 @@ export function buildClWrapperSource(manifest, cfg) {
   emit(`RUNSQL ${sqlLit(`DELETE FROM ${logTable}`)} COMMIT(*NONE)`);
   lines.push(`             MONMSG     MSGID(CPF0000)`); // 表が空でも削除0件でもエラーにしない
 
+  // VFYSPL(スプールをテキストで残す、複数マニフェストが使う共有の非SQL物理ファイル。
+  // CRTPF/CPYSPLF が書く対象のため、VFYLOGと違いSQL CREATE TABLEでは作れない)も、
+  // 前回のバッチの行が残っていると collect で混ざるため、このマニフェストが使う場合は
+  // 同じ理由で毎回クリアする(2026-09-26、advisor指摘)。まだ一度もこのライブラリーで
+  // 作られていない場合は「オブジェクトが見つからない」エラーになるので、CPF0000に
+  // 加えてRUNSQL自身が出すSQLクラスのエスケープ(SQL0000、part06-1314-sql等で既に
+  // 使っている慣例)も無視する。
+  const usesVfySpl = manifest.steps.some((s) => s.type === 'cl' && /VFYSPL/.test(s.cmd));
+  if (usesVfySpl) {
+    emit(`RUNSQL ${sqlLit(`DELETE FROM ${lib}/VFYSPL`)} COMMIT(*NONE)`);
+    lines.push(`             MONMSG     MSGID(CPF0000 SQL0000)`);
+  }
+
   // &LIB はCLの実行時変数ではなく、生成時点でこの文字列にそのまま置き換える
   // プレースホルダー(PARM経由で渡す32バイト・パディングの罠を避けるため)。
   const substLib = (text) => text.replaceAll('&LIB', lib);
