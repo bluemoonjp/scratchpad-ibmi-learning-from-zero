@@ -139,8 +139,19 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
   for (const step of fileSteps) {
     const localPath = path.resolve(baseDir || repoRoot(), step.localPath);
     const content = fs.readFileSync(localPath, 'utf8');
-    const remoteRel = `${remoteDir}/${path.basename(step.localPath)}`;
-    lines.push(`echo ${MARKER(`transfer:${step.member}`)}`);
+    // 既定は `${remoteDir}/basename`(フラット、既存16本のマニフェストが使う形)。
+    // `remotePath` を明示すれば、任意の相対パスへ直接置ける(2026-09-27追加)。
+    // CLONEDIR配下のgit clone済みツリーを前提にCPYFRMSTMFするツール
+    // (TXLEGACY/TXSNAP/TXMIGR等)を検証するとき、そのツールが期待する相対パス
+    // (例: `ibmi-kyozai/src/legacy/qrpgsrc/za0500.rpg`)へ直接ファイルを置くのに使う——
+    // 実際にgit cloneする必要はなく(第5部はまだmainに無く、cloneしても取れない。
+    // draft側をoriginにpushして晒す判断も避けられる)、ハーネスが個々のファイルを
+    // そのものずばりの位置へ置くだけで、ツール自身のCPYFRMSTMFはそのまま動く。
+    const remoteRel = step.remotePath || `${remoteDir}/${path.basename(step.localPath)}`;
+    lines.push(`echo ${MARKER(`transfer:${step.member || remoteRel}`)}`);
+    if (remoteRel.includes('/')) {
+      lines.push(`mkdir -p "${remoteAbs(path.posix.dirname(remoteRel))}" 2>&1`);
+    }
     lines.push(heredocWrite(remoteRel, content));
     // 2026-09-26、advisor指摘: heredoc(`cat > ... <<DELIM`)で書いた直後のファイルが
     // 実際にどのCCSIDでタグ付けされ、どんなバイト列になっているかを、setccsidで
@@ -174,12 +185,27 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
         `system "CRTSRCPF FILE(${lib}/${step.remoteSrcFile}) RCDLEN(${step.ensureSrcFile.recordLength}) TEXT('verify harness auto-create')" 2>&1`,
       );
     }
-    const stmfCcsid = ccsid ? ` STMFCCSID(${ccsid})` : '';
-    lines.push(
-      `system "CPYFRMSTMF FROMSTMF('${remoteAbs(remoteRel)}') ` +
-        `TOMBR('/QSYS.LIB/${lib}.LIB/${step.remoteSrcFile}.FILE/${step.member}.MBR') MBROPT(*REPLACE)${stmfCcsid}" 2>&1`,
-    );
-    lines.push(`echo ${MARKER(`transfer-end:${step.member}`)}`);
+    // `remoteSrcFile`/`member` を省略した場合は、IFS上にファイルを置くだけで終わる
+    // (CPYFRMSTMFでどのメンバーにも取り込まない)。CLONEDIR配下のツリーを再現する
+    // ためのファイル(TXLEGACY等が自分でCPYFRMSTMFする対象)はこちらを使う。
+    if (step.remoteSrcFile) {
+      const stmfCcsid = ccsid ? ` STMFCCSID(${ccsid})` : '';
+      lines.push(
+        `system "CPYFRMSTMF FROMSTMF('${remoteAbs(remoteRel)}') ` +
+          `TOMBR('/QSYS.LIB/${lib}.LIB/${step.remoteSrcFile}.FILE/${step.member}.MBR') MBROPT(*REPLACE)${stmfCcsid}" 2>&1`,
+      );
+    }
+    lines.push(`echo ${MARKER(`transfer-end:${step.member || remoteRel}`)}`);
+  }
+
+  // `sh` ステップ: qsh(PASE)のシェル・コマンドを直接埋め込む(`system("...")`で
+  // CLコマンドとして解釈させるのではない)。CL には無い操作が必要なマニフェスト向け
+  // (2026-09-27追加、2Cの一部)。`file`ステップの後・`cl`ステップの前に置かれる。
+  const shSteps = manifest.steps.filter((s) => s.type === 'sh');
+  for (const step of shSteps) {
+    lines.push(`echo ${MARKER(`sh:${step.label || 'step'}`)}`);
+    lines.push(step.cmd);
+    lines.push(`echo ${MARKER(`sh-end:${step.label || 'step'}`)}`);
   }
 
   const clSteps = manifest.steps.filter((s) => s.type === 'cl');
