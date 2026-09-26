@@ -112,17 +112,23 @@ export function buildClWrapperSource(manifest, cfg) {
   // DONE(正常終了)・FAILSAFE(プログラム・レベルのMONMSGで捕まえた異常終了)の
   // どちらの経路でも実行する(collect 側は接続が終わったあとの別のSQL呼び出しに
   // なるため、同一ジョブでなければ意味を持つのはこの中でのINSERTだけ)。
+  //
+  // 順序が重要: 終端マーカー(DONE/FAILSAFE)を告げる SNDPGMMSG を、ジョブ・ログを
+  // 読み取る RUNSQL より必ず先に実行すること。逆順だと、INSERT の時点ではまだ
+  // その SNDPGMMSG 自身のメッセージがジョブ・ログに乗っていないため、VFYLOG に
+  // マーカーが一生載らず、「FAILSAFE で残りのステップが飛ばされた」のか「全ステップが
+  // 実際に成功した」のかを VFYLOG だけから区別できなくなる(2026-09-26 advisor 指摘)。
   const insertLog = `INSERT INTO ${logTable} SELECT ORDINAL_POSITION, SUBSTR(MESSAGE_TEXT,1,200) FROM TABLE(QSYS2.JOBLOG_INFO('*')) X`;
 
   lines.push(`DONE:`);
+  emit(`SNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('${manifest.batch} DONE') TOPGMQ(*SAME) MSGTYPE(*INFO)`);
   emit(`RUNSQL ${sqlLit(insertLog)} COMMIT(*NONE)`);
   lines.push(`             MONMSG     MSGID(CPF0000)`);
-  emit(`SNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('${manifest.batch} DONE') TOPGMQ(*SAME) MSGTYPE(*INFO)`);
   lines.push(`             RETURN`);
   lines.push(`FAILSAFE:`);
+  emit(`SNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('${manifest.batch} FAILSAFE') TOPGMQ(*SAME) MSGTYPE(*INFO)`);
   emit(`RUNSQL ${sqlLit(insertLog)} COMMIT(*NONE)`);
   lines.push(`             MONMSG     MSGID(CPF0000)`);
-  emit(`SNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('${manifest.batch} FAILSAFE') TOPGMQ(*SAME) MSGTYPE(*INFO)`);
   lines.push(`             ENDPGM`);
 
   return { pgmName, lib, logTable, source: lines.join('\n') };
