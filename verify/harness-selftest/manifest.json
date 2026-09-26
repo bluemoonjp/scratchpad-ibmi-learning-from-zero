@@ -19,6 +19,18 @@
       "label": "RUNIT",
       "cmd": "CALL PGM(&LIB/T0ZERO)",
       "monmsg": ["CPF0000", "RPG0000", "MCH0000"]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "note": "自分のライブラリー(&LIB=<USER>2)のオブジェクト一覧。db2 呼び出し自体が動くかどうかと、この接続でT0ZEROが実際に作られたかどうかの両方を確かめる。他人のライブラリーは走査しない。",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJCREATED FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB','*ALL')) X ORDER BY OBJCREATED DESC FETCH FIRST 30 ROWS ONLY"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "note": "ZAIKOM(在庫マスター)の初期値の記録。第6部0509・第7部07-05でこの値を書き換えるため、この最初の接続の時点でのベースラインを残しておく。",
+      "sql": "SELECT * FROM &LIB/ZAIKOM ORDER BY ZASHO"
     }
   ]
 }
