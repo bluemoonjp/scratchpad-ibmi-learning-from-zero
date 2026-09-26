@@ -510,7 +510,8 @@ O仕様書が一切認識されなくなる(`QRG7064`「file not referenced」�
 
 旧システム(FLDREF/FLDREFR、TK0100D/MN0000D、TK0100/JU0300/ZA0500/ZA0510、
 JU0900C/MN0000C、JUBADD、C0511S)一式を1回の接続でまとめてコンパイルした。
-1回目の接続で3件の実バグを発見した(再接続で決着させる)。
+**1回目の接続で3件の実バグを発見・修正、2回目の接続で11オブジェクト全て
+Highest Severity 00 / 正常終了を確認した(CONFIRMED SUCCESS)。**
 
 **バグ1: `tk0100d.dspf`のMSGCTL、`OVERLAY`キーワードの位置**。
 `CPD7486`(「キーワードの指定位置が誤り」)。名前の無いキーワード単独行は、
@@ -554,10 +555,26 @@ PGM(&LIB/ZA0500)`から戻った時点でJUCHUD側の共有オープン・デー
 パスは既に閉じている。`CLOF FILE(JUCHUD)`の行自体を削除し(閉じる対象が
 無いため)、後続の`DLTOVR`(既存のMONMSGで保護済み)だけを残した。
 
-**影響**: 4件とも次回接続で決着させる(候補は上記1通りずつ、実機確認待ち)。
+**確認(2回目の接続)**: FLDREF・TK0100D・MN0000D(DDS/PF)、TK0100・JU0300・
+ZA0500・ZA0510(RPG、全てHighest Severity 00)、JU0900C・MN0000C・C0511S
+(CL)、JUBADD(PF)の11オブジェクト全てが正常に作成され、
+`part05-legacy-probe DONE`まで到達した(FAILSAFEに落ちず)。
 `tools/gen/dspf.mjs`のSFL関連ヘルパー(`sflRecordFormat`等)自体に問題は
 無く、DDS側の配置規則(上下どちらか片方、キーワードの階層)がこのファイル
 固有の設計ミスだった。
+
+**副産物: `tools/qclsrc/txmigr.clp`の`UNVERIFIED`だったDSPDBR OUTFILEの
+フィールド名を実測で確定した。** このバッチのVDBR診断ステップ
+(`DSPDBR FILE(&LIB/JUCHUM) OUTPUT(*OUTFILE)`)の実測結果: 想定していた
+`WHFILE`/`WHLIB`という列は存在せず、実際は`WHRFI`/`WHRLI`(DSPDBRの対象
+そのもの、ここではJUCHUM自身が全行に繰り返し出る)と`WHREFI`/`WHRELI`
+(実際に従属する論理ファイル、ここでは`JUCHUL1`)の2組だった。`WHTYPE`列は
+従属側の種別(`D`=データ、SQLビュー/索引と区別)。TXMIGRが本当に必要として
+いたのは従属論理ファイル側なので、`txmigr.clp`を`WHREFI`/`WHRELI`基準に
+修正した(`DSPOBJD`側の`ODOBNM`/`ODOBAT`は元から実測と一致していた、
+`VFYOBJ`の列一覧・行データで確認済み)。TXMIGR自体はまだ実機コンパイル・
+実行していない(この接続はDSPDBRの列名確認が目的で、TXMIGR本体はP2/2Fの
+V2穴埋めで別途検証する)。
 
 ## 未実施のプローブ
 
