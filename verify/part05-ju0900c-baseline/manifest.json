@@ -1,0 +1,15 @@
+{
+  "batch": "part05-ju0900c-baseline",
+  "description": "First execution test of the as-shipped legacy chain JU0900C -> ZA0500 (the same programs part05-legacy-probe already compiles, so this manifest re-uploads/recompiles them independently for self-containment - no conflict, REPLACE(*YES) on both). Calls JU0900C with a non-*LIVE RUNMODE ('*TEST') so ZA0500 still reads/reports (SHORT/OK/NOTFOUND per product) but its own MONMSG-guarded UPDAT never fires - no TXRESET step is needed afterward, since ZAIKOM is never written (per ju0900c.clp's own header: \"anything other than '*LIVE' is a dry run\"). Deliberately does NOT try to work around or pre-fix ticket 1's own already-documented bug (JU0900C declares MINQTY as 3,0 but ZA0500's *ENTRY PLIST declares the matching parameter as 5,0 - see both files' own header comments and docs/probes.md) - this connection's whole point is to observe whether that bug reproduces exactly as documented on real hardware, which is itself the missing baseline confirmation 05-08's regression-comparison technique and 05-13's own ticket 1 exercise depend on. The CALL step is deliberately last (README.md's own rule: put a hang-risk step last) since this is the first-ever real execution of this specific chain and its interactive-message/hang behavior is unconfirmed. ZA0500's own printed report (QSYSPRT) is not captured via CPYSPLF/collect - part06-0103-freeform's own finding (docs/probes.md) already established that a qsh `system(\"CALL ...\")`-invoked job's QSYSPRT output does not become a real spooled file at all, it flows directly into this same connection's own captured stdout (the run-section output), so no extra step is needed to see it. One collect step snapshots ZAIKOM's current quantities for reference alongside the printed report (both should match, since this run must not have changed them).",
+  "steps": [
+    { "type": "file", "localPath": "../../src/legacy/qrpgsrc/za0500.rpg", "remoteSrcFile": "QRPGSRC", "member": "ZA0500" },
+    { "type": "file", "localPath": "../../src/legacy/qclsrc/ju0900c.clp", "remoteSrcFile": "QCLSRC", "member": "JU0900C" },
+
+    { "type": "cl", "label": "CPZA0500", "cmd": "CRTRPGPGM PGM(&LIB/ZA0500) SRCFILE(&LIB/QRPGSRC) SRCMBR(ZA0500) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPJU0900C", "cmd": "CRTCLPGM PGM(&LIB/JU0900C) SRCFILE(&LIB/QCLSRC) SRCMBR(JU0900C) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+
+    { "type": "collect", "kind": "sql", "sql": "SELECT ZASHO, ZASU, ZAUPD FROM &LIB/ZAIKOM ORDER BY ZASHO" },
+
+    { "type": "cl", "label": "RUNBASE", "cmd": "CALL PGM(&LIB/JU0900C) PARM('*TEST' '&LIB')", "monmsg": ["CPF0000", "MCH0000", "RPG0000"] }
+  ]
+}
