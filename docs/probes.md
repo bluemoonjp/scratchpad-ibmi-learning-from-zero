@@ -437,6 +437,35 @@ FILE(QSYSPRT) ...` はスプール・ファイルが見つからず失敗する
 このパターンのマニフェストを実行する際は、CPYSPLFの成否よりも`run`
 セクション自体を先に読むこと。
 
+## TXCHECK v1 の実機検証(確認日 2026-09-26、`part05-txcheck-probe`)
+
+TXCHECK(`tools/qclsrc/txcheck.clp`、v1スコープ: オブジェクト存在・型のみ
+`CHKOBJ`)を、`TXCKM`(マニフェスト表、`tools/qddssrc/txckm.pf`)への
+自己参照1行(`TXCKM`自身が`*FILE`として存在するかを`CHKOBJ`で確認)で
+初めて実機検証した。**3回の接続を要した(2件の実バグを発見・修正)**が、
+3回目で完全にクリーンな成功を確認: `TXCKM`(DDS、メッセージ0件)・
+`TXCHECK`(CL、Maximum error severity 00)ともにコンパイル成功、
+実行結果は`TXCHECK PASS: TXCKM manifest exists (self-check)` /
+`TXCHECK: lesson TEST01 - 1 passed, 0 failed`と期待どおり。
+
+**発見1**: DDSの`UNIQUE`キーワードはファイル・レベルであり、`R`
+レコード様式行より**前**に置く必要がある(`K`キー指定の後に置くと
+`CPD7486`「キーワードの水準が不正」で失敗)。**さらに、桁位置は
+キーワード欄(45桁目、`TEXT()`等のレコード・レベル/フィールド・
+レベルのキーワードと同じ)であり、19桁目(名前欄)ではない**
+(19桁目に置くと`CPD7420`/`CPD7401`/`CPD7914`で失敗する)。
+
+**発見2**: `DCLF FILE(...)`で開いたデータベース・ファイルを閉じる
+CLコマンドは`CLOSE`(`OPNID`パラメーター)であり、`CLOF`
+(`FILE`パラメーター)という組み合わせは存在しない(`CPD0043`)。
+`DCLF`で`OPNID`を省略すると既定値`*NONE`になり(IBM Docs確認済み)、
+`CLOSE OPNID(*NONE)`で対応する。
+
+**影響**: TXCHECKがIssue #6〜#10それぞれの完了条件C5(「TXCHECK
+(相当)の実行を含めた」)の前提として使えることが確定した。
+`work/design/part08-design-v1.md`の08-08節にあった
+`blocked-pending-TXCHECK-verification`は解消してよい。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:

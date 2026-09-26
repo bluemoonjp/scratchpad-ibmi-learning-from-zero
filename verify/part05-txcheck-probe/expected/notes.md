@@ -1,5 +1,12 @@
 # part05-txcheck-probe の期待値
 
+**2026-09-26、接続3回目で確認済み(成功)。** 詳細は`docs/probes.md`の
+「TXCHECK v1 の実機検証」節を参照。1・2回目は`TXCKM`のDDS(`UNIQUE`
+キーワードの位置)・`TXCHECK`の`CLOF`(存在しないコマンド)という
+2件の実バグに阻まれたが、3回目で`TXCKM`0メッセージ・`TXCHECK`
+Highest Severity 00・`TXCHECK PASS`・`1 passed, 0 failed`と完全に
+期待どおりの結果になった。
+
 このバッチは`TXCHECK`(`tools/qclsrc/txcheck.clp`)自体が初めて実機コンパイル・
 実行されるテストであり、Part 8(08-08)の設計がTXCHECK呼び出しを
 `blocked-pending-TXCHECK-verification`としている前提そのものを解消する。
