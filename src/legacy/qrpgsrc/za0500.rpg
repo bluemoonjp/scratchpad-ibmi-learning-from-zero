@@ -40,18 +40,30 @@
       *     (JUCHUM's own I-specs don't touch them), double-deducting
       *     stock and printing a duplicate line every time a match
       *     occurred.
+      * FIXED (part05-legacy-probe, 2026-09-26, real-hardware CRTRPGPGM):
+      *   - QRG4008 (severity 10, halts compile at this shop's GENLVL):
+      *     the IJUCHUD/IJUCHUM record-identification lines below left the
+      *     Sequence entry (cols 15-16) blank. rpg400ref.txt ch.8 "Positions
+      *     21-41 (Record Identification Codes)" is explicit: when a
+      *     program-described file has only one record type (true for both
+      *     files here - no codes in 21-41), "a record identifying
+      *     indicator entry (positions 19 and 20) and a sequence entry
+      *     (positions 15 and 16) must be made." Added 'AA' (any two
+      *     alphabetic characters is valid per Table 21 when no special
+      *     sequence-checking is needed, which matches the compiler's own
+      *     silent AA default this message was warning about).
      H
      FJUCHUD  IP  F      27            DISK
      FJUCHUM  IS  F      26            DISK
      FZAIKOM  UF  E           K        DISK
      FQSYSPRT O   F     132            PRINTER
-     IJUCHUD      01
+     IJUCHUD  AA  01
      I                                        1   6 JUNO    M1
      I                                        7   90JULINE
      I                                       10  15 JUSHO
      I                                       16  200JUSU
      I                                       21  272JUTNK
-     IJUCHUM      02
+     IJUCHUM  AA  02
      I                                        1   6 JUNO    M1
      I                                        7  12 JUTOK
      I                                       13  200JUDATE

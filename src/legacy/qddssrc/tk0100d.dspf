@@ -281,8 +281,9 @@
      A*                                     position this file did not compute).
      A*                                     SFLEND likewise: the canonical
      A*                                     "SFLPAG=SFLSIZ" example omits it
-     A*                                     too. MORE field below stands in for
-     A*                                     the "+"/Bottom indicator.
+     A*                                     too. MORE field (R SFL1FTR, below)
+     A*                                     stands in for the "+"/Bottom
+     A*                                     indicator.
      A*                                     ROLLUP=PAGEDOWN, ROLLDOWN=PAGEUP
      A*                                     (same physical key pair, different
      A*                                     names). Both required for a single-
@@ -290,14 +291,49 @@
      A                                      ROLLUP(25)
      A                                      ROLLDOWN(26)
      A                                      CF03(03)
+     A*                                     FIXED (part05-legacy-probe,
+     A*                                     2026-09-26, real-hardware
+     A*                                     CRTDSPF): this record used to also
+     A*                                     carry MORE/F3=Exit BELOW the
+     A*                                     subfile's own rows (4-13), stacked
+     A*                                     on top of the title/column headers
+     A*                                     ABOVE it (rows 1/3) - CPD7812
+     A*                                     ("Subfile control record overlaps
+     A*                                     subfile record"): a SFLCTL record
+     A*                                     can have positioned constants/
+     A*                                     fields either above OR below its
+     A*                                     SFL, never both (confirmed
+     A*                                     against two independent sources
+     A*                                     describing this exact message and
+     A*                                     its standard fix - split the
+     A*                                     "other side" into its own record
+     A*                                     format, written with OVERLAY).
+     A*                                     Moved MORE/F3=Exit into R
+     A*                                     SFL1FTR below; added OVERLAY here
+     A*                                     so SFL1FTR's own output survives
+     A*                                     once SFL1CTL is (re)written on
+     A*                                     top of it. Whichever future
+     A*                                     lesson writes to these formats
+     A*                                     (TK0100 does not yet - see
+     A*                                     header) must WRITE SFL1FTR
+     A*                                     first, THEN EXFMT SFL1CTL, each
+     A*                                     cycle.
+     A                                      OVERLAY
      A                                  1  2'TK0100 - Customer list (TOKUIM)'
      A                                  3  2'Op'
      A                                  3  5'Code'
      A                                  3 13'Name'
-     A*                                     MORE: TK0100 MOVELs 'MORE...' or
-     A*                                     'BOTTOM' here (plain output field,
-     A*                                     same MOVEL technique as INQFMT -
-     A*                                     stands in for SFLEND, see header).
+     A*                                     SFL1FTR: split out of SFL1CTL
+     A*                                     above (CPD7812 fix, see its
+     A*                                     comment) - a subfile control
+     A*                                     record cannot itself carry
+     A*                                     positioned output both above AND
+     A*                                     below its subfile. MORE: TK0100
+     A*                                     MOVELs 'MORE...' or 'BOTTOM' here
+     A*                                     (plain output field, same MOVEL
+     A*                                     technique as INQFMT - stands in
+     A*                                     for SFLEND, see header).
+     A          R SFL1FTR
      A            MORE          10A  O 15  3
      A                                 23  2'F3=Exit  Roll=Page'
      A*                                     MSGSFL: same sflRecordFormat() gap
@@ -344,6 +380,24 @@
      A                                      SFLDSP
      A                                      SFLDSPCTL
      A                                      SFLINZ
+     A*                                     OVERLAY: MSGCTL is written on top of
+     A*                                     whichever main record (INQFMT or
+     A*                                     SFL1CTL) is already on screen,
+     A*                                     without erasing it. FIXED (part05-
+     A*                                     legacy-probe, 2026-09-26, real-
+     A*                                     hardware CRTDSPF): this keyword
+     A*                                     used to sit AFTER the PGMQ field
+     A*                                     line below - CPD7486 ("Keyword
+     A*                                     specified at incorrect level"),
+     A*                                     because a bare keyword line with
+     A*                                     no name of its own attaches to
+     A*                                     whichever NAMED field appeared
+     A*                                     last, and OVERLAY is not valid at
+     A*                                     the field level. Moved back above
+     A*                                     PGMQ so it stays record-level,
+     A*                                     same fix shape as SFL1CTL's own
+     A*                                     OVERLAY note above.
+     A                                      OVERLAY
      A*                                     PGMQ/SFLPGMQ here too (field-level,
      A*                                     on MSGCTL itself - separate from
      A*                                     MSGSFL's own MSGKEY/PGMQ pair
@@ -367,11 +421,6 @@
      A*                                     knows which program message queue to
      A*                                     rebuild MSGSFL from.
      A            PGMQ                      SFLPGMQ
-     A*                                     OVERLAY: MSGCTL is written on top of
-     A*                                     whichever main record (INQFMT or
-     A*                                     SFL1CTL) is already on screen,
-     A*                                     without erasing it.
-     A                                      OVERLAY
      A*                                     SFLCLR: left out. TK0100 clears old
      A*                                     messages by removing them from PGMQ
      A*                                     (RMVMSG/QMHRMVPM), not by SFLCLR -
