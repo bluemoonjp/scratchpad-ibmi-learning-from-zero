@@ -239,42 +239,6 @@ dcl-f qsysprt printer(132) usage(*output);
 dcl-ds line len(132) end-ds;
 
 //-----------------------------------------------------------------------
-// printLine: one QSYSPRT line per step, same program-described-PRINTER
-// technique as f0608s.rpgle/f0607s.rpgle (a LEN-only DS as the WRITE
-// target, CLEAR before each use - same citations as those files, not
-// re-quoted here). Local helper, not exported - same shape as
-// f0611bs.rpgle's own reloadSfl2 (dcl-proc name; dcl-pi *n; ... ;
-// end-proc;, no EXPORT keyword).
-//-----------------------------------------------------------------------
-dcl-proc printLine;
-  dcl-pi *n;
-    step  char(16) const;   // longest literal used below is 15 chars
-                             // ("2-RESERVE-SHORT") - 16 leaves headroom.
-    p     char(6)  const;
-    q     packed(7:0) const;
-    okInd ind         const;
-    stock packed(7:0) const;
-    note  char(20)    const;
-  end-pi;
-
-  clear line;
-  %subst(line:1:16)  = step;
-  %subst(line:18:6)  = p;
-  %subst(line:25:4)  = 'QTY=';
-  %subst(line:29:8)  = %char(q);
-  %subst(line:38:4)  = 'OK= ';
-  if okInd;
-    %subst(line:42:1) = 'Y';
-  else;
-    %subst(line:42:1) = 'N';
-  endif;
-  %subst(line:44:5)  = 'ZASU=';
-  %subst(line:49:8)  = %char(stock);
-  %subst(line:58:20) = note;
-  write qsysprt line;
-end-proc;
-
-//-----------------------------------------------------------------------
 // Step 0: baseline. get() is the unlocked peek - captures whatever
 // ZAIKOM actually holds right now, so every check below is relative to
 // this captured value rather than a hardcoded assumption (e.g. "45") -
@@ -408,3 +372,46 @@ printLine('7-NOTFOUND-RSV' : notFound : smallQty : ok : 0 : 'expect OFF');
 
 *inlr = *on;
 return;
+
+//-----------------------------------------------------------------------
+// printLine: one QSYSPRT line per step, same program-described-PRINTER
+// technique as f0608s.rpgle/f0607s.rpgle (a LEN-only DS as the WRITE
+// target, CLEAR before each use - same citations as those files, not
+// re-quoted here). Local helper, not exported - same shape as
+// f0611bs.rpgle's own reloadSfl2 (dcl-proc name; dcl-pi *n; ... ;
+// end-proc;, no EXPORT keyword). FIXED (2026-09-26, repo-wide sweep
+// after part06-gen-probe's connection-2 finding): this procedure - and
+// its cited precedent, f0611bs.rpgle's reloadSfl2 - both had their
+// dcl-proc BEFORE the mainline instead of after. ilerpgref75.txt's RPG
+// IV Concepts chapter is explicit that a subprocedure must be defined
+// AFTER the main source section; moved here to match (see
+// f0611bs.rpgle's own header for the same fix, or docs/probes.md's
+// part06-gen-probe section for the full citation).
+//-----------------------------------------------------------------------
+dcl-proc printLine;
+  dcl-pi *n;
+    step  char(16) const;   // longest literal used below is 15 chars
+                             // ("2-RESERVE-SHORT") - 16 leaves headroom.
+    p     char(6)  const;
+    q     packed(7:0) const;
+    okInd ind         const;
+    stock packed(7:0) const;
+    note  char(20)    const;
+  end-pi;
+
+  clear line;
+  %subst(line:1:16)  = step;
+  %subst(line:18:6)  = p;
+  %subst(line:25:4)  = 'QTY=';
+  %subst(line:29:8)  = %char(q);
+  %subst(line:38:4)  = 'OK= ';
+  if okInd;
+    %subst(line:42:1) = 'Y';
+  else;
+    %subst(line:42:1) = 'N';
+  endif;
+  %subst(line:44:5)  = 'ZASU=';
+  %subst(line:49:8)  = %char(stock);
+  %subst(line:58:20) = note;
+  write qsysprt line;
+end-proc;

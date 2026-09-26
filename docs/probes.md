@@ -613,6 +613,17 @@ defined AFTER the main source section」。つまり`dcl-proc`(Procedure-Begin)
 コンパイル自体が成功するはずなので、`RNS9310`を先回りしてmonmsgに
 追加することはせず、次回接続の結果を見てから要否を判断する。
 
+**さらなる副産物: バグ2と同じ「プロシージャーがメインラインより前」の
+実バグをリポジトリー全体で検索し、実際に3ファイルで発見・修正した。**
+`src/qrpglesrc/f0611s.rpgle`(`sendInvalidOpt`)・`f0611bs.rpgle`
+(`reloadSfl2`)・`solutions/07-05/driver.rpgle`(`printLine`)。いずれも
+まだ実機接続していない(`part06-screens-compile`・`part07-05-checkpoint`
+の番はまだ来ていない)が、先回りで修正し、その番が来たときに同じ
+コンパイル失敗で1回分の接続を無駄にしないようにした。`**FREE`かつ
+`dcl-proc`を含む全`.rpgle`/`.sqlrpgle`ファイルを対象に、全ての
+`dcl-proc`が最後の`*inlr = *on;`より後にあることを機械的に確認する
+掃討を行い、他に該当ファイルが無いことを確認済み。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:

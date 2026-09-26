@@ -147,55 +147,6 @@ dcl-s savedShocd char(6);
 // technique, same citation, as f0604s.rpgle's own CLOSE/OPEN before
 // each customer lookup).
 //-----------------------------------------------------------------------
-dcl-proc reloadSfl2;
-  dcl-pi *n;
-  end-pi;
-
-  dcl-s r packed(4:0) inz(0);
-  dcl-s fillRrn packed(4:0);
-
-  close shohim;
-  open shohim;
-
-  read shohim;
-  dow not %eof(shohim);
-    r += 1;
-    rrn2 = r;
-    opt = *blanks;
-    chain rrn2 sfl2;
-    if %found(sfl2);
-      update sfl2;
-    else;
-      write sfl2;
-    endif;
-    read shohim;
-  enddo;
-
-  // Blank-fill any RRN this program has used before but SHOHIM no
-  // longer has a row for (a previous DELETE shrank the live row
-  // count) - the "blank-filling a short last page" half of the
-  // technique named in the header note above.
-  if r < maxRrn;
-    fillRrn = r + 1;
-    dow fillRrn <= maxRrn;
-      chain fillRrn sfl2;
-      if %found(sfl2);
-        opt = *blanks;
-        shocd = *blanks;
-        shonm = *blanks;
-        shotnk = 0;
-        shohat = 0;
-        update sfl2;
-      endif;
-      fillRrn += 1;
-    enddo;
-  endif;
-
-  if r > maxRrn;
-    maxRrn = r;
-  endif;
-end-proc;
-
 //-----------------------------------------------------------------------
 // Mainline. Loop shape (dow not *in03 / exfmt / if not *in03 ...)
 // matches f0604s.rpgle's/f0611s.rpgle's own EXFMT loop, per this
@@ -332,3 +283,58 @@ enddo;
 
 *inlr = *on;
 return;
+
+// FIXED (2026-09-26, repo-wide sweep after part06-gen-probe's
+// connection-2 finding): reloadSfl2 used to sit BEFORE the mainline
+// above. ilerpgref75.txt's RPG IV Concepts chapter is explicit that a
+// subprocedure must be defined AFTER the main source section (the
+// mainline) - see docs/probes.md's part06-gen-probe section for the
+// full citation. Moved here to match.
+dcl-proc reloadSfl2;
+  dcl-pi *n;
+  end-pi;
+
+  dcl-s r packed(4:0) inz(0);
+  dcl-s fillRrn packed(4:0);
+
+  close shohim;
+  open shohim;
+
+  read shohim;
+  dow not %eof(shohim);
+    r += 1;
+    rrn2 = r;
+    opt = *blanks;
+    chain rrn2 sfl2;
+    if %found(sfl2);
+      update sfl2;
+    else;
+      write sfl2;
+    endif;
+    read shohim;
+  enddo;
+
+  // Blank-fill any RRN this program has used before but SHOHIM no
+  // longer has a row for (a previous DELETE shrank the live row
+  // count) - the "blank-filling a short last page" half of the
+  // technique named in the header note above.
+  if r < maxRrn;
+    fillRrn = r + 1;
+    dow fillRrn <= maxRrn;
+      chain fillRrn sfl2;
+      if %found(sfl2);
+        opt = *blanks;
+        shocd = *blanks;
+        shonm = *blanks;
+        shotnk = 0;
+        shohat = 0;
+        update sfl2;
+      endif;
+      fillRrn += 1;
+    enddo;
+  endif;
+
+  if r > maxRrn;
+    maxRrn = r;
+  endif;
+end-proc;
