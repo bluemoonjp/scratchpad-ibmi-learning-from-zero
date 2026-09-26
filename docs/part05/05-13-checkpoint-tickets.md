@@ -146,6 +146,6 @@
 ## 実機メモ
 
 - **未検証(2026-09-26時点)。** `src/legacy/` 一式(`ZA0500`・`JU0900C`・`ZA0510` 他)はまだ実機コンパイルを確認していません(このセッションは SSH 接続の帯域が尽きています)。SSH 接続の予算が回復し次第、まずチケット1〜3を仕込む前の素のソースがコンパイルできることを確認し、その後にこのチェックポイント自体(3チケットの模範解答)を実機で検証します。
-- **TXCHECKの利用手順(上記)も未検証(2026-09-27追記、advisorレビューで一度訂正)。** このレッスンが本教材で`TXCHECK`/`TXCKM`を初めて実際にコンパイルする箇所です(`TXSETUP`/`TXLEGACY`はどちらも`TXCHECK`/`TXCKM`を作らないと確認済み——`docs/part05/05-08`自身の実機メモも同じ疑問を未確認のまま残していました)。コンパイル手順・`*CMD`呼び出し・INSERT文は`tools/qclsrc/txcheck.clp`/`tools/qcmdsrc/txcheck.cmd`/`tools/qddssrc/txckm.pf`の実装から素直に導いたものですが、実際にPASS/FAILメッセージが期待どおり出るかは、`TXCHECK`自身(`part05-txcheck-probe`)の実機検証(自己参照チェックのみ)止まりで、このレッスンの2行(ZA0500/JU0900C)を対象にした実行はまだ試していません。**当初の版はCHKOBJが「チケットのロジックが正しく直っている」ことまで確認できるかのように書いていましたが、v1スコープ(存在・型のみ)ではそれは確認できず、誤りでした。存在チェック(スモーク・テスト)である旨に訂正済みです。**
+- **TXCHECKの利用手順(上記)も未検証。** このレッスンが本教材で`TXCHECK`/`TXCKM`を初めて実際にコンパイルする箇所です(`TXSETUP`/`TXLEGACY`はどちらも`TXCHECK`/`TXCKM`を作りません)。コンパイル手順・`*CMD`呼び出し・INSERT文は`tools/qclsrc/txcheck.clp`/`tools/qcmdsrc/txcheck.cmd`/`tools/qddssrc/txckm.pf`の実装から素直に導いたものですが、実際にPASS/FAILメッセージが期待どおり出るかは、`TXCHECK`自身(`part05-txcheck-probe`)の実機検証(自己参照チェックのみ)止まりで、このレッスンの2行(ZA0500/JU0900C)を対象にした実行はまだ試していません。
 - チケット2の「単純な並び替えでは成立しない」という結論は、`db/v1/juchud.pf` の実際のフィールド定義(`JUNO`・`JULINE`・`JUSHO`・`JUSU`・`JUTNK`のみ、`JUDATE`なし)を直接確認した机上の反証であり、これも実機未検証です。
 - 食い違いに気づいたら [Issue](https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero/issues) で教えてください。
