@@ -230,7 +230,7 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
 
     lines.push(`echo ${MARKER('wrapper-source')}`);
     lines.push(heredocWrite(wrapperRel, source));
-    // ccsid の扱いは上の file ステップと同じ方針(既定 1208、`false` で無指定に戻せる)。
+    // ccsid の扱いは上の file ステップと同じ方針(既定は無指定、数値を指定した場合だけタグ付けする)。
     const wrapperCcsid = resolveCcsid(manifest.wrapperCcsid);
     if (wrapperCcsid) {
       lines.push(`setccsid ${wrapperCcsid} "${remoteAbs(wrapperRel)}"`);
