@@ -21,6 +21,15 @@
 /* ZA0500's CHAIN/SUB path when JU0900C runs, instead of being skipped as  */
 /* a not-found product.                                                    */
 /*                                                                          */
+/* FIXED (found while writing 05-11's lesson): the first version of this   */
+/* program planted JUNO=C05119 into JUCHUD only. ZA0500 only reaches       */
+/* `SUB JUSU AVAIL` on a MATCHED (01+MR) primary/secondary pair - with no  */
+/* matching JUCHUM header row, the M1/MR match fails and the planted row   */
+/* is simply skipped (GOTO SKPALL), never reaching the corrupted JUSU at   */
+/* all. Also inserts a JUCHUM header row for the same JUNO now (real       */
+/* customer C00001, rep T00001, per db/data/load_v1.sql), so the row is    */
+/* an actual matched pair.                                                 */
+/*                                                                          */
 /* PARM:                                                                    */
 /*   LIB       library to plant the bad row in. Default *CURLIB.           */
 /*   CLONEDIR  IFS path of the git clone (for jubadd.pf's source). Default */
@@ -46,11 +55,20 @@
 
              IF         COND(&LIB *EQ ' ') THEN(CHGVAR VAR(&LIB) +
                           VALUE('*CURLIB'))
-             RTVJOBA    USRPRF(&USRPRF)
+             /* CURUSER, not USER: RTVJOBA USER() returns the job name's    */
+             /* user part, which is QUSER for a PASE system()-launched job  */
+             /* (not the real signed-on/SSH-authenticated profile). This    */
+             /* was root-caused and fixed the same way in                   */
+             /* tools/qclsrc/txsetup.clp/txreset.clp (docs/probes.md's      */
+             /* "QUSER problem reproduces via *CMD too; root cause is       */
+             /* RTVJOBA USER's own spec" finding). The original             */
+             /* USRPRF(&USRPRF) here was also simply an invalid keyword     */
+             /* (CPD0043; docs/probes.md line 115) - both bugs fixed        */
+             /* together.                                                   */
+             RTVJOBA    CURUSER(&USRPRF)
              IF         COND(&CLONEDIR *EQ ' ') THEN(DO)
                 CHGVAR     VAR(&HOMEDIR) VALUE('/home/' *TCAT %TRIM(&USRPRF))
-                CHGVAR     VAR(&CLONEDIR) VALUE(&HOMEDIR *TCAT +
-                             '/scratchpad-ibmi-learning-from-zero')
+                CHGVAR     VAR(&CLONEDIR) VALUE(&HOMEDIR *TCAT '/ibmi-kyozai')
              ENDDO
 
              /* Step 1: build JUBADD (create if missing, matching          */
@@ -80,10 +98,24 @@
                           '/JUBADD VALUES (''C05119'', 1, ''P00001'', +
                           ''ABCDE'', 100.00)') COMMIT(*NONE)
 
-             /* Step 3: clear any leftover planted row in JUCHUD itself    */
-             /* (same key, in case this program is run twice without a    */
-             /* TXRESET in between), then CPYF FMTOPT(*NOCHK) the bad row  */
-             /* across the type mismatch into JUCHUD.                     */
+             /* Step 3: also plant a matching JUCHUM header row, so the    */
+             /* JUCHUD row planted below is part of a genuine matched      */
+             /* (01+MR) pair - real customer C00001/rep T00001, matching   */
+             /* db/data/load_v1.sql's own J00001 row's pairing. Without    */
+             /* this, ZA0500's M1/MR match on this JUNO fails and the      */
+             /* corrupted row is skipped entirely (GOTO SKPALL) - see the  */
+             /* header note above.                                        */
+             RUNSQL     SQL('DELETE FROM ' *CAT %TRIM(&LIB) *CAT +
+                          '/JUCHUM WHERE JUNO = ''C05119''') COMMIT(*NONE)
+             MONMSG     MSGID(CPF0000)
+             RUNSQL     SQL('INSERT INTO ' *CAT %TRIM(&LIB) *CAT +
+                          '/JUCHUM VALUES (''C05119'', ''C00001'', +
+                          20260926, ''T00001'')') COMMIT(*NONE)
+
+             /* Step 4: clear any leftover row in JUCHUD itself (same key, */
+             /* in case this program is run twice without a TXRESET in    */
+             /* between), then CPYF FMTOPT(*NOCHK) the bad row across the  */
+             /* type mismatch into JUCHUD.                                */
              RUNSQL     SQL('DELETE FROM ' *CAT %TRIM(&LIB) *CAT +
                           '/JUCHUD WHERE JUNO = ''C05119''') COMMIT(*NONE)
              MONMSG     MSGID(CPF0000)
