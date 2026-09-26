@@ -506,6 +506,30 @@ O仕様書が一切認識されなくなる(`QRG7064`「file not referenced」�
 サブファイル・レッスンはMOVEL方式で設計すること。SFLキーワード自体は
 実機確認済みで、今後のサブファイル設計にそのまま使ってよい。
 
+## 第3部 RTVJOBA 修正の実機検証: `part03-rtvjoba-fix`(確認日 2026-09-26)
+
+03-11(SETENV)・03-13(JUYAKC)の`RTVJOBA USER()`→`CURUSER()`修正を検証。
+**接続1回目でSETENVは成功(コンパイル・実行とも)、JUYAKCは別の実バグで
+失敗。接続2回目で両方ともコンパイル成功、SETENVの実行も再確認
+(CONFIRMED SUCCESS)。**
+
+**SETENV: `CURUSER`修正が実機で正しく動くことを確認。** `SETENV *DEV`を
+実際にCALLし、`SETENV: now *DEV (curlib=<USER>1)`という自己確認メッセージ
+が正しいカレント・ライブラリー値で出力された。付録Cの「まだ直っていない
+箇所」の記述を裏付ける実機確認が取れた。
+
+**バグ(JUYAKC、`CURUSER`修正とは無関係の別の実バグ): `ALCOBJ`/`DLCOBJ`
+の`OBJ`パラメーターに、オブジェクト名・型の2要素しか書いていなかった。**
+`CPD0072`「List item value for parameter OBJ required」で確認。IBM Docs
+(ALCOBJ/DLCOBJ)で確認: `OBJ`のリスト項目は「オブジェクト名 オブジェクト型
+**ロック状態**」の3要素が必須(`DLCOBJ`も同様、解放するロック状態を
+明示する必要がある)。`*DTAARA`には`*EXCL`(排他・読み取りも不可)が
+有効かつヘッダー・コメントの「exclusively」という意図に合致するため、
+`OBJ((&LIB/JUNODA *DTAARA *EXCL))`に修正。03-13レッスン文書の埋め込み
+ソース・演習手順も同時に修正。**同じ誤りを`src/qclsrc/juyakl.clle`
+(第7部07-04、JUYAKLのILE CL版)にも発見、まだ実機接続していないが
+先回りで同様に修正済み。**
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:

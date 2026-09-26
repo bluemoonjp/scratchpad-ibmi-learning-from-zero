@@ -59,9 +59,9 @@
 
    MONMSG     MSGID(CPF0000) EXEC(GOTO CMDLBL(FAILED))
 
-   RTVJOBA    CURLIB(&LIB) USER(&USRPRF)
+   RTVJOBA    CURLIB(&LIB) CURUSER(&USRPRF)
 
-   ALCOBJ     OBJ((&LIB/JUNODA *DTAARA)) WAIT(10)
+   ALCOBJ     OBJ((&LIB/JUNODA *DTAARA *EXCL)) WAIT(10)
    MONMSG     MSGID(CPF1002 CPF1085) EXEC(DO)
       SNDPGMMSG  MSGID(JUM0001) MSGF(&LIB/JUMSGF) +
                    MSGDTA('JUNODA locked') MSGTYPE(*ESCAPE)
@@ -70,7 +70,7 @@
    RTVDTAARA  DTAARA(&LIB/JUNODA) RTNVAR(&NEXTNO)
    CHGVAR     VAR(&NEXTNO) VALUE(&NEXTNO + 1)
    CHGDTAARA  DTAARA(&LIB/JUNODA) VALUE(&NEXTNO)
-   DLCOBJ     OBJ((&LIB/JUNODA *DTAARA))
+   DLCOBJ     OBJ((&LIB/JUNODA *DTAARA *EXCL))
 
    /* Main: business processing plugs in here (Part 4 onward) */
 
@@ -95,7 +95,7 @@
 
 ## 演習: わざと失敗させる
 
-1. **ロック中に失敗させる**: `ALCOBJ OBJ((<自分のユーザー名>1/JUNODA *DTAARA)) WAIT(*IMMED)` をコマンド行から直接実行して排他を確保したまま(解放しない)、別途 `JUYAKC` を投入し、`ALCOBJ` の失敗(ロック競合)でエラーになることを確認してください。確認できたら、最初に確保した排他は `DLCOBJ` で解放してください。
+1. **ロック中に失敗させる**: `ALCOBJ OBJ((<自分のユーザー名>1/JUNODA *DTAARA *EXCL)) WAIT(*IMMED)` をコマンド行から直接実行して排他を確保したまま(解放しない)、別途 `JUYAKC` を投入し、`ALCOBJ` の失敗(ロック競合)でエラーになることを確認してください。確認できたら、最初に確保した排他は `DLCOBJ OBJ((<自分のユーザー名>1/JUNODA *DTAARA *EXCL))` で解放してください。
 2. **データなしで失敗させる**: `JUCHUM` を一時的に `RNMOBJ` で別名に変えてから `JUYAKC` を投入し、`CPYTOIMPF` の失敗が正しく捕まることを確認してください。確認できたら、元の名前に戻してください。
 
 ## セルフチェック
