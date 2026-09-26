@@ -155,6 +155,6 @@ FJUCHUL1 IP  E           K        DISK
 ## 実機メモ
 
 - **未検証(2026-09-26時点)。** このレッスンの手順(`DSPPGMREF`/`DSPDBR` の `*OUTFILE` 列名、`FNDSTRPDM` の挙動、`DCLF` が `DSPPGMREF` から見えるかどうか)は、`src/sql/05-07-impact.sql`・`tools/qclsrc/txmigr.clp`・`src/legacy/` の実ソースと、IBM i の一般的な文書に基づいて組み立てたものですが、**実機での確認はまだ行っていません。** SSH 接続の予算が回復し次第、実機で確認します。
-- 依存するプローブ `P18`(`DSPPGMREF PGM(<USER>1/*ALL) OUTPUT(*OUTFILE) OUTFILE(QTEMP/PGMREF)`、`DSPDBR` の outfile、`FNDSTRPDM` で `<USER>1/QRPGSRC` を探す、`work/design/final_probes.json` に記載)は、まだ実施していません。
+- 依存するプローブ `P18`(`DSPPGMREF PGM(<USER>1/*ALL) OUTPUT(*OUTFILE) OUTFILE(QTEMP/PGMREF)`、`DSPDBR` の outfile、`FNDSTRPDM` で `<USER>1/QRPGSRC` を探す)は、まだ実施していません。
 - 「`DCLF` は `DSPPGMREF` から見えるか」という Step 4 の問いは、本文で説明したとおり**このレッスン自身の中では未確定のまま**にしてあります。実機で確認でき次第、このレッスンを更新します。
 - 食い違いに気づいたら [Issue](https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero/issues) で教えてください。
