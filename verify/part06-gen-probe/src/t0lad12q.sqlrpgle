@@ -49,19 +49,6 @@ dcl-pr qmhsndpm extpgm;
   errorCode      likeds(qmhsndpmErrCode);
 end-pr;
 
-dcl-proc sendToJobLog;
-  dcl-pi *n;
-    msg char(200) const;
-  end-pi;
-
-  dcl-ds msgFile likeds(qmhsndpmMsgFile) inz(*likeds);
-  dcl-ds errCode likeds(qmhsndpmErrCode) inz(*likeds);
-  dcl-s  msgKey  char(4);
-
-  qmhsndpm('CPF9898' : msgFile : msg : %len(%trimr(msg))
-             : '*INFO' : '*' : 0 : msgKey : errCode);
-end-proc;
-
 sendToJobLog('T0LAD12Q: **FREE rung compiled and ran.');
 
 dcl-s ladArr char(10) dim(*auto:10);
@@ -173,3 +160,16 @@ sendToJobLog('T0LAD12Q: ASSERT-T OK (CRTSQLRPGI) - assertion passed, program con
 
 *inlr = *on;
 return;
+
+dcl-proc sendToJobLog;
+  dcl-pi *n;
+    msg char(200) const;
+  end-pi;
+
+  dcl-ds msgFile likeds(qmhsndpmMsgFile) inz(*likeds);
+  dcl-ds errCode likeds(qmhsndpmErrCode) inz(*likeds);
+  dcl-s  msgKey  char(4);
+
+  qmhsndpm('CPF9898' : msgFile : msg : %len(%trimr(msg))
+             : '*INFO' : '*' : 0 : msgKey : errCode);
+end-proc;
