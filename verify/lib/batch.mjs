@@ -11,15 +11,26 @@
 //   - SYSTOOLS.SPOOLED_FILE_DATA の呼び出し方(引数の形)。ここでは最有力候補を既定にし、
 //     失敗したら候補を増やして次回の接続で決着させる(推測で試行錯誤しない、という方針)。
 //
-// db2 ユーティリティーの呼び出しにフラグを付けていない理由(2026-09-26、IBM Docs
-// 「Qshell db2 Utility」7.5.0のフラグ表を実際に取得して確認済み): 命名規則
-// (*SYS/*SQL)を切り替えるフラグはこのユーティリティーに存在しない(`-S`大文字は
-// 「出力の空白・パディングを抑制する」の意味で無関係)。一方 rbafy75.txt の
-// 「SQL and system naming conventions」節により、システム命名規則では
-// `schema/table` 表記がそのまま通ると確認済みなので、この harness の
-// `${lib}/${table}` 表記のために切り替える必要自体が無い。以前あった小文字 `-s`
-// はこの一覧に無い未定義フラグで、ユーティリティーが認識できず全体が失敗する
-// 恐れがあったため削除した。
+// db2 ユーティリティーの呼び出し方(2026-09-26、2度目の見直し):
+//   - フラグは付けない。IBM Docs「Qshell db2 Utility」7.5.0のフラグ表を実際に
+//     取得して確認済み: 命名規則(*SYS/*SQL)を切り替えるフラグはこの
+//     ユーティリティーに存在しない(`-S`大文字は「出力の空白・パディングを
+//     抑制する」の意味で無関係)。以前あった小文字 `-s` はこの一覧に無い
+//     未定義フラグで、ユーティリティーが認識できず全体が失敗する恐れが
+//     あったため削除した。
+//   - SQL 文はパイプ経由の標準入力ではなく、引用符付きの位置パラメーターとして
+//     渡す(`db2 "SQL文"`)。標準入力を読むかどうかはIBM Docsのフラグ表にも
+//     rbafy75.txt にも明記が無く未検証だったのに対し、IBM Docs自身の用例
+//     (「引用符で囲んでdb2コマンドの後ろに書く」)と、rpgpgm.comの実例
+//     (`db2 select fruit from mylib.testfile`)は、どちらも位置パラメーター
+//     形式を示している。
+//   - ライブラリー修飾は `/` ではなく `.`(ドット)にする。rbafy75.txt の
+//     「SQL and system naming conventions」節により `.` は SQL 命名規則・
+//     システム命名規則の両方で通ると確認済み(800-816行目)なのに対し、
+//     `/` はシステム命名規則でしか通らない(このユーティリティーの既定の
+//     命名規則がどちらなのか自体は確認していない)。CLラッパー内部の
+//     RUNSQL(`&LIB/...`のまま)はこの変更の対象外(そちらは動作確認済みで、
+//     db2ユーティリティーへの直接の引数ではないため)。
 //
 // CCSID の既定値(1208): 推測ではなく、tools/qclsrc/txsetup.clp が実機で完走を確認済みの
 // CPYFRMSTMF ... STMFCCSID(1208) をそのまま踏襲している(git clone で届いたASCII/UTF-8の
@@ -143,7 +154,14 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
     lines.push(`echo ${MARKER('run-end')}`);
 
     lines.push(`echo ${MARKER('vfylog')}`);
-    lines.push(`echo "SELECT MSG FROM ${logTable} ORDER BY SEQ" | db2 2>&1`);
+    // db2 ユーティリティーへは、パイプ経由の標準入力ではなく引用符付きの
+    // 位置パラメーターとして渡す(2026-09-26、advisor指摘・一次資料で再確認: IBM
+    // Docsの用例もrpgpgm.comの実例も、標準入力ではなく `db2 "SQL文"` の形。
+    // 標準入力を読むかどうかはこの2資料のどちらにも明記が無い、確認されていない
+    // 前提だった)。区切りも `.`(SQL命名規則でも通る、rbafy75.txt 800-816行目)に
+    // 統一する。RUNSQL(CLラッパー内部)は `/` のままでよい(そちらは動作確認済み)。
+    const logTableDotted = logTable.replace('/', '.');
+    lines.push(`db2 "SELECT MSG FROM ${logTableDotted} ORDER BY SEQ" 2>&1`);
     lines.push(`echo ${MARKER('vfylog-end')}`);
   }
 
@@ -162,9 +180,14 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
     // 走るため、clSteps と違い CURRENT_SCHEMA 等の対象ライブラリー文脈に頼れない。
     // clSteps の substLib() と同じ置換をここでも行い、manifest 側で &LIB と
     // 書けるようにする(cl ステップとの一貫性、決め打ちの絶対ライブラリー名を
-    // manifest に書かずに済ませるため)。
-    const substitutedSql = sql.replaceAll('&LIB', lib);
-    lines.push(`echo "${substitutedSql.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('$', '\\$')}" | db2 2>&1`);
+    // manifest に書かずに済ませるため)。`&LIB/` は `<lib>.`(ドット区切り)に
+    // 変える(2026-09-26、db2ユーティリティー呼び出し方式の見直しに合わせる。
+    // 上のvfylogと同じ理由・同じ根拠)。&LIB 単体(スラッシュを伴わない参照)が
+    // 残っていた場合はそのまま名前だけの置換にする。
+    const substitutedSql = sql.replaceAll('&LIB/', `${lib}.`).replaceAll('&LIB', lib);
+    // db2 へは引用符付きの位置パラメーターとして渡す(パイプ経由の標準入力では
+    // ない。上のvfylogと同じ理由)。
+    lines.push(`db2 "${substitutedSql.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('$', '\\$')}" 2>&1`);
     lines.push(`echo ${MARKER(`collect-end:${i}`)}`);
   }
 

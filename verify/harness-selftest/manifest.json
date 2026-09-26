@@ -23,8 +23,8 @@
     {
       "type": "collect",
       "kind": "sql",
-      "note": "自分のライブラリー(&LIB=<USER>2)のオブジェクト一覧。db2 呼び出し自体が動くかどうかと、この接続でT0ZEROが実際に作られたかどうかの両方を確かめる。他人のライブラリーは走査しない。",
-      "sql": "SELECT OBJNAME, OBJTYPE, OBJCREATED FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB','*ALL')) X ORDER BY OBJCREATED DESC FETCH FIRST 30 ROWS ONLY"
+      "note": "自分のライブラリー(&LIB=<USER>2)の全オブジェクト一覧(件数を絞らない。2026-09-26、advisor指摘: <USER>2はサンプルDB・TXツール・第4部の成果物で既に30件を超えている可能性が高く、ORDER BY OBJCREATED DESC + FETCH FIRST 30だと肝心の古いオブジェクト(9/24のTXツール等、第6部0509・07-05の前提確認に必要)が切り捨てられてしまう)。db2 呼び出し自体が動くかどうかと、この接続でT0ZEROが実際に作られたかどうかの両方を確かめる。他人のライブラリーは走査しない。",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJCREATED FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB','*ALL')) X ORDER BY OBJNAME"
     },
     {
       "type": "collect",

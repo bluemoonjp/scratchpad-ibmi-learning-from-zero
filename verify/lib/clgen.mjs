@@ -88,7 +88,7 @@ export function buildClWrapperSource(manifest, cfg) {
   // 前回のバッチの行が残っていると collect で混ざるため、毎回クリアする。
   // 表そのものは qsh 側(system の外)で、接続のたびに CREATE TABLE 済み(なければ作る)。
   emit(`RUNSQL ${sqlLit(`DELETE FROM ${logTable}`)} COMMIT(*NONE)`);
-  lines.push(`             MONMSG     MSGID(CPF0000)`); // 表が空でも削除0件でもエラーにしない
+  lines.push(`             MONMSG     MSGID(CPF0000 SQL0000)`); // 表が空でも削除0件でもエラーにしない
 
   // VFYSPL(スプールをテキストで残す、複数マニフェストが使う共有の非SQL物理ファイル。
   // CRTPF/CPYSPLF が書く対象のため、VFYLOGと違いSQL CREATE TABLEでは作れない)も、
@@ -136,12 +136,12 @@ export function buildClWrapperSource(manifest, cfg) {
   lines.push(`DONE:`);
   emit(`SNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('${manifest.batch} DONE') TOPGMQ(*SAME) MSGTYPE(*INFO)`);
   emit(`RUNSQL ${sqlLit(insertLog)} COMMIT(*NONE)`);
-  lines.push(`             MONMSG     MSGID(CPF0000)`);
+  lines.push(`             MONMSG     MSGID(CPF0000 SQL0000)`);
   lines.push(`             RETURN`);
   lines.push(`FAILSAFE:`);
   emit(`SNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('${manifest.batch} FAILSAFE') TOPGMQ(*SAME) MSGTYPE(*INFO)`);
   emit(`RUNSQL ${sqlLit(insertLog)} COMMIT(*NONE)`);
-  lines.push(`             MONMSG     MSGID(CPF0000)`);
+  lines.push(`             MONMSG     MSGID(CPF0000 SQL0000)`);
   lines.push(`             ENDPGM`);
 
   return { pgmName, lib, logTable, source: lines.join('\n') };

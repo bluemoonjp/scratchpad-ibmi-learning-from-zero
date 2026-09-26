@@ -97,7 +97,7 @@ ssh -i <鍵> -p 2222 -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterva
 
 - `file` ステップ: `localPath`(このマニフェストのディレクトリーからの相対パス)の中身を heredoc で転送し、`CPYFRMSTMF` で `library` の `remoteSrcFile`/`member` に取り込む。`ccsid` を**省略すると既定値1208が使われ**、`setccsid`/`STMFCCSID()` が出る(下記「既知の未検証事項」参照)。`false` を明示した場合だけ、これらを一切出さない。
 - `cl` ステップ: 1本の CL ラッパー・プログラムにまとめてコンパイル・実行する(`verify/lib/clgen.mjs`)。各ステップは個別の `MONMSG` で囲み、失敗しても次のステップへ進む。`cmd` 内の `&LIB` は生成時に実際のライブラリー名へ文字列置換される(CL の実行時変数ではない。`CALL...PARM()` の32バイト・パディング問題を避けるため)。**ハングの恐れがあるステップは必ず配列の最後に置くこと。** `cl` ステップが1つでもあれば、ラッパーは `DONE`/`FAILSAFE` のどちらで終わっても、まず自分自身にその終端マーカーをメッセージで送ってから、自分のジョブ・ログをライブラリー内の永続表(`<library>/VFYLOG`、なければ自動作成)へ書き出す(この順序が重要: 逆順だとマーカー自身のメッセージがまだジョブ・ログに乗っていない時点で書き出しが走ってしまい、VFYLOG からは一生見えなくなる)。接続の最後に自動でその表を `SELECT`(`===VFY:vfylog===` セクション)する。`QTEMP` ではなく永続表にしているのは、qsh の `system()` 呼び出しが同一ジョブ内で連続する保証がない(下記、未検証)ため。
-- `collect` ステップ: 上記の自動回収(vfylog)以外に、追加で結果をテキストで回収したいときだけ使う。既定は自分のジョブ・自分のユーザーに絞った `SYSTOOLS.SPOOLED_FILE_DATA` からのSELECT(`db2` 経由。フラグは付けない。2026-09-26、IBM Docs「Qshell db2 Utility」で確認済み: 命名規則を切り替えるフラグはそもそも存在せず、`schema/table` 表記はシステム命名規則でそのまま通るため不要)。
+- `collect` ステップ: 上記の自動回収(vfylog)以外に、追加で結果をテキストで回収したいときだけ使う。既定は自分のジョブ・自分のユーザーに絞った `SYSTOOLS.SPOOLED_FILE_DATA` からのSELECT。`db2` へはフラグを付けず(そもそも命名規則を切り替えるフラグは存在しない)、パイプ経由の標準入力ではなく引用符付きの位置パラメーターとして渡す(`db2 "SQL文"`)。マニフェスト側で書く `&LIB/table` は `<library>.table`(ドット区切り)に変換してから渡す(2026-09-26、IBM Docs「Qshell db2 Utility」・rbafy75.txtで確認済み。詳細は `verify/lib/batch.mjs` 冒頭のコメント参照)。
 
 ## 既知の未検証事項(次回の実接続で確認し、docs/probes.md に記録する)
 
