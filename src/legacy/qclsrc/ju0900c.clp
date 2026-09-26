@@ -76,9 +76,22 @@
                 SNDPGMMSG  MSG('JU0900C: ZA0500 ended abnormally.')
              ENDDO
 
-TXCLOF:      CLOF       FILE(JUCHUD)
-             MONMSG     MSGID(CPF0000)
-             DLTOVR     FILE(JUCHUD)
+             /* FIXED (part05-legacy-probe, 2026-09-26, real-hardware      */
+             /* CRTCLPGM): CLOF FILE(JUCHUD) here used to fail with        */
+             /* CPD0043 ("Keyword FILE not valid") - same finding as       */
+             /* tools/qclsrc/txcheck.clp's header comment: CLOF is not a   */
+             /* real command. Unlike txcheck.clp, though, CLOSE OPNID      */
+             /* cannot substitute here: OPNID(*NONE) closes THIS program's */
+             /* own DCLF'd file with no OPNID given, and that is JUCHUM    */
+             /* (line 33 above), not JUCHUD - JUCHUD is never DCLF'd in    */
+             /* this program at all (only OVRDBF/OPNQRYF'd, for ZA0500 to  */
+             /* share). Removed the close attempt outright: JUCHUD's       */
+             /* shared ODP is opened by the CALLed ZA0500 (its F-spec      */
+             /* IP), which auto-closes its files on LR before returning    */
+             /* here, so by the time TXCLOF runs there is nothing left of  */
+             /* this program's own to close. DLTOVR below is already      */
+             /* MONMSG-protected either way.                                */
+TXCLOF:      DLTOVR     FILE(JUCHUD)
              MONMSG     MSGID(CPF0000)
              DLTOVR     FILE(JUCHUM)
              MONMSG     MSGID(CPF0000)
