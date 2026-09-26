@@ -135,7 +135,7 @@ C                     PARM           CMDLEN
 
 もし外部記述ファイルが(`ZAUPD` のような数値ではなく)本物の SQL の `DATE`/`TIME`/`TIMESTAMP` 型や、可変長(`VARCHAR`)・NULL を許す列を実際に持っていたら、`ZA0510` がまさに使っている `CRTRPGPGM`(RPG III/OPM 側のコンパイル・コマンド)自身が持つ、次の2つのオプションが関係してきます(IBM Docs「Create RPG/400 Program (CRTRPGPGM)」で確認済み)。
 
-- **`CVTOPT`(型変換オプション)**: 既定値 `*NONE` のままだと、**DATE/TIME/TIMESTAMP 型や可変長型のフィールドは、RPG/400 プログラムからは一切アクセスできません**(「ignored and not accessible in the RPG/400 program」)。`*DATETIME` を指定すると、それらは固定長の文字フィールドとして宣言され、アクセスできるようになります。
+- **`CVTOPT`(型変換オプション)**: 既定値 `*NONE` のままだと、**DATE/TIME/TIMESTAMP 型や可変長型のフィールドは、RPG/400 プログラムからは一切アクセスできません**(「ignored and not accessible in the RPG/400 program」)。DATE/TIME/TIMESTAMP 型は `*DATETIME` を、可変長(`VARCHAR`)型は `*VARCHAR` を指定すると、それぞれ固定長の文字フィールドとして宣言され、アクセスできるようになります(両方同時に指定することもできます)。
 - **`ALWNULL`(NULL 値を許すか)**: 既定値 `*NO` のままだと、NULL を許す列を持つ外部記述ファイルのレコードは処理できません。`*YES` を指定すると、外部記述の入力ファイルに限り、NULL 値を含むレコードも受け付けられるようになります(ILE RPG の `ALWNULL(*USRCTL)` のような、NULL かどうかを実行時に判定する仕組みは RPG III には無く、`*YES`/`*NO` の二択だけです)。
 
 **このレッスンでは実際には関係ありません**(`ZAIKOM` に DATE/TIME/TIMESTAMP・可変長・NULL 許容の列は無いため)。しかし `CRTRPGPGM` 自身がこれらのオプションを持つという事実は、**「RPG III(OPM)は古い言語だから SQL のモダンな型を全く扱えない」わけではない**ことを示しています(ただし ILE RPG IV のようなネイティブの `date`/`time`/`timestamp` 型は RPG III には無く、既定では固定長の文字列として扱うことになります)。この続きは、第6部 06-14b で ILE RPG 側から扱います。
