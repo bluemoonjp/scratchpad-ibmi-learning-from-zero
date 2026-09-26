@@ -580,7 +580,7 @@ V2穴埋めで別途検証する)。
 
 RPG IV/**FREE の12段階機能梯子(T0LAD01〜T0LAD12、CRTBNDRPG)と、12段目を
 CRTSQLRPGIでも再コンパイルするT0LAD12Qの、計13オブジェクトを検証した。
-**2回の接続で2件の実バグを発見・修正、3回目の接続で決着させる。**
+**3回の接続で3件の実バグを発見・修正、4回目の接続で決着させる。**
 
 **バグ1(接続1回目で発見): 13ファイル全てに
 `ctl-opt dftactgrp(*no) actgrp(*new);`が欠落していた。** 全13ファイルが
@@ -607,9 +607,21 @@ defined AFTER the main source section」。つまり`dcl-proc`(Procedure-Begin)
 `dcl-proc`)。全13ファイルで`sendToJobLog`のプロシージャー定義を
 ファイル末尾(`return;`の後)へ移動して修正。
 
-**影響**: 3回目の接続で決着させる。CP12Qの`monmsg`一覧(現状
-`CPF0000/RNF0000/SQL0000/MCH0000`)には接続1・2回目で実際に出た
-`RNS9310`が含まれていなかったが、根本原因(バグ1・2)を直せばCP12Qの
+**バグ3(接続3回目で発見: バグ1・2修正後もT0LAD01は成功したが
+T0LAD02以降は別の失敗)。** `RNF0724`(「The statement type is out of
+sequence for the main procedure」)がT0LAD02の`dcl-s ladArr...`行で発生。
+「各段は前の段のソースを100%そのまま残し、末尾に1ブロック追加する」
+という梯子の作り方そのものが原因: 新しい段の`dcl-s`宣言が、前の段の
+実行文(`sendToJobLog(...)`呼び出し)の**後ろ**に追加されていた。
+一次資料`ilerpgprogguide75.txt`3万4326行目付近で確認:「In RPG IV,
+definition specifications must precede input specifications」——この
+規則は自由形式のメイン・プロシージャーにも及び、宣言は実行文より
+**前**でなければならない。全13ファイルを再構成し、各段までの宣言を
+全て先頭にまとめ、その後に各段までの実行文をまとめる形に直した。
+
+**影響**: 4回目の接続で決着させる。CP12Qの`monmsg`一覧(現状
+`CPF0000/RNF0000/SQL0000/MCH0000`)には接続1〜3回目で実際に出た
+`RNS9310`が含まれていなかったが、根本原因(バグ1〜3)を直せばCP12Qの
 コンパイル自体が成功するはずなので、`RNS9310`を先回りしてmonmsgに
 追加することはせず、次回接続の結果を見てから要否を判断する。
 
