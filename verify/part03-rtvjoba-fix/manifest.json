@@ -1,0 +1,12 @@
+{
+  "batch": "part03-rtvjoba-fix",
+  "description": "Verifies the 2026-09-26 fix (RTVJOBA USER()->QUSER bug, docs/appendix/c-troubleshooting.md section 3) for the two remaining Part 3 sources that still used the buggy form before this fix: src/qclsrc/setenv.clp (03-11) and src/qclsrc/juyakc.clp (03-13). Both are compiled (V1). SETENV is also actually CALLed with *DEV (V2): its own SNDPGMMSG reports the CURLIB it set from CURUSER-derived <user>1, which is the direct, end-to-end confirmation that CURUSER (not QUSER) is what this harness's SSH/system() job actually sees - no separate diagnostic program needed, since setenv.clp's own message body IS the evidence. JUYAKC is compile-only here (not CALLed): it depends on JUNODA/JUMSGF/JUCHUM which this narrowly-scoped manifest deliberately does not provision (that fuller runtime path is already exercised for the ILE-CL rewrite JUYAKL in part07-04-actgrp-cl, which uses the same CURUSER form and already confirmed CURLIB behavior via DIAGCURLIB). CHGCURLIB/RMVLIBLE inside SETENV only change THIS ephemeral wrapper job's own job attributes - they do not create, delete, or modify any object in <user>1, so this does not violate the 'never touch <user>1' rule (that rule is about object mutation, not job attributes of a job that ends when the connection ends).",
+  "steps": [
+    { "type": "file", "localPath": "../../src/qclsrc/setenv.clp", "remoteSrcFile": "QCLSRC", "member": "SETENV" },
+    { "type": "file", "localPath": "../../src/qclsrc/juyakc.clp", "remoteSrcFile": "QCLSRC", "member": "JUYAKC" },
+
+    { "type": "cl", "label": "CPSETENV", "cmd": "CRTCLPGM PGM(&LIB/SETENV) SRCFILE(&LIB/QCLSRC) SRCMBR(SETENV) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPJUYAKC", "cmd": "CRTCLPGM PGM(&LIB/JUYAKC) SRCFILE(&LIB/QCLSRC) SRCMBR(JUYAKC) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "RUNSETENV", "cmd": "CALL PGM(&LIB/SETENV) PARM('*DEV')", "monmsg": ["CPF0000", "MCH0000"] }
+  ]
+}

@@ -13,7 +13,7 @@
              IF         COND(&ENV *EQ ' ') THEN(CHGVAR VAR(&ENV) +
                           VALUE('*DEV'))
 
-             RTVJOBA    USER(&USRPRF)
+             RTVJOBA    CURUSER(&USRPRF)
              CHGVAR     VAR(&LIB1) VALUE(%TRIM(&USRPRF) *TCAT '1')
              CHGVAR     VAR(&LIB2) VALUE(%TRIM(&USRPRF) *TCAT '2')
 
