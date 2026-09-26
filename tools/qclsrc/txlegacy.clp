@@ -163,8 +163,8 @@ BUILD:       SNDPGMMSG  MSG('TXLEGACY: loading legacy system into library ' +
              MONMSG     MSGID(CPF0000) EXEC(CHGDTAARA DTAARA(&LIB/TXLEGST) +
                           VALUE('Y'))
 
-             SNDPGMMSG  MSG('TXLEGACY: done. Run TXCHECK LESSON(05-01) once +
-                          it has entries for this part.')
+             SNDPGMMSG  MSG('TXLEGACY: done. TXCHECK (05-13) can later +
+                          confirm these objects still exist.')
              GOTO       CMDLBL(TXEND)
 
 FAILSAFE:    SNDPGMMSG  MSG('TXLEGACY: stopped on an unexpected error. See +
