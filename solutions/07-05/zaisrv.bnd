@@ -1,0 +1,83 @@
+/* ZAISRV binder source. Part 7 checkpoint, lesson 07-05. See
+   solutions/07-05/zaisrv.rpgle for the exported procedures'
+   implementation (get / reserve / release) and their own headers for
+   the full port/citation trail.
+
+   PROVENANCE OF THIS FILE'S SHAPE: neither src/qsrvsrc/jucsrv.bnd
+   (07-03's planned binder source) nor src/qsrvsrc/ itself exists in
+   this repo as of this writing (checked directly this session: no
+   src/qsrvsrc directory, no jucsrv.bnd anywhere). This file could
+   therefore not reuse an already-established example from this repo
+   and was instead built directly from
+   work/design/refs/ileconcepts75.txt's own worked STRPGMEXP / EXPORT
+   SYMBOL / ENDPGMEXP examples - specifically the "Binder Language
+   Example 1" block at lines 4131-4137, and the near-identical repeat
+   of the same block at lines 8810-8818 (both:
+     STRPGMEXP PGMLVL(*CURRENT)
+        EXPORT SYMBOL('Term')
+        EXPORT SYMBOL('Rate')
+        ...
+     ENDPGMEXP
+   with ZAISRV's own three procedure names substituted for Term/Rate/
+   Amount/Payment below). If 07-03 later writes src/qsrvsrc/jucsrv.bnd,
+   a future pass over this file should double check the two are
+   consistent in header-comment style and simplify this provenance
+   note accordingly.
+
+   Only one STRPGMEXP block appears below, with PGMLVL(*CURRENT) -
+   this is ZAISRV's first release, so there is no PGMLVL(*PRV) history
+   to preserve yet (rule for exactly one PGMLVL(*CURRENT) block per
+   source file: work/design/refs/ileconcepts75.txt lines 3994-3999,
+   read directly this session - "Only one STRPGMEXP command can
+   specify PGMLVL(*CURRENT)... All other STRPGMEXP commands within a
+   source file must specify PGMLVL(*PRV)"). A future lesson (per this
+   repo's 07-03 precedent: adding a procedure without breaking an
+   existing signature) would, per ileconcepts75.txt lines 4287-4289
+   ("1. Duplicate the STRPGMEXP, ENDPGMEXP block that contains
+   PGMLVL(*CURRENT). 2. Change the duplicated PGMLVL(*CURRENT) value
+   to PGMLVL(*PRV). 3. In the STRPGMEXP command that contains
+   PGMLVL(*CURRENT), add to the end of the list the new symbol"):
+     (1) duplicate this file's CURRENT block below as a NEW
+         PGMLVL(*PRV) block, still listing all three of 'GET',
+         'RESERVE', and 'RELEASE' (everything that exists at the time
+         of that future change - NOT a subset), then
+     (2) append the new procedure's own EXPORT SYMBOL to THIS block's
+         PGMLVL(*CURRENT) list (leaving 'GET'/'RESERVE'/'RELEASE' in
+         place here, unedited).
+   Never edit or remove this PGMLVL(*CURRENT) block's own existing
+   symbols once other programs have bound against it.
+
+   EXPORT SYMBOL casing: 'GET', 'RESERVE', 'RELEASE' (upper case) -
+   see zaisrv.rpgle's own header for the citation trail
+   (work/design/refs/ilerpgref75.txt lines 31322-31324, 31334-31336,
+   31381-31383: an RPG procedure with no EXTPROC/EXTPGM keyword at all
+   exports under the upper-case form of its name by default). This
+   resolves work/design/part07-design-v1.md section 9 item 5, which
+   had flagged this casing rule as unconfirmed against
+   ileconcepts75.txt's own EXPORT SYMBOL examples alone; the rule was
+   instead found in ilerpgref75.txt's EXTPROC section, read directly
+   this session. TODO: verify against a real CRTSRVPGM + DSPSRVPGM
+   listing before treating this as hardware-confirmed - nothing in
+   Part 6 or Part 7 has been compiled on real hardware yet
+   (docs/style-guide.md V1/V2/V3 scale).
+
+   Intended member: QSRVSRC/ZAISRV (library resolved via *LIBL, per
+   docs/style-guide.md - never a hardcoded library name in source).
+
+   BUILD RECIPE (see zaisrv.rpgle's own header for the full citation
+   trail - CRTBNDRPG cannot produce a *SRVPGM at all, confirmed against
+   work/design/refs/cl_commands_75.txt's own CRTBNDRPG parameter
+   table, so this is the two-step CRTRPGMOD-then-CRTSRVPGM path):
+     CRTRPGMOD MODULE(<lib>/ZAISRV) SRCFILE(<lib>/QRPGLESRC)
+       SRCMBR(ZAISRV)
+     CRTSRVPGM SRVPGM(<lib>/ZAISRV) MODULE(<lib>/ZAISRV)
+       EXPORT(*SRCFILE) SRCFILE(<lib>/QSRVSRC) SRCMBR(ZAISRV)
+       ACTGRP(*CALLER)
+   <lib> is a placeholder for the learner's own library - no real
+   PUB400 library or user name appears in this file. */
+
+STRPGMEXP PGMLVL(*CURRENT)
+   EXPORT SYMBOL('GET')
+   EXPORT SYMBOL('RESERVE')
+   EXPORT SYMBOL('RELEASE')
+ENDPGMEXP
