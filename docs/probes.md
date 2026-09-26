@@ -734,6 +734,28 @@ CPSPL(変換レポートのCPYSPLF)は、`system "CALL PGM(...)"`経由の
 土台に書くこと。CVTRPGSRCが「魔法のように現代化してくれる」わけでは
 ないという事実自体が、06-01のレッスン内容として教える価値がある。
 
+## 第6部画面レッスンの実機検証: `part06-screens-compile`(確認日 2026-09-26)
+
+06-04・06-10・06-11・06-11bの4画面(D0604A/F0604A・D0610A/F0610A・
+D0611A/F0611A・D0611BA/F0611BA)をコンパイルした。**接続1回目でD0604A/
+F0604A・D0610A/F0610Aは成功(Highest Severity 00)。DDS(D0611A・
+D0611BA)は事前修正(CPD7486/CPD7812)どおり成功。RPG(F0611A・
+F0611BA)は別の実バグで失敗(再接続で決着させる)。**
+
+**バグ: `%EOF`/`%FOUND`にサブファイルの**レコード様式名**(`sfl1`/
+`sfl2`)を渡していた。実際は**表示装置ファイル名**(`d0611a`/
+`d0611ba`)を渡す必要がある。** `RNF0391`「Parameter SFL1/SFL2 is not
+valid for built-in function %EOF」・`RNF0394`「...%FOUND」で確認。
+一次資料`ilerpgref75.txt`45624行目「%EOF{(file_name)}」・46001行目
+「%FOUND{(file_name)}」でどちらも「ファイル名」を要求すると明記。
+`f0611s.rpgle`の`%eof(sfl1)`→`%eof(d0611a)`、`f0611bs.rpgle`の
+`%eof(sfl2)`→`%eof(d0611ba)`、`%found(sfl2)`(2箇所)→
+`%found(d0611ba)`に修正。`CHAIN rrn2/fillRrn sfl2`自体はレコード様式名
+のままで正しい(CHAINの対象はサブファイル・レコード)。リポジトリー
+全体を`%eof(`/`%found(`/`%equal(`/`%open(`で検索し、他は全てファイル名
+(実際のデータベース・ファイル名)を渡しており、該当は無いことを
+確認済み。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
