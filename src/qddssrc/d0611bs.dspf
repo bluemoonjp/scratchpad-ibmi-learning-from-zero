@@ -221,19 +221,43 @@
      A*                                     *IN06, not tied to any OPT value).
      A                                      CF06(06)
      A                                      CF12(12)
+     A*                                     FIXED (part06-screens-compile
+     A*                                     prep, 2026-09-26, based on the
+     A*                                     confirmed real-hardware fix in
+     A*                                     src/legacy/qddssrc/tk0100d.dspf
+     A*                                     - docs/probes.md's part05-
+     A*                                     legacy-probe section): a SFLCTL
+     A*                                     record cannot carry positioned
+     A*                                     output both above (title/column
+     A*                                     headers) AND below (STATMSG/
+     A*                                     F3=Exit) its own subfile -
+     A*                                     CPD7812 ("Subfile control
+     A*                                     record overlaps subfile
+     A*                                     record"). Split the footer into
+     A*                                     R SFL2FTR below; added OVERLAY
+     A*                                     here so SFL2FTR's own output
+     A*                                     survives once SFL2CTL is
+     A*                                     (re)written on top of it.
+     A*                                     f0611bs.rpgle WRITEs SFL2FTR
+     A*                                     immediately before each EXFMT
+     A*                                     SFL2CTL.
+     A                                      OVERLAY
      A                                  1  2'D0611BA - Product maintenance'
      A                                  3  2'Op'
      A                                  3  5'Code'
      A                                  3 13'Name'
      A                                  3 45'Price'
      A                                  3 56'Reord'
-     A*                                     STATMSG: plain output field, same
-     A*                                     MOVEL/assignment
+     A*                                     SFL2FTR: split out of SFL2CTL
+     A*                                     above (CPD7812 fix, see its
+     A*                                     comment). STATMSG: plain output
+     A*                                     field, same MOVEL/assignment
      A*                                     technique R0411A uses for NOTFOUND
      A*                                     text - see the
      A*                                     "MESSAGE SUBFILE" header note above
      A*                                     for why this file
      A*                                     does not use a message subfile.
+     A          R SFL2FTR
      A            STATMSG       40A  O 15  2
      A                                 23  2'F3=Exit F6=Add 2=Change 4=Delete'
      A*                                     DTLFMT: single-record add/change

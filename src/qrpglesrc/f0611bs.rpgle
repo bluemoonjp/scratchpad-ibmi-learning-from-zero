@@ -204,6 +204,15 @@ end-proc;
 reloadSfl2();
 
 dow not *in03;
+  // FIXED (part06-screens-compile prep, 2026-09-26): d0611bs.dspf's
+  // SFL2CTL used to also carry the STATMSG/F3=Exit footer directly,
+  // which CPD7812 on real hardware forbids (see tk0100d.dspf's
+  // confirmed fix, docs/probes.md). The footer now lives in its own
+  // SFL2FTR record format, and SFL2CTL carries OVERLAY - so it must be
+  // WRITEn first, every pass, before SFL2CTL is (re)EXFMT'd on top of
+  // it (this also means STATMSG's latest value, set in the branches
+  // below, is picked up on the very next loop iteration).
+  write sfl2ftr;
   exfmt sfl2ctl;
 
   if *in03;
