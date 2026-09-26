@@ -180,15 +180,6 @@ dcl-s rrn1 packed(4:0) inz(0);
 // mainline below) for SFLINZ to pull from this program's own message
 // queue - see d0611s.dspf's MSGCTL header note.
 //-----------------------------------------------------------------------
-dcl-proc sendInvalidOpt;
-  dcl-pi *n;
-  end-pi;
-
-  snd-msg *diag 'Invalid option - use 5 for order inquiry, blank to'
-    + ' skip.' %target(*self);
-  write msgctl;
-end-proc;
-
 //-----------------------------------------------------------------------
 // Mainline. Loop shape (dow not *in03 / exfmt / if not *in03 ...
 // endif / enddo) matches f0604s.rpgle's and R0411A's own EXFMT loop,
@@ -265,3 +256,18 @@ enddo;
 
 *inlr = *on;
 return;
+
+// FIXED (2026-09-26, repo-wide sweep after part06-gen-probe's
+// connection-2 finding): sendInvalidOpt used to sit BEFORE the
+// mainline above. ilerpgref75.txt's RPG IV Concepts chapter is
+// explicit that a subprocedure must be defined AFTER the main source
+// section (the mainline) - see docs/probes.md's part06-gen-probe
+// section for the full citation. Moved here to match.
+dcl-proc sendInvalidOpt;
+  dcl-pi *n;
+  end-pi;
+
+  snd-msg *diag 'Invalid option - use 5 for order inquiry, blank to'
+    + ' skip.' %target(*self);
+  write msgctl;
+end-proc;
