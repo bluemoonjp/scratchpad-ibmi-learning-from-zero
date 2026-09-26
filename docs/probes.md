@@ -761,7 +761,8 @@ valid for built-in function %EOF」・`RNF0394`「...%FOUND」で確認。
 
 03-11(SETENV)・03-13(JUYAKC)の`RTVJOBA USER()`→`CURUSER()`修正を検証。
 **接続1回目でSETENVは成功(コンパイル・実行とも)、JUYAKCは別の実バグで
-失敗(再接続で決着させる)。**
+失敗。接続2回目で両方ともコンパイル成功、SETENVの実行も再確認
+(CONFIRMED SUCCESS)。**
 
 **SETENV: `CURUSER`修正が実機で正しく動くことを確認。** `SETENV *DEV`を
 実際にCALLし、`SETENV: now *DEV (curlib=<USER>1)`という自己確認メッセージ
