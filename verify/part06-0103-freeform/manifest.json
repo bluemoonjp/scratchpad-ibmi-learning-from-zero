@@ -8,9 +8,11 @@
     { "type": "cl", "label": "VSPLPF", "cmd": "CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 6 spooled-file text capture')", "monmsg": ["CPF0000"] },
 
     { "type": "cl", "label": "CPV0601B", "cmd": "CRTBNDRPG PGM(&LIB/V0601B) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0601B) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
-    { "type": "cl", "label": "RUNV0601B", "cmd": "CALL PGM(&LIB/V0601B)\nCPYSPLF FILE(V0601B) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "RUNV0601B", "cmd": "CALL PGM(&LIB/V0601B)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPV0601B", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
     { "type": "cl", "label": "CPF0603A", "cmd": "CRTBNDRPG PGM(&LIB/F0603A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0603A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
-    { "type": "cl", "label": "RUNF0603A", "cmd": "CALL PGM(&LIB/F0603A)\nCPYSPLF FILE(F0603A) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "RUNF0603A", "cmd": "CALL PGM(&LIB/F0603A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPF0603A", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
 
     { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSPL" }
   ]
