@@ -709,7 +709,8 @@ T0LAD12・T0LAD12Qの両方)だけが、他の全てから孤立した形で
 ## 第6部 CVTRPGSRC の実機検証: `part06-01-cvtrpgsrc`(確認日 2026-09-26)
 
 06-01レッスン用に、R0408A(RPG III、`src/qrpgsrc/r0408s.rpg`)を
-`CVTRPGSRC`でQRPGLESRCへ変換し(メンバー名V0601A)、`CRTBNDRPG`で
+`CVTRPGSRC`でQRPGLE112へ変換し(メンバー名V0601A、訂正:
+以前ここは誤ってQRPGLESRCと記載していた)、`CRTBNDRPG`で
 コンパイル、変換結果の全文をSQLで取り出した。**接続1回で成功。**
 変換: 「0 highest severity, 1 converted, 0 converted with errors」。
 コンパイル: 「Program V0601A placed in library...00 highest severity」。
