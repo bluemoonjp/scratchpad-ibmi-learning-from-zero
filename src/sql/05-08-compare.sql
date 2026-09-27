@@ -7,8 +7,8 @@
 --      Two accounts of TXSNAPT's creation disagree and neither is
 --      confirmed on real hardware this session: TXSNAP's own header
 --      comment implies CPYSPLF creates TXSNAPT itself on first use, while
---      the P17 probe plan (work/design/final_probes.json) pre-creates its
---      equivalent test file with CRTPF ... RCDLEN(133) before using it.
+--      the P17 probe plan (this repo's private working notes) pre-creates
+--      its equivalent test file with CRTPF ... RCDLEN(133) before using it.
 --      Doing this CRTPF once, with MAXMBRS(*NOMAX), covers both cases: if
 --      CPYSPLF does auto-create, this just pre-empts it (harmlessly,
 --      since the file does not exist yet); if CPYSPLF needs the file to

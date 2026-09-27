@@ -2,13 +2,12 @@
      A*                                     Page-at-a-time SFL (TOKUIM list)
      A*                                     plus
      A*                                     a message subfile. Part 5 (legacy
-     A*                                     system). See work/design/part05-
-     A*                                     legacy-design.json
-     A*                                     design.objects[1].
+     A*                                     system).
      A*
-     A*                                     NOT COMPILED ON REAL HARDWARE: SSH
-     A*                                     connection budget is exhausted this
-     A*                                     session. Verify with CRTDSPF first.
+     A*                                     CONFIRMED, real hardware
+     A*                                     (part05-legacy-probe, 2nd
+     A*                                     connection): compiles with 0
+     A*                                     messages (see docs/probes.md).
      A*
      A*                                     Base columns (6/17/19-28/30-34/35/
      A*                                     36-37/38/39-41/42-44/45-) confirmed
