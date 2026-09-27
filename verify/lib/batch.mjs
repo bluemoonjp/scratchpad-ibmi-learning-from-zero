@@ -68,7 +68,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './paths.mjs';
 import { buildClWrapperSource, pgmNameForBatch } from './clgen.mjs';
-import { resolveLibrary } from './config.mjs';
+import { resolveLibrary, resolveLibrary2, substituteLibraryPlaceholders } from './config.mjs';
 
 const MARKER = (name) => `===VFY:${name}===`;
 
@@ -129,6 +129,7 @@ export function loadManifest(batchDirName) {
 
 export function buildQshScript(manifest, cfg, { baseDir } = {}) {
   const lib = resolveLibrary(manifest, cfg);
+  const lib2 = resolveLibrary2(manifest, cfg); // 省略時は null(&LIB2 未使用のマニフェスト)
   const remoteDir = manifest.remoteDir || `vfy/${manifest.batch}`;
   const lines = [];
 
@@ -209,7 +210,8 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
     // 漏れがあり、マニフェストに実ライブラリー名を決め打ちで書く=私的パターン
     // 露出の恐れがあった)。cl ステップと違い1行のCL文をwrapClStatement()で
     // 折り返す仕組みは経由しないため、`&LIB/`形も単純な文字列置換で済ませる。
-    lines.push(step.cmd.replaceAll('&LIB/', `${lib}/`).replaceAll('&LIB', lib));
+    // &LIB2 にも対応(2026-09-27、05-12のような2ライブラリー間の検証向け)。
+    lines.push(substituteLibraryPlaceholders(step.cmd, lib, lib2));
     lines.push(`echo ${MARKER(`sh-end:${step.label || 'step'}`)}`);
   }
 
@@ -278,8 +280,8 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
     // manifest に書かずに済ませるため)。`&LIB/` は `<lib>.`(ドット区切り)に
     // 変える(2026-09-26、db2ユーティリティー呼び出し方式の見直しに合わせる。
     // 上のvfylogと同じ理由・同じ根拠)。&LIB 単体(スラッシュを伴わない参照)が
-    // 残っていた場合はそのまま名前だけの置換にする。
-    const substitutedSql = sql.replaceAll('&LIB/', `${lib}.`).replaceAll('&LIB', lib);
+    // 残っていた場合はそのまま名前だけの置換にする。&LIB2 にも同様に対応。
+    const substitutedSql = substituteLibraryPlaceholders(sql, lib, lib2, '.');
     // db2 へは引用符付きの位置パラメーターとして渡す(パイプ経由の標準入力では
     // ない。上のvfylogと同じ理由)。
     lines.push(`db2 "${substitutedSql.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('$', '\\$')}" 2>&1`);
