@@ -1574,6 +1574,51 @@ pub400.com port 2222: Connection timed out`(ネットワーク側の一時的な
 これで`part05-mch1202-corrupt`は完了。次は`part05-13-tickets`
 (チケット1+3の組み合わせ確認)。
 
+## 第5部`part05-13-tickets`の実機検証: チケット1+3の組み合わせで
+`RPG0907`が解消(確認日2026-09-27、パリティ確認1件は失敗)
+
+05-13(チケット1・チケット3の模範解答)の実機検証。
+**CONFIRMED SUCCESS(本題は成功、追加のパリティ確認`RUNZA0500H`のみ
+失敗)。**
+
+- `RUNTXRESET`が正常に機能し、`JUCHUD`12行・`JUCHUM`8行、`C05119`
+  行の残留なし(前段`part05-mch1202-corrupt`が残した状態を正しく
+  リセット、`expected/notes.md`「前提(2)」の防御が実際に機能した
+  確認)。
+- `TXCHECK`: 2件ともPASS(`TXCHECK PASS: ZA0500 still exists and
+  compiles`/`TXCHECK PASS: JU0900C still exists and compiles`)、
+  要約行も予想どおり2行に分かれ10桁ゼロ・パディング
+  (`TXCHECK: lesson 05-13 - 0000000002 passed,`/
+  `0000000000 failed.`)——既知の食い違い(レッスン本文は1行・
+  パディング無しと記載)の再確認。
+- **`RUNCOMBO`(チケット1修正済み`JU0900C`+チケット3`ZA0500`)が
+  `run`セクションに正確に12行を印字、`expected/notes.md`の手計算表と
+  完全一致**: `OK`10件・`SHORT`2件(`J00002/P00002`・
+  `J00006/P00002`)・`NOTFOUND`0件。`RPG0907`・
+  `JU0900C: ZA0500 ended abnormally.`はどちらも一切出ない。
+  **`part05-ju0900c-baseline`で確認済みだったチケット1のバグ
+  (`RPG0907`)が、チケット1+3の組み合わせで実機上も解消したことが
+  確定した。**
+- **`RUNZA0500H`(パリティ確認、`JU0900C`を介さず`ZA0500`を直接
+  `CALL`)は失敗した**: `OPNID(JUCHUD) for file JUCHUD already
+  exists.`→`ZA0500H: could not open JUCHUD.`。これは
+  `expected/notes.md`が事前に検討していた「ODPスコープの懸念」が
+  実際に的中したことを意味する——`work/design/refs/ileconcepts75.txt`
+  の「既定活動グループのOPMプログラムが開いたODPは呼び出しレベル
+  番号にスコープされ、開いたプログラム自身のトップレベル`CALL`が
+  戻れば自動的に閉じる」という記述は、**この具体的なケース
+  (`RUNCOMBO`の`JU0900C`が開いたOPNQRYFのODPが、`RUNCOMBO`終了後も
+  `RUNZA0500H`の時点でまだ残っていた)には当てはまらなかった**——
+  一次資料の記述と実機挙動が食い違う、新しい実機発見。
+  `expected/notes.md`自身が指示するとおり、この失敗は`RUNCOMBO`
+  (本題)の結果には影響しない——影響を受けたのは低優先度の
+  パリティ確認`RUNZA0500H`だけ。次にこの技法を使うマニフェストでは、
+  `ju0900c-ticket1.clp`(または`za0500h.clp`)にスコープ付き`CLOF`を
+  追加することを検討する必要がある(今回は未修正のまま)。
+
+これで`part05-13-tickets`は完了。次は`part05-13-pssr`
+(チケット3の`*PSSR`を実際に発火させる確認)。
+
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。
