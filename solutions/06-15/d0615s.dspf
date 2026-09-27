@@ -18,8 +18,13 @@
      A*                                     since nothing here needs to
      A*                                     be selected or acted on).
      A*
-     A*                                     HARDWARE STATUS: V1 only
-     A*                                     (compile-check) - same
+     A*                                     HARDWARE STATUS: CONFIRMED
+     A*                                     V1 (compile-check,
+     A*                                     part06-15-checkpoint,
+     A*                                     2026-09-27): CRTDSPF
+     A*                                     Highest Severity 00.
+     A*                                     Interactive execution (V3)
+     A*                                     is still untested - same
      A*                                     WORKSTN/EXFMT limitation as
      A*                                     every other Part 6 screen
      A*                                     (SSH non-interactive
