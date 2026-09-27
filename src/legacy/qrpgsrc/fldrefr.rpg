@@ -1,12 +1,12 @@
       * FLDREFR - common field definitions, /COPY member (Part 5).
-      * NOT YET COMPILED on real hardware (this session is out of SSH
-      * connection budget). Column positions come only from rpg3.mjs.
+      * CONFIRMED, real hardware (part05-legacy-probe, 2nd connection):
+      * compiles with 0 messages (see docs/probes.md).
       *
       * Taken in by ZA0510 via /COPY into ZA0510's I-SPEC area (rpg3.mjs
       * copyDirective('I', 'FLDREFR')), placed AFTER ZA0510's own
       * record-level I-specs and BEFORE its C-specs. RPG/400 Reference
-      * (work/design/refs/rpg400ref.txt lines 890-904, "Figure 1. Order
-      * of the Types of Specifications") requires H-F-E-L-I-C-O source
+      * ("Figure 1. Order of the Types of Specifications") requires
+      * H-F-E-L-I-C-O source
       * order; /COPY is expanded in place (copyDirective()'s own
       * comment: pass 'I' when copying I-spec field/DS definitions).
       * A C-spec-area /COPY here would land this DS's I-spec lines
@@ -27,17 +27,16 @@
       * this design's /COPY reading-exercise object (05-02-05-04, per
       * design.json's own critique record) - an external DS would not
       * exercise the /COPY directive itself, which is the actual
-      * teaching point here. Neither approach is confirmed against a
-      * real compile yet.
+      * teaching point here. CONFIRMED, real hardware
+      * (part05-legacy-probe, 2nd connection): both this DS (via
+      * FLDREFR's own compile) and ZA0510 (which /COPY's it) compile
+      * with 0/00 severity - see docs/probes.md.
       *
       * iSpecDS()/option U vs this plain DS: this is an ordinary DS,
-      * not a *LDA-backed U-option DS (see JU0300 for that). JU0300's
-      * UDS use is unverified per work/design/part05-legacy-
-      * design.json's unverifiedGeneratorFeatures (iSpecDS/
-      * iSpecSubfield entry, usedInObject "ZA0510, JU0300(UDS)") -
-      * docs/probes.md has no record of UDS at all. This DS itself is
-      * also still unverified on real hardware (see the same
-      * unverifiedGeneratorFeatures entry).
+      * not a *LDA-backed U-option DS (see JU0300 for that). JU0300
+      * itself compiled with 0/00 severity in the same connection,
+      * which confirms the UDS syntax compiles - its *LDA read/write
+      * runtime semantics are a separate, still-unconfirmed claim.
       *
       * FLDREF/FLDREFR field name/length/type/decimal consistency, and
       * the RPG III 6-char symbol-name limit, are checked by

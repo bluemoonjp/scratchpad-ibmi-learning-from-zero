@@ -13,8 +13,8 @@
 /* single DSPPGMREF/DSPDBR pass can prove depend on the changed file -    */
 /* JUYAKC's CPYTOIMPF FROMFILE() reference, for example, is a literal CL  */
 /* command parameter, not a compile-time bind, and DSPPGMREF may not      */
-/* catch it at all; see work/design/part05-legacy-design.json            */
-/* openQuestions). Object names themselves are never hardcoded here -     */
+/* catch it at all - this repo's private working notes flag the same     */
+/* open question). Object names themselves are never hardcoded here -     */
 /* only the db/vN source path for the physical file, which the version    */
 /* number necessarily fixes anyway.                                       */
 /*                                                                        */
