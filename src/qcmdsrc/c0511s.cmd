@@ -11,7 +11,7 @@
 /* literal actually supplies. This command exists so the lesson's own    */
 /* demonstration can invoke C0511S the safe way (matching how other      */
 /* etc. already teach *CMD wrappers for exactly this trap).              */
-             CMD        PROMPT('C0511S - plant a decimal data error')
+             CMD        PROMPT('C0511S - plant decimal error')
              PARM       KWD(LIB) TYPE(*CHAR) LEN(10) DFT(*CURLIB) +
                           PROMPT('Target library')
              PARM       KWD(CLONEDIR) TYPE(*CHAR) LEN(200) DFT(' ') +
