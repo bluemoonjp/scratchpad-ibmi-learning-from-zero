@@ -1161,6 +1161,31 @@ CALLPRC経由でJUCSRVをバインド)を検証。
   ハーネス自体やSQL7008の実際の再現ロジックはまだ未検証。次回接続で
   再挑戦する。
 
+**2回目の接続でCONFIRMED SUCCESS(P12も解決)。**
+
+- `Q0613A`: `Found C00001: ACME TRADING CO` / `Zip=1000001 Rep=T00001
+  Updated=20260901` / `UPDATE OK`——SELECT INTO・UPDATE(COMMIT(*NONE)
+  なので無条件に成功)とも期待どおり。
+- **`Q0613V`でSQL7008を実際に再現(06-13の核心の主張を初めて実証)**:
+  `Found C00001: ACME TRADING CO` → `UPDATE failed, SQLSTATE=55019` →
+  `SQL7008` → `TOKUIM in <USER>2 not valid for operation.`。ジョブ・ログ
+  側では`CPF4328: Member TOKUIM not journaled to journal *N.`が直接の
+  原因として記録されている——**これでP12も解決: TOKUIMはjournaled
+  されていない。** `GET DIAGNOSTICS`の`wMsgId`/`wMsgText`もそれぞれ
+  `SQL7008`/`TOKUIM in <USER>2 not valid for operation.`と正しく
+  取得できており、前段のMESSAGE_TEXT修正が正しかったことも実証された。
+  (`QSYS2.SYSCOLUMNS`によるJOURNALED列探索は0件——`SYSTABLES`に
+  journal関連列自体が無いと判明したが、CPF4328で直接確認できたため
+  実害なし。)
+- `Q0614A`もHighest Severity 00でコンパイル・実行成功:
+  `Customer C00001: ACME TRADING CO` / `Order J00001 dated 20260901` /
+  `Order J00003 dated 20260905`(06-01で確認済みのJ00001/J00003と
+  整合)。
+- 影響: 06-13本文執筆時、SQL7008の実測値(SQLSTATE=55019、
+  `CPF4328`+`SQL7008`のメッセージ順)をそのまま使える。
+
+これでP1の#13は完了。次は#14(`part06-14b-null`)。
+
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。
