@@ -1,0 +1,63 @@
+{
+  "batch": "part05-lesson-decimal",
+  "description": "Confirms 05-11's OWN LITERAL demonstration steps exactly as a real learner would run them (advisor-review, 2026-09-27) - NOT the isolated/ticket-1-fixed variant part05-mch1202-corrupt uses. Compiles the AS-SHIPPED src/legacy/qclsrc/ju0900c.clp (ticket 1's MINQTY 3,0/5,0 mismatch present, unfixed) and AS-SHIPPED src/legacy/qrpgsrc/za0500.rpg (no *PSSR) - no ticket3.rpg, no ju0900c-ticket1.clp, no JU0900T renaming, no CLRJUCHUM isolation of JUCHUM. Runs C0511S (05-11's own technique) to plant JUNO=C05119 with JUSU='ABCDE' into JUCHUD (matched by a JUCHUM header row), exactly as 05-11's lesson text instructs, then CALLs JU0900C exactly as the lesson's own 実演 step 3 does.\n\nPredicted outcome (advisor review, built from two already-confirmed connections, NOT yet itself confirmed - this manifest's whole purpose is to settle it): za0500.rpg opens JUCHUD via OPNQRYF KEYFLD((JUNO)(JULINE)) (ascending) but JUCHUM with no OPNQRYF override (arrival/physical order, per its F-spec's blank position 31 - confirmed in part05-mch1202-corrupt's own description). After TXRESET + C0511S, JUCHUD's ascending order puts C05119 FIRST (EBCDIC 'C' < 'J'), but JUCHUM's arrival order puts C05119 LAST (J00001..J00008 loaded first by TXRESET, C05119 appended after by C0511S). The M1/MR matching cycle therefore compares JUCHUD's C05119 primary against JUCHUM's J00001 secondary; since 'C05119' < 'J00001', C05119 is treated as an unmatched primary (GOTO SKPALL) and NEVER reaches SUB JUSU AVAIL - the corrupted JUSU is planted but never used. The next primary read is J00001 (the first genuine match), which reaches AVAIL COMP MINQTY - as-shipped JU0900C's &MINQTY TYPE(*DEC) LEN(3 0) disagrees with za0500.rpg's *ENTRY PLIST (MINQTY 5,0, ticket 1's own bug), already confirmed by part05-ju0900c-baseline (docs/probes.md) to raise RPG0907 at statement 8100 on the FIRST row ZA0500 actually processes, every time, with 0 lines printed and 'JU0900C: ZA0500 ended abnormally.' If this prediction holds, 05-11's own literal demo shows the LEARNER a real, reproducible decimal-data error (RPG0907, ticket 1's own pre-existing bug) that has NOTHING to do with the JUSU corruption they just planted - which sits silently unread. This would mean the lesson's own teaching point becomes 'investigate systematically before assuming your own change caused the failure you see' rather than 'watch your own corruption crash the program', with the corruption's own silent-misread nature (JUSU=12345, confirmed harmless in part05-mch1202-corrupt's isolated setup) demonstrated separately via direct SQL SELECT rather than via JU0900C/ZA0500's own printed output.\n\nSelf-containment: same CHKOBJ+conditional/DLTPGM-first idioms as sibling part05-* manifests. RUNTXRESET first (shared &LIB defensive reasoning). Prerequisite: TXSETUP has already built the sample DB in this library; run from a branch where src/qclsrc/c0511s.clp, src/legacy/qddssrc/jubadd.pf, src/legacy/qclsrc/ju0900c.clp, src/legacy/qrpgsrc/za0500.rpg all exist.",
+  "steps": [
+    { "type": "file", "localPath": "src/c0511run.clp", "remoteSrcFile": "QCLSRC", "member": "C0511RUN" },
+    { "type": "file", "localPath": "../../src/qclsrc/c0511s.clp", "remoteSrcFile": "QCLSRC", "member": "C0511S" },
+    { "type": "file", "localPath": "../../src/legacy/qddssrc/jubadd.pf", "remoteSrcFile": "QDDSSRC", "member": "JUBADD" },
+    { "type": "file", "localPath": "../../src/legacy/qclsrc/ju0900c.clp", "remoteSrcFile": "QCLSRC", "member": "JU0900C" },
+    { "type": "file", "localPath": "../../src/legacy/qrpgsrc/za0500.rpg", "remoteSrcFile": "QRPGSRC", "member": "ZA0500" },
+
+    { "type": "sh", "label": "MKTREE", "cmd": "mkdir -p \"$HOME/ibmi-kyozai/src/legacy/qddssrc\" 2>&1" },
+    { "type": "sh", "label": "TOSTMF-JUBADD", "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QDDSSRC.FILE/JUBADD.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/jubadd.pf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1" },
+
+    {
+      "type": "cl",
+      "label": "RUNTXRESET",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CPC0511RUN",
+      "cmd": "DLTPGM PGM(&LIB/C0511RUN)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/C0511RUN) SRCFILE(&LIB/QCLSRC) SRCMBR(C0511RUN) REPLACE(*YES)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CPC0511S",
+      "cmd": "DLTPGM PGM(&LIB/C0511S)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/C0511S) SRCFILE(&LIB/QCLSRC) SRCMBR(C0511S) REPLACE(*YES)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CPJU0900C",
+      "cmd": "DLTPGM PGM(&LIB/JU0900C)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/JU0900C) SRCFILE(&LIB/QCLSRC) SRCMBR(JU0900C) REPLACE(*YES)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CPZA0500",
+      "cmd": "DLTPGM PGM(&LIB/ZA0500)\nMONMSG MSGID(CPF0000)\nCRTRPGPGM PGM(&LIB/ZA0500) SRCFILE(&LIB/QRPGSRC) SRCMBR(ZA0500) REPLACE(*YES)",
+      "monmsg": ["CPF0000"]
+    },
+
+    {
+      "type": "cl",
+      "label": "RUNC0511S",
+      "cmd": "CALL PGM(&LIB/C0511RUN) PARM('&LIB')",
+      "monmsg": ["CPF0000", "MCH0000", "RPG0000"]
+    },
+    {
+      "type": "cl",
+      "label": "RUNJU0900C",
+      "cmd": "CALL PGM(&LIB/JU0900C) PARM('*TEST' '&LIB')",
+      "monmsg": ["CPF0000", "MCH0000", "RPG0000"]
+    },
+
+    { "type": "collect", "kind": "sql", "sql": "SELECT JUNO, JULINE, JUSHO, JUSU, HEX(JUSU) AS JUSU_HEX, JUTNK FROM &LIB/JUCHUD WHERE JUNO = 'C05119'" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT JUNO, JULINE, JUSHO, JUSU FROM &LIB/JUCHUD ORDER BY JUNO, JULINE" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT JUNO FROM &LIB/JUCHUM ORDER BY JUNO" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT ZASHO, ZASU, ZAUPD FROM &LIB/ZAIKOM WHERE ZASHO = 'P00001'" }
+  ]
+}
