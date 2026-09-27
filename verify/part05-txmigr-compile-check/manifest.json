@@ -1,0 +1,8 @@
+{
+  "batch": "part05-txmigr-compile-check",
+  "description": "Minimal, standalone confirmation that tools/qclsrc/txmigr.clp's redesigned DCLF (against the IBM-supplied model outfiles QSYS/QADSPDBR and QSYS/QADSPOBJ, instead of this program's own QTEMP/TXMDBR and QTEMP/TXMPGM) actually lets CRTCLPGM succeed in a completely fresh job - no priming steps of any kind, unlike verify/part05-txmigr-to2b's own CPTXMIGRRW (which confirmed the OLD design genuinely failed to compile without priming). This connection only recompiles TXMIGR (REPLACE(*YES) over whatever part05-txmigr-to2b already left in &LIB) - it does not run it, and does not touch &LIB2 at all.",
+  "steps": [
+    { "type": "file", "localPath": "../../tools/qclsrc/txmigr.clp", "remoteSrcFile": "QCLSRC", "member": "TXMIGR" },
+    { "type": "cl", "label": "CPTXMIGR", "cmd": "CRTCLPGM PGM(&LIB/TXMIGR) SRCFILE(&LIB/QCLSRC) SRCMBR(TXMIGR) REPLACE(*YES)", "monmsg": ["CPF0000"] }
+  ]
+}

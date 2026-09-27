@@ -76,22 +76,32 @@
                 SNDPGMMSG  MSG('JU0900C: ZA0500 ended abnormally.')
              ENDDO
 
-             /* FIXED (part05-legacy-probe, 2026-09-26, real-hardware      */
-             /* CRTCLPGM): CLOF FILE(JUCHUD) here used to fail with        */
-             /* CPD0043 ("Keyword FILE not valid") - same finding as       */
-             /* tools/qclsrc/txcheck.clp's header comment: CLOF is not a   */
-             /* real command. Unlike txcheck.clp, though, CLOSE OPNID      */
-             /* cannot substitute here: OPNID(*NONE) closes THIS program's */
-             /* own DCLF'd file with no OPNID given, and that is JUCHUM    */
-             /* (line 33 above), not JUCHUD - JUCHUD is never DCLF'd in    */
-             /* this program at all (only OVRDBF/OPNQRYF'd, for ZA0500 to  */
-             /* share). Removed the close attempt outright: JUCHUD's       */
-             /* shared ODP is opened by the CALLed ZA0500 (its F-spec      */
-             /* IP), which auto-closes its files on LR before returning    */
-             /* here, so by the time TXCLOF runs there is nothing left of  */
-             /* this program's own to close. DLTOVR below is already      */
-             /* MONMSG-protected either way.                                */
-TXCLOF:      DLTOVR     FILE(JUCHUD)
+             /* FIXED, part 1 (part05-legacy-probe, 2026-09-26, real-      */
+             /* hardware CRTCLPGM): CLOF FILE(JUCHUD) here used to fail    */
+             /* with CPD0043 ("Keyword FILE not valid").                   */
+             /* FIXED, part 2 (part05-13-tickets/RUNZA0500H, 2026-09-27,   */
+             /* real hardware): CLOF IS a real command - CPD0043 meant the */
+             /* KEYWORD was wrong, not the command. CLOF takes OPNID(),    */
+             /* not FILE() (IBM Docs clof.htm, confirmed 2026-09-27:       */
+             /* "Specifies the name used on the Open Query File (OPNQRYF)  */
+             /* ... command for identifying this open operation"). The     */
+             /* first fix here simply deleted the close attempt outright,  */
+             /* reasoning that ZA0500's own LR-driven close would clean up */
+             /* the shared ODP - but that reasoning was never tested       */
+             /* against a SECOND call in the SAME job. It was wrong:       */
+             /* part05-13-tickets' own RUNZA0500H (a second, independent   */
+             /* CALL sharing this same &LIB/JUCHUD in the same job) failed */
+             /* with "OPNID(JUCHUD) for file JUCHUD already exists" - the  */
+             /* OPNQRYF-opened ODP from THIS program's own CALL was never  */
+             /* closed. The OPNID a query-opened file is closed by is not  */
+             /* declared explicitly above; the actual runtime message      */
+             /* confirms it defaults to the (unqualified) file name given  */
+             /* to OPNQRYF's FILE() - "JUCHUD" here. This would bite a     */
+             /* real learner too: running this program twice in one 5250   */
+             /* session (a normal thing to do) would hit the same error.   */
+TXCLOF:      CLOF       OPNID(JUCHUD)
+             MONMSG     MSGID(CPF0000)
+             DLTOVR     FILE(JUCHUD)
              MONMSG     MSGID(CPF0000)
              DLTOVR     FILE(JUCHUM)
              MONMSG     MSGID(CPF0000)
