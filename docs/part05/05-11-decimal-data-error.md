@@ -1,6 +1,6 @@
 # 05-11 障害対応: 10進数データ・エラー
 
-> 所要時間: 75分(長め)/ 前提レッスン: 05-10 / 目標番号: 4 / 観測方法: `QPJOBLOG`・`HEX()` / 道具: 5250(SEU/STRDBG)・SQL(ACS の「実行 SQL スクリプト」または `RUNSQL`)/ 同時接続数: 5250×1 / 作る・変えるオブジェクト: `<USER>1/C0511S`(CLP)・`<USER>1/JUBADD`(検証用 PF)、`JUCHUD`(一時的に壊れた行が入る)/ DBVER: 2 / 依存するプローブ: P12(`TOKUIM`のみ確認済み)・P20(解決済み)・P38(未実施)/ PTF 依存: なし / 容量の目安: わずか
+> 所要時間: 75分(長め)/ 前提レッスン: 05-10 / 目標番号: 4 / 観測方法: `QPJOBLOG`・`HEX()` / 道具: 5250(SEU/STRDBG)・SQL(ACS の「実行 SQL スクリプト」または `RUNSQL`)/ 同時接続数: 5250×1 / 作る・変えるオブジェクト: `<USER>1/C0511S`(CLP・専用コマンド)・`<USER>1/JUBADD`(検証用 PF)、`JUCHUD`(一時的に壊れた行が入る)/ DBVER: 2 / 依存するプローブ: P12(`TOKUIM`のみ確認済み)・P20(解決済み)・P38(未実施)/ PTF 依存: なし / 容量の目安: わずか
 
 ## ゴール
 
@@ -136,21 +136,25 @@ SELECT JUNO, JULINE, JUSU, HEX(JUSU) AS JUSU_HEX
 
 **この実演は実機で確認済みです**(`part05-lesson-decimal`、確認日2026-09-27、詳細は実機メモ参照)。`C0511S`(`src/qclsrc/c0511s.clp`)・`JUBADD`(`src/legacy/qddssrc/jubadd.pf`)は、コンパイル(V1)・実際の`CALL`(V2)ともに確認済みです。
 
-1. `C0511S` を自分の `<自分のユーザー名>1/QCLSRC` に取り込みます(02-05 で `TXSETUP` を取り込んだのと同じ要領です)。
+1. `C0511S`(CLプログラム)と、その専用コマンド(`*CMD`)を自分の `<自分のユーザー名>1` に取り込みます(02-05 で `TXSETUP` を取り込んだのと同じ要領です)。
 
    ```text
    CPYFRMSTMF FROMSTMF('/home/<自分のユーザー名>/ibmi-kyozai/src/qclsrc/c0511s.clp') TOMBR('/QSYS.LIB/<自分のユーザー名>1.LIB/QCLSRC.FILE/C0511S.MBR') MBROPT(*REPLACE) STMFCCSID(1208)
+   CPYFRMSTMF FROMSTMF('/home/<自分のユーザー名>/ibmi-kyozai/src/qcmdsrc/c0511s.cmd') TOMBR('/QSYS.LIB/<自分のユーザー名>1.LIB/QCMDSRC.FILE/C0511S.MBR') MBROPT(*REPLACE) STMFCCSID(1208)
    ```
 
    ```text
    CRTCLPGM PGM(<自分のユーザー名>1/C0511S) SRCFILE(<自分のユーザー名>1/QCLSRC) SRCMBR(C0511S)
+   CRTCMD CMD(<自分のユーザー名>1/C0511S) PGM(*LIBL/C0511S) SRCFILE(<自分のユーザー名>1/QCMDSRC) SRCMBR(C0511S)
    ```
 
-2. `C0511S` を実行し、`JUBADD` を作らせたうえで、`JUCHUD` に壊れた行を仕込みます。`CLONEDIR` の既定値はこの教材の標準のクローン先(`~/ibmi-kyozai`)と一致していますが、他のツール(`TXSETUP` など)と同じく、明示的に渡す習慣にしておくと安全です。
+2. `C0511S`(コマンド名をそのまま打つだけです。`CALL PGM(...)` は使いません)を実行し、`JUBADD` を作らせたうえで、`JUCHUD` に壊れた行を仕込みます。`CLONEDIR` の既定値はこの教材の標準のクローン先(`~/ibmi-kyozai`)と一致していますが、他のツール(`TXSETUP` など)と同じく、明示的に渡す習慣にしておくと安全です。
 
    ```text
-   CALL PGM(<自分のユーザー名>1/C0511S) PARM('<自分のユーザー名>1' '/home/<自分のユーザー名>/ibmi-kyozai')
+   C0511S LIB(<自分のユーザー名>1) CLONEDIR('/home/<自分のユーザー名>/ibmi-kyozai')
    ```
+
+   **なぜ `CALL PGM(C0511S) PARM(...)` ではなく専用のコマンドを経由するのか**: `CALL` にコマンド行から直接リテラルを渡すと、文字リテラルは32バイトまでしか正しく渡らないという CL の落とし穴があります(03-08 で学んだとおりです)。`C0511S` の `CLONEDIR` パラメーター(200桁)を `CALL ... PARM()` に直接書くと、この罠にかかります——`TXSETUP` などと同じ理由で、この演習でも専用のコマンドを経由します。
 
    「C0511S: planted a decimal data error in JUCHUD (JUNO=C05119, JULINE=1).」のメッセージを確認します。**この時点で仕込まれる`JUSU`の生バイトはピリオド5個(`X'4B'`×5)です。**
 
