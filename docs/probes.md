@@ -1676,6 +1676,110 @@ pub400.com port 2222: Connection timed out`(ネットワーク側の一時的な
   ゼロ除算や範囲外のCHAINキー等)を使った、別の再現方法を今後
   検討する必要がある。
 
+## verify harnessの実バグ発見・修正: `wrapClStatement`の継続記号が
+`-`と`+`を取り違えていた(確認日2026-09-27、`part05-promote-rollback`の
+初回接続がこれで失敗)
+
+`verify/lib/clgen.mjs`の`wrapClStatement`(CL文を80桁以内の物理行へ
+折り返す関数)は、継続記号に`-`を使っていた。**これはIBM i CLの
+継続規則の誤解に基づくバグだった**: 正しい規則は「`+`は継続行の
+先頭空白を取り除く、`-`は継続行の先頭空白を取り除かずそのまま
+含める」であり(WebSearchでIBM CL概念ガイドの記述を確認、
+2026-09-27)、コードのコメントが想定していた「`-`は空白を1つ
+挿入する」という規則とは逆だった。このジェネレーターは可読性のため
+全ての継続行に固定インデント(`CL_INDENT`=13桁)を付けているため、
+`-`を使うと、折り返しが引用符付き文字列リテラルの途中に来た場合、
+そのインデントの13個の空白がリテラルの値そのものに混入していた。
+
+- **実際に発見した経緯**: `part05-promote-rollback`の初回接続で
+  ラッパー自体がコンパイル失敗(`CPD0074: Value 'verify har' for
+  TEXT exceeds 50 characters.`)。3箇所の`TEXT('...')`(48・47・48
+  文字、いずれも50文字制限内のはず)がいずれも同じエラーで失敗して
+  いたことから、単なる文字数超過ではなく折り返し由来の値膨張を疑い、
+  ローカルで折り返しロジックを再現して確認したところ、`-`による
+  誤った継続で値が61文字に膨張していたことを直接確認できた
+  (`verify harness: fix CL continuation using '-' instead of '+'
+  (real bug)`、commit `bc291d2`、main経由でdraft/part05→
+  draft/part06へ前方マージ・push・CI green確認済み)。
+- 修正は`+`への切り替えのみ(既存の「行末に空白+継続記号」という
+  出力形式はそのまま——`-` を `+` に変えるだけで、継続行前の空白1つ
+  は保持され、継続行自身の固定インデントは`+`の規則により正しく
+  除去されるようになる)。ローカルで新旧両方の折り返し・復元ロジックを
+  シミュレートし、修正後は元の文字列と完全一致、修正前は実際に61文字
+  (`CPD0074`の閾値超過)に膨張することを確認済み。
+- **影響範囲の確認**: 他のマニフェストで50桁超の引用符付き文字列
+  リテラルを検索したところ、該当は全てSQL文字列(空白に寛容)か
+  マニフェストの`description`フィールド(コンパイル対象外)のみで、
+  このバグによって過去の接続結果の意味が変わるものは見当たらなかった
+  (`TEXT()`のような桁数制限付きパラメーターで初めて表面化した)。
+
+## 第5部`part05-promote-rollback`の実機検証: CRTDUPOBJによる昇格/
+切り戻し機構を両方向で確認、P44を実機で解決(確認日2026-09-27)
+
+05-12(昇格・切り戻し)の機構検証(`<USER>1`に触れられない制約により、
+実際のレッスン手順ではなく`&LIB`/`&LIB2`間での機構そのものを検証する
+設計)。**CONFIRMED SUCCESS(harnessの継続記号バグ修正後、2回目の
+接続で成功)。**
+
+- **CRTDUPOBJによる昇格(`&LIB`→`&LIB2`)・切り戻し(`&LIB2`→`&LIB`)の
+  両方向を実機確認**: `PROMDSPF`/`PROMPGM`(`TK0100D`/`TK0100`を
+  `<USER>B`へ複製)・`RESTF`/`RESTP`(`<USER>2`側を`DLTF`/`DLTPGM`で
+  一旦壊してから`<USER>B`から複製し直す)、いずれも
+  `1 objects duplicated.`で成功。**05-12が教える「昇格→(意図的に
+  壊す)→切り戻し」という核心の流れが、実機でCRTDUPOBJベースで
+  end-to-endに機能することが確認できた。**
+- **P44を実機で解決: `CRTDUPOBJ`で複製したオブジェクトは、複製先
+  ライブラリーに関わらず、コンパイル・ソースの場所(`ODSRCL`列)が
+  「複製元」のまま変わらない。** `DSPOBJD DETAIL(*FULL)`
+  `OUTFILE`の実測(`collect:sql:0`=`&LIB`側・`collect:sql:1`=
+  `&LIB2`側): **`<USER>B`にCRTDUPOBJで複製した`TK0100`/`TK0100D`
+  (`ODLBNM=<USER>B`)であっても、`ODSRCF`/`ODSRCL`列は
+  `QRPGSRC`/`QDDSSRC`・`<USER>2`のまま**(複製元である`<USER>2`を
+  指し続ける、`<USER>B`にはならない)。これは05-12本文の
+  「CRTDUPOBJ 対 再コンパイル」トレードオフ論の具体的な裏付けであり、
+  P44の問いに実機で直接答えるもの。
+- **SAVOBJ/CRTSAVF/DSPSAVFも確認、P23への実質的な証拠を獲得**:
+  `BKUPSAVE`(`SAVOBJ`)が成功(`2 objects saved from library
+  <USER>2.`)、`collect`(`QSYS2.OBJECT_STATISTICS`)で`<USER>B/
+  TXPRSAVF`の`OBJSIZE=192512`(空でないことの間接証拠)を確認。
+  **さらに、`DSPSAVF01`(`DSPSAVF ... OUTPUT(*PRINT)`)の実際の
+  印字リストが、この接続の`run`セクションに直接流れ込んでいることを
+  発見**(`Saved Object Information`の完全なリスト、`Save file:
+  TXPRSAVF`・`Library: <USER>B`・`Records: 296`・保存されたオブジェクト
+  一覧`TK0100(*PGM, 112K)`/`TK0100D(*FILE, 12K)`・`Number of objects
+  saved: 2`まで判読可能)——これは`part06-0103-freeform`が確認した
+  「qshの`system("CALL PGM(...)")`ジョブの印刷はCPYSPLFで拾える実
+  スプール・ファイルにならず`run`セクションへ直接流れ込む」という
+  発見を、**CL COMMANDのOUTPUT(*PRINT)(プログラムのF仕様書WRITEでは
+  なく)にも初めて拡張確認**するもの。**このリスト自体がP23(SAVF内容の
+  証拠)に対する、間接証拠(OBJSIZE)より遥かに強い直接証拠になる。**
+  一方`CAPSAVF`(`CPYSPLF FILE(QSYSPRT)`)自体は想定どおり失敗
+  (`File QSYSPRT not found in job ...`)——実スプール・ファイルは
+  存在しないため、これ自体は無害な想定内の失敗。
+- **新しい実機発見: 異なる内部構造の2つのソース物理ファイル間の
+  `CPYF`は、`RCDLEN`が一致していても`FMTOPT(*MAP)`または
+  `FMTOPT(*NOCHK)`が必要**: `CPJUSRC`(`CPYF FROMFILE(&LIB/QCLSRC)
+  ... TOFILE(&LIB/VFYCLSRC) ...`)が`FMTOPT(*MAP) or FMTOPT(*NOCHK)
+  required for copy.`で失敗。マニフェスト自身が「未確認」と明記して
+  いた懸念が実機で的中した。**`RTVCLSRC`自体は成功**(`CL source
+  retrieved for *PGM JU0900C in <USER>2.`)——このマニフェスト自身が
+  検証したかった「うっかり消したソースをRTVCLSRCで復旧する」安全網
+  そのものは機能した。ただし複写先(`VFYCLSRC`)が空のままのため、
+  復旧されたソースの中身が判読可能かどうかの確認(`SELECT SRCDTA
+  FROM &LIB/VFYCLSRC`)はこの接続では未達成
+  (`collect:sql:6`が`*FIRST in *N type *MEM not found`で失敗)。
+  次にこの技法を使うときは`CPJUSRC`に`MBROPT(*REPLACE)
+  FMTOPT(*NOCHK)`を追加する必要がある(今回は未修正のまま)。
+- 副産物: `RUNTXRESET`級の前提無しで動く独立マニフェストとして、
+  `CLNPRM1`/`CLNPRM2`/`CLNSAVF`(初回接続では対象オブジェクトが
+  まだ無いための想定内`FAILED`)を含め、全体が`DONE`まで到達。
+  `TK0100D`/`TK0100`は最終的に`RESTF`/`RESTP`で復元された(切り戻し
+  後の)状態で`&LIB`に残る、設計どおりのクリーンアップ状態を確認。
+
+これで`part05-promote-rollback`は完了。2Fマニフェスト4本すべて実行
+完了(`part05-txmigr-to2`/`to2b`・`part05-mch1202-corrupt`・
+`part05-13-tickets`・`part05-13-pssr`・`part05-promote-rollback`)。
+
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。
