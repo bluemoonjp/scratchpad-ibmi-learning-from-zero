@@ -1,19 +1,26 @@
 {
   "batch": "part06-1314-sql",
-  "description": "Compiles and runs Q0613A (06-13, embedded SQL SET OPTION/SELECT INTO/UPDATE/SQLSTATE/GET DIAGNOSTICS against TOKUIM) and Q0614A (06-14 'JUCINQ4S', cursor + multi-row FETCH + PREPARE/? dynamic SQL over TOKUIM/JUCHUM, standalone - NOT wired to the JUCINQ command). CRTSQLRPGI syntax verified directly against work/design/refs/cl_commands_75.txt's own parameter table (OBJ/SRCFILE/SRCMBR/OBJTYPE/COMMIT, lines ~4095-4127), resolving the P24-ladder manifest's earlier flagged uncertainty about whether SRCFILE/SRCMBR (member-based) is valid alongside SRCSTMF (IFS-based) - both are documented, separate, optional parameters. Both programs report via a program-described QSYSPRT printer file (not DSPLY), captured as spooled-file text via the same CPYSPLF-to-permanent-PF technique used elsewhere in Part 6's manifests. Q0613A's SQL7008 demonstration depends on TOKUIM actually being journaled, which P12 has not yet confirmed (docs/probes.md) - if TOKUIM is not journaled, the SET-OPTION-removed variant this lesson describes may behave differently than expected; this manifest only runs the SET-OPTION-present (safe) path, matching Q0613A's own default compiled behavior.",
+  "description": "Compiles and runs Q0613A (06-13, embedded SQL SET OPTION/SELECT INTO/UPDATE/SQLSTATE/GET DIAGNOSTICS against TOKUIM) and Q0614A (06-14 'JUCINQ4S', cursor + multi-row FETCH + PREPARE/? dynamic SQL over TOKUIM/JUCHUM, standalone - NOT wired to the JUCINQ command). CRTSQLRPGI syntax verified directly against work/design/refs/cl_commands_75.txt's own parameter table (OBJ/SRCFILE/SRCMBR/OBJTYPE/COMMIT, lines ~4095-4127), resolving the P24-ladder manifest's earlier flagged uncertainty about whether SRCFILE/SRCMBR (member-based) is valid alongside SRCSTMF (IFS-based) - both are documented, separate, optional parameters. Both programs report via a program-described QSYSPRT printer file (not DSPLY), captured as spooled-file text via the same CPYSPLF-to-permanent-PF technique used elsewhere in Part 6's manifests. Also compiles and runs Q0613V (verify/part06-1314-sql/src/q0613v.sqlrpgle), a verify-only variant of Q0613A with only 'commit = *none,' dropped from its SET OPTION line (compiled without any CRTSQLRPGI COMMIT() parameter either, so it precompiles under CRTSQLRPGI's own default, COMMIT(*CHG)) - the source header's own 'how to reproduce SQL7008' recipe, applied here instead of left untested. Per the header's citations, SQL7008 should surface on Q0613V's UPDATE if TOKUIM is not journaled (COMMIT(*CHG) needs a journal to record the change; a plain read does not). Whether TOKUIM is actually journaled (P12) has not been confirmed by any prior connection, so a QSYS2.SYSTABLES.JOURNALED collect step is included to settle it directly alongside the observed result.",
   "steps": [
     { "type": "file", "localPath": "../../src/qrpglesrc/q0613s.sqlrpgle", "remoteSrcFile": "QRPGLESRC", "member": "Q0613A", "ensureSrcFile": { "recordLength": 112 } },
     { "type": "file", "localPath": "../../src/qrpglesrc/q0614s.sqlrpgle", "remoteSrcFile": "QRPGLESRC", "member": "Q0614A" },
+    { "type": "file", "localPath": "src/q0613v.sqlrpgle", "remoteSrcFile": "QRPGLESRC", "member": "Q0613V" },
 
     { "type": "cl", "label": "VSPLPF", "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 6 spooled-file text capture'))", "monmsg": ["CPF0000"] },
 
     { "type": "cl", "label": "CPQ0613A", "cmd": "CRTSQLRPGI OBJ(&LIB/Q0613A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0613A) OBJTYPE(*PGM) COMMIT(*NONE)", "monmsg": ["CPF0000", "RNF0000", "SQL0000", "MCH0000"] },
     { "type": "cl", "label": "RUNQ0613A", "cmd": "CALL PGM(&LIB/Q0613A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
     { "type": "cl", "label": "CAPQ0613A", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "CPQ0613V", "cmd": "CRTSQLRPGI OBJ(&LIB/Q0613V) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0613V) OBJTYPE(*PGM)", "monmsg": ["CPF0000", "RNF0000", "SQL0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNQ0613V", "cmd": "CALL PGM(&LIB/Q0613V)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPQ0613V", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
+
     { "type": "cl", "label": "CPQ0614A", "cmd": "CRTSQLRPGI OBJ(&LIB/Q0614A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0614A) OBJTYPE(*PGM) COMMIT(*NONE)", "monmsg": ["CPF0000", "RNF0000", "SQL0000", "MCH0000"] },
     { "type": "cl", "label": "RUNQ0614A", "cmd": "CALL PGM(&LIB/Q0614A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
     { "type": "cl", "label": "CAPQ0614A", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
 
-    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSPL" }
+    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSPL" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT TABLE_NAME, JOURNALED FROM QSYS2.SYSTABLES WHERE TABLE_SCHEMA = '&LIB' AND TABLE_NAME = 'TOKUIM'" }
   ]
 }
