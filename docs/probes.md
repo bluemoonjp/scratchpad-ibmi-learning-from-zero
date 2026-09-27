@@ -2262,6 +2262,40 @@ severity 30以上のエラーで失敗した場合だけ**(`REPLACE(*YES)`が働
    他のバッチ名と重複しないようにする(例: `part07-04-actgrp-ext`は
    `part07-04b-actgrp`に改名して回避した)。
 
+## 第7部`part07-04b-actgrp`の実機検証: 活性化グループの継続/リセットを完全確認、`*CALLER`比較は別の理由でブロック(確認日2026-09-27)
+
+B-8。1回目の接続はCLラベルの10文字切り詰め衝突(前節参照)で失敗した
+ため、ラベルを`RUNAC1`/`RUNAC2`に短縮・バッチ名を`part07-04b-actgrp`
+に改名して再接続。**ラッパーCL自体がHighest Severity 00でコンパイル
+成功したことを`compile`セクションで確認したうえで、CONFIRMED SUCCESS。**
+
+`F0704A`(`ACTGRP('F0704AG')`という名前付き活性化グループ)への
+4段階シーケンスを同一ジョブ内で実行:
+
+1. `RCLACTGRP ACTGRP(F0704AG)`(冒頭、念のため): `Activation group
+   F0704AG not found.`——新しいジョブでは名前付き活性化グループも
+   まだ存在せず、ジョブをまたいで残らないことを確認。
+2. `CALL PGM(F0704A)`(1回目): `bumpCounter()`が1・2・3を返す。
+3. `CALL PGM(F0704A)`(2回目、同一ジョブ、`RCLACTGRP`なし): **4・5・6
+   を返す——名前付き活性化グループがプログラム終了後も破棄されず、
+   静的変数が継続することを実機確認。**
+4. `RCLACTGRP ACTGRP(F0704AG)`: `Activation group F0704AG deleted.`
+5. `CALL PGM(F0704A)`(3回目、`RCLACTGRP`後): **1・2・3に戻る——
+   `RCLACTGRP`が静的記憶域をリセットすることを実機確認。**
+
+`f0704s.rpgle`自身のヘッダーが予告していた挙動が、全段階
+CONFIRMED SUCCESSとなった。
+
+**`*CALLER`比較版(`F0704AC`)は別の理由で失敗**: 同一ソースから
+`CRTRPGMOD`(モジュールのみ)→`CRTPGM ACTGRP(*CALLER)`という2段構成
+を試みたが、`CRTRPGMOD`自体が`Compilation stopped. Severity 20
+errors found in program.`で失敗した。原因は`f0704s.rpgle`自身の
+`ctl-opt`が`actgrp('F0704AG')`を含んでおり、これは同ファイルの
+ヘッダーが既に引用済みのとおり「`CRTBNDRPG`でのみ有効」——
+`CRTRPGMOD`はこのキーワード自体を受け付けない。`*CALLER`比較を
+行うには、`ctl-opt`から`actgrp(...)`を除いた(`dftactgrp(*no)`のみの)
+別コピーが必要——未着手のまま、06-12本文には含めない前提で進める。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P44)以外は未実施。特に:

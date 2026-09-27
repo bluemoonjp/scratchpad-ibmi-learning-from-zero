@@ -140,6 +140,17 @@
 //     -> a fresh activation is required, so bumpCounter() returns
 //        1, 2, 3 again - the counter was reset by RCLACTGRP.
 //
+//   CONFIRMED (part07-04b-actgrp, 2026-09-27, real hardware, exactly
+//   this 4-step sequence in one job): first CALL -> 1,2,3. Second CALL
+//   (same job, no RCLACTGRP in between) -> 4,5,6, CONTINUING as
+//   predicted. RCLACTGRP ACTGRP(F0704AG) -> "Activation group F0704AG
+//   deleted." (a leading RCLACTGRP attempt on the very first CALL of a
+//   fresh job, tried defensively, correctly failed with "Activation
+//   group F0704AG not found" - confirming named activation groups are
+//   per-job, not left over from a previous connection/job). Third CALL
+//   (after RCLACTGRP) -> 1,2,3 again, RESET as predicted. Every part of
+//   this file's own predicted contrast is now real-hardware confirmed.
+//
 //   CONTRAST if F0704A had instead been compiled with ACTGRP(*NEW) (not
 //   done here, since RCLACTGRP could not then usefully target it - see
 //   below): EVERY one of the three CALL PGM(F0704A) invocations above
@@ -151,21 +162,23 @@
 //   would have no reachable, still-existing name to reclaim by the time
 //   an operator typed it (CPF1653 "Activation group not found").
 //
-//   TODO: verify - ACTGRP(*CALLER): ileconcepts75.txt (cited above)
-//   resolves the GENERAL mechanism ("no new activation group is ever
-//   created; the program runs in whatever activation group its caller
-//   is currently running in"), but the CONCRETE effect for this specific
-//   repo's verify/ harness (an SSH -> system() -> CL command sequence -
-//   see part07-design-v1.md section 0.6) is NOT resolved here: it
-//   depends on which activation group the harness's own top-level CALL
-//   command runs in (its OPM default activation group, which persists
-//   for the whole job per ileconcepts75.txt lines 1701-1704, would make
-//   *CALLER behave like the named-activation-group case above across
-//   separate CALLs in the SAME job - but this has not been empirically
-//   confirmed against the actual verify/ harness, and is flagged here,
-//   per the design doc's own "needs confirmation" marker on this exact
-//   point (part07-design-v1.md 07-04 section), rather than guessed at
-//   silently).
+//   ACTGRP(*CALLER) COMPARISON - attempted, blocked by a DIFFERENT,
+//   genuine finding (part07-04b-actgrp, 2026-09-27): building a
+//   *CALLER-bound comparison object from this same source, via
+//   CRTRPGMOD (module only) + CRTPGM ACTGRP(*CALLER) (CRTPGM's own
+//   ACTGRP parameter is meant to override whatever a module's ctl-opt
+//   said), FAILED at the CRTRPGMOD step itself: "Compilation stopped.
+//   Severity 20 errors found in program." This source's own ctl-opt
+//   line below includes actgrp('F0704AG') - which this file's own
+//   header already cites as "valid only with CRTBNDRPG" - and
+//   CRTRPGMOD (unlike CRTBNDRPG) rejects that keyword outright, so a
+//   module cannot even be created from this exact source. Getting a
+//   *CALLER comparison object would need a SEPARATE copy of this
+//   source with the ctl-opt's actgrp(...) keyword removed entirely
+//   (dftactgrp(*no) alone) - not yet done; the *CALLER contrast itself
+//   remains the one part of this file's predicted behavior that is
+//   still unconfirmed, though for a different reason than originally
+//   flagged here.
 // -----------------------------------------------------------------------
 //=======================================================================
 
