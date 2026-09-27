@@ -10,7 +10,7 @@ VALUE('ZA0510 ERROR')` が実行されるはず。
 
 **期待するVLDAの出力(ジョブ・ログ、VFYLOG経由)**:
 
-```
+```text
 VLDA: *LDA(1,20)=[ZA0510 ERROR        ]
 ```
 
