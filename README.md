@@ -37,7 +37,7 @@ IBM i を全く触ったことがない方が、[PUB400.com](https://pub400.com/
 | 第9部 | API 化と外部連携(環境が許す範囲で) |
 | 第10部 | 総合演習 |
 
-詳しいレッスン一覧は [`docs/syllabus.md`](docs/syllabus.md) にあります(第0〜2部の公開に合わせて追加していきます)。
+詳しいレッスン一覧は [`docs/syllabus.md`](docs/syllabus.md) にあります(各部の公開に合わせて追加していきます)。
 
 ## ライセンス
 
