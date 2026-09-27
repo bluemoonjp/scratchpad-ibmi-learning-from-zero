@@ -49,6 +49,14 @@ export function runSsh(cfg, stdinScript, { timeoutMs = 180_000 } = {}) {
       clearTimeout(timer);
       resolve({ code: null, stdout, stderr: `${stderr}\n${err.message}`, killedForTimeout: false, spawnError: err });
     });
+    // FIXED (2026-09-27、実機で再現): child.stdin(Writableストリーム)自身の'error'に
+    // ハンドラーが無いと、ssh側がこちらの書き込み完了より先に終了した場合(EPIPE/
+    // "write EOF" - qshへ渡すスクリプトが大きいマニフェストで実際に発生した)、
+    // Node.jsの既定動作で未処理例外としてプロセス全体がクラッシュし、それまでに
+    // 溜まっていたstdout/stderr(診断に使える情報)ごと失われる。ここでは例外を
+    // 握りつぶすだけにし、実際の終了判定はchild.on('close')に任せる(sshプロセス
+    // 自身はいずれ終了し、そちらでこれまでの出力・終了コードを正しく回収できる)。
+    child.stdin.on('error', () => {});
 
     child.stdin.write(stdinScript);
     child.stdin.end();
