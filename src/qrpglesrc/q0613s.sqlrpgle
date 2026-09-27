@@ -77,10 +77,18 @@
 //    END-DS SQLCA block quoted there ends with a plain, non-qualified
 //    subfield declared as 5 characters). This is why this program
 //    does not declare its own SQLSTATE field.
-//  - GET DIAGNOSTICS CONDITION syntax and item names
-//    (DB2_MESSAGE_ID, DB2_MESSAGE_TEXT): rzajp75.txt, "Example:
-//    Logging items from the SQL diagnostics area" (search
-//    "DB2_MESSAGE_TEXT").
+//  - GET DIAGNOSTICS CONDITION syntax and item names: rzajp75.txt,
+//    "Example: Logging items from the SQL diagnostics area" (search
+//    "DB2_MESSAGE_TEXT") shows DB2_MESSAGE_ID/DB2_MESSAGE_TEXT
+//    together, but a real CRTSQLRPGI on this repo's actual target
+//    (V7R5M0, part06-1314-sql, 2026-09-27) rejected DB2_MESSAGE_TEXT
+//    with SQL0104 ("Token DB2_MESSAGE_TEXT was not valid") and its own
+//    valid-token list has DB2_MESSAGE_ID but only the UNPREFIXED
+//    MESSAGE_TEXT, not DB2_MESSAGE_TEXT - so DB2_MESSAGE_ID is used
+//    below (matches the citation and confirmed valid) but the message
+//    text item is MESSAGE_TEXT (real-hardware finding overriding the
+//    cited doc's own worked example, which may reflect an older or
+//    different release).
 //  - End-of-data / not-found SQLSTATE '02000' (SQLCODE +100): a
 //    DIFFERENT section of the same file, "Handling exception
 //    conditions with the WHENEVER statement" (search "Specify NOT
@@ -277,7 +285,7 @@ else;
   exec sql
     GET DIAGNOSTICS CONDITION 1
       :wMsgId   = DB2_MESSAGE_ID,
-      :wMsgText = DB2_MESSAGE_TEXT;
+      :wMsgText = MESSAGE_TEXT;
   prtText = wMsgId;
   write qsysprt prtLine;
   prtText = wMsgText;
