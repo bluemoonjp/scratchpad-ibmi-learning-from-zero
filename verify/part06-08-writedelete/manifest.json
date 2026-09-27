@@ -1,0 +1,22 @@
+{
+  "batch": "part06-08-writedelete",
+  "description": "06-08 (F0608A, ZAHIK4) confirmation batch: (1) the real shipped source (src/qrpglesrc/f0608s.rpgle) with runWriteDeleteDemo now defaulting *on - confirms the OK allocation path (P00001, qty 2, real ZAIKOM mutation, needs TXRESET afterward) AND the WRITE/DELETE/%kds-DELETE/%fields round trip against disposable product ZTEST1 in the SAME CALL. (2) Two THROWAWAY exercise-variant members (verify/part06-08-writedelete/src/, NOT shipped) confirming the SHORT and NOTFOUND paths the way R0409A's own established exercise convention works (edit the literal, recompile, rerun) - qty=999 for SHORT, prod='P99999' for NOTFOUND, both with runWriteDeleteDemo off so they touch nothing but the read-only allocation-check logic. Per docs/probes.md's harness rule (part06-decisions-2 finding): printed output is read from this connection result's own \"run\" section text, not via CPYSPLF+collect (QSYSPRT never produces a real spooled file in this harness's job). Order: the two non-mutating variants first, then the real mutating F0608A CALL last, immediately followed by TXRESET - so a failure partway through never leaves ZAIKOM's shared P00001 row unrestored.",
+  "steps": [
+    { "type": "file", "localPath": "src/f0608t-short.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0608AS" },
+    { "type": "file", "localPath": "src/f0608t-notfound.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0608AN" },
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0608s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0608A" },
+
+    { "type": "cl", "label": "CPF0608AS", "cmd": "CRTBNDRPG PGM(&LIB/F0608AS) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0608AS) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNF0608AS", "cmd": "CALL PGM(&LIB/F0608AS)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] },
+
+    { "type": "cl", "label": "CPF0608AN", "cmd": "CRTBNDRPG PGM(&LIB/F0608AN) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0608AN) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNF0608AN", "cmd": "CALL PGM(&LIB/F0608AN)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] },
+
+    { "type": "cl", "label": "CPF0608A", "cmd": "CRTBNDRPG PGM(&LIB/F0608A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0608A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNF0608A", "cmd": "CALL PGM(&LIB/F0608A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] },
+
+    { "type": "cl", "label": "RUNTXRESET", "cmd": "&LIB/TXRESET LIB(&LIB)", "monmsg": ["CPF0000"] },
+
+    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/ZAIKOM ORDER BY ZASHO" }
+  ]
+}
