@@ -10,6 +10,8 @@
 
     { "type": "sh", "label": "MKTREE", "cmd": "mkdir -p \"$HOME/ibmi-kyozai/src/legacy/qddssrc\" 2>&1" },
     { "type": "sh", "label": "TOSTMF-JUBADD", "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QDDSSRC.FILE/JUBADD.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/jubadd.pf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1" },
+    { "type": "sh", "label": "DLTC0511SCMD", "cmd": "system \"DLTCMD CMD(&LIB/C0511S)\" 2>&1" },
+    { "type": "sh", "label": "CRTC0511SCMD", "cmd": "system \"CRTCMD CMD(&LIB/C0511S) PGM(*LIBL/C0511S) SRCFILE(&LIB/QCMDSRC) SRCMBR(C0511S)\" 2>&1" },
 
     {
       "type": "cl",
@@ -21,12 +23,6 @@
       "type": "cl",
       "label": "CPC0511S",
       "cmd": "DLTPGM PGM(&LIB/C0511S)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/C0511S) SRCFILE(&LIB/QCLSRC) SRCMBR(C0511S) REPLACE(*YES)",
-      "monmsg": ["CPF0000"]
-    },
-    {
-      "type": "cl",
-      "label": "CPC0511SCMD",
-      "cmd": "DLTCMD CMD(&LIB/C0511S)\nMONMSG MSGID(CPF0000)\nCRTCMD CMD(&LIB/C0511S) PGM(*LIBL/C0511S) SRCFILE(&LIB/QCMDSRC) SRCMBR(C0511S)",
       "monmsg": ["CPF0000"]
     },
     {
