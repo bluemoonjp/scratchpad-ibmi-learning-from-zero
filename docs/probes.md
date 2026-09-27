@@ -1289,6 +1289,38 @@ ACME TRADING CO                 J00003  20260905
 変わらず、`TOKCD('C00001')`が正しく新CPP(`F0612A`)へ渡ることを確認した。
 `EDTCDE`(日付の`20260901`形式表示)も正しく機能している。
 
+## 第6部`part06-0509-procs-files`の実機検証(確認日 2026-09-27、1回の接続でCONFIRMED SUCCESS)
+
+06-05〜06-09(`F0605A`〜`F0609A`)をまとめて検証。**5本全てHighest
+Severity 00でコンパイル・実行成功。**
+
+- `F0605A`(プロシージャー・`CALLP`): `1580 at default rate = 1738.00.`/
+  `1580 at rate 1.08 = 1706.40.`/`R0409A (ZAHIK3) called via CALLP.`——
+  デフォルト引数・`CALLP`とも正しく動作。自身の印字(`P00001
+  0000043  OK`)も確認。
+- `F0606A`(文字列・日付・パック10進変換BIF群): `fullName = Taro
+  Yamada.`/`spacePos = 5.`/`lastPart = Yamada.`/`initial = Y.`/
+  `trim <Taro>.`/`triml <Taro              >.`/`trimr <  Taro>.`/
+  `dueDate = 2026-10-01.`/`daysLeft = 5.`/`totalText = 1738.00.`/
+  `totalBack = 1738.00.`——`%scan`/`%subst`/`%trim`系・日付演算・
+  パック10進数の往復変換、全て期待どおり。
+- `F0607A`: 04-13チェックポイントと同一の低在庫判定を再現し完全一致:
+  `P00002 OFFICE CHAIR ... LOWSTOCK`・`P00005 USB CABLE ...
+  LOWSTOCK`の2件のみ(他4件は印字されるがLOWSTOCKなし)、`BONUS:
+  LOOKUP P00002 -> INDEX 2`(配列探索BIFも正しく動作)。
+- `F0608A`: `P00001  0000041  OK`——正しく動作。
+- `F0609A`(`MONITOR`/`ON-ERROR`によるエラー処理): `Attempt made to
+  divide by zero for fixed point operation.`→`F0609A: caught status
+  102 in F0609A at line/stmt 00023600 - division by zero was caught,
+  not pre-checked.`→`F0609A: runDivideDemo ended normally
+  (MONITOR/ON-ERROR already handled any error).`——ゼロ除算を
+  `MONITOR`が正しく捕捉し、プログラムが異常終了せず正常終了した
+  ことを実機で確認。
+- `RUNTXRESET`: `TXRESET: data restored to the initial state.`——
+  片付けも正常終了。
+
+これでP1の#16は完了。次は#17(`part07-05-checkpoint`、TXCHECK込み)。
+
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。
