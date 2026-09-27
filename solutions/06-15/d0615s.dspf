@@ -1,0 +1,115 @@
+     A*                                     D0615A - Stock inquiry
+     A*                                     checkpoint (06-15): a
+     A*                                     read-only subfile listing
+     A*                                     every ZAIKOM row alongside
+     A*                                     its SHOHIM product name and
+     A*                                     reorder point, flagging
+     A*                                     LOWSTOCK the same way
+     A*                                     04-13/R0413A and 06-07's
+     A*                                     F0607A already do (ZASU <
+     A*                                     SHOHAT). This checkpoint
+     A*                                     introduces NO new syntax
+     A*                                     (part06-design-v1.md's own
+     A*                                     06-15 section) - it is a
+     A*                                     load-all subfile (06-11's
+     A*                                     technique) with no OPT/
+     A*                                     selection field at all
+     A*                                     (simplest possible browse,
+     A*                                     since nothing here needs to
+     A*                                     be selected or acted on).
+     A*
+     A*                                     HARDWARE STATUS: V1 only
+     A*                                     (compile-check) - same
+     A*                                     WORKSTN/EXFMT limitation as
+     A*                                     every other Part 6 screen
+     A*                                     (SSH non-interactive
+     A*                                     batches cannot drive a real
+     A*                                     5250 device).
+     A*
+     A*                                     COLUMN POSITIONS: same
+     A*                                     confirmed base-column
+     A*                                     layout as d0611s.dspf/
+     A*                                     d0611bs.dspf (name 19-28,
+     A*                                     length 30-34, type 35,
+     A*                                     decimals 36-37, usage 38,
+     A*                                     row 39-41, col 42-44,
+     A*                                     keyword 45+).
+     A*
+     A*                                     NO DDS CONDITIONING
+     A*                                     INDICATORS (cols 7-16),
+     A*                                     same policy as every other
+     A*                                     Part 6 screen (04-11's
+     A*                                     unresolved CPD7410/
+     A*                                     CPD7606/CPD5238 failure).
+     A*                                     SFLDSP/SFLDSPCTL are
+     A*                                     therefore always-on
+     A*                                     (unconditioned) - safe here
+     A*                                     because f0615s.rpgle always
+     A*                                     WRITEs at least one SFL1
+     A*                                     record before the first
+     A*                                     EXFMT (ZAIKOM has 6 rows as
+     A*                                     of this writing, never 0).
+     A*
+     A*                                     SFLCTL/SFL1FTR split:
+     A*                                     same CPD7812 fix as
+     A*                                     d0611s.dspf/d0611bs.dspf (a
+     A*                                     SFLCTL record cannot carry
+     A*                                     positioned output both
+     A*                                     above and below its own
+     A*                                     subfile) - the F3=Exit
+     A*                                     footer lives in its own
+     A*                                     SFL1FTR record, OVERLAY on
+     A*                                     SFL1CTL so SFL1FTR's output
+     A*                                     survives.
+     A*
+     A*                                     CONTRACT with
+     A*                                     f0615s.rpgle: SFL1's ZASHO/
+     A*                                     ZASU fields match ZAIKOM's
+     A*                                     own field names/lengths
+     A*                                     exactly (db/v1/zaikom.pf:
+     A*                                     ZASHO 6A, ZASU 7S 0) for
+     A*                                     the same-name auto-match
+     A*                                     trick during the load
+     A*                                     loop; SHONM/SHOHAT are
+     A*                                     filled explicitly from a
+     A*                                     CHAIN against SHOHIM
+     A*                                     (different key field name,
+     A*                                     SHOCD, so no auto-match
+     A*                                     applies - same as
+     A*                                     R0413A's own ZASHO CHAIN
+     A*                                     SHOHIM). STATUS is a
+     A*                                     screen-only field (not in
+     A*                                     either DB file)
+     A*                                     f0615s.rpgle MOVELs
+     A*                                     'LOWSTOCK'/blanks into,
+     A*                                     same plain-output-field
+     A*                                     technique R0413A's own
+     A*                                     O-spec conditioning (60
+     A*                                     70'LOWSTOCK') and
+     A*                                     F0607A's %subst equivalent
+     A*                                     both use.
+     A                                      DSPSIZ(24 80 *DS3)
+     A          R SFL1                      SFL
+     A            ZASHO          6A  O  4  2
+     A            SHONM         30A  O  4 10
+     A            ZASU           7S 0O  4 42
+     A            SHOHAT         5S 0O  4 52
+     A            STATUS         8A  O  4 60
+     A          R SFL1CTL                   SFLCTL(SFL1)
+     A                                      SFLSIZ(9999)
+     A                                      SFLPAG(14)
+     A                                      SFLDSP
+     A                                      SFLDSPCTL
+     A                                      ROLLUP(25)
+     A                                      ROLLDOWN(26)
+     A                                      CF03(03)
+     A                                      OVERLAY
+     A                                  1  2'D0615A - Stock inquiry (ZAIKOM+SHOHIM)'
+     A                                  3  2'Code'
+     A                                  3 10'Name'
+     A                                  3 42'Qty'
+     A                                  3 52'Reord'
+     A                                  3 60'Status'
+     A          R SFL1FTR
+     A            MORE          10A  O 20  2
+     A                                 23  2'F3=Exit  Roll=Page'
