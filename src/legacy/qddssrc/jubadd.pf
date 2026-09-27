@@ -13,31 +13,35 @@
      A*                                     copies records between mismatched
      A*                                     formats without the normal field-
      A*                                     type check, so a row inserted here
-     A*                                     lands its raw character bytes in
-     A*                                     JUCHUD.JUSU once copied across -
-     A*                                     simulating the *NOCHK-caused
-     A*                                     corruption path the 05-11 syllabus
-     A*                                     entry names. FIXED (2026-09-27,
-     A*                                     real hardware, 2 rounds): JUSU=
-     A*                                     'ABCDE' was tried first - EBCDIC
-     A*                                     'A'-'E' (X'C1'-X'C5') is actually a
-     A*                                     VALID positive zoned-decimal
-     A*                                     encoding of +12345 (digit nibbles
-     A*                                     1-5, sign nibble C) - no decimal-
-     A*                                     data error at all. JUSU=5 blanks
-     A*                                     (X'40', zone/sign nibble 4) was
-     A*                                     tried next on the assumption an
-     A*                                     invalid sign nibble would trigger
-     A*                                     it - ALSO no error (JUSU read as
-     A*                                     0). Both values happen to share
-     A*                                     valid DIGIT (low) nibbles (0-9) on
-     A*                                     every byte; the actual trigger for
-     A*                                     a real decimal-data error on this
-     A*                                     hardware is still unconfirmed -
-     A*                                     see docs/probes.md for the current
-     A*                                     plan (screen candidate byte
-     A*                                     patterns via SQL before spending
-     A*                                     another connection on a guess).
+     A*                                     with JUSU='.....' (5 periods, valid
+     A*                                     for THIS file's own 5A field) lands
+     A*                                     as 4B4B4B4B4B in JUCHUD.JUSU once
+     A*                                     copied across - simulating the
+     A*                                     *NOCHK-caused corruption path the
+     A*                                     05-11 syllabus entry names.
+     A*                                     CONFIRMED (2026-09-27, real
+     A*                                     hardware, part05-lesson-decimal,
+     A*                                     this program's own literal use):
+     A*                                     EBCDIC '.' is X'4B' - digit nibble
+     A*                                     B, invalid for a zoned-decimal
+     A*                                     digit - and DOES raise a real
+     A*                                     decimal-data error at INPUT time
+     A*                                     (za0500.rpg's own I-spec for
+     A*                                     JUSU): "ZA0500 6400 decimal-data
+     A*                                     error", RPG0907. Earlier attempts
+     A*                                     with 'ABCDE' (digit nibbles 1-5,
+     A*                                     all valid) and blanks (digit
+     A*                                     nibble 0, valid) were BOTH read
+     A*                                     silently with no error at all,
+     A*                                     under an isolated verification-only
+     A*                                     setup (part05-mch1202-corrupt) -
+     A*                                     the digit (low) nibble being
+     A*                                     outside 0-9 is what actually
+     A*                                     triggers the error on this
+     A*                                     hardware, not the zone/sign
+     A*                                     nibble. See docs/part05/05-11-
+     A*                                     decimal-data-error.md's real-
+     A*                                     hardware notes for the full story.
      A          R JUCHDR                    TEXT('05-11 mis-typed staging')
      A            JUNO           6A         TEXT('Order number')
      A            JULINE         3S 0       TEXT('Line number')
