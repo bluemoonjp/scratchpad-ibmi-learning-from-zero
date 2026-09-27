@@ -1,6 +1,6 @@
       * FLDREFR - common field definitions, /COPY member (Part 5).
       * CONFIRMED, real hardware (part05-legacy-probe, 2nd connection):
-      * compiles with 0 messages (see docs/probes.md).
+      * compiles at Highest Severity 00 (see docs/probes.md).
       *
       * Taken in by ZA0510 via /COPY into ZA0510's I-SPEC area (rpg3.mjs
       * copyDirective('I', 'FLDREFR')), placed AFTER ZA0510's own
