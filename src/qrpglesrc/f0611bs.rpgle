@@ -184,8 +184,16 @@ dow not *in03;
     exfmt dtlfmt;
 
     if not *in12;
-      chain shocd shohim;
-      if %found(shohim);
+      // chain(e) + %error/%status: a plain CHAIN cannot tell "no such
+      // row" apart from "row exists but another session holds it
+      // locked" - both leave %found off. The E extender instead sets
+      // %error on and %status to the file status (1218 = "record-lock
+      // error", ilerpgref75.txt) without ending the program, so both
+      // cases can be told apart and handled.
+      chain(e) shocd shohim;
+      if %error and %status(shohim) = 1218;
+        statmsg = 'DUPLICATE CHECK: RECORD LOCKED BY ANOTHER SESSION.';
+      elseif %found(shohim);
         // Duplicate code: the CHAIN above DID lock this existing
         // record even though this program never intends to update
         // it - release that lock explicitly (see header note).
@@ -222,8 +230,14 @@ dow not *in03;
           // whole time the user is looking at/editing it on screen.
           //-----------------------------------------------------------
           savedShocd = shocd;
-          chain savedShocd shohim;
-          if %found(shohim);
+          // chain(e) + %error/%status(1218): another session already
+          // holding this exact row locked must be told apart from the
+          // row simply not existing - see the header's "EXCLUSIVE-LOCK
+          // DISCIPLINE" note and the add-mode duplicate check above.
+          chain(e) savedShocd shohim;
+          if %error and %status(shohim) = 1218;
+            statmsg = 'RECORD LOCKED BY ANOTHER SESSION - try again later.';
+          elseif %found(shohim);
             // Same-name auto-match already filled shocd/shonm/shotnk/
             // shohat from SHOHIM's own chained values - DTLFMT will
             // display them with no extra assignment needed.
@@ -260,8 +274,10 @@ dow not *in03;
           // protected while the user decides.
           //-----------------------------------------------------------
           savedShocd = shocd;
-          chain savedShocd shohim;
-          if %found(shohim);
+          chain(e) savedShocd shohim;
+          if %error and %status(shohim) = 1218;
+            statmsg = 'RECORD LOCKED BY ANOTHER SESSION - try again later.';
+          elseif %found(shohim);
             exfmt dltconffmt;
 
             if not *in12;

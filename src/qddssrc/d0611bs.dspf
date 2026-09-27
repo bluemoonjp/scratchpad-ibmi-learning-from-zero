@@ -275,7 +275,21 @@
      A                                  5  2'Name:'
      A            SHONM         30A  B  5 10
      A                                  7  2'Unit price:'
-     A            SHOTNK         7S 2B  7 15
+     A*                                     SHOTNK is O (output-only), not B -
+     A*                                     decisions-2026-09.md P6-8 (3
+     A*                                     judges): editable fields are
+     A*                                     SHONM/SHOHAT only, so this
+     A*                                     packed(7:2) unit price never
+     A*                                     needs an EDTCDE (an uncounted new
+     A*                                     construct 06-11b's own new-syntax
+     A*                                     budget has no room for). A newly
+     A*                                     added product's SHOTNK is always
+     A*                                     0 (f0611bs.rpgle's add branch)
+     A*                                     until changed elsewhere - the
+     A*                                     lesson text must say this plainly
+     A*                                     rather than leave it looking like
+     A*                                     a bug.
+     A            SHOTNK         7S 2O  7 15
      A                                  9  2'Reorder point:'
      A            SHOHAT         5S 0B  9 17
      A                                 12  2'Enter=Save   F12=Cancel'

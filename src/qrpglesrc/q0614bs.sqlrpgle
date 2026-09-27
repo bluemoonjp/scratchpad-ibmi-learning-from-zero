@@ -24,21 +24,38 @@
 // work/design/part06-design-v1.md section 5.1 batch
 // "part06-14b-null" calls it over SSH).
 //
-// HARDWARE STATUS: UNTESTED as of 2026-09-26 (Part 6 is a draft
-// branch; no probe or verify/ run has compiled this member yet).
-// Compile with CRTSQLRPGI. Because QTEMP/W0614BA does not exist at
-// precompile time, expect the precompiler/compiler step for this
-// member to raise informational or warning-severity messages about
-// the table not being found ahead of time (this is normal for a
-// QTEMP work table created at run time, not a real problem) -- do
-// not read a non-zero Highest Severity on this member alone as a
-// failure without checking what the message actually says. By
-// default this should not stop the compile either way:
-// cl_commands_75.txt, "Severity level (GENLVL)" -- the default is 10,
-// and "the compiler is not called" only "if precompiler errors are
-// generated that have a message severity level greater than the
-// value specified", so a severity-10 message alone still lets the
-// compiler run.
+// DESIGN FLAW FOUND, FIX PENDING RE-VERIFICATION (Part 6 source
+// cleanup, P4): the cursor below used to be static SQL ("EXEC SQL
+// DECLARE C2 CURSOR FOR SELECT ... FROM QTEMP/W0614BA ..."). A static
+// SELECT is bound to an access plan AT PRECOMPILE TIME (CRTSQLRPGI),
+// and QTEMP/W0614BA does not exist then -- it is only created when the
+// program actually RUNS, by the embedded CREATE TABLE two steps below.
+// Real-hardware CONFIRMED (docs/probes.md, part06-14b-null, connection
+// #14, verified only with a priming table pre-created outside this
+// program): the static form produced SQL0204 ("W0614BA in QTEMP type
+// *FILE not found") at RUN time, not at compile time -- the CREATE
+// TABLE and DROP TABLE statements are fine as static SQL (no column-
+// level access plan is needed to create or drop an object), but the
+// cursor's SELECT needs actual columns resolved against a real table,
+// which is where precompile-time binding fails. The fix: the cursor's
+// SELECT is now DYNAMIC SQL (PREPARE + DECLARE ... CURSOR FOR the
+// prepared statement, step 3 below) -- this defers access-plan
+// creation to OPEN time, by which point CREATE TABLE has already run
+// in this same job. This is a natural extension of 06-14's own PREPARE
+// technique (that lesson introduces PREPARE with a "?" marker for a
+// search value; this program's PREPARE has no marker at all, since the
+// SELECT text itself is fixed -- only its TARGET TABLE's existence,
+// not its search criteria, is what needed to become dynamic).
+// STATUS: this dynamic-SQL fix itself, and the new TOKLTS/TOKNM
+// TIMESTAMP/VARCHAR columns below, have NOT yet been compiled or run
+// on real hardware without priming - that is exactly what the
+// part06-14b-null re-verification (no priming) will confirm or
+// refute; do not treat this fix as proven until that connection's
+// result updates this header and docs/probes.md.
+//
+// HARDWARE STATUS: SQL0204 diagnosis above is confirmed (connection
+// #14). This file's dynamic-SQL redesign is unverified pending
+// re-connection. Compile with CRTSQLRPGI.
 //
 // On embedded CREATE TABLE in SQLRPGLE (task finding, see report):
 // this program embeds "EXEC SQL CREATE TABLE ...;" and
@@ -57,12 +74,10 @@
 // can be coded directly "in the program" that CRTSQLRPGI compiles,
 // governed by the same COMMIT setting as any other embedded
 // statement, with no mention of a PREPARE/EXECUTE requirement. This
-// is RPG/CRTSQLRPGI-specific evidence (not an inference from a
-// different host language), but it is still a documentation
-// citation, not a hardware confirmation -- treat "embedded CREATE
-// TABLE / DROP TABLE work in SQLRPGLE" as high-confidence, and let
-// the verify/ harness confirm it the first time this member is
-// actually compiled.
+// is RPG/CRTSQLRPGI-specific evidence, confirmed real-hardware: the
+// CREATE/DROP TABLE statements themselves compile and run fine as
+// static SQL even though the table does not exist at precompile time
+// (only the cursor's SELECT needed to become dynamic - see above).
 //
 // Other primary-source citations:
 //  - ALWNULL(*USRCTL) control-specification keyword and %NULLIND
@@ -129,12 +144,22 @@ dcl-ds prtLine len(132);
 end-ds;
 
 dcl-s wTokcd char(6);
-dcl-s wToknm char(30);
+// VARCHAR (design's new-syntax list, part06-design-v1.md:321):
+// declared the same way as any other RPG type, no special SQL-side
+// handling needed on FETCH/INSERT (Db2 VARCHAR <-> RPG varchar is a
+// direct host-variable mapping, same as CHAR <-> char already was).
+dcl-s wToknm varchar(30);
 
 // SQL-side NULL indicator host variable (classic embedded-SQL
 // mechanism, separate from RPG's own null indicator -- see header).
 dcl-s wLastOrderInd int(5);
 dcl-s wLastOrderSql date;
+
+// TIMESTAMP (design's new-syntax list, part06-design-v1.md:321): a
+// second, NOT NULL column (TOKLTS below) demonstrates the type itself
+// without mixing it into the DATE column's NULL-handling story, which
+// is this lesson's actual point (see steps 4-5).
+dcl-s wTokLts timestamp;
 
 // RPG-native null-capable stand-alone field. NULLIND with no
 // parameter means its indicator is addressed only through
@@ -142,20 +167,26 @@ dcl-s wLastOrderSql date;
 // the ctl-opt above is required for this to be legal.
 dcl-s wLastOrder date NULLIND;
 
+// Dynamic SQL text for the cursor (step 3) - see the DESIGN FLAW
+// header note for why this needed to become dynamic.
+dcl-s cursorSql varchar(200);
+
 exec sql SET OPTION commit = *none, naming = *sys;
 
 // --- 2. QTEMP-scoped work table: reduced copy of TOKUIM plus one --
-//        new NULL-capable DATE column. Dropped first (result
-//        ignored -- it normally fails with "table not found" on the
-//        first CALL in a job, which is expected and harmless) so a
-//        second CALL in the same job starts from a clean table too.
+//        new NULL-capable DATE column, and one NOT NULL TIMESTAMP
+//        column (TOKLTS). Dropped first (result ignored -- it
+//        normally fails with "table not found" on the first CALL in
+//        a job, which is expected and harmless) so a second CALL in
+//        the same job starts from a clean table too.
 exec sql DROP TABLE QTEMP/W0614BA;
 
 exec sql
   CREATE TABLE QTEMP/W0614BA (
-    TOKCD   CHAR(6)  NOT NULL,
-    TOKNM   CHAR(30) NOT NULL,
-    TOKLORD DATE
+    TOKCD   CHAR(6)     NOT NULL,
+    TOKNM   VARCHAR(30) NOT NULL,
+    TOKLORD DATE,
+    TOKLTS  TIMESTAMP   NOT NULL
   );
 
 // Check SQLCODE, not SQLSTATE, here: creating a table in QTEMP (which
@@ -175,25 +206,47 @@ if SQLCODE < 0;
 endif;
 
 // One row with a real last-order date, one row where it is unknown
-// (NULL).
+// (NULL). TOKLTS (NOT NULL) always gets a real value.
 exec sql
-  INSERT INTO QTEMP/W0614BA (TOKCD, TOKNM, TOKLORD)
-    VALUES ('C00001', 'ACME TRADING CO', DATE '2026-09-05');
+  INSERT INTO QTEMP/W0614BA (TOKCD, TOKNM, TOKLORD, TOKLTS)
+    VALUES ('C00001', 'ACME TRADING CO', DATE '2026-09-05',
+            TIMESTAMP '2026-09-05-08.30.00.000000');
 
 exec sql
-  INSERT INTO QTEMP/W0614BA (TOKCD, TOKNM, TOKLORD)
-    VALUES ('C00099', 'NEW PROSPECT CO', NULL);
+  INSERT INTO QTEMP/W0614BA (TOKCD, TOKNM, TOKLORD, TOKLTS)
+    VALUES ('C00099', 'NEW PROSPECT CO', NULL,
+            TIMESTAMP '2026-09-20-14.15.00.000000');
 
-// --- 3. cursor over the 2 demo rows ---------------------------------
-exec sql DECLARE C2 CURSOR FOR
-  SELECT TOKCD, TOKNM, TOKLORD
-    FROM QTEMP/W0614BA
-    ORDER BY TOKCD;
+// --- 3. cursor over the 2 demo rows, DYNAMIC SQL (see DESIGN FLAW ---
+//        header note). PREPARE binds cursorSql's text to statement
+//        S1 at OPEN-adjacent time (not at CRTSQLRPGI precompile
+//        time), by which point CREATE TABLE above has already run in
+//        this same job - so W0614BA is guaranteed to exist.
+cursorSql = 'SELECT TOKCD, TOKNM, TOKLORD, TOKLTS'
+          + ' FROM QTEMP/W0614BA ORDER BY TOKCD';
 
+exec sql PREPARE S1 FROM :cursorSql;
+
+if SQLCODE < 0;
+  prtText = 'PREPARE failed, SQLCODE=' + %char(SQLCODE);
+  write qsysprt prtLine;
+  *inlr = *on;
+  return;
+endif;
+
+exec sql DECLARE C2 CURSOR FOR S1;
 exec sql OPEN C2;
 
+if SQLCODE < 0;
+  prtText = 'OPEN C2 failed, SQLCODE=' + %char(SQLCODE);
+  write qsysprt prtLine;
+  *inlr = *on;
+  return;
+endif;
+
 exec sql
-  FETCH C2 INTO :wTokcd, :wToknm, :wLastOrderSql :wLastOrderInd;
+  FETCH C2 INTO :wTokcd, :wToknm, :wLastOrderSql :wLastOrderInd,
+                :wTokLts;
 
 dow SQLSTATE = '00000';
 
@@ -210,17 +263,22 @@ dow SQLSTATE = '00000';
   endif;
 
   // --- 5. differentiate the NULL row from the real-date row. ------
+  // TOKLTS (TIMESTAMP, NOT NULL) is always printed - it needs no
+  // %nullind bridging, contrast with TOKLORD immediately above.
   if %nullind(wLastOrder);
     prtText = %trim(wTokcd) + ' ' + %trim(wToknm)
-            + ': last order date is NULL (unknown)';
+            + ': last order date is NULL (unknown), last touched '
+            + %char(wTokLts);
   else;
     prtText = %trim(wTokcd) + ' ' + %trim(wToknm)
-            + ': last order ' + %char(wLastOrder);
+            + ': last order ' + %char(wLastOrder) + ', last touched '
+            + %char(wTokLts);
   endif;
   write qsysprt prtLine;
 
   exec sql
-    FETCH C2 INTO :wTokcd, :wToknm, :wLastOrderSql :wLastOrderInd;
+    FETCH C2 INTO :wTokcd, :wToknm, :wLastOrderSql :wLastOrderInd,
+                  :wTokLts;
 enddo;
 
 exec sql CLOSE C2;

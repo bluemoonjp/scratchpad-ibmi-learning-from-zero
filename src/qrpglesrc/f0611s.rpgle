@@ -105,27 +105,22 @@
 // silently swallowed gap - a natural follow-up exercise is "clear OPT
 // after processing a row, using CHAIN(rrn):SFL1 + UPDATE".
 //
-// DISCOVERED DEPENDENCY MISMATCH (important - see d0611s.dspf's header
-// for the long version): D0604A/F0604A did not exist under
-// src/qddssrc/ or src/qrpglesrc/ when this file was first drafted, but
-// appeared mid-session (written by a concurrent sibling agent for
-// lesson 06-04) before this file was committed - so this program was
-// checked against the REAL f0604s.rpgle, not an assumed interface. That
-// program has NO *ENTRY PLIST/dcl-pi at all (dcl-f d0604a workstn; with
-// zero parameters) - it is a fully self-contained interactive screen
-// that prompts for its OWN customer code via TOKCD on its own JUCFMT
-// record format. It therefore cannot receive a passed customer code
-// from this list; the original task brief's "call F0604A passing that
-// row's customer code" is NOT achievable against F0604A as actually
-// written. This program calls it with a zero-parameter
-// dcl-pr extpgm('F0604A') prototype - the same shape f0605s.rpgle
-// already uses for R0409A, which likewise has no *ENTRY PLIST - and a
-// plain parameterless CALLP; the learner will retype the customer code
-// on F0604A's own screen after it comes up. Giving F0604A a real entry
-// parameter would need a program-entry dcl-pi, which this design
-// deliberately defers to 06-12 (B1-16 disposition) - so this is a
-// genuine cross-lesson design gap for the syllabus author to resolve,
-// not a bug in this file.
+// DEPENDENCY ON F0604A, FIXED (Part 6 source cleanup): F0604A originally
+// had no *ENTRY PLIST/dcl-pi at all (dcl-f d0604a workstn; with zero
+// parameters) - a fully self-contained interactive screen that prompts
+// for its OWN customer code via TOKCD on its own JUCFMT record format,
+// so it could not receive a passed customer code from this list. This
+// was a genuine bug (the task brief's "call F0604A passing that row's
+// customer code" silently was not happening), not a design choice, so
+// f0604s.rpgle now takes an optional entry parameter
+// (custCode char(6) const options(*nopass) - see its own header) and
+// this program's dcl-pr/CALLP below pass JUTOK, the selected row's
+// customer code (SFL1's own field, filled by READC via the same-name
+// auto-match trick - see the LOAD-ALL header note above). NOTE for the
+// P7-9-driven 07-02 work: this fix is unrelated to that decision (which
+// forbids editing D0611A/F0611A for JUCSRV's getCustName integration) -
+// this is a plain Part 6 bug fix that had to land here because nothing
+// downstream (07-02) is allowed to touch this file to work around it.
 //
 // STATUS: hardware-UNTESTED (Part 6 draft, draft/part06 branch).
 // Treat every runtime claim above as "should work per the ILE RPG
@@ -168,7 +163,9 @@ dcl-f juchum disk;
 // PLIST to receive an argument. Same shape as f0605s.rpgle's r0409a
 // prototype.
 //-----------------------------------------------------------------------
-dcl-pr f0604a extpgm('F0604A') end-pr;
+dcl-pr f0604a extpgm('F0604A');
+  custCode char(6) const options(*nopass);
+end-pr;
 
 dcl-s rrn1 packed(4:0) inz(0);
 
@@ -245,7 +242,10 @@ dow not *in03;
     dow not %eof(d0611a);
       select;
         when opt = '5';
-          callp f0604a();
+          // JUTOK: this row's customer code, filled by READC via the
+          // same-name auto-match trick (see LOAD-ALL header note) -
+          // passed to F0604A so the learner does not retype it.
+          callp f0604a(jutok);
         when opt = ' ';
           // Blank OPT reaching here means the user typed a space and
           // then backspaced/cleared it - a genuine "changed to blank"

@@ -51,13 +51,14 @@
 //        re-checks ZASU < QTY again immediately after the locked
 //        CHAIN, before deducting.
 //     5. Adds a WRITE + DELETE round trip against a disposable test
-//        product code, to demonstrate those two operations (also
-//        new for this lesson) without touching any of the 6 real
-//        products. This round trip is OFF by default (see
-//        runWriteDeleteDemo below) so a normal run of this program
-//        never adds or removes a ZAIKOM row; flipping the switch to
-//        *on exercises WRITE/DELETE but is not needed to reproduce
-//        R0409A's OK/SHORT/NOTFOUND result.
+//        product code ('ZTEST1'), to demonstrate those two operations
+//        (also new for this lesson) without touching any of the 6 real
+//        products. runWriteDeleteDemo defaults to *on (real-hardware
+//        fix, Part 6 source cleanup - it was *off and never actually
+//        exercised WRITE/DELETE/%kds-DELETE/%fields in any prior
+//        compile) - it is not needed to reproduce R0409A's OK/SHORT/
+//        NOTFOUND result, but every normal run now demonstrates it
+//        anyway; flip to *off to isolate the allocation logic alone.
 //   Parity kept with R0409A: the SHORT test is strictly "less
 //   than" (ZASU < QTY), matching R0409A's COMP ... LO test exactly;
 //   the demo product/quantity are the same ('P00001', 2).
@@ -165,15 +166,19 @@
 //   data structure (not a standalone field) as its target - same
 //   citation used in f0607s.rpgle: lines 41217-41218.
 //
-// NOT used here, despite appearing in the lesson design's syntax
-// list: %FIELDS (restricting UPDATE to specific fields). The
-// reference states a qualified LIKEREC subfield CAN be named in
-// %FIELDS (lines 45857-45861: "the simple qualified name of the
-// subfield is used"), but does not show a full worked example
-// combining %FIELDS with a LIKEREC data structure the way this file
-// would need. TODO: verify against a real compile before relying on
-// %FIELDS this way; this file always updates the whole zaikomRec
-// data structure instead, which lines 65835-65838 confirm directly.
+// %FIELDS (restricting UPDATE to specific fields) - used once, in the
+// WRITE/DELETE demo below (update zaikor %fields(zaikomRec.zasu)):
+// lines 45845-45876 (Figure 213, "update record %fields(salary:status);"
+// - plain implicit fields, no DS) plus note 2 immediately above at
+// lines 45857-45861 ("The name can be a subfield from a data structure
+// defined with the EXTNAME/LIKEREC keyword ... For a qualified data
+// structure, the simple qualified name of the subfield is used") -
+// zaikomRec is exactly that shape (likerec(zaikor), auto-qualified), so
+// zaikomRec.zasu is a valid %FIELDS name. The main allocation logic
+// above still uses the whole-data-structure UPDATE form (zaikomRec),
+// matching R0409A's own single UPDAT - %FIELDS is demonstrated only on
+// the disposable ZTEST1 row so the two UPDATE styles are both shown
+// without doubling the syntax count on the shared-data path.
 //
 // PUB400 placeholders: <USER>, <USER>1, <USER>2 stand for the
 // learner's own library names; no real PUB400 user or library name
@@ -209,10 +214,10 @@ dcl-s msg    char(10);
 dcl-s numTxt varchar(10);
 dcl-s padded char(7);
 
-// Off by default: see header point 5. Flip to *on to also exercise
-// WRITE and DELETE against a disposable test product code. Neither
-// setting changes the OK/SHORT/NOTFOUND result below.
-dcl-s runWriteDeleteDemo ind inz(*off);
+// On by default: see header point 5. Flip to *off to isolate the
+// allocation logic alone. Neither setting changes the OK/SHORT/NOTFOUND
+// result below (they operate on disposable product code ZTEST1).
+dcl-s runWriteDeleteDemo ind inz(*on);
 
 // The WRITE operation to a program-described file (QSYSPRT here)
 // must target a data structure, not a standalone field
@@ -314,7 +319,10 @@ if runWriteDeleteDemo;
   chain %kds(zaikomKey) zaikor zaikomRec;
   if %found(zaikom);
     zaikomRec.zasu = 500;
-    update zaikor zaikomRec;
+    // %FIELDS: update ZASU alone, leaving ZAUPD (already 20260926 from
+    // the WRITE above) untouched - contrast with the main allocation
+    // logic's whole-data-structure UPDATE (see header note).
+    update zaikor %fields(zaikomRec.zasu);
   endif;
 
   // %kds also works as the search argument for DELETE (see header

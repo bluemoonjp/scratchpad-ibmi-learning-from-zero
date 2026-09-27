@@ -153,7 +153,25 @@ dcl-f d0604a workstn;
 dcl-f tokuim keyed;
 dcl-f juchum;
 
+// FIXED (Part 6 source cleanup, 06-11's F0611A option 5 depends on this):
+// an optional entry parameter lets a caller pre-fill TOKCD instead of
+// making the learner retype a customer code already visible on another
+// screen. OPTIONS(*NOPASS) keeps the old zero-parameter CALL PGM(F0604A)
+// (bare 5250 test, no PARM) working exactly as before - see the mainline
+// below, which only touches TOKCD when a code was actually passed.
+dcl-pi *n;
+  custCode char(6) const options(*nopass);
+end-pi;
+
 dcl-s ordCount packed(3:0);
+
+// Pre-fill TOKCD from the caller's parameter, if one was passed, BEFORE
+// the first EXFMT - the learner still presses Enter once to see the
+// order list (EXFMT/WORKSTN screens cannot be skipped), but never has to
+// retype a code the caller already knew.
+if %parms >= 1 and custCode <> *blanks;
+  tokcd = custCode;
+endif;
 
 dow not *in03;
   exfmt jucfmt;

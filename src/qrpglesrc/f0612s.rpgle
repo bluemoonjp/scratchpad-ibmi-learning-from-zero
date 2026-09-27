@@ -168,20 +168,34 @@ dcl-f juchum usage(*input);
 //-----------------------------------------------------------------------
 // P0612A: the new PRTF (see src/qddssrc/p0612s.prtf).
 //
-// REMOVED (2026-09-27, real-hardware finding from part06-12-prtf-cpp-
-// swap): this line used to also declare a named overflow indicator
-// (first "dcl-ind ovf;" - not a real RPG IV keyword, RNF5347/RNF7030;
-// then "dcl-s ovf ind;" plus "oflind(ovf)" on this dcl-f - RNF2037,
-// "The Overflow Indicator is already defined; keyword is ignored",
-// severity 20, which stops compilation under the default GENLVL(10)).
-// Neither work/design/refs/ilerpgref75.txt nor any DDS reference in
-// this repo settles why OFLIND conflicts here for an externally
-// described printer file - rather than guess further, the overflow-
-// reprint feature is dropped outright: it is not on 06-12's own new-
-// syntax list (PRTF/SPACEB/SKIPB/EDTCDE only), and with this lesson's
-// 2-row test data a real page overflow never happens anyway.
+// OFLIND, RESTORED with a working form (2026-09-27, part06-decisions-1
+// re-investigation): the first two attempts both failed to compile -
+// "dcl-ind ovf;" (not a real RPG IV keyword, RNF5347/RNF7030), then
+// "dcl-s ovf ind;" + "oflind(ovf)" (RNF2037, "The Overflow Indicator is
+// already defined", severity 20). A THIRD attempt, "oflind(*inoa)"
+// (the named special indicator directly, no separate dcl-s at all -
+// candidate A of 3 tried in the same connection) hit the SAME severity-
+// 20 compile failure as the *inoa-via-ovf attempt (RNS9308/RNS9310 in
+// the job log; the specific RNFnnnn was not captured, but the failure
+// class matches). A FOURTH attempt, oflind(*in01) - a NUMBERED
+// indicator instead of the *INOA-*INOG/*INOV named-overflow family -
+// compiled cleanly (Highest Severity 00, confirmed real hardware,
+// candidate B of the same connection). Both forms are listed as valid
+// OFLIND parameters in ilerpgref75.txt lines 27970-27988 ("Valid
+// Parameters: *INOA-*INOG, *INOV" / "*IN01 through *IN99" separately),
+// but only the numbered-indicator family actually compiles against an
+// EXTERNALLY DESCRIBED printer file on this PUB400 PTF level - the
+// *INOA family appears to be reserved/already-claimed for externally
+// described printer files specifically (unconfirmed exactly why; not
+// worth further guessing given a working alternative exists). *IN01's
+// compile-time validity was confirmed with a throwaway 100-line WRITE
+// loop probe (verify/part06-12-prtf-cpp-swap/src/t612ofb.rpgle, NOT
+// shipped) - this lesson's own normal 2-row run below never actually
+// overflows a page, so *IN01 stays *OFF for every real run of F0612A
+// itself; the page-break exercise (06-12 lesson text, not yet written)
+// is where a learner is meant to actually force and observe overflow.
 //-----------------------------------------------------------------------
-dcl-f p0612a printer usage(*output);
+dcl-f p0612a printer usage(*output) oflind(*in01);
 
 dcl-s orderCnt zoned(5:0) inz(0);
 
