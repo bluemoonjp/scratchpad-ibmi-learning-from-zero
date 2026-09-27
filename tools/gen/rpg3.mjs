@@ -302,6 +302,14 @@ export function eSpec({ name, entriesPerRecord, maxEntries, length, format = '',
 // formatted to `length` characters by the caller (e.g. zero-padded numeric
 // literals, or character strings) so this function does not right/left-pad
 // them itself - only groups them into records and adds the `**` header.
+// IMPORTANT (2026-09-26, real-hardware fix, T0EDS): these lines (the `**`
+// marker plus every data record) must be the LAST thing in the whole source
+// member, after every O-spec - never between the C-specs and O-specs, even
+// though the E-spec header itself comes early (right after the F-specs).
+// Getting this wrong doesn't just misplace the data: PUB400 then reads the
+// real O-spec lines as still more array-data records (QRG8041 "too many
+// entries"), and the actual O-specs are never recognized at all (QRG7064
+// "file not referenced", QRG7026 "no unnamed EXCPT output").
 export function compileTimeArrayData(entries, { entriesPerRecord, length }) {
   for (const e of entries) {
     if (e.length !== length) {

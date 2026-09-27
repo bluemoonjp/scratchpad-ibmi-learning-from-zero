@@ -28,9 +28,22 @@
     },
     {
       "type": "cl",
+      "label": "VSPLPF",
+      "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 5 spooled-file text capture'))",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CAPEDS",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
       "label": "CPSFL",
       "cmd": "CRTDSPF FILE(&LIB/T0SFL) SRCFILE(&LIB/QDDSSRC) SRCMBR(T0SFL) REPLACE(*YES)",
       "monmsg": ["CPF0000"]
-    }
+    },
+    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSPL" }
   ]
 }
