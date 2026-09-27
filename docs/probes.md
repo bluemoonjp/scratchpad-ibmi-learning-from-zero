@@ -1272,6 +1272,23 @@ verify harnessでしか通用しない(実際の学習者は5250で`CRTSQLRPGI`�
 
 これでP1の#15は継続中(2件目の修正の再検証待ち)。
 
+**3回目の接続でCONFIRMED SUCCESS。** `F0612A`はHighest Severity 00で
+コンパイル成功。直接`CALL`・`JUCINQ`コマンド経由(CPP切り替え後)とも
+同一の正しいレポートを出力:
+
+```
+JUCINQ4 - ORDER INQUIRY REPORT        CUSTOMER: C00001
+ACME TRADING CO                 J00001  20260901
+ACME TRADING CO                 J00003  20260905
+    2   ORDER(S) FOR THIS CUSTOMER
+```
+
+06-01・06-14で確認済みのJ00001/J00003データと完全一致。**JUCINQコマンド
+のCPP切り替え機構(`CHGCMD CMD(...) PGM(...)`)がこのリポジトリーで
+初めて実機確認できた**——`CHGCMD`後も`JUCINQ`コマンド自身の構文検証は
+変わらず、`TOKCD('C00001')`が正しく新CPP(`F0612A`)へ渡ることを確認した。
+`EDTCDE`(日付の`20260901`形式表示)も正しく機能している。
+
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。
