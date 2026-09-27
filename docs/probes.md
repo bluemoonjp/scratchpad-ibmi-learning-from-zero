@@ -1321,6 +1321,46 @@ Severity 00でコンパイル・実行成功。**
 
 これでP1の#16は完了。次は#17(`part07-05-checkpoint`、TXCHECK込み)。
 
+## 第7部`part07-05-checkpoint`の実機検証(確認日 2026-09-27、1回の接続でCONFIRMED SUCCESS)
+
+`ZAISRV`(*SRVPGM: get/reserve/release)・`ZAISRVBD`(*BNDDIR)・`DRIVER`
+(ロック・テスト一式)・`TXCHECK`(このセッション中に追加した完了条件C5)
+をまとめて検証。**全てCONFIRMED SUCCESS。**
+
+- `ZAISRV`はSeverity 10(`RNF7534`、TOKUIM同様の「非サイクル・モジュール
+  は明示クローズ推奨」助言、無害)、`ZAISRVBD`新規作成・1件登録、
+  `DRIVER`はHighest Severity 00でコンパイル成功。
+- **`DRIVER`の10件のロック・テストが全て期待どおりの結果**(単一の
+  `CALL`内・同一活性化グループでの一連の呼び出し、という設計どおり):
+
+  ```
+  0-BASELINE       P00001 QTY=0        OK= Y ZASU=45       get() peek
+  1-RESERVE-OK     P00001 QTY=2        OK= Y ZASU=43       expect ON, -qty
+  2-RESERVE-SHORT  P00001 QTY=9999999  OK= N ZASU=43       expect OFF, same
+  2B-DIAG-CHAIN    P00001 QTY=0        OK= Y ZASU=0        NO CONFLICT SEEN
+  3-RELEASE        P00001 QTY=2        OK= Y ZASU=45       expect ON, =start
+  4-TWICE-A        P00001 QTY=2        OK= Y ZASU=41       expect ON
+  4-TWICE-B        P00001 QTY=2        OK= Y ZASU=41       expect ON, -2*qty
+  5-RESTORE        P00001 QTY=2        OK= Y ZASU=45       expect =start
+  6-NOTFOUND-GET   P99999 QTY=0        OK= Y ZASU=-1       expect -1
+  7-NOTFOUND-RSV   P99999 QTY=2        OK= N ZASU=0        expect OFF
+  ```
+
+  在庫の増減(45→43→45→41→45)・在庫超過reserve拒否・存在しない商品
+  コードの扱い・**同一実行内での2回連続reserve(4-TWICE-A/B、ロック
+  持ち越しの本題)**、すべて注釈どおりの結果になった。
+- **TXCHECK(このセッション中に追加、完了条件C5)が正しく機能した**:
+  `TXCHECK PASS: ZAISRV service program exists` /
+  `TXCHECK PASS: ZAISRVBD binding directory exists` /
+  `TXCHECK PASS: DRIVER checkpoint program exists` /
+  `TXCHECK: lesson 07-05 - 3 passed, 0 failed.`
+- `RUNTXRESET`: `TXRESET: data restored to the initial state.`——
+  後片付けも正常終了。
+
+これでP1キュー(#10.5〜#17、jiggly-greeting-crystal.mdのStep 1で
+指定された全項目)が完了。全てCONFIRMED SUCCESS。次はStep 2(第5部の
+公開)またはStep 1の残り(2F・第6/7部残り・第8〜10部)。
+
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。
