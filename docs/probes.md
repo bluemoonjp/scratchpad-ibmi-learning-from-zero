@@ -2171,6 +2171,30 @@ CALLステップには`RNX0000`も追加した。
 `CPYSPLF`ステップ自体は無害に失敗する(`MONMSG`で捕捉済み)ため
 残してもよいが、それに依存した`collect`は当てにしないこと。
 
+## 第6部`part06-decisions-3`の実機検証: 06-14b再設計、最終CONFIRMED SUCCESS(確認日2026-09-27)
+
+`part06-decisions-2`で修正した`q0614bs.sqlrpgle`(カーソルに加え2件の
+`INSERT`も動的SQL化、`TIMESTAMP`リテラルをANSI/ISO形式へ訂正)を、
+primingなしで単独確認。
+
+**CRTSQLRPGI Highest Severity 00でコンパイル成功。`CALL`は期待どおりの
+2行を印字した**(結果JSONの`run`セクションで直接確認、`CPYSPLF`は
+使わず——上記の教訓どおり):
+
+```
+C00001 ACME TRADING CO: last order 2026-09-05, last touched 2026-09-05-08.30.00.000000
+C00099 NEW PROSPECT CO: last order date is NULL (unknown), last touched 2026-09-20-14.15.00.000000
+```
+
+`DATE`・`%nullind`によるNULL判別・`VARCHAR`(`TOKNM`)・`TIMESTAMP`
+(`TOKLTS`)の4つが揃って正しく動作することを確認した。ジョブ・ログに
+毎回現れる`SQL0204`(`W0614BA in QTEMP type *FILE not found`)は、
+一番最初の`DROP TABLE`(まだ一度も作られていない表を消そうとする、
+設計上想定済みの動作)によるもので、後続の`SQLCODE`チェックの対象外
+なので無害。**06-14bの再設計はこれで完全にCONFIRMED SUCCESS
+——候補1(動的SQL)を採用、候補2(永続ライブラリー)はこれ以上
+追試しない。**
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P44)以外は未実施。特に:
