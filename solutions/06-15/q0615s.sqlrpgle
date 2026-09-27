@@ -60,6 +60,12 @@
 // continue, and the initial cursor OPEN checks SQLCODE < 0 (a real
 // error) rather than SQLSTATE = '00000' (which would also flag benign
 // warnings as failures).
+//
+// HARDWARE STATUS: CONFIRMED V2 (part06-15-checkpoint, 2026-09-27):
+// CRTSQLRPGI Highest Severity 00. CALL printed exactly the grading
+// table above (all 6 rows, LOWSTOCK only on P00002/P00005) - the run
+// section text was read directly, not CPYSPLF+collect (QSYSPRT does
+// not produce a real spooled file in this harness's job).
 //=======================================================================
 
 ctl-opt dftactgrp(*no) actgrp(*new);

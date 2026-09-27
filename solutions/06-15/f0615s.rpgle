@@ -25,9 +25,11 @@
 // point 5) and P00005 (USB CABLE, qty 12, reorder point 50). The other
 // 4 (P00001/P00003/P00004/P00006) print with no LOWSTOCK flag.
 //
-// HARDWARE STATUS: V1 only (compile-check) - WORKSTN/EXFMT, same
-// limitation as every other Part 6 screen (SSH non-interactive
-// batches cannot drive a real 5250 device).
+// HARDWARE STATUS: CONFIRMED V1 (compile-check, part06-15-checkpoint,
+// 2026-09-27): CRTBNDRPG Highest Severity 00. Interactive execution
+// (V3) is still untested - WORKSTN/EXFMT, same limitation as every
+// other Part 6 screen (SSH non-interactive batches cannot drive a
+// real 5250 device).
 //
 // LOAD-ALL (06-11's technique, not new here): every ZAIKOM row is
 // WRITEn into SFL1 before the first EXFMT. ZAIKOM has 6 rows as of

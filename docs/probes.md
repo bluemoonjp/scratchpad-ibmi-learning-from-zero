@@ -2296,6 +2296,36 @@ errors found in program.`で失敗した。原因は`f0704s.rpgle`自身の
 行うには、`ctl-opt`から`actgrp(...)`を除いた(`dftactgrp(*no)`のみの)
 別コピーが必要——未着手のまま、06-12本文には含めない前提で進める。
 
+## 第6部`part06-15-checkpoint`の実機検証: D0615A/F0615A/Q0615A CONFIRMED SUCCESS、TXCHECK呼び出しの実装を修正して再接続へ(確認日2026-09-27)
+
+B-5、1回目の接続。
+
+- `D0615A`(DSPF)・`F0615A`(RPG、サブフィル半分)・`Q0615A`(SQLRPGLE、
+  SQL半分)は全てHighest Severity 00でコンパイル成功(`compile`
+  セクションでラッパー自体もseverity 00を確認済み)。
+- `Q0615A`の実際の印字内容(結果JSONの`run`セクション、`CPYSPLF`は
+  期待どおり失敗——QSYSPRTの既知の制約)を確認したところ、**採点表と
+  完全一致**:
+
+  ```
+  P00001    DESK LAMP                           0000045
+  P00002    OFFICE CHAIR                        0000003       LOWSTOCK
+  P00003    NOTEBOOK PACK                       0000250
+  P00004    STAPLER                             0000060
+  P00005    USB CABLE                           0000012       LOWSTOCK
+  P00006    MONITOR STAND                       0000022
+  ```
+
+- **`RUNTXCHECK`(`CALL PGM(QCMDEXC) PARM('TXCHECK LESSON(''06-15'')
+  LIB(&LIB)' 39)`という、マニフェストの`cl`ステップに直接埋め込んだ
+  形)が実行時に失敗**: `String '          ' contains a character
+  that is not valid.`——`LIB`キーワードの値が空白10文字として解釈
+  された(原因未特定)。**`verify/part05-txlegacy-exec/src/
+  txlegrun.clp`と同じ、実績のある形(専用CLヘルパーが`CHGVAR`+
+  `*TCAT`/`%TRIM`で実行時に文字列を組み立ててから`QCMDEXC`を呼ぶ)
+  へ書き換えた**(`verify/part06-15-checkpoint/src/txchkrun.clp`
+  新設)。次回接続で再確認する。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P44)以外は未実施。特に:
