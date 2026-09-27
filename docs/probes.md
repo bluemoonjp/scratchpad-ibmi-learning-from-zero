@@ -1100,5 +1100,37 @@ P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
+## 第7部`part07-04-actgrp-cl`の実機検証(確認日 2026-09-27、1回目の接続で1件発見)
+
+`F0704A`(STATIC変数・活性化グループ)と`JUYAKL`(JUYAKCのILE CL書き直し、
+CALLPRC経由でJUCSRVをバインド)を検証。
+
+- **F0704Aは完全に成功**: `bumpCounter()`を同一呼び出し内で3回実行し、
+  カウンターが`1`→`2`→`3`と正しく増加(`STATIC`キーワードが単一呼び出し
+  内で状態を保持することを確認)。
+- **DIAGCURLIB診断で判明**: ハーネスの`ADDLIBLE`のみのジョブ設定では
+  `RTVJOBA CURLIB`は`<USER>1`のまま(設計書§0.6が事前に指摘していた
+  とおり)。この後の`CHGCURLIB1`ステップで`<USER>2`に変更、
+  以降のJUNODA/JUMSGF関連処理は正しく動作した。
+- **JUYAKLの`CALLPRC`は成功**: `getCustName(C00001) = ' ACME TRADING CO '`
+  ——DCLPRCOPT BNDSRVPGM経由のCALLPRCが実際に動くことを初めて確認した。
+- **`BACK`サブルーチンで実バグ発見**: `CPYTOIMPF FROMFILE(&LIB/JUCHUM)
+  TOSTMF('/home/<user>/work/juchum_export.csv') ...`が
+  `CPF2845: The copy did not complete for reason code 11.`/`CPF2817:
+  Copy command ended because of error.`で失敗。原因はこのリポジトリーの
+  どのツールもPUB400上に`~/work/`ディレクトリーを作成していないこと
+  (`git grep`で確認済み、TXSETUP等のどれも作らない)——CPYTOIMPFの
+  ターゲット・ディレクトリーが存在しなかったための失敗と推測される
+  (reason code 11の正式な意味はIBM資料未確認、次回接続の結果で推測の
+  当否を判断する)。エラーはJUYAKL自身の`ERRSUBR`(`SNDPGMMSG MSGID
+  (JUM0001) ... MSGTYPE(*ESCAPE)`)で捕捉され、ラッパーの
+  `MONMSG(CPF0000)`まで正しく伝播して`RUNJUYAKL FAILED`、ハングせず
+  `part07-04-actgrp-cl DONE`まで到達(設計は正しく機能している)。
+- **対応**: マニフェストに`sh`ステップ`mkdir -p $HOME/work`を追加
+  (fileステップの後・clステップの前に自動的に挟まる仕組みを利用)。
+  次回接続で解消を確認する。
+
+P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
+
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。
 - 新規アカウントが必要なもの(P02, P41)は、ベータ・テスターの協力を得るか、一次資料 + 私的な既存実測(匿名化)で代替する。
