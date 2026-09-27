@@ -1075,5 +1075,30 @@ CONFIRMED SUCCESS。**
 
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
+## 第7部サービス・プログラムの実機検証: `part07-0203-srvpgm`(確認日 2026-09-27)
+
+`JUCSRV`(*SRVPGM: `getCustName`/`countCustOrders`)とその結合ディレクトリー
+`JUCSRVBD`を新規作成し、2つの利用側プログラム`F0702A`/`F0703A`から呼び出す
+検証。**1回の接続でCONFIRMED SUCCESS。**
+
+- `JUCSRV`モジュールはHighest Severity 10でコンパイル(`RNF7534`:
+  「非サイクル・モジュールではファイルを明示的にクローズすべき」という
+  助言。`TOKUIM`について1件。**警告のみでコンパイル・作成自体は成功**——
+  06-09本文でJUCSRVのソースを見せる際、この助言に触れておくとよい)。
+- `JUCSRVBD`は新規作成、`JUCSRV`(`*SRVPGM`)を1件登録(0件失敗)。
+- `F0702A`: `getCustName(C00001) = ACME TRADING CO.`(正しい顧客名を
+  サービス・プログラム経由で取得)。
+- `F0703A`: `countCustOrders(C00001)`を同一プログラム内で2回呼び出し、
+  両方とも`2`で一致(`MATCH - both calls agree; JUCHUM repositioning is
+  correct.`)——サービス・プログラムのプロシージャーが共有ファイル
+  `JUCHUM`の読み取り位置を毎回正しく再配置できることを確認した。
+- `QSYS2.BOUND_SRVPGM_INFO`で確認: `F0702A`・`F0703A`とも`*LIBL/JUCSRV`
+  に正しくバインドされている(`QRNXIE`/`QRNXUTIL`/`QLEAWI`はQSYS提供の
+  ランタイム・サービス・プログラムで無関係)。
+
+これでP1の#11は完了。次は#12(`part07-04-actgrp-cl`)。
+
+P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
+
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。
 - 新規アカウントが必要なもの(P02, P41)は、ベータ・テスターの協力を得るか、一次資料 + 私的な既存実測(匿名化)で代替する。
