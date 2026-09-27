@@ -104,8 +104,9 @@
 // this constraint - see docs/part04/04-08-jucinq3-report.md for why
 // R0408A itself never needed this (single CALL = single scan).
 //
-// STATUS: hardware-UNTESTED (Part 6 draft, draft/part06 branch). This
-// source has not been compiled or run on PUB400 yet.
+// STATUS: CONFIRMED V1 (compile-check, part06-decisions-1,
+// 2026-09-27): CRTBNDRPG Highest Severity 00, after adding the
+// optional custCode entry parameter (see the header note above).
 // Per R0411A's own hardware note (04-11, "verification range limits"):
 // CRTDSPF/CRTBNDRPG compilation (V1) IS realistically checkable over
 // non-interactive SSH, but EXFMT's interactive read-from-5250 cannot be

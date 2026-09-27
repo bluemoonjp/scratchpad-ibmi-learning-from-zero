@@ -28,13 +28,14 @@
 // 06-15's checkpoint. This is not optional cleanup; skipping it will
 // make those lessons' expected output stop matching what they document.
 //
-// HARDWARE-UNTESTED (V1 only, compile-check): this program has not
-// been compiled or run on real hardware this session. Interactive
-// subfile/EXFMT execution is V1-only in this repo's established
-// workflow - SSH non-interactive batches cannot drive a real 5250
-// device (same WORKSTN/EXFMT limitation as 04-11, tk0100.rpg, and
-// f0604s.rpgle/f0611s.rpgle). Verify with CRTBNDRPG, then a real 5250
-// session, before relying on this source. The task's own suggested
+// CONFIRMED V1 (compile-check, part06-decisions-1, 2026-09-27):
+// CRTBNDRPG Highest Severity 00, after the chain(e)/%error/
+// %status(1218) lock-conflict handling was added (see "EXCLUSIVE-LOCK
+// DISCIPLINE" below). Interactive subfile/EXFMT execution (V3) is
+// still untested - SSH non-interactive batches cannot drive a real
+// 5250 device (same WORKSTN/EXFMT limitation as 04-11, tk0100.rpg, and
+// f0604s.rpgle/f0611s.rpgle). Verify with a real 5250 session before
+// relying on this file's interactive behavior. The task's own suggested
 // exercise (open a second 5250 session and try to change a row this
 // program already has locked, per 06-09's design precedent for the
 // same "verify/ cannot reproduce a 2-session lock collision" reason)
@@ -70,6 +71,18 @@
 //     linger (~line 65758-65761, "Releasing record locks": "The UNLOCK
 //     operation also allows the most recently locked record to be
 //     unlocked for an update disk file").
+//   - LOCK-CONFLICT HANDLING (added, real-hardware fix -
+//     part06-decisions-1): a plain CHAIN cannot tell "no such row"
+//     apart from "row exists but another session holds it locked" -
+//     both leave %found off, and an unhandled lock conflict would
+//     otherwise end the program. Every CHAIN against shohim below uses
+//     the E operation extender; %error and %status(shohim) = 1218
+//     ("record-lock error", confirmed in ilerpgref75.txt's CHAIN/READ
+//     sections, e.g. line 61884: "If there is a record-lock error
+//     (status 1218), the file is still positioned at the locked
+//     record") are checked immediately after, so the exercise (another
+//     session holding a row locked) shows a message instead of an
+//     abend.
 //   - DELETE requires USAGE(*DELETE) explicitly in free-form (~line
 //     23371-23373: "You must explicitly specify USAGE(*DELETE) for a
 //     free-form file definition, if you want the file to be opened to

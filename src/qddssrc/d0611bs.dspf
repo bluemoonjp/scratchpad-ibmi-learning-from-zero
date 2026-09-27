@@ -3,23 +3,23 @@
      A*                                     list + add/change/delete. Lesson
      A*                                     06-11b.
      A*
-     A*                                     HARDWARE-UNTESTED (V1 only,
-     A*                                     compile-check): this
-     A*                                     file has not been compiled on real
-     A*                                     hardware this
-     A*                                     session. Interactive subfile/EXFMT
-     A*                                     execution is
-     A*                                     V1-only in this repo's established
-     A*                                     workflow - SSH
-     A*                                     non-interactive batches cannot drive
-     A*                                     a real 5250
+     A*                                     CONFIRMED V1 (compile-check,
+     A*                                     part06-decisions-1,
+     A*                                     2026-09-27): CRTDSPF Highest
+     A*                                     Severity 00, after the
+     A*                                     SHOTNK output-only fix
+     A*                                     (decision P6-8). Interactive
+     A*                                     subfile/EXFMT execution
+     A*                                     (V3) is still untested - SSH
+     A*                                     non-interactive batches
+     A*                                     cannot drive a real 5250
      A*                                     device (same WORKSTN/EXFMT
      A*                                     limitation as 04-11,
      A*                                     tk0100d.dspf, and d0611s.dspf).
-     A*                                     Verify with CRTDSPF,
-     A*                                     then a real 5250 session, before
-     A*                                     relying on this
-     A*                                     source.
+     A*                                     Verify with a real 5250
+     A*                                     session before relying on
+     A*                                     this file's interactive
+     A*                                     behavior.
      A*
      A*                                     *** THIS SCREEN WRITES TO THE SHARED
      A*                                     SHOHIM TABLE ***
