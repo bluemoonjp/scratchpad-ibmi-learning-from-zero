@@ -127,6 +127,32 @@ export function fSpec({ name, type, designation = ' ', eof = ' ', seq = ' ', for
   return finish(l);
 }
 
+// F-spec continuation line (RPG/400 Reference "File Information Data
+// Structure" p.25 and "File Exception/Error Subroutine (INFSR)" p.37): a
+// SECOND F-spec line for a file already described by a plain fSpec() line
+// above it, used only to declare that file's INFDS (file information data
+// structure) and/or INFSR (file exception/error subroutine name). Emit it
+// immediately after that file's fSpec() line and before the next file's
+// F-spec, so it stays inside the F-spec block (Figure 1's H-F-E-L-I-C-O
+// source order).
+// Position 6 F, 7-52 blank (both references are explicit: "7-52 Blank (if
+// the information is specified on a separate continuation line)" - the
+// file name/type/etc. are NOT repeated here), 53 K (continuation code),
+// 54-59 the literal keyword, 60-65 the name.
+// `entry`: 'INFDS' | 'INFSR'. `name`: the data-structure name (INFDS) or
+// subroutine name (INFSR - p.37 requires this to be the SAME name used in
+// factor 1 of that subroutine's BEGSR and factor 2 of its EXSR, e.g.
+// '*PSSR' to route the file's exception/errors to the program status
+// subroutine).
+export function fSpecCont({ entry, name }) {
+  const l = blank(80).split('');
+  put(l, 6, 'F');
+  put(l, 53, 'K');
+  put(l, 54, entry);
+  put(l, 60, name);
+  return finish(l);
+}
+
 // C-spec factory. All fields optional strings; caller supplies exact text.
 // `ind`: conditioning indicator(s), e.g. '30', 'N30', or ['30','N31'] for
 // up to 3 (AND'ed). See putCondInd() for the column layout within 9-17.
@@ -276,6 +302,14 @@ export function eSpec({ name, entriesPerRecord, maxEntries, length, format = '',
 // formatted to `length` characters by the caller (e.g. zero-padded numeric
 // literals, or character strings) so this function does not right/left-pad
 // them itself - only groups them into records and adds the `**` header.
+// IMPORTANT (2026-09-26, real-hardware fix, T0EDS): these lines (the `**`
+// marker plus every data record) must be the LAST thing in the whole source
+// member, after every O-spec - never between the C-specs and O-specs, even
+// though the E-spec header itself comes early (right after the F-specs).
+// Getting this wrong doesn't just misplace the data: PUB400 then reads the
+// real O-spec lines as still more array-data records (QRG8041 "too many
+// entries"), and the actual O-specs are never recognized at all (QRG7064
+// "file not referenced", QRG7026 "no unnamed EXCPT output").
 export function compileTimeArrayData(entries, { entriesPerRecord, length }) {
   for (const e of entries) {
     if (e.length !== length) {

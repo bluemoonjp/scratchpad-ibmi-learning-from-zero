@@ -1,0 +1,95 @@
+      * ZA0510V - VERIFICATION-ONLY variant of src/legacy/qrpgsrc/za0510.rpg
+      * (05-04), for verify/part05-qcmdexc-runtime. Not part of the taught
+      * curriculum and not referenced by any lesson - exists only so this
+      * manifest can force the *PSSR/QCMDEXC/CHGDTAARA path (05-04's own
+      * exercise 7) and check its result without hand-editing (and having
+      * to hand-revert) the real lesson source during an unattended batch.
+      *
+      * The ONLY difference from za0510.rpg is the compile-time TABPCD
+      * data below: its last entry is 'P09999' instead of the real product
+      * code 'P00006', exactly as 05-04's own exercise 7 instructs
+      * (docs/part05/05-04-reading-arrays-ds-error.md). Since
+      * ZAIKOM's own data is untouched, ZAIKOM's real 'P00006' record now
+      * has no matching TABPCD entry when read, so LOKUP fails, EXSR
+      * *PSSR fires, and *PSSR's CHGDTAARA writes 'ZA0510 ERROR' to *LDA
+      * bytes 1-20 - the same evidence 05-04's own exercise asks students
+      * to check by hand with DSPDTAARA. All F/E/I/C/O specs below are
+      * otherwise byte-for-byte identical to za0510.rpg; see that file's
+      * own header for the full design rationale and citations.
+     H
+     FZAIKOM  IP  E           K        DISK
+     F                                              KINFDS ZAINF
+     F                                              KINFSR *PSSR
+     FQSYSPRT O   F     132            PRINTER
+     E                    TABPCD  6   6  6
+     E                    TABPRI  6   6  1 0
+     E                    SQ          3  7 0
+     IZAIKOR
+     I              ZASHO                           ZKSHO
+     I              ZASU                            ZKSU
+     I/COPY FLDREFR
+     ICMDDS       DS                             57
+     I                                        1   7 C1
+     I                                        8  14 C2
+     I                                       15  21 C3
+     I                                       22  28 C4
+     I                                       29  35 C5
+     I                                       36  42 C6
+     I                                       43  49 C7
+     I                                       50  56 C8
+     I                                       57  57 C9
+     IPSDS       SDS
+     I                                       11  150STATUS
+     I                                       29  36 RTN
+     IZAINF       DS
+     I                                       11  150FSTAT
+     I                                       22  29 FRTN
+     IPRIDS       DS                             21
+     I                                        1   70PQ1
+     I                                        8  140PQ2
+     I                                       15  210PQ3
+      * -- detail: one cycle per ZAIKOM record --
+     C                     ADD  ZKSU      GQTY    90
+     C                     SETOF                     80
+     C           ZKSHO     LOKUPTABPCD    TABPRI         80
+     C  N80                EXSR *PSSR
+     C   80                Z-ADDTABPRI    PRI     10
+     C   80                ADD  ZKSU      SQ,PRI
+      * -- LR: cross-foot the array against the independent total --
+     CLR                   XFOOTSQ        XQTY    90
+     CLR         XQTY      COMP GQTY                     93
+     CLR                   Z-ADDSQ,1      PQ1
+     CLR                   Z-ADDSQ,2      PQ2
+     CLR                   Z-ADDSQ,3      PQ3
+     CLR                   EXCPT
+      * -- subroutines --
+      * *PSSR: fatal LOKUP-miss (explicit EXSR) and, program-wide,
+      * RPG's default error/exception handler (see header note 8).
+     CSR         *PSSR     BEGSR
+      * build the QCMDEXC command text into CMDDS (see header note 9)
+     C                     MOVEL'CHGDTAA' C1
+     C                     MOVEL'RA DTAA' C2
+     C                     MOVEL'RA(*LDA' C3
+     C                     MOVEL' (1 20)' C4
+     C                     MOVEL') VALUE' C5
+     C                     MOVEL'(''ZA051'C6
+     C                     MOVEL'0 ERROR' C7
+     C                     MOVEL''')     'C8
+     C                     MOVEL' '       C9
+     C                     Z-ADD57        CMDLEN 155
+     C                     CALL 'QCMDEXC'              85
+     C                     PARM           CMDDS
+     C                     PARM           CMDLEN
+     CSR                   ENDSR'*CANCL'
+     OQSYSPRT E
+     O                         PQ1        9
+     O                         PQ2       18
+     O                         PQ3       27
+     O                         GQTY      38
+     O                         XQTY      49
+     O                 93                55 'OK'
+     O                N93                65 'MISMATCH'
+**
+P00001P00002P00003P00004P00005P09999
+**
+112233

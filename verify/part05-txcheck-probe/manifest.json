@@ -1,0 +1,42 @@
+{
+  "batch": "part05-txcheck-probe",
+  "description": "Confirms TXCHECK v1 (tools/qclsrc/txcheck.clp) actually compiles and runs on PUB400: creates TXCKM (tools/qddssrc/txckm.pf), inserts one self-referential test row (does TXCKM itself exist as *FILE?), compiles TXCHECK, and calls it for lesson TEST01. Expect one PASS line in the vfylog output. This manifest lives on draft/part05 (not main) because it exercises unverified tools/ sources that must not reach the learner sparse-checkout before a V1 compile confirms them - run it only after checking out draft/part05 (draft/tools was merged into draft/part05 on 2026-09-25 and work continues there; the draft/tools branch itself still exists but is stale - this description previously pointed at it by mistake).",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../tools/qddssrc/txckm.pf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "TXCKM"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txcheck.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCHECK"
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCKM",
+      "cmd": "DLTF FILE(&LIB/TXCKM)\nMONMSG MSGID(CPF0000)\nCRTPF FILE(&LIB/TXCKM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TXCKM)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "INSROW",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''TEST01'', 1, ''TXCKM'', ''*FILE'', '' '', ''TXCKM manifest exists (self-check)'')') COMMIT(*NONE)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHK",
+      "cmd": "CRTCLPGM PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHECK) REPLACE(*YES)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "RUNTXCHK",
+      "cmd": "CALL PGM(&LIB/TXCHECK) PARM('TEST01' '&LIB')",
+      "monmsg": ["CPF0000", "MCH0000"]
+    }
+  ]
+}

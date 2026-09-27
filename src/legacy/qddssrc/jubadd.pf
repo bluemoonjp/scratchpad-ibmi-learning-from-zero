@@ -1,0 +1,52 @@
+     A*                                     JUBADD - deliberately mis-typed
+     A*                                     "staging" file for 05-11 (decimal
+     A*                                     data error). Same field names/
+     A*                                     lengths as db/v1/juchud.pf's
+     A*                                     JUCHDR record EXCEPT JUSU, which
+     A*                                     is 5A here instead of JUCHUD's
+     A*                                     5S 0 - same total record length
+     A*                                     (27 bytes) but a different type
+     A*                                     for that one field.
+     A*
+     A*                                     Used by src/qclsrc/c0511s.clp with
+     A*                                     CPYF FMTOPT(*NOCHK): FMTOPT(*NOCHK)
+     A*                                     copies records between mismatched
+     A*                                     formats without the normal field-
+     A*                                     type check, so a row inserted here
+     A*                                     with JUSU='.....' (5 periods, valid
+     A*                                     for THIS file's own 5A field) lands
+     A*                                     as 4B4B4B4B4B in JUCHUD.JUSU once
+     A*                                     copied across - simulating the
+     A*                                     *NOCHK-caused corruption path the
+     A*                                     05-11 syllabus entry names.
+     A*                                     CONFIRMED (2026-09-27, real
+     A*                                     hardware, part05-lesson-decimal,
+     A*                                     this program's own literal use):
+     A*                                     EBCDIC '.' is X'4B' - digit nibble
+     A*                                     B, invalid for a zoned-decimal
+     A*                                     digit - and DOES raise a real
+     A*                                     decimal-data error at INPUT time
+     A*                                     (za0500.rpg's own I-spec for
+     A*                                     JUSU): "ZA0500 6400 decimal-data
+     A*                                     error", RPG0907. Earlier attempts
+     A*                                     with 'ABCDE' (digit nibbles 1-5,
+     A*                                     all valid) and blanks (digit
+     A*                                     nibble 0, valid) were BOTH read
+     A*                                     silently with no error at all,
+     A*                                     under an isolated verification-only
+     A*                                     setup (part05-mch1202-corrupt) -
+     A*                                     the digit (low) nibble being
+     A*                                     outside 0-9 is what actually
+     A*                                     triggers the error on this
+     A*                                     hardware, not the zone/sign
+     A*                                     nibble. See docs/part05/05-11-
+     A*                                     decimal-data-error.md's real-
+     A*                                     hardware notes for the full story.
+     A          R JUCHDR                    TEXT('05-11 mis-typed staging')
+     A            JUNO           6A         TEXT('Order number')
+     A            JULINE         3S 0       TEXT('Line number')
+     A            JUSHO          6A         TEXT('Product code')
+     A            JUSU           5A         TEXT('Quantity (5A on purpose)')
+     A            JUTNK          7S 2       TEXT('Unit price at order time')
+     A          K JUNO
+     A          K JULINE
