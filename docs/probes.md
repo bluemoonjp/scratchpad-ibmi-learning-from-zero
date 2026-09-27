@@ -1808,6 +1808,36 @@ pub400.com port 2222: Connection timed out`(ネットワーク側の一時的な
 完了(`part05-txmigr-to2`/`to2b`・`part05-mch1202-corrupt`・
 `part05-13-tickets`・`part05-13-pssr`・`part05-promote-rollback`)。
 
+## 第5部`part05-13-tickets`再接続: CLOF修正の実機確認(確認日2026-09-27)
+
+advisorレビューを受けて`CLOF OPNID(JUCHUD)`を追加した修正の再確認。
+**CONFIRMED SUCCESS——2件の懸念がどちらも解消したことを確認。**
+
+- **`RUNZA0500H`(前回`OPNID(JUCHUD) for file JUCHUD already exists`
+  で失敗していたパリティ確認)が今回は成功。** `vfylog`に
+  `Member JUCHUD file JUCHUD in <USER>2 closed.`が**2回**現れる
+  (`RUNCOMBO`の`CLOF`実行後・`RUNZA0500H`の`CLOF`実行後、それぞれ
+  1回ずつ)——`CLOF OPNID(JUCHUD)`が両方の呼び出しで実際にODPを
+  閉じたことが確認できた。
+- **`run`セクションに合計24行(12+12)が印字され、`RUNCOMBO`と
+  `RUNZA0500H`の出力が1バイトも違わず完全一致**(`OK`10・`SHORT`2の
+  組み合わせが2回とも同一)。**チケット1採点表の「テスト・ハーネス
+  経由と`JU0900C`経由の両方で同じ結果になることを確認した」という
+  項目が、これで実機でも達成された。**
+- **`TXCKM.CKDESC`の値も、今回は余分な空白なしで正確に格納・出力
+  された**(`TXCHECK PASS: JU0900C still exists and compiles`、前回の
+  `wrapClStatement`バグによる内部空白混入が無いことを確認)——
+  `clgen.mjs`の継続記号修正がデータ破損を防ぐことも合わせて実証。
+
+## 未実施(次回接続で再確認予定): `part05-mch1202-corrupt`・
+`part05-13-pssr`の空白破損値での再テスト
+
+`src/qclsrc/c0511s.clp`を`'ABCDE'`から空白5個へ修正済み(前節参照)。
+`part05-mch1202-corrupt`(真の10進数データ・エラーが起きるか)・
+`part05-13-pssr`(`CLRJUCHUM`追加後、`*PSSR`が実際に`CHGDTAARA`まで
+到達するか)の両方を、この修正版で再接続して確認する必要がある
+(次の接続枠で実施予定)。
+
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。
