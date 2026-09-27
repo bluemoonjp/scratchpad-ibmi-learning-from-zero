@@ -55,6 +55,28 @@
              /* those exact names, and declaring them twice would be a     */
              /* duplicate-name compile error.                              */
 
+             /* FIXED (2026-09-27, found by static review before a real   */
+             /* connection, ahead of the 2F TXMIGR manifest): both DCLF    */
+             /* statements below used to sit right before their first use  */
+             /* (Step 2/Step 3 further down, after several executable      */
+             /* statements) - OPM CL requires every DCL/DCLF to precede all */
+             /* executable statements in the program, so the compile would */
+             /* have failed outright (this is the same rule already        */
+             /* relied on above: &WHREFI/&WHRELI/&ODOBNM/&ODOBAT can only   */
+             /* be used because DCLF runs before they are read). Moved     */
+             /* both here, into the declare section.                       */
+             /* UNVERIFIED risk this reorder does not resolve: DCLF must   */
+             /* also find the named file at COMPILE time to read its       */
+             /* record format, but QTEMP/TXMDBR and QTEMP/TXMPGM are only  */
+             /* created at RUN time, by the DSPDBR/DSPOBJD OUTFILE steps    */
+             /* further down in this same program - whether CRTCLPGM can   */
+             /* compile this at all (in a job where those QTEMP files do   */
+             /* not yet exist) is not something a source reading can       */
+             /* settle; needs an actual CRTCLPGM attempt to confirm or      */
+             /* refute.                                                    */
+             DCLF       FILE(QTEMP/TXMDBR)
+             DCLF       FILE(QTEMP/TXMPGM)
+
              /* Safety net: see tools/qclsrc/txsetup.clp for why this      */
              /* matters (an unmonitored *ESCAPE can hang a non-interactive */
              /* job forever instead of failing).                          */
@@ -104,7 +126,6 @@
                              against a real OUTFILE dump.')
                 GOTO       CMDLBL(RECOMPILE)
              ENDDO
-             DCLF       FILE(QTEMP/TXMDBR)
 
 /* No DLTF before CRTLF here, on purpose: CRTPF/CRTLF have no REPLACE      */
 /* parameter (confirmed: neither is in the "has REPLACE" group with       */
@@ -133,7 +154,6 @@ RECOMPILE:   DSPOBJD    OBJ(&LIB/*ALL) OBJTYPE(*PGM) OUTPUT(*OUTFILE) +
                              against a real OUTFILE dump.')
                 GOTO       CMDLBL(TXDONE)
              ENDDO
-             DCLF       FILE(QTEMP/TXMPGM)
 
 NEXTPGM:     RCVF
              MONMSG     MSGID(CPF0864) EXEC(GOTO CMDLBL(TXDONE))
