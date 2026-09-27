@@ -90,19 +90,23 @@
                 SNDPGMMSG  MSG('JU0900C: ZA0500 ended abnormally.')
              ENDDO
 
-/* FIXED (2026-09-27, found while designing verify/part05-13-tickets:      */
-/* this file was branched from the as-shipped ju0900c.clp before its own   */
-/* real-hardware fix below was applied, so it still had the pre-fix       */
-/* CLOF FILE(JUCHUD) line - CLOF does not take a FILE keyword and         */
-/* part05-legacy-probe's real CRTCLPGM rejected it with CPD0043 (same      */
-/* finding as tools/qclsrc/txcheck.clp's own header comment). Ported the   */
-/* as-shipped fix over: JUCHUD is never DCLF'd in this program (only       */
-/* OVRDBF/OPNQRYF'd, for ZA0500 to share via SHARE(*YES)), and ZA0500      */
-/* (F-spec IP) auto-closes its own files on LR before returning here, so   */
-/* there is nothing left of this program's own to close by the time       */
-/* TXCLOF runs. Still unconfirmed on real hardware with THIS file's own    */
-/* MINQTY LEN(5 0) change combined in - see docs/probes.md.                */
-TXCLOF:      DLTOVR     FILE(JUCHUD)
+/* FIXED, part 1 (2026-09-27, found while designing verify/part05-13-      */
+/* tickets): this file was branched from the as-shipped ju0900c.clp before  */
+/* its own real-hardware fix below was applied, so it still had the        */
+/* pre-fix CLOF FILE(JUCHUD) line - CPD0043 ("Keyword FILE not valid").     */
+/* FIXED, part 2 (part05-13-tickets/RUNZA0500H, 2026-09-27, real           */
+/* hardware): CLOF IS a real command, taking OPNID() not FILE() (IBM Docs   */
+/* clof.htm, confirmed 2026-09-27). Simply deleting the close attempt was   */
+/* wrong: RUNZA0500H (a second CALL sharing &LIB/JUCHUD in the same job)    */
+/* failed with "OPNID(JUCHUD) for file JUCHUD already exists" - the         */
+/* OPNQRYF-opened ODP from this program's own CALL was never closed. The   */
+/* OPNID a query-opened file is closed by defaults to the (unqualified)     */
+/* file name given to OPNQRYF's FILE() - confirmed by that same runtime     */
+/* message ("JUCHUD" here). See src/legacy/qclsrc/ju0900c.clp's own         */
+/* matching fix (identical reasoning, ported here).                        */
+TXCLOF:      CLOF       OPNID(JUCHUD)
+             MONMSG     MSGID(CPF0000)
+             DLTOVR     FILE(JUCHUD)
              MONMSG     MSGID(CPF0000)
              DLTOVR     FILE(JUCHUM)
              MONMSG     MSGID(CPF0000)
