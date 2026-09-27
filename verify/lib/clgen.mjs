@@ -30,13 +30,26 @@ export function pgmNameForBatch(batch) {
 }
 
 // 1つの論理的な CL ステートメントを、80桁以内の物理行に分割する。空白の位置でだけ
-// 折り返す(識別子や引用符付き文字列の途中では折り返さない)。継続には `-` を使う
-// (IBM i CL の規則: `+` は行間に何も挿入しない連結、`-` は行間に空白を1つ挿入する
-// 連結。ここでは元の文字列の空白の位置で切っているので、`-` を使えば元どおりの
-// 空白が復元される。SQL('SELECT A, B FROM ...') のように引用符の中に空白を含む
-// 文字列パラメーターを折り返すときに、`+` だと単語同士がくっついて壊れるため)。
+// 折り返す(識別子や引用符付き文字列の途中では折り返さない)。継続には `+` を使う。
+//
+// FIXED (2026-09-27、実機で再現): 以前はここで `-` を使っていたが、これは
+// IBM i CL 継続の規則を誤解していた("-" は次の行の先頭空白を「取り除かず
+// そのまま含める」という規則であり、「空白を1つ挿入する」規則ではない
+// ("+" は次の行の先頭空白を取り除く。WebSearch/IBM CL概念ガイドで確認、
+// 2026-09-27)。このジェネレーターは可読性のため全ての継続行に固定の
+// インデント(CL_INDENT、現在13桁)を付けているため、"-" を使うと、
+// 折り返しが引用符付き文字列リテラルの途中に来た場合、そのインデントの
+// 空白がリテラルの値そのものに literal に混入してしまう(例:
+// `TEXT('...word1 word2...')` の間で折り返すと、値が「word1」+
+// 13個の空白 + 「word2」になり、`CPD0074` のような桁数上限エラーや、
+// エラーにならない場合はサイレントな値破損を引き起こす —
+// `verify/part05-promote-rollback` の実機コンパイル失敗
+// (`CPD0074: Value 'verify har' for TEXT exceeds 50 characters.`)で
+// 発見)。`+` は継続行の先頭インデントを常に取り除くため、折り返し位置の
+// 前に置いた空白1つ(下の ` +`)だけが単語の区切りとして残り、元どおりに
+// 復元される。
 function wrapClStatement(text, { indent = CL_INDENT, maxCol = CL_MAX_COL } = {}) {
-  const contWidth = maxCol - indent - 2; // 行末の ' -' の分を引く
+  const contWidth = maxCol - indent - 2; // 行末の ' +' の分を引く
   const words = text.split(' ');
   const rows = [];
   let cur = '';
@@ -56,7 +69,7 @@ function wrapClStatement(text, { indent = CL_INDENT, maxCol = CL_MAX_COL } = {})
 
   return rows.map((row, i) => {
     const isLast = i === rows.length - 1;
-    const line = `${' '.repeat(indent)}${row}${isLast ? '' : ' -'}`;
+    const line = `${' '.repeat(indent)}${row}${isLast ? '' : ' +'}`;
     if (line.length > maxCol) {
       throw new Error(`CL の折り返し後も${maxCol}桁を超えています(${line.length}桁): ${line}`);
     }
