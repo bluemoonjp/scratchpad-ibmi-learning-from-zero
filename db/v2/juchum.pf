@@ -1,0 +1,43 @@
+     A*                                     JUCHUM (db/v2): adds JUDLV.
+     A*                                     DBVER=2 target, lesson 05-09.
+     A*                                     FIXED (2026-09-27): the field-
+     A*                                     level line below used to read
+     A*                                     CVTOPT(*DATEDEC)/ALWNULL(*NO).
+     A*                                     Neither is real DDS syntax:
+     A*                                     CVTOPT is a CRTRPGPGM/
+     A*                                     CRTBNDRPG *compile option*
+     A*                                     (*NONE/*DATETIME/*VARCHAR/
+     A*                                     *GRAPHIC, no *DATEDEC value -
+     A*                                     confirmed via IBM's own
+     A*                                     CRTRPGPGM command reference),
+     A*                                     not a DDS field keyword at
+     A*                                     all - confirmed absent from
+     A*                                     IBM's own "DDS for Physical
+     A*                                     and Logical Files" reference
+     A*                                     (rzakbpdf.pdf, fetched and
+     A*                                     grepped directly, zero CVTOPT
+     A*                                     hits). The real DDS date-
+     A*                                     format keyword is DATFMT
+     A*                                     (same reference: default
+     A*                                     *ISO if omitted) - now used
+     A*                                     instead. ALWNULL as a DDS
+     A*                                     field keyword takes NO value
+     A*                                     at all (same reference's own
+     A*                                     example line, "FIELD3  L
+     A*                                     ALWNULL" - bare, no parens;
+     A*                                     its plain absence already
+     A*                                     means "no nulls allowed",
+     A*                                     which is what this field
+     A*                                     wants) - the invalid
+     A*                                     ALWNULL(*NO) form is simply
+     A*                                     removed, not replaced.
+     A*                                     UNVERIFIED: still not yet
+     A*                                     compiled on PUB400.
+     A          R JUCHUR                    TEXT('Order master')
+     A            JUNO           6A         TEXT('Order number')
+     A            JUTOK          6A         TEXT('Customer code')
+     A            JUDATE         8S 0       TEXT('Order date YYYYMMDD')
+     A            JUTAN          6A         TEXT('Sales rep code')
+     A            JUDLV           L         TEXT('Delivery date')
+     A                                      DATFMT(*ISO)
+     A          K JUNO

@@ -506,6 +506,76 @@ O仕様書が一切認識されなくなる(`QRG7064`「file not referenced」�
 サブファイル・レッスンはMOVEL方式で設計すること。SFLキーワード自体は
 実機確認済みで、今後のサブファイル設計にそのまま使ってよい。
 
+## 第5部旧システムの実機検証: `part05-legacy-probe`(確認日 2026-09-26)
+
+旧システム(FLDREF/FLDREFR、TK0100D/MN0000D、TK0100/JU0300/ZA0500/ZA0510、
+JU0900C/MN0000C、JUBADD、C0511S)一式を1回の接続でまとめてコンパイルした。
+**1回目の接続で3件の実バグを発見・修正、2回目の接続で11オブジェクト全て
+Highest Severity 00 / 正常終了を確認した(CONFIRMED SUCCESS)。**
+
+**バグ1: `tk0100d.dspf`のMSGCTL、`OVERLAY`キーワードの位置**。
+`CPD7486`(「キーワードの指定位置が誤り」)。名前の無いキーワード単独行は、
+直前に**名前付きの**フィールド行が出ていれば、そのフィールドの階層(フィー
+ルド・レベル)に付く、という規則(TXCKMの`UNIQUE`で確認済みの規則と同種)
+により、`PGMQ SFLPGMQ`という名前付きフィールド行より後ろに置いた
+`OVERLAY`が、レコード・レベルではなくPGMQフィールド・レベルの指定と
+誤認識されていた(`OVERLAY`はフィールド・レベルでは無効)。`PGMQ`行より
+前(`SFLINZ`の直後)に移動して修正。
+
+**バグ2: `tk0100d.dspf`のSFL1CTL、ヘッダーとフッターの同時指定**。
+`CPD7812`(「サブファイル制御レコードがサブファイル・レコードと重なる」)。
+2件の一次資料(400power.com、experts-exchange.com)で確認: **サブファイル
+制御レコード(SFLCTL)は、位置指定付きの定数・フィールドをサブファイルの
+上または下のどちらか片方にしか持てず、両方には持てない**。SFL1CTLは
+タイトル・列見出し(1・3行目、上側)と`MORE`フィールド・F3=Exit(15・23
+行目、下側)を両方持っていたため発生。標準的な回避策どおり、下側の内容を
+新しいレコード様式`SFL1FTR`に分離し、SFL1CTL側に`OVERLAY`を追加した
+(将来この様式群にWRITEするレッスンは、`SFL1FTR`を先にWRITEしてから
+`SFL1CTL`をEXFMTする順序を守ること)。TK0100(RPG)は現時点でこれらの
+様式に一切WRITE/EXFMTしていないため、RPG側の修正は不要だった。
+
+**バグ3: `za0500.rpg`、プログラム記述ファイルのI仕様書、Sequence欄が空欄**。
+`QRG4008`(severity 10、この環境の生成レベルではコンパイル停止)。
+一次資料`rpg400ref.txt`第8章「Positions 21-41 (Record Identification
+Codes)」で確認: プログラム記述ファイルのレコード型が1種類だけの場合
+(21-41桁のレコード識別コードが空欄の場合)でも、「19-20桁の
+レコード識別標識と、15-16桁のSequence欄の両方への入力が必須」。
+`IJUCHUD`/`IJUCHUM`の両I仕様書とも15-16桁が空欄だったため発生(19-20桁の
+標識番号`01`/`02`は元から正しかった)。15-16桁に`AA`(Table 21: 英字2文字
+または数字2桁が有効)を追加して修正。
+
+**バグ4: `ju0900c.clp`、`CLOF FILE(JUCHUD)`**。TXCHECKで確認済みの
+`CLOF`/`CLOSE`の規則(`CPD0043`)と同じ発見だが、ここでは`CLOSE
+OPNID(*NONE)`にも置き換えられない: `OPNID(*NONE)`はこのプログラム自身が
+`DCLF`した(かつOPNIDを省略した)ファイルを閉じる仕組みであり、この
+プログラムが`DCLF`しているのは`JUCHUM`だけで、`JUCHUD`は`DCLF`しておらず
+`OVRDBF`/`OPNQRYF`でZA0500と共有しているだけ。ZA0500(RPG、F仕様書`IP`)
+はLR成立時に自分の開いたファイルを自動クローズするため、`CALL
+PGM(&LIB/ZA0500)`から戻った時点でJUCHUD側の共有オープン・データ・
+パスは既に閉じている。`CLOF FILE(JUCHUD)`の行自体を削除し(閉じる対象が
+無いため)、後続の`DLTOVR`(既存のMONMSGで保護済み)だけを残した。
+
+**確認(2回目の接続)**: FLDREF・TK0100D・MN0000D(DDS/PF)、TK0100・JU0300・
+ZA0500・ZA0510(RPG、全てHighest Severity 00)、JU0900C・MN0000C・C0511S
+(CL)、JUBADD(PF)の11オブジェクト全てが正常に作成され、
+`part05-legacy-probe DONE`まで到達した(FAILSAFEに落ちず)。
+`tools/gen/dspf.mjs`のSFL関連ヘルパー(`sflRecordFormat`等)自体に問題は
+無く、DDS側の配置規則(上下どちらか片方、キーワードの階層)がこのファイル
+固有の設計ミスだった。
+
+**副産物: `tools/qclsrc/txmigr.clp`の`UNVERIFIED`だったDSPDBR OUTFILEの
+フィールド名を実測で確定した。** このバッチのVDBR診断ステップ
+(`DSPDBR FILE(&LIB/JUCHUM) OUTPUT(*OUTFILE)`)の実測結果: 想定していた
+`WHFILE`/`WHLIB`という列は存在せず、実際は`WHRFI`/`WHRLI`(DSPDBRの対象
+そのもの、ここではJUCHUM自身が全行に繰り返し出る)と`WHREFI`/`WHRELI`
+(実際に従属する論理ファイル、ここでは`JUCHUL1`)の2組だった。`WHTYPE`列は
+従属側の種別(`D`=データ、SQLビュー/索引と区別)。TXMIGRが本当に必要として
+いたのは従属論理ファイル側なので、`txmigr.clp`を`WHREFI`/`WHRELI`基準に
+修正した(`DSPOBJD`側の`ODOBNM`/`ODOBAT`は元から実測と一致していた、
+`VFYOBJ`の列一覧・行データで確認済み)。TXMIGR自体はまだ実機コンパイル・
+実行していない(この接続はDSPDBRの列名確認が目的で、TXMIGR本体はP2/2Fの
+V2穴埋めで別途検証する)。
+
 ## 第3部 RTVJOBA 修正の実機検証: `part03-rtvjoba-fix`(確認日 2026-09-26)
 
 03-11(SETENV)・03-13(JUYAKC)の`RTVJOBA USER()`→`CURUSER()`修正を検証。
@@ -530,9 +600,881 @@ O仕様書が一切認識されなくなる(`QRG7064`「file not referenced」�
 (第7部07-04、JUYAKLのILE CL版)にも発見、まだ実機接続していないが
 先回りで同様に修正済み。**
 
+## 第5部 QCMDEXC 教材の再設計: `za0510.rpg`(05-04)・`za0500-ticket3.rpg`(05-13)(確認日 2026-09-26、接続なしでの再設計)
+
+`src/legacy/qrpgsrc/za0510.rpg`(05-04)と`solutions/05-13/za0500-ticket3.rpg`
+(05-13のチケット3演習)は、どちらも`SNDPGMMSG`を`QCMDEXC`経由で実行
+しようとしていた。第7部`jucutl.rpgle`(`part07-01-modules`)の実機検証で、
+`SNDPGMMSG`は`QCMDEXC`経由では(呼び出し元がRPGでもCLでも、どんな
+深さでも)実行できないと判明した(`CPD0031`「Command SNDPGMMSG not
+allowed in this setting」。IBM公式Docsで確認: QCMDEXC自体は「commands
+that can only be used in CL procedures or programs cannot be run by
+the QCMDEXC program」、SNDPGMMSG自身は実行可能な環境を「Compiled CL
+program or interpreted REXX」のみと定める)。全リポジトリーをQCMDEXC
+呼び出しで検索した結果、この2ファイルにも同じ壊れたパターンが見つかった。
+**05-04自身の教える要点は
+「QCMDEXCで任意のCLコマンドを実行できる」ことであり、`SNDPGMMSG`は
+その一例に過ぎない**と判断し、`QCMDEXC`は残したまま、実行するコマンド
+だけを差し替えた。
+
+**代替コマンドの選定根拠**: 各CLコマンドのIBM公式解説ページには
+「Where allowed to run」(実行可能な環境)という欄が必ずある。
+`SNDPGMMSG`はここが「Compiled CL program or interpreted REXX」のみ
+(`*EXEC`を含まない)なのに対し、`CHGDTAARA`はここが`*ALL`(全環境)と
+明記されている(2箇所のIBM公式ドキュメントで直接引用・確認済み)。
+`QCMDEXC`から安全に呼べるかどうかは、このコマンドごとの属性で決まる
+のであって、「どんなコマンドでも呼べる」わけではないと確定した。
+
+**za0510.rpg(05-04)の修正**: `SNDPGMMSG MSG('ZA0510 ERROR')
+TOPGMQ(*EXT) MSGTYPE(*INFO)` を `CHGDTAARA DTAARA(*LDA (1 20))
+VALUE('ZA0510 ERROR')` に差し替えた(自分のジョブが常に持つローカル・
+データ域`*LDA`の1〜20バイト目にフラグを書き込む、新規オブジェクト
+不要)。`CMDDS`(57バイト、9個の7バイト部分項目)の構造・`CMDLEN`
+(57)は無変更——新しいコマンド文字列(51文字)を6個の空白で57バイトに
+埋めるだけで、`MOVEL`9行の中身だけを差し替えた。桁位置・エスケープ
+(埋め込み引用符の2重化)は全てNode.jsの小さなスクリプトで機械的に
+再計算・検証済み(手作業での桁数え間違いを避けるため)。05-04の
+レッスン文書(埋め込みソース・QCMDEXCの説明・演習7・実機メモ)も
+合わせて更新し、**演習7に`DSPDTAARA DTAARA(*LDA)`での確認手順を追加**
+した——元のSNDPGMMSG版は実はメッセージが届いたことを一度も検証して
+いなかったので、これは元より確実な検証手順になっている。
+
+**za0500-ticket3.rpg(05-13)の修正**: こちらは`CMDDS`が65バイト・8バイト
+区切り(9部分項目)で、埋め込み引用符を含む部分項目が8バイト区切りだと
+Factor2欄の10桁幅に収まらないことが判明したため、za0510.rpgと同じ
+7バイト区切りに再設計した(56バイト・8部分項目、`CMDLEN`も56に変更)。
+コマンドは`CHGDTAARA DTAARA(*LDA (21 20)) VALUE('ZA0500 SHORT ERR')`
+(56文字、8×7バイトにちょうど収まり空白埋め不要)。**バイト範囲を
+1-20ではなく21-40にして、za0510.rpgのフラグと衝突しないようにした**
+(同一ジョブで両方が実行される想定は無いが、念のため)。**この修正は
+05-13自身のレッスン文書が示していた「`JUMSGF`への新規メッセージID
+追加」という代替案を採らなかった**——`JUM0002`のような登録メッセージID
+を使っても、実際に送信する手段(`SNDPGMMSG`か`QMHSNDPM`)がやはり必要で、
+`QMHSNDPM`をRPG IIIの固定形式で直接呼ぶには、この教材のRPG IIIソース
+に前例の無い`BINARY(4)`型のI仕様書部分項目(`QMHSNDPM`の長さ・カウンター
+引数用)を新規に設計する必要があり、実機接続なしでその桁位置を確定
+するのはリスクが高いと判断したため。05-13のレッスン文書(演習手順・
+チケット3の採点表)もこの判断に合わせて更新した。
+
+**まだ実機で確認していない**: 上記2件の再設計は、いずれも次回のSSH
+接続(次回接続まで約18時間、1日の上限24回に達したため)で実際に
+コンパイル・実行して確認する必要がある。特に`za0500-ticket3.rpg`は
+現時点でどの検証マニフェストにも含まれていない(第5部V2の穴埋め
+(P2/2F)で今後のマニフェストに追加すること)。`za0510.rpg`は
+`part05-legacy-probe`が既にコンパイル成功を確認済みだが、それは
+この修正**より前**の内容に対してであり(`*PSSR`はコンパイルのみの
+検証では実行されないため、この修正による影響は無いはずだが)、次回の
+接続で`*PSSR`の実行結果(`CHGDTAARA`が実際に成功すること)を
+あらためて確認すること。
+
+**接続なしで発見・修正した1件の実バグ(advisor指摘、2026-09-27。同じ手法でもう1ファイルも検証したが、そちらは既に正しかった)**:
+`solutions/05-13/za0500-ticket3.rpg`の`IJUCHUD`/`IJUCHUM`行が、
+`za0500.rpg`側で既に修正済みだった`QRG4008`(Sequence欄15-16桁目の
+空欄、`AA`が必要)を移植し忘れていた——このファイル独自の`CMDDS`/
+`*PSSR`追加分を除く全C/O/I仕様書行を`za0500.rpg`本体と直接diffして
+発見・修正し、diffが追加分のみになることを確認済み。同じ手法で
+`verify/part05-qcmdexc-runtime/src/za0510v.rpg`も`za0510.rpg`本体と
+diffし、こちらは(意図した`TABPCD`最終要素の`P09999`書き換え以外)
+完全一致を確認済み。
+
+## SEUのF13〜F17割り当てに関する食い違い(2026-09-27発見・解決)
+
+05-01(第5部)の執筆中、SEUの生産性コマンド(B1-19対応)を調べたところ、
+複数の実務解説サイト(go4as400.com等)が一致してF13=「Change Session
+Defaults」・F14=「Find/Change Options」・F15=「Browse/Copy Options」・
+F16=「Repeat Find」・F17=「Repeat Change」としている。IBM公式の現行
+(7.5)ドキュメント「Using the Source Entry Utility (SEU)」ページは
+F16/F17(検索・置換の繰り返し)の名称は確認できたが、F13〜F15の役割は
+記載していなかった(そのページが挙げるのは`STRSEU`のパラメーター・
+プロンプト画面のキーで、編集セッション中のものとは別文脈)。
+
+**既に公開済みの`docs/part03/03-01-cl-skeleton.md`は「SEU の`F15`
+(検索)」と明記していた**が、上記の実務解説サイトの記述が正しければ、
+検索・置換オプションを開くのは`F14`であり、`F15`は無関係の
+「Browse/Copy Options」である。
+
+**解決(2026-09-27、同日中)**: IBM公式マニュアル「ADTS for AS/400:
+Source Entry Utility」(SC09-2605-00、`https://publibfp.dhe.ibm.com/
+epubs/pdf/c0926050.pdf`)を実際に取得(`work/design/refs/
+seu_sc09-2605.txt`に保存)し、F13〜F17の役割分担(上記の実務解説サイト
+の記述と完全一致)を一次資料で確認した。**`F15`は検索と無関係で、
+検索・置換画面を開くのは`F14`が正しい。** `03-01`を`fix/part03-seu-f14`
+ブランチで`F14`に修正し、`main`へ直接merge・push・CI green確認済み
+(コミット`1745172`)、draft/part05→draft/part06へも前方マージ済み。
+5250の実機画面そのものでは確認していない(この教材の検証方針上、
+5250の対話操作は自動化していないため)。**副産物として`03-02`にも
+同じF15誤りが1箇所見つかり(ウォームアップの復習answer)、同じコミット
+セットで修正済み。**
+
+## P3公開前チェック項目: 第5部の`work/design/*.json`引用(2026-09-27発見・解決)
+
+advisorレビューで指摘: 第5部の複数レッスン(`05-06`・`05-07`・`05-08`・
+`05-09`)本文が、`work/design/final_probes.json`・
+`work/design/part05-legacy-design.json`をそのまま引用しているが、
+**これらは`work/`配下でgitignore済みであり、公開リポジトリーの読者は
+アクセスできない。** 実際に確認したところ、既に公開済みの第0〜4部の
+本文には`work/design`への言及が一件も無く(`git grep -c "work/design"
+-- docs/part00 docs/part01 docs/part02 docs/part03 docs/part04`で
+0件)、これは「許容されている慣行」ではなく**未解決の欠陥**と判断した。
+
+**解決(2026-09-27、同日中)**: 該当6箇所すべてを、プローブP番号のみの
+言及・`docs/probes.md`への言及・「このリポジトリーの設計メモ」という
+具体的パスを伴わない言及のいずれかに書き換えた。**副産物**:
+`05-09`のJUDLV図を直す過程で、`db/v2/juchum.pf`自身に実在バグを発見・
+修正した——`CVTOPT(*DATEDEC)`/`ALWNULL(*NO)`はどちらも実在しないDDS
+フィールド・キーワード(値)だった。`CVTOPT`は`CRTRPGPGM`/`CRTBNDRPG`の
+コンパイル・オプション専用(`*DATEDEC`という値も存在しない)、`ALWNULL`
+はDDSのフィールド・キーワードとしては存在するが値を取らない(裸の
+`ALWNULL`のみ)。正しいDDSキーワードである`DATFMT(*ISO)`に差し替え、
+`ALWNULL(*NO)`は削除した(省略自体が「NULL不許可」を意味するため)。
+`05-09`自身の新出リストにCVTOPT/ALWNULLは元々含まれておらず、学習目標
+への影響は無い。
+
+## 第5部QCMDEXC経路の実機検証: `part05-qcmdexc-runtime`(確認日 2026-09-27)
+
+`za0510.rpg`(05-04)の`*PSSR`/`QCMDEXC`/`CHGDTAARA(*LDA)`経路を、検証専用の
+別名オブジェクト(`ZA0510V`、TABPCDの最終要素だけ`P00006`→`P09999`に
+書き換えた版)で発火させ、同一ジョブ内のCLヘルパー`VLDA`が`RTVDTAARA`で
+`*LDA`を読み戻して`SNDPGMMSG`で報告する設計。**1回の接続でCONFIRMED
+SUCCESS。**
+
+- `ZA0510V`・`VLDA`・`ZA0500T3`(05-13チケット1模範解答、コンパイルのみ
+  対象)の3オブジェクトとも Highest Severity 00 でコンパイル成功。
+- 実行結果: `VLDA: *LDA(1,20)=[ZA0510 ERROR        ]` — `expected/notes.md`
+  が期待した文字列と完全一致(12文字+空白8文字パディングの推測も実証された)。
+- **新発見**: `*PSSR`の`ENDSR '*CANCL'`実行後、ジョブ・ログには
+  `Error RPG0000 caused program ZA0510V to stop.`という異常終了メッセージが
+  記録され、呼び出し元のCLラッパーは`MONMSG MSGID(...RPG0000)`で捕捉して
+  `RUNZA1V FAILED`マーカーを送っていた。それでも`CHGDTAARA`自体は
+  `*PSSR`内で正常に実行済みで、`*LDA`への書き込みは失われていない。
+  `expected/notes.md`が事前に「`RUNZA1V FAILED`の有無は成否判定に使わない」
+  と明記していた判断は正しかった。05-04の演習7が「`DSPDTAARA`で確認する」
+  という手順のみを教え、プログラムの終了状態には触れていない点とも整合する。
+
+これでP1の#10.5は完了。次は#10.6(`part05-txlegacy-exec`)。
+
+## 第5部TXLEGACY自体の実機検証: `part05-txlegacy-exec`(確認日 2026-09-27)
+
+これまでの検証(`part05-legacy-probe`等)は、TXLEGACYが本来やる仕事
+(CLONEDIR配下の実ツリーから自分でCPYFRMSTMFする)を一度も実行せず、同じ
+オブジェクトを`file`/`cl`ステップで直接コンパイルして代替していただけ
+だった。今回、TXLEGACYが依存する9ファイルをCLONEDIR相当の相対パスへ
+`file`ステップ(remotePath指定、CPYFRMSTMFは実行しない)で配置し、続けて
+`sh`ステップの`CPYTOSTMF`で実際にCCSID1208へバイト変換したうえで、
+TXLEGACY自身をCALLした(`RUNTXLEG`という小さなCLヘルパー経由、TXLEGACYの
+`*CMD`はラッパーのコンパイル時点ではまだ存在しないため)。**1回の接続で
+CONFIRMED SUCCESS。**
+
+- **CCSID診断(`DEBUGCCSID`ステップ)で確認**: `CPYTOSTMF`後の
+  `za0500.rpg`は実際にCCSID1208のタグが付き、バイト列も本物のASCII
+  (`od -x`実測: `2a20 5a41 3035 3030`などが`* ZA0500`と正しく対応)。
+  タグとバイト列が一致しているため、TXLEGACY自身の
+  `CPYFRMSTMF...STMFCCSID(1208)`は破損なく成功する——heredoc直書き
+  (既定でCCSID273/EBCDIC、`harness-selftest`で確認済み)とは別の経路で
+  1208を正しく再現できることを実証した。
+- **TXLEGACY本体の実行**: 8オブジェクト(FLDREF・FLDREFR・TK0100D・
+  MN0000D・TK0100・JU0300・ZA0500・JU0900C・MN0000C、うちTK0100/JU0300/
+  ZA0500はRPGでHighest Severity 00)全てがこの接続のタイムスタンプで
+  新規作成され、`TXLEGACY: done.`まで到達。状態データ域`TXLEGST`も
+  新規作成された(初回ロード)。
+- **`RUNTXLEG`ヘルパーによる確認**: 同一ジョブ内で`TXLEGST`を
+  `RTVDTAARA`し`TXLEGRUN: TXLEGST=[Y]`と報告——TXLEGACYが自分の状態
+  データ域を正しく書き込み、直後に読み戻せることを確認した。
+- 副産物: `DLTTXCMD`/`DLTTXLST`は初回実行のため「オブジェクトが無い」で
+  想定どおり失敗しMONMSGで捕捉、`CPTXLEGCMD`が`*CMD`を新規作成。
+
+これでP1の#10.6は完了。次は#10.7(`part05-ju0900c-baseline`)。
+
+## 05-13チケット1のバグが実機でどう現れるか: `part05-ju0900c-baseline`(確認日 2026-09-27)
+
+`JU0900C`(`&MINQTY TYPE(*DEC) LEN(3 0)`)から`ZA0500`(`*ENTRY PLIST`が同じ
+位置を`MINQTY 5,0`として読む)を、as-shippedの状態(バグ未修正)のまま
+`CALL`し、ticket 1のバグが初めて実機でどう現れるかを観察した。
+**`expected/notes.md`が事前に立てた「本命の予想」(パックド10進数のビット
+配置から確定的に導出、advisor指摘)が、メッセージIDの1点を除いて完全に
+的中した。**
+
+- **1行も印字されないまま、1回目の接続で確実に発生した。** `RPG0907:
+  ZA0500 8100 decimal-data error in field (C G S D F).` →
+  `RPG9001: Error RPG0907 caused program ZA0500 to stop.` →
+  `CPF9999: Function check. RPG9001 unmonitored by JU0900C at statement
+  7400, instruction X'0056'.` → `JU0900C: ZA0500 ended abnormally.`
+  という順でエスケープし、ハングせず`part05-ju0900c-baseline DONE`まで
+  正常に到達した(`run`セクションを走査し、`J00001`等の受注行や
+  `OK`/`SHORT`/`NOTFOUND`の実行時出力が1件も無いことも確認済み——
+  1行目の`LOKUP`成立後、最初に`&MINQTY`を参照する`N90 AVAIL COMP
+  MINQTY`(統合ソース上のstatement 8100、コンパイル時のクロス・
+  リファレンスで確認)で即座に落ちている)。
+- **予想と実際の食い違いは1点だけ: メッセージIDが`MCH1202`ではなく
+  `RPG0907`だった。** 予想の根拠(パックド10進数の桁数不一致で不正な
+  ニブル値になる)自体は正しかった——実際に発生したのも同じ「10進データ・
+  エラー」という分類のメッセージであり、`RPG0907`はOPM RPG/400自身の
+  10進データ・エラー・メッセージ(`MCH1202`はおそらくMI/ILEレベルの
+  等価物であり、OPM RPG/400からは自分自身のメッセージ体系で報告される)。
+  結論(「ticket 1のバグは、このデータでは毎回確実に起きる」)には影響
+  しない。
+- **`ZAIKOM`は接続前後で完全に不変**(`RUNMODE='*TEST'`により`UPDAT`が
+  一度も実行されなかったことの直接確認)。
+- **影響**: 05-13・`src/legacy/tickets/ticket1.md`の「まれに」という
+  表現、および`ju0900c.clp`自身のヘッダー・コメントの「corrupting its
+  low-order digit」という説明は、どちらも実態と食い違っている——本文
+  執筆時(P4)に「毎回確実に、1行目で」という実測どおりの表現へ書き直す
+  こと。また05-11(MCH1202)のマニフェスト設計時は、この接続で確定した
+  実際のメッセージID(`RPG0907`)とエスケープ経路を踏まえること。
+
+## 第5部`part05-txmigr-to2`(接続A)の実機検証: CPF4131を初めて再現(確認日2026-09-27)
+
+05-09(CPF4131・TXMIGR TO(2))の2接続構成のうち接続A。**CONFIRMED SUCCESS。**
+1回目の接続はハーネス自体のバグ(下記「verify harnessのクラッシュ」節参照)で
+クラッシュ、修正後の2回目はネットワーク側のタイムアウトで3時間停止、3回目で
+成功した。
+
+- **`TXSETUP LIB(&LIB2)`が実際に投入先ライブラリーを指定できることを確認**
+  (ソース読解の推測ではなく実機で確認): `<USER>B`にDBVER=1の全表
+  (TOKUIM/SHOHIM/JUCHUM/JUCHUD/ZAIKOM/TANTOM/JUCHUL1/TOKUIL1)を新規構築、
+  `TXSTATE`も作成(`TXSTATUS: DBVER=0000000001 in library <USER>B`)。
+- `JU0900C`・`ZA0500`・`JU0300`・`RUNPROBE`(検証専用ヘルパー)を、この時点の
+  (v1形式)`JUCHUM`/`JUCHUL1`に対してコンパイル(`ZA0500`・`JU0300`は
+  Highest Severity 00)。
+- ベース・スナップショット(`DSPFD TYPE(*ATR) OUTPUT(*OUTFILE)`、`FDJM0`/
+  `FDJL0`): `JUCHUM`は4フィールド・26バイト。
+- **`RUNCHGPF`(`db/v2/juchum.pf`への`CHGPF`)が成功**: `8 records copied
+  from member JUCHUM.`/`File JUCHUM in library <USER>B changed.`
+- 事後スナップショット(`FDJM1`/`FDJL0B`): `JUCHUM`は**5フィールド・36
+  バイトに変化**(`JUDLV`列追加を裏付け)。`JUCHUL1`も同時点でDSPFDすると
+  同じ5フィールド・36バイトを報告する(DSPFDは常に「今の実体」を報告する
+  ため、これ自体は「古いプログラムから見て何が起きるか」の直接証拠には
+  ならない——その証拠は次の2点)。
+- **`RUNPROBE`(旧形式でコンパイル済み)が`JUCHUM`を開こうとして`CPF4131`
+  (レコード様式レベル・チェック不一致)で失敗することを確認**:
+  `Level check on file JUCHUM in library <USER>B with member JUCHUM.`→
+  `RUNPROBE: CPF4131 CONFIRMED - JUCHUM record format level check failed.`
+  ——**05-09が教えたい核心の実機再現に、この教材で初めて成功した。**
+- **`JU0900C`(同じく旧形式でコンパイル済み)も同じ`CPF4131`で`JUCHUM`を
+  読めず**、`JU0900C: could not read JUCHUM.`と自分のSNDPGMMSGで報告
+  (ハングせず正常に継続)。その後`JUCHUD`を開き`ZA0500`をCALLするが、
+  これは(このマニフェストがチケット未修正のas-shippedソースを使って
+  いるため)part05-ju0900c-baselineと同じチケット1のバグ(`RPG0907`)に
+  別途遭遇する——**CPF4131とチケット1のバグは無関係の別事象として、両方が
+  この1回の接続で観測できた。**
+- `TXMIGR`本体(TO(2)による再コンパイル)はこの接続では実行しない(意図的
+  な設計、接続Bで実行)——この接続の役目は「CPF4131が起きる`before`状態を
+  確実に作る」ところまで。
+
+これで接続Aは完了。次は接続B(`part05-txmigr-to2b`、TXMIGR TO(2)を実行し
+CPF4131が解消することを確認)。
+
+## verify harnessのクラッシュ・バグ発見と3時間停止(確認日2026-09-27)
+
+`part05-txmigr-to2`の1回目の接続試行で、`verify/lib/ssh.mjs`の実バグにより
+Node.jsプロセス自体が未処理例外でクラッシュした:`child.stdin`(Writable
+ストリーム)に`error`ハンドラーが無く、書き込み失敗(このマニフェストが
+これまでで最大級のスクリプト・サイズだったことが関係している可能性)で
+`Emitted 'error' event on Socket instance`が発生し、収集済みのstdout/stderr
+ごと失われた。修正(`child.stdin.on('error', () => {})`追加、実際の終了判定
+は`child.on('close')`に委ねる)をmain経由でdraft/part05→draft/part06へ
+前方マージ・CI確認済み。修正後の2回目の接続では`ssh: connect to host
+pub400.com port 2222: Connection timed out`(ネットワーク側の一時的な問題
+と思われる)が発生し、`refused_or_timeout`歯止めにより3時間停止した。3回目
+(3時間経過後)で成功した。
+
+## 第5部`part05-txmigr-to2b`(接続B)の実機検証: 重大な発見(コンパイル前提の欠陥)(確認日2026-09-27)
+
+05-09/05-12(TXMIGR TO(2))の接続B。**CONFIRMED SUCCESS(ただし1件、実際の
+学習者向けレッスンの致命的な欠陥を発見)。**
+
+- **重大な発見: `CPTXMIGRRW`(意図的な「無防備」コンパイル試行)が実際に
+  失敗した。** `Program TXMIGR not created.`/`CPTXMIGRRW FAILED.`(通常の
+  コンパイル・リストすら出ない、`CPF0801`のみ)——**TXMIGRは、`QTEMP/
+  TXMDBR`・`QTEMP/TXMPGM`が事前に存在しないと、そもそもコンパイルすら
+  できないことが実機で確定した。** 05-09/05-12のレッスン本文には、
+  この2つのQTEMPファイルを先に用意する手順が無いため、**実在の学習者が
+  レッスンどおりに`CRTCLPGM PGM(TXMIGR)`を試すと、このマニフェストの
+  意図的な「無防備試行」と全く同じ理由で確実に失敗する。**
+  (ハーネス側の`PRIMEDBR`/`PRIMEOBJ`という回避策で用意した後の2回目の
+  試行は成功——`Program TXMIGR created in library <USER>2.`)。
+- **この発見を受け、`tools/qclsrc/txmigr.clp`自体を再設計・修正した**
+  (実在するレッスン内容のバグとして、priming前提ではなく根本修正):
+  `DCLF FILE(QTEMP/TXMDBR)`/`DCLF FILE(QTEMP/TXMPGM)`(実行時にしか
+  存在しないファイルへの直接DCLF)をやめ、IBM提供のモデル・ファイル
+  `QSYS/QADSPDBR`(DSPDBRの既定OUTFILE書式、Web検索で確認)・
+  `QSYS/QADSPOBJ`(DSPOBJDの既定OUTFILE書式、Web検索で確認)へ
+  DCLFする方式に変更。これらは常に実在するため、コンパイル時点で
+  `QTEMP`側の状態に依存しなくなる。実行時は`OVRDBF`でモデル・ファイルを
+  実際の`QTEMP/TXMDBR`/`QTEMP/TXMPGM`へリダイレクトする(古典的な
+  DCLF+OVRDBFの型)。フィールド名(`WHREFI`/`WHRELI`/`WHRTYP`/`WHTYPE`・
+  `ODOBNM`/`ODOBAT`)自体は新しい推測ではなく、`part05-legacy-probe`の
+  実測(`WHREFI`/`WHRELI`)と、この接続B自身のRECOMPILEループが実際に
+  正しく動いた実績(`ODOBNM`/`ODOBAT`)で、どちらも既に確認済みの値を
+  そのまま使っている。**この修正自体、最初の実装(両方のDCLFとも既定の
+  `OPNID(*NONE)`のまま)は実機で失敗した**——詳細は次の
+  `part05-txmigr-compile-check`の節を参照。最終的に確認できたのは
+  `DCLF ... OPNID(D)`/`DCLF ... OPNID(P)`(明示的に別々のOPNIDを
+  つける)版。
+- **`TXMIGR`本体の実行結果(以下、修正前の設計のままで確認できたこと)**:
+  - Step 1(`CHGPF`): 既に接続Aで適用済みの変更を冪等に再適用(`8
+    records copied`/`File JUCHUM in library <USER>B changed.`)、正常。
+  - Step 2(`CRTLF`によるJUCHUL1再構築): **`JUCHUL1`が既に存在するため
+    失敗**(`File JUCHUL1 in library <USER>B already exists.`/`TXMIGR:
+    could not recreate JUCHUL1.`)——`txmigr.clp`自身のコメントが最初
+    から明記していたとおりの、意図された・無害な失敗(既存LFの削除は
+    しない設計)。**つまりTXMIGR単体では、既に存在する依存論理ファイル
+    自体はリフレッシュされない。**
+  - Step 3(`DSPOBJD`+全`*PGM`再コンパイル): `JU0300`・`JU0900C`・
+    `RUNPROBE`・`ZA0500`、全て成功(該当分はHighest Severity 00)。
+  - `TXMIGR: done. DBVER=0000000002...update TXSTATE by hand if this
+    tool did not.`——**この注記どおり、`TXSTATE`は実際に更新されて
+    いなかった**(直後の`TXSTATUS`は`DBVER=0000000001`のまま)。
+    TXMIGR自身の完了メッセージが正直に予告していた制約が、実機でも
+    そのとおりだった。
+  - **`RUNPROBE`(TXMIGRによって再コンパイル済み)が`JUCHUM`を再度読むと
+    `CPF4131`は解消**: `RUNPROBE: RCVF succeeded and read a JUCHUM row
+    - no CPF4131, format levels agree.`——**プログラム側の
+    level-checkは、TXMIGRのStep 3だけで解消することを確認した。**
+  - マニフェスト側で手動`DLTF`+`CRTLF`により`JUCHUL1`を実際に
+    リフレッシュし、`JU0300`も再々コンパイル(Highest Severity 00)、
+    その後`TXSTATUS`は`DBVER=0000000002`(手動でのTXSTATE更新を
+    別途行った結果)。
+
+これで接続Bは完了。次は`part05-txmigr-compile-check`(txmigr.clp再設計の
+確認)。
+
+## 第5部`part05-txmigr-compile-check`の実機検証: txmigr.clp再設計の確認、および途中で見つかった2件目の実機バグ(確認日2026-09-27)
+
+`tools/qclsrc/txmigr.clp`の再設計(前節参照、DCLFをIBM提供のモデル・
+ファイル`QSYS/QADSPDBR`/`QSYS/QADSPOBJ`へ向ける方式)の確認。
+**CONFIRMED SUCCESS(ただし1回目の実装は実機で失敗し、修正が必要
+だった)。**
+
+- **1回目の実装(両方のDCLFとも既定の`OPNID(*NONE)`のまま)は
+  コンパイル自体が失敗した**: `CPD0303: DCLF with OPNID parameter
+  *NONE declared previously`(通常のコンパイル・リストすら出ない)。
+  実機で確認できた新しい規則: **1つのプログラム中で`OPNID(*NONE)`
+  (既定値)を使えるDCLF'd済みファイルは、最大1つまで**——`RCVF`が
+  無指定(`OPNID()`省略)で使えるファイルが1つまでという既存の制約
+  (`tools/qclsrc/txsetup.clp`のコメント参照)と、全く同じ「無指定は
+  1つまで」の規則が、DCLF自身の`OPNID()`にも及ぶことが分かった。
+  このプログラムはDCLFが2つ(`QADSPDBR`・`QADSPOBJ`)あるため、
+  どちらもデフォルトの`OPNID(*NONE)`のままでは衝突する。
+- **修正: 両方のDCLFに明示的な別々のOPNIDをつけた**
+  (`DCLF FILE(QSYS/QADSPDBR) OPNID(D)`・
+  `DCLF FILE(QSYS/QADSPOBJ) OPNID(P)`)。これに伴い、DCLFが
+  自動宣言するフィールド名も`OPNID()`の値がアンダースコア付きで
+  前置される仕様(IBM資料`dclf.htm`で確認済み、このセッション前半で
+  発見)により、`&D_WHREFI`/`&D_WHRELI`/`&P_ODOBNM`/`&P_ODOBAT`と
+  改名した。`RCVF`側も`RCVF OPNID(D)`/`RCVF OPNID(P)`に対応させた。
+- **この修正版で本接続を実行し、優先の前提無し(QTEMPに
+  `TXMDBR`/`TXMPGM`が無い、完全に素のジョブ)から
+  `CRTCLPGM PGM(&LIB/TXMIGR)`が成功した**:
+  `Program TXMIGR created in library <USER>2. Maximum error
+  severity 10.`——エラーなし(Severity 10は情報レベルのみ)。
+  **これで05-09/05-12レッスンの致命的な欠陥(前節参照)は
+  `tools/qclsrc/txmigr.clp`側の恒久修正で解消したことが実機で
+  確定した。**
+
+## 第5部`part05-mch1202-corrupt`の実機検証: 05-11が教える「10進数データ・エラーが起きる」という前提そのものが、この破損方法では成立しないことが判明(確認日2026-09-27)
+
+05-11(`za0500.rpg`の`SUB JUSU AVAIL`での10進数データ・エラー)の実機再現。
+**CONFIRMED SUCCESS(ただし05-11の前提を覆す発見)。**
+
+- `C0511S`(`CPYF FMTOPT(*NOCHK)`で`JUBADD`(5A文字型)の`'ABCDE'`を
+  `JUCHUD`の`JUSU`(5S 0ゾーン10進数型)へ強制コピー)は設計どおりに
+  動作: `C05119`/`JULINE=1`の行に生バイト`C1C2C3C4C5`(EBCDIC
+  'ABCDE')を実際に植え付けた(`collect:sql:0`のHEX確認)。
+- **`CLRJUCHUM`によるJUCHUM単独行化の設計は狙いどおりに働いた**:
+  `JU0900T`(チケット1修正済み・ticket 1のMINQTY食い違いを排除した
+  検証専用ビルド)の`RUNJU0900T`が`CPF0000`/`RPG0000`いずれの
+  MONMSGも発火させず正常終了(`part05-mch1202-corrupt DONE.`)。
+  `run`セクション自身に**`ZA0500`のQSYSPRT出力そのもの**
+  (`5770WDS ... IBM RPG/400 ... ZA0500`のコンパイル・リストに続けて
+  実行時の印字行)が実際に流れ込んでいることを初めて確認できた
+  (`part05-13-tickets`設計時点では未確認だった論点の解消)。
+- **決定的な発見: `C05119  P00001  12345    SHORT`という印字行が
+  実際に出た。** つまり:
+  1. `ZA0500`は`C05119`の行に実際に到達し(`PROCLN`実行)、
+     破損した`JUSU`を実際に算術(`SUB JUSU AVAIL`)に使った
+     (`CLRJUCHUM`によるM1/MR強制一致の設計が実際に機能した証拠)。
+  2. **破損したゾーン10進数(生バイト`C1C2C3C4C5`)は、10進数データ・
+     エラーを一切起こさず、`JUSU=12345`として黙って読み込まれた。**
+     `vfylog`・`run`のどちらにも`RPG0907`・`MCH1202`・その他の
+     10進数データ・エラー関連メッセージは一切現れない。
+     `AVAIL = 45(ZASU) - 12345(JUSU) = -12300 < MINQTY(5)`により
+     `SHORT`と判定され、そのとおりに印字された——算術・比較・印字の
+     どの段階でも例外は起きなかった。
+  3. `ZAIKOM.P00001`は`ZASU=45`のまま変化なし(`RUNMODE='*TEST'`が
+     機能した確認)。
+- **この結果は、`expected/notes.md`が事前に整理していた3番目の
+  仮説(「エラーが一切出ない場合」)を、初めて実際に観測された事実
+  として確定させるもの**: OPM RPG/400のゾーン10進数変換は、
+  符号ニブル以外のバイトの符号(ゾーン)ニブルは無視し数字ニブルだけを
+  見る実装だったことが、この1回の接続で実機確認できた
+  (`'ABCDE'`=`C1C2C3C4C5`→数字ニブル1-5・末尾の符号ニブルC5の
+  Cが正符号→`+12345`)。
+- **重大な意味: 05-11(`docs/part05/05-11-decimal-data-error.md`)が
+  演習の前提としている「この破損方法で10進数データ・エラー
+  (`MCH1202`)が起きる」という筋書きは、少なくともこの具体的な
+  破損経路(`CPYF FMTOPT(*NOCHK)`で5A→5S 0への型不一致コピー)
+  では実機上で成立しないことが確定した。** 破損したJUSUは例外を
+  起こさず、異常な値(本来のJULINEの数量ではない`12345`)のまま
+  黙って業務ロジックに使われ、`SHORT`という(誤った根拠に基づく、
+  しかし例外としては検知されない)結果を生む——これ自体は
+  「サイレント・データ破損」の実例として教材的価値があるが、
+  05-11が明示的に教えたい「10進数データ・エラーで落ちる」という
+  筋書きとは異なる実際の挙動である。05-11本文の実機メモは、この
+  発見を反映して書き直す必要がある(Step 2-C該当、まだ未実施)。
+- 副産物: `C0511RUN`(`C0511S`をLEN(200)安全に呼ぶラッパー)・
+  `JUBADD`のIFS経由ステージング(`CPYTOSTMF`→`CPYFRMSTMF`)は
+  いずれも初回実行でエラー無く動作(`Stream file copied to
+  object.`/`1 records copied from member JUBADD.`)。
+
+これで`part05-mch1202-corrupt`は完了。次は`part05-13-tickets`
+(チケット1+3の組み合わせ確認)。
+
+## 第5部`part05-13-tickets`の実機検証: チケット1+3の組み合わせで`RPG0907`が解消(確認日2026-09-27、パリティ確認1件は失敗)
+
+05-13(チケット1・チケット3の模範解答)の実機検証。
+**CONFIRMED SUCCESS(本題は成功、追加のパリティ確認`RUNZA0500H`のみ
+失敗)。**
+
+- `RUNTXRESET`が正常に機能し、`JUCHUD`12行・`JUCHUM`8行、`C05119`
+  行の残留なし(前段`part05-mch1202-corrupt`が残した状態を正しく
+  リセット、`expected/notes.md`「前提(2)」の防御が実際に機能した
+  確認)。
+- `TXCHECK`: 2件ともPASS(`TXCHECK PASS: ZA0500 still exists and
+  compiles`/`TXCHECK PASS: JU0900C still exists and compiles`——
+  後者は生のvfylogでは`clgen.mjs`の継続記号バグ(後述)により
+  `JU0900C still              exists and compiles`と内部に余分な
+  空白が入って出力されていた。ここでは読みやすさのため正規化して
+  引用している。判定自体は`PASS`のまま影響なし)、
+  要約行も予想どおり2行に分かれ10桁ゼロ・パディング
+  (`TXCHECK: lesson 05-13 - 0000000002 passed,`/
+  `0000000000 failed.`)——既知の食い違い(レッスン本文は1行・
+  パディング無しと記載)の再確認。
+- **`RUNCOMBO`(チケット1修正済み`JU0900C`+チケット3`ZA0500`)が
+  `run`セクションに正確に12行を印字、`expected/notes.md`の手計算表と
+  完全一致**: `OK`10件・`SHORT`2件(`J00002/P00002`・
+  `J00006/P00002`)・`NOTFOUND`0件。`RPG0907`・
+  `JU0900C: ZA0500 ended abnormally.`はどちらも一切出ない。
+  **`part05-ju0900c-baseline`で確認済みだったチケット1のバグ
+  (`RPG0907`)が、チケット1+3の組み合わせで実機上も解消したことが
+  確定した。**
+- **`RUNZA0500H`(パリティ確認、`JU0900C`を介さず`ZA0500`を直接
+  `CALL`)は失敗した**: `OPNID(JUCHUD) for file JUCHUD already
+  exists.`→`ZA0500H: could not open JUCHUD.`。これは
+  `expected/notes.md`が事前に検討していた「ODPスコープの懸念」が
+  実際に的中したことを意味する——`work/design/refs/ileconcepts75.txt`
+  の「既定活動グループのOPMプログラムが開いたODPは呼び出しレベル
+  番号にスコープされ、開いたプログラム自身のトップレベル`CALL`が
+  戻れば自動的に閉じる」という記述は、**この具体的なケース
+  (`RUNCOMBO`の`JU0900C`が開いたOPNQRYFのODPが、`RUNCOMBO`終了後も
+  `RUNZA0500H`の時点でまだ残っていた)には当てはまらなかった**——
+  一次資料の記述と実機挙動が食い違う、新しい実機発見。
+  `expected/notes.md`自身が指示するとおり、この失敗は`RUNCOMBO`
+  (本題)の結果には影響しない——影響を受けたのは低優先度の
+  パリティ確認`RUNZA0500H`だけ。次にこの技法を使うマニフェストでは、
+  `ju0900c-ticket1.clp`(または`za0500h.clp`)にスコープ付き`CLOF`を
+  追加することを検討する必要がある(今回は未修正のまま)。
+
+これで`part05-13-tickets`は完了。次は`part05-13-pssr`
+(チケット3の`*PSSR`を実際に発火させる確認)。
+
+## 第5部`part05-13-pssr`の実機検証: `*PSSR`は発火せず、想定外の`RPG1031`(マッチ・フィールド順序エラー)がこの設計自体の欠陥で発生(確認日2026-09-27、この接続自体はCONFIRMED SUCCESS——ただしマニフェスト設計に要修正の欠陥を発見)
+
+05-13チケット3の`*PSSR`実発火確認。**CONFIRMED SUCCESS(接続自体は
+成功、しかし本来観測したかった「10進数データ・エラーを`*PSSR`が
+捕まえる」シナリオには到達できなかった——理由が判明)。**
+
+- `C0511S`は設計どおり動作(`JUCHUD`に`JUNO=C05119`/`JUSU`生バイト
+  `C1C2C3C4C5`を植え付け、`collect`で確認)。
+- **実際に起きたのは`RPG1031`(マッチ・フィールド順序エラー)であり、
+  10進数データ・エラーでも`MCH1202`でもなかった**:
+  `The ZA0500 00000000 JUCHUM match field is out of sequence
+  (C G S D F).`→`Error RPG1031 caused program ZA0500 to stop.`
+  →`Function check. RPG9001 unmonitored by JU0900C at statement
+  8800...`→`JU0900C: ZA0500 ended abnormally.`
+- **`VLDA3`が`*LDA(21,20)`の空白のままを確認**
+  (`VLDA3: *LDA(21,20)=[                    ]`)——`*PSSR`は
+  一度も発火しなかったことが直接証拠で確定した。
+- **原因判明(このマニフェスト自身の設計の欠陥、`part05-mch1202-
+  corrupt`が既に発見・対処していた同じ問題の再発)**:
+  `part05-mch1202-corrupt`は`CLRJUCHUM`(`JUCHUM`を`C05119`の
+  1行だけに絞る)という対策で「`JUCHUD`はOPNQRYFで`JUNO`昇順
+  (`C05119`が先頭)・`JUCHUM`はF仕様書31桁目が空白のため到着順
+  (`J00001`〜`J00008`が先、`C05119`は最後)」という順序の食い違いを
+  回避していた。**この`part05-13-pssr`マニフェストは、その対策
+  (`CLRJUCHUM`相当)を入れていない**——`JUCHUM`は`TXRESET`後の通常の
+  8行(`J00001`〜`J00008`、到着順)のまま`C05119`のヘッダー行が
+  末尾に追加されるだけなので、M1/MRマッチ突合せサイクルが要求する
+  「両ファイルとも同じ昇順」という前提が`JUCHUD`側(`C05119`が
+  先頭)と`JUCHUM`側(`C05119`が末尾)とで食い違い、RPGサイクル自身が
+  この矛盾を`RPG1031`として検出して`ZA0500`を止めた——**`SUB JUSU
+  AVAIL`(計算仕様書)まで到達する前の、サイクル自身のレコード取得・
+  突合せ段階でのエラー。**
+- **`za0500-ticket3.rpg`自身の`*PSSR`がこれを捕まえなかったのは
+  実装ミスではない**: そのファイルの見出しコメント自身が、対象範囲を
+  「計算仕様書中の詳細計算(SUB/COMP/CHAIN、56-57桁の指標無し)」に
+  明示的に限定しており、サイクル自身のマッチ・フィールド処理は
+  最初からその範囲外——`RPG9001`が`JU0900C`側の(broadな)
+  `MONMSG(CPF0000)`で捕まったのは、`*PSSR`の対象範囲外だったからで
+  あって、`*PSSR`の実装や範囲判断が誤っていたわけではない。
+- **結論・持ち越し事項**: このマニフェストは「チケット3の`*PSSR`が
+  10進数データ・エラーを実際に捕まえる」シナリオにはまだ到達できて
+  いない。次にこれを試すなら、`part05-mch1202-corrupt`と同じ
+  `CLRJUCHUM`(またはJUCHUM側もJUCHUDと同じ順序に揃える対策)を
+  このマニフェストにも追加する必要がある(今回は未修正のまま、次回
+  セッションへ持ち越し)。ただし`part05-mch1202-corrupt`自身の結果
+  (前節参照)により、たとえマッチ順序を揃えても、この破損方法
+  (`CPYF FMTOPT(*NOCHK)`によるゾーン10進数破損)自体が10進数データ・
+  エラーを起こさないことは既に判明しているため、`CLRJUCHUM`を足すだけ
+  では今度は「エラーが一切出ず`SHORT`が印字されるだけ」になる可能性が
+  高い——チケット3の「再現確認」を本当に満たすには、`*PSSR`が
+  実際に捕まえられる種類の例外(例えば本当に不正な値ではなく、
+  ゼロ除算や範囲外のCHAINキー等)を使った、別の再現方法を今後
+  検討する必要がある。
+
+## verify harnessの実バグ発見・修正: `wrapClStatement`の継続記号が`-`と`+`を取り違えていた(確認日2026-09-27、`part05-promote-rollback`の初回接続がこれで失敗)
+
+`verify/lib/clgen.mjs`の`wrapClStatement`(CL文を80桁以内の物理行へ
+折り返す関数)は、継続記号に`-`を使っていた。**これはIBM i CLの
+継続規則の誤解に基づくバグだった**: 正しい規則は「`+`は継続行の
+先頭空白を取り除く、`-`は継続行の先頭空白を取り除かずそのまま
+含める」であり(WebSearchでIBM CL概念ガイドの記述を確認、
+2026-09-27)、コードのコメントが想定していた「`-`は空白を1つ
+挿入する」という規則とは逆だった。このジェネレーターは可読性のため
+全ての継続行に固定インデント(`CL_INDENT`=13桁)を付けているため、
+`-`を使うと、折り返しが引用符付き文字列リテラルの途中に来た場合、
+そのインデントの13個の空白がリテラルの値そのものに混入していた。
+
+- **実際に発見した経緯**: `part05-promote-rollback`の初回接続で
+  ラッパー自体がコンパイル失敗(`CPD0074: Value 'verify har' for
+  TEXT exceeds 50 characters.`)。3箇所の`TEXT('...')`(48・47・48
+  文字、いずれも50文字制限内のはず)がいずれも同じエラーで失敗して
+  いたことから、単なる文字数超過ではなく折り返し由来の値膨張を疑い、
+  ローカルで折り返しロジックを再現して確認したところ、`-`による
+  誤った継続で値が61文字に膨張していたことを直接確認できた
+  (`verify harness: fix CL continuation using '-' instead of '+'
+  (real bug)`、commit `bc291d2`、main経由でdraft/part05→
+  draft/part06へ前方マージ・push・CI green確認済み)。
+- 修正は`+`への切り替えのみ(既存の「行末に空白+継続記号」という
+  出力形式はそのまま——`-` を `+` に変えるだけで、継続行前の空白1つ
+  は保持され、継続行自身の固定インデントは`+`の規則により正しく
+  除去されるようになる)。ローカルで新旧両方の折り返し・復元ロジックを
+  シミュレートし、修正後は元の文字列と完全一致、修正前は実際に61文字
+  (`CPD0074`の閾値超過)に膨張することを確認済み。
+- **影響範囲の確認(2026-09-27、advisorの指摘を受けて機械的に再調査・
+  訂正)**: 当初「該当は全てSQL文字列で空白に寛容、影響なし」と
+  記録したが、これは不十分な確認だった——SQL**構文**(コマンドの
+  キーワード間)は確かに空白に寛容だが、SQL文字列**リテラルの値**
+  (`VALUES(...)`で実際にテーブルへ格納される値)は別で、そこに
+  余分な空白が literal に混入すれば本物のデータ破損になる。旧版
+  clgen.mjsと現行版で全マニフェストの全CL文を実際に折り返し・
+  復元させて機械的に突き合わせたところ、引用符の内側で折り返しが
+  発生していた箇所は12件。うち3件(`part05-txcheck-probe`の
+  `INSROW`・`part07-05-checkpoint`の`SEEDTXCKM`×3箇所——いずれも
+  このバグ修正**前**に実行済み)は、`TXCKM.CKDESC`列へ格納される
+  説明文字列(例:`'JU0900C still exists and compiles'`)の途中に
+  余分な空白が混入していた(`part05-13-tickets`の実際のvfylogで
+  `JU0900C still              exists and compiles`という形で観測
+  済み——`part05-13-tickets`自身の節にある引用は読みやすさのため
+  正規化した表記で、生の出力そのものではない旨を注記済み)。
+  **ただし、この破損はいずれも`TXCHECK`
+  の`PASS`/`FAIL`判定そのもの(`CHKOBJ`によるオブジェクト実在確認)
+  には影響していない**——`OBJNAME`/`OBJTYPE`列の値は無傷のまま
+  各接続で正しく`PASS`しており(折り返しは主にコンマ区切りの
+  境界に落ちていた)、影響が確認できたのは人間向けの説明文
+  (`CKDESC`)だけ。**このため、これまでのCONFIRMED SUCCESSの結論は
+  どれも変わらない**(advisorの基準どおり、データ依存の結論に影響が
+  出たケースは見つからなかった)。残り9件は全て`TEXT()`パラメーター
+  (`part05-promote-rollback`の3件——修正後に再接続済み——と、
+  `part06-01-cvtrpgsrc`・`part06-0103-freeform`・
+  `part06-14b-null`の各1件、いずれもハーネス専用のコメント的な
+  `TEXT()`/`CREATE TABLE`のSQL構文で、50桁制限に達しないか、
+  データとして読み戻されない値)で、実害なし。
+
+## 第5部`part05-promote-rollback`の実機検証: CRTDUPOBJによる昇格/切り戻し機構を両方向で確認、P44を実機で解決(確認日2026-09-27)
+
+05-12(昇格・切り戻し)の機構検証(`<USER>1`に触れられない制約により、
+実際のレッスン手順ではなく`&LIB`/`&LIB2`間での機構そのものを検証する
+設計)。**CONFIRMED SUCCESS(harnessの継続記号バグ修正後、2回目の
+接続で成功)。**
+
+- **CRTDUPOBJによる昇格(`&LIB`→`&LIB2`)・切り戻し(`&LIB2`→`&LIB`)の
+  両方向を実機確認**: `PROMDSPF`/`PROMPGM`(`TK0100D`/`TK0100`を
+  `<USER>B`へ複製)・`RESTF`/`RESTP`(`<USER>2`側を`DLTF`/`DLTPGM`で
+  一旦壊してから`<USER>B`から複製し直す)、いずれも
+  `1 objects duplicated.`で成功。**05-12が教える「昇格→(意図的に
+  壊す)→切り戻し」という核心の流れが、実機でCRTDUPOBJベースで
+  end-to-endに機能することが確認できた。**
+- **P44を実機で解決: `CRTDUPOBJ`で複製したオブジェクトは、複製先
+  ライブラリーに関わらず、コンパイル・ソースの場所(`ODSRCL`列)が
+  「複製元」のまま変わらない。** `DSPOBJD DETAIL(*FULL)`
+  `OUTFILE`の実測(`collect:sql:0`=`&LIB`側・`collect:sql:1`=
+  `&LIB2`側): **`<USER>B`にCRTDUPOBJで複製した`TK0100`/`TK0100D`
+  (`ODLBNM=<USER>B`)であっても、`ODSRCF`/`ODSRCL`列は
+  `QRPGSRC`/`QDDSSRC`・`<USER>2`のまま**(複製元である`<USER>2`を
+  指し続ける、`<USER>B`にはならない)。これは05-12本文の
+  「CRTDUPOBJ 対 再コンパイル」トレードオフ論の具体的な裏付けであり、
+  P44の問いに実機で直接答えるもの。
+- **SAVOBJ/CRTSAVF/DSPSAVFも確認、P23への実質的な証拠を獲得**:
+  `BKUPSAVE`(`SAVOBJ`)が成功(`2 objects saved from library
+  <USER>2.`)、`collect`(`QSYS2.OBJECT_STATISTICS`)で`<USER>B/
+  TXPRSAVF`の`OBJSIZE=192512`(空でないことの間接証拠)を確認。
+  **さらに、`DSPSAVF01`(`DSPSAVF ... OUTPUT(*PRINT)`)の実際の
+  印字リストが、この接続の`run`セクションに直接流れ込んでいることを
+  発見**(`Saved Object Information`の完全なリスト、`Save file:
+  TXPRSAVF`・`Library: <USER>B`・`Records: 296`・保存されたオブジェクト
+  一覧`TK0100(*PGM, 112K)`/`TK0100D(*FILE, 12K)`・`Number of objects
+  saved: 2`まで判読可能)——これは`part06-0103-freeform`が確認した
+  「qshの`system("CALL PGM(...)")`ジョブの印刷はCPYSPLFで拾える実
+  スプール・ファイルにならず`run`セクションへ直接流れ込む」という
+  発見を、**CL COMMANDのOUTPUT(*PRINT)(プログラムのF仕様書WRITEでは
+  なく)にも初めて拡張確認**するもの。**このリスト自体がP23(SAVF内容の
+  証拠)に対する、間接証拠(OBJSIZE)より遥かに強い直接証拠になる。**
+  一方`CAPSAVF`(`CPYSPLF FILE(QSYSPRT)`)自体は想定どおり失敗
+  (`File QSYSPRT not found in job ...`)——実スプール・ファイルは
+  存在しないため、これ自体は無害な想定内の失敗。
+- **新しい実機発見: 異なる内部構造の2つのソース物理ファイル間の
+  `CPYF`は、`RCDLEN`が一致していても`FMTOPT(*MAP)`または
+  `FMTOPT(*NOCHK)`が必要**: `CPJUSRC`(`CPYF FROMFILE(&LIB/QCLSRC)
+  ... TOFILE(&LIB/VFYCLSRC) ...`)が`FMTOPT(*MAP) or FMTOPT(*NOCHK)
+  required for copy.`で失敗。マニフェスト自身が「未確認」と明記して
+  いた懸念が実機で的中した。**`RTVCLSRC`自体は成功**(`CL source
+  retrieved for *PGM JU0900C in <USER>2.`)——このマニフェスト自身が
+  検証したかった「うっかり消したソースをRTVCLSRCで復旧する」安全網
+  そのものは機能した。ただし複写先(`VFYCLSRC`)が空のままのため、
+  復旧されたソースの中身が判読可能かどうかの確認(`SELECT SRCDTA
+  FROM &LIB/VFYCLSRC`)はこの接続では未達成
+  (`collect:sql:6`が`*FIRST in *N type *MEM not found`で失敗)。
+  次にこの技法を使うときは`CPJUSRC`に`MBROPT(*REPLACE)
+  FMTOPT(*NOCHK)`を追加する必要がある(今回は未修正のまま)。
+- 副産物: `RUNTXRESET`級の前提無しで動く独立マニフェストとして、
+  `CLNPRM1`/`CLNPRM2`/`CLNSAVF`(初回接続では対象オブジェクトが
+  まだ無いための想定内`FAILED`)を含め、全体が`DONE`まで到達。
+  `TK0100D`/`TK0100`は最終的に`RESTF`/`RESTP`で復元された(切り戻し
+  後の)状態で`&LIB`に残る、設計どおりのクリーンアップ状態を確認。
+
+これで`part05-promote-rollback`は完了。2Fマニフェスト4本すべて実行
+完了(`part05-txmigr-to2`/`to2b`・`part05-mch1202-corrupt`・
+`part05-13-tickets`・`part05-13-pssr`・`part05-promote-rollback`)。
+
+## 第5部`part05-13-tickets`再接続: CLOF修正の実機確認(確認日2026-09-27)
+
+advisorレビューを受けて`CLOF OPNID(JUCHUD)`を追加した修正の再確認。
+**CONFIRMED SUCCESS——2件の懸念がどちらも解消したことを確認。**
+
+- **`RUNZA0500H`(前回`OPNID(JUCHUD) for file JUCHUD already exists`
+  で失敗していたパリティ確認)が今回は成功。** `vfylog`に
+  `Member JUCHUD file JUCHUD in <USER>2 closed.`が**2回**現れる
+  (`RUNCOMBO`の`CLOF`実行後・`RUNZA0500H`の`CLOF`実行後、それぞれ
+  1回ずつ)——`CLOF OPNID(JUCHUD)`が両方の呼び出しで実際にODPを
+  閉じたことが確認できた。
+- **`run`セクションに合計24行(12+12)が印字され、`RUNCOMBO`と
+  `RUNZA0500H`の出力が1バイトも違わず完全一致**(`OK`10・`SHORT`2の
+  組み合わせが2回とも同一)。**チケット1採点表の「テスト・ハーネス
+  経由と`JU0900C`経由の両方で同じ結果になることを確認した」という
+  項目が、これで実機でも達成された。**
+- **`TXCKM.CKDESC`の値も、今回は余分な空白なしで正確に格納・出力
+  された**(`TXCHECK PASS: JU0900C still exists and compiles`、前回の
+  `wrapClStatement`バグによる内部空白混入が無いことを確認)——
+  `clgen.mjs`の継続記号修正がデータ破損を防ぐことも合わせて実証。
+
+## 第5部`part05-mch1202-corrupt`再接続: 空白(`X'40'`)も10進数データ・エラーを起こさなかった(確認日2026-09-27、2つ目の仮説も外れる)
+
+`src/qclsrc/c0511s.clp`を`'ABCDE'`から空白5個へ修正した版での再確認。
+**CONFIRMED SUCCESS(接続自体は成功、しかし2つ目の仮説も実機で
+否定された)。**
+
+- `HEX(JUSU)`=`4040404040`(空白5個、想定どおり植え付け成功)。
+- **`C05119 P00001 00000 OK`という印字が出た——10進数データ・エラーは
+  今回も一切発生しなかった。** SQLの`SELECT`自体も`JUSU=0`と返す
+  (`collect:sql:1`)。ZA0500は`AVAIL = 45 - 0 = 45 ≥ MINQTY(5)`と
+  判定し`OK`を印字、正常終了(`vfylog`に`FAILED`系メッセージなし、
+  `JUCHUD`のODPも`CLOF`で正しく閉じられた)。
+- **「符号ニブルが無効なら10進数データ・エラーになる」という
+  (advisorの提案を含む)2つ目の仮説も外れた。** `'ABCDE'`
+  (ゾーン`C`・数字ニブル1-5)・空白(ゾーン`4`・数字ニブル0)の
+  どちらも、数字ニブル自体は0〜9の範囲内([1,2,3,4,5]・[0,0,0,0,0])
+  だった、という共通点がある。**この実機は、ゾーン(符号)ニブルの
+  値そのものはほぼ無視し、各バイトの数字ニブルが0〜9の範囲に
+  収まっているかどうかだけを見ている可能性が高い**(未確定、次の
+  仮説)。真に無効な10進数データ・エラーを起こすには、**数字ニブル
+  自体がA〜Fになる文字**(例: EBCDIC`'#'`=`X'7B'`の数字ニブルは
+  `B`)を植え付ける必要があると考えられる——ただしこれもまだ
+  仮説であり、3回連続で外れる可能性を考慮し、次に試す前に
+  advisorに相談する。
+
+## 第5部`part05-13-pssr`(再設計版)の実機検証: `*PSSR`/`CHGDTAARA`機構そのものが実際に動くことを確認(確認日2026-09-27)
+
+advisorレビューを受けて全面再設計(前節参照——05-11のC0511S技法では
+なく、既に実機確認済みのチケット1のMINQTYバグ`RPG0907`を使って
+`*PSSR`機構自体を確認する方針に変更)した版の実機確認。
+**CONFIRMED SUCCESS。**
+
+- **`VLDA3: *LDA(21,20)=[ZA0500 SHORT ERR    ]`という、予告どおりの
+  値がそのまま出た。** `RPG0907`(統計文7400、`JU0900C`の`CALL`行)
+  →`RPG9001`関数チェック→`JU0900C: ZA0500 ended abnormally.`という
+  経路も`part05-ju0900c-baseline`の実測と完全一致。
+- **これで`za0500-ticket3.rpg`自身の`*PSSR`/`QCMDEXC`/
+  `CHGDTAARA(*LDA)`機構が、本物の実行時エラー(`ZA0510V`のような
+  コンパイル時に手で仕込んだ発火条件ではなく)から実際に発火し、
+  証拠を正しく残すことが実機で初めて確認できた。** これまで
+  `part05-qcmdexc-runtime`が確認していたのは別プログラム(`ZA0510V`、
+  コンパイル時`LOKUP`失敗という別の発火条件)での挙動であり、
+  `za0500-ticket3.rpg`自身についてはこの接続が初めての確認。
+- 副産物: `src/legacy/qclsrc/ju0900c.clp`自身の新しい`CLOF
+  OPNID(JUCHUD)`修正も、この接続で実機コンパイル・実行(as-shipped
+  版としては初めて)され、正常に機能した(`vfylog`に`Member JUCHUD
+  file JUCHUD in <USER>2 closed.`が出現)。
+- **注意(このマニフェスト自身の`expected/notes.md`・`manifest.json`
+  が明記): この接続は05-13チケット3の採点表の文言「05-11の手法を
+  応用して」を文字どおりには満たさない。** 05-11本来の破損技法での
+  本物の10進数データ・エラーは、まだ実機で確定していない
+  (次節参照)。この接続が確認したのは「`*PSSR`機構自体が動くか」
+  という前提条件——確定した以上、05-11の破損値が確定次第、
+  文字どおりの「再現確認」を別途行う必要がある。
+
+## 第5部`part05-decimal-screen`の実機検証: 数字ニブルが無効な値も含め、計6パターン全てで10進数データ・エラーが一切起きないことが確定——調査を打ち切り、05-11の本文をこの実測に合わせて書き直す方針に転換(確認日2026-09-27、**下の訂正節参照: この結論は誤りだった**)
+
+**CONFIRMED SUCCESS(接続自体は成功、10進数データ・エラーの再現は
+最終的に断念)。**
+
+- **4候補全てがSQL`SELECT`で一切エラーにならず、`JUSU=0`として
+  静かに読めてしまった**: `C05130`(ピリオド×5、`HEX`=`4B4B4B4B4B`、
+  数字ニブルB)・`C05131`(コンマ×5、`HEX`=`6B6B6B6B6B`、数字ニブル
+  B)・`C05132`(コロン×5、`HEX`=`7A7A7A7A7A`、数字ニブルA)・
+  `C05133`(ゼロ4個+ピリオド、`HEX`=`F0F0F0F04B`、末尾のみ数字ニブル
+  B)——**いずれも数字ニブルが0〜9の範囲外(無効)のはずだが、SQL自身が
+  拒否した候補は1件もなかった。**
+- **これで、この教材が試した6パターン全て(`'ABCDE'`・空白5個・
+  ピリオド×5・コンマ×5・コロン×5・ゼロ4個+ピリオド)が、
+  ゾーン/符号ニブルの妥当性・数字ニブルの妥当性のどちらを問わず、
+  一貫して10進数データ・エラーを一切起こさないことが確定した。**
+  advisorの提示した打ち切り基準(「SQLが拒否すらしない候補は、
+  RPG接続を使わずに済ませる」「打ち切って、実測どおりの挙動へ
+  05-11を書き直すのも正当な選択」)に従い、**この破損技法で
+  `MCH1202`/`RPG0907`のような10進数データ・エラーを再現する試みは
+  ここで打ち切る。**
+- **05-11の本文は、実測どおりの挙動(値が黙って——多くの場合`0`または
+  変な数値として——読まれてしまう、エラーにはならない)を教える形に
+  P4/Step 2-Cで書き直す必要がある。** これはこのレッスンの「なぜ
+  学ぶか」が最初から強調している教訓(「一番こわいのは、エラーに
+  ならずに成功してしまう変更」)そのものの、実測に裏付けられた、
+  当初の想定よりもさらに強い実例になる——「クラッシュを見る」教材
+  ではなく「クラッシュしないことの危険性を見る」教材への転換。
+  具体的な書き直し方針(案、P4で決定): 実演2〜5・障害報告書の例
+  (現在`MCH1202`前提)を、実測どおり「`JUSU`が意図しない値のまま
+  黙って算術に使われ、`SHORT`/`OK`判定が誤った根拠で下される」
+  シナリオに差し替える。演習(空白を予想させる問題)も、正解を
+  「エラーにならず黙って読まれる」に修正する。`P20`は「解決」
+  (実機で確定)として記録済み——結論は「MCH1202は起きない」。
+
+## 訂正: 上記「調査を打ち切り」「MCH1202は起きない」という結論は誤りだった——`part05-lesson-decimal`で数字ニブルが無効な値は実際に10進数データ・エラーを起こすことを確認(確認日2026-09-27)
+
+**上のP20「解決」の結論(`part05-decimal-screen`のSQLのみの調査で
+「6パターン全て10進数データ・エラーを起こさない」)を撤回する。**
+原因は`part05-decimal-screen`自身がSQL経由の`SELECT`だけで検証して
+いた点にある——**SQLは無効な数字ニブルの値も黙って読めてしまうが、
+RPG(の入力仕様書によるレコード変換)はSQLより厳格で、実際には
+エラーを起こす。** この食い違いは、`05-11`本文が本来書こうとして
+いた05-11自身のレッスン(`part05-lesson-decimal`、05-11の実演を
+一字一句そのまま実機で再現する接続)で発見された。
+
+- **1回目の`part05-lesson-decimal`接続(汚染あり)**: `C0511S`が
+  `'ABCDE'`を植え付けたにもかかわらず、`ZA0500 6400 decimal-data
+  error`(`RPG0907`)が実際に発生した。`collect`で`JUCHUD`に
+  `C05130`〜`C05133`という見覚えのない行(`JUSU=0`)が4行混入して
+  いたことが判明——`part05-decimal-screen`が`JUBADD`に残した古い
+  行を、`C0511S`自身の実バグ(`JUNO='C05119'`だけを対象にした
+  `DELETE`のあと`JUBADD`を丸ごと`CPYF`していた)により、意図せず
+  再度植え付けてしまっていた。**`C0511S`を`JUBADD`丸ごと`DELETE`
+  してから植え付ける方式に修正済み**(`src/qclsrc/c0511s.clp`)。
+- **2回目の接続(`JUBADD_ROWS=1`・`STRAY_ROWS=0`で汚染なしを直接
+  確認したうえでの、汚染なしの再テスト)。CONFIRMED SUCCESS。**
+  `C0511S`が`'.....'`(ピリオド5個、`HEX`=`4B4B4B4B4B`、数字ニブル
+  B=無効)を植え付けた状態で`JU0900C`(as-shipped、`za0500.rpg`も
+  as-shipped)を`CALL`したところ、**`ZA0500 6400 decimal-data error
+  in field (C G S D F).`→`RPG0907`→`RPG9001`→`CPF9999`
+  (`JU0900C: ZA0500 ended abnormally.`)という経路で、0行印字のまま
+  確実に異常終了することを確認した。** 統計文6400は`za0500.rpg`の
+  64行目(`I 16 200 JUSU`、`JUCHUD`のI仕様書、`JUSU`列の入力変換)——
+  つまり**`SUB JUSU AVAIL`(計算仕様書)より前、レコード入力の段階で
+  例外が起きる**ことが確定した。
+- **結論(訂正版): 数字ニブル(各バイトの下位4ビット)が0〜9の範囲外
+  (無効)な値は、実際に10進数データ・エラーを起こす。** ただし
+  `part05-decimal-screen`で確認したとおり、**SQLの`SELECT`はこの
+  同じ無効な値を一切エラーにせず`0`として黙って読んでしまう**——
+  つまり**SQLで動作確認しただけでは、RPGが実際にどう振る舞うかの
+  信頼できる予測にはならない**、という重要な追加発見でもある
+  (`part05-decimal-screen`自身の「SQLはRPGの安価な予測手段になる」
+  という前提そのものが、今回の検証範囲(数字ニブル無効な値)では
+  誤りだったことになる——`'ABCDE'`/空白(いずれも数字ニブルは有効)
+  ではSQL・RPGの結果は一致していたので、これは「数字ニブルが有効な
+  範囲でしか検証されていなかった」ことによる見落としだった)。
+- **05-11の本文は、この確定結果(実演どおり`MCH1202`の実機での等価物
+  `RPG0907`が実際に発生する)に合わせて書く。** 前節の「クラッシュ
+  しないことの危険性を見る教材への転換」という方針は撤回し、
+  **元のレッスン設計(実際にエラーを起こし、`QPJOBLOG`・統計文・
+  `HEX()`で調査する)がほぼそのまま正しかった**と確定した。ただし
+  具体的な数値は訂正が必要: 植え付ける値は`'ABCDE'`ではなく
+  `'.....'`(ピリオド5個)、発生する統計文は`8100`ではなく`6400`
+  (`AVAIL COMP MINQTY`ではなく`JUSU`の入力仕様書)、`SUB JUSU
+  AVAIL`より前の段階で落ちるためダンプ例(ブレークポイント)の
+  記述も修正が必要。`'ABCDE'`・空白は「一見壊れているようで実は
+  黙って読まれてしまう」対比の演習素材として活用する。
+
+**追記(2026-09-27、`part05-lesson-decimal`REVISION 3、確認日2026-09-27)**:
+上記の2回目の接続は`C0511RUN`(ハーネス専用ヘルパー、`&CLONEDIR`を
+正しくLEN(200)のCL変数経由で渡す)を介して`C0511S`を呼んでいた——
+**05-11の本文が実際に学習者へ教えていたのは`CALL PGM(C0511S)
+PARM('<自分のユーザー名>1' '/home/<自分のユーザー名>/ibmi-kyozai')`
+という生の`CALL...PARM()`リテラル呼び出しであり、これは一度も実機で
+確認されていなかった。**文字リテラルは32バイトまでしか正しく渡らない
+というCLの罠(`&CLONEDIR`はLEN(200))があり、これは`TXSETUP`等が
+`*CMD`ラッパーへ移行した理由と同じ問題。**新設した`src/qcmdsrc/c0511s.cmd`
+(`*CMD`ラッパー)を実機でコンパイル・実行し、05-11の実演を
+`&LIB/C0511S LIB(&LIB)`という生の`*CMD`呼び出しへ書き換えたうえで
+再接続、CONFIRMED SUCCESS。** `CRTCMD`は`PROMPT()`の30文字上限
+(`CPD0074`)に一度失敗(35文字の`PROMPT`文字列が原因)、28文字に
+短縮して再接続し解消(この2段階の失敗自体もverify/lib経由の
+`sh`ステップ出力を都度確認する必要があることを再確認させた)。
+結果は上記2回目の接続と完全に同一の数値(`JUBADD_ROWS=1`・
+`STRAY_ROWS=0`・`JUSU_HEX=4B4B4B4B4B`・統計文6400・`RPG0907`・
+0行印字・`ZAIKOM`未更新)——**これで05-11本文が実際に教える
+`*CMD`呼び出し経路そのものが、ハーネス専用ヘルパー経由の結果と
+完全に一致することを確認した。**(ただし今回渡した`CLONEDIR`は空欄
+(既定値経路)のみ——05-11本文が明示する
+`CLONEDIR('/home/<自分のユーザー名>/ibmi-kyozai')`付きの呼び出し
+自体はまだ実機未確認。既定値経路とCLONEDIR明示指定は
+`*CMD`のPARM宣言上パディング挙動が同じはずだが、この一文はその
+仮定のうえに立っている。)
+
+## 第5部`part05-txsnap-compile-check`の実機検証: TXSNAPとその`*CMD`ラッパーが初めてコンパイルされ、両方成功(確認日2026-09-27)
+
+`tools/qclsrc/txsnap.clp`(05-08の回帰比較ツール)は、このセッションで一度も
+実機コンパイルされていなかった。他のPart 5ツール(TXMIGR・TXCHECK・
+TXLEGACY・C0511S)は「今回初めてコンパイルする」段になるたび必ず実バグが
+1件以上見つかっていたため、advisorの助言でTXSNAP本体とその`*CMD`ラッパー
+(`tools/qcmdsrc/txsnap.cmd`)のみをコンパイルする最小マニフェストを設計・
+実行した。**CONFIRMED SUCCESS。**
+
+**接続前に発見・修正した実バグ(他ツールと同型)**: `txsnap.cmd`の
+`PROMPT('TXSNAP - snapshot a spooled file')`が32文字でCRTCMDの30文字上限
+(`CPD0074`)を超過していた(`c0511s.cmd`で発見済みの同じ罠)。接続前に
+`PROMPT('TXSNAP - save spooled file')`(26文字)に短縮・修正。
+
+**接続結果**: `TXSNAP`(CLプログラム本体)は**Highest Severity 00、
+メッセージ0件**でコンパイル成功。`*CMD`ラッパーは`CRTCMD`で
+`CPC0202`(コマンド作成成功、エラー0件)。この修正後は他ツールと違い、
+実際に新たなコンパイル・エラーは見つからなかった(バグは実行前に
+静的レビューで発見・修正済みだったため)。**実行(`CPYSPLF`で実在の
+スプール・ファイルを複写する部分)はテストしていない**——05-08自身が
+教える`CALL`はSSH/`system()`経由の非対話ジョブでは実際のスプール・
+ファイルを作らないという既知の挙動(`part06-0103-freeform`参照)により、
+構造的にV3(対話操作)専用のまま。
+
 ## 未実施のプローブ
 
-P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
+P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P44)以外は未実施。特に:
 
-- 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。
+- 破壊的な操作を伴うもの(P05, P06, P10, P22 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。**P19(TXMIGR TO(2)実行)は`part05-txmigr-to2`/`-to2b`で、P23(SAVF証拠)・P44(CRTDUPOBJ複製後のソース情報)は`part05-promote-rollback`で、P20(不正な10進数データ)は`part05-lesson-decimal`で、それぞれ実機解決済み(上記の各節参照)。**
 - 新規アカウントが必要なもの(P02, P41)は、ベータ・テスターの協力を得るか、一次資料 + 私的な既存実測(匿名化)で代替する。

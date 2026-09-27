@@ -1,6 +1,17 @@
       * T0EDS - harness probe: E-spec compile-time array + DS subfields.
       * Confirms tools/gen/rpg3.mjs eSpec/compileTimeArrayData/iSpecDS/
       * iSpecSubfield column positions against a real CRTRPGPGM compile.
+      * 2026-09-26, real-hardware fix: the ** + data lines must be the
+      * LAST thing in the source, after the O-specs (rpg400ref.txt
+      * "Loading a Compile-Time Array": "enter array input data into
+      * records ... following the source records for this program").
+      * An earlier version had them between the C-specs and O-specs;
+      * PUB400 then read the array data records as still more O-spec
+      * text (QRG8041 "too many entries"), and the real O-specs after
+      * that point were never recognized at all (QRG7064 "file not
+      * referenced", QRG7026 "no unnamed EXCPT output"). The O-spec
+      * column layout itself (E at col15) was never the problem - it
+      * matches every already-verified Part 4 source (R0401A etc.).
      H
      FQSYSPRT O   F     132            PRINTER
      E                    CLRARR  3   3  6
@@ -12,9 +23,9 @@
      C                     MOVELCLRARR,2  COLOR   6
      C                     EXCPT
      C                     SETON                         LR
-**
-RED   GREEN BLUE  
      OQSYSPRT E
      O                         DSNUM      5
      O                         DSNAME    12
      O                         COLOR     20
+**
+RED   GREEN BLUE

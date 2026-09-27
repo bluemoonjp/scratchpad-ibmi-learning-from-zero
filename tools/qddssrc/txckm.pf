@@ -1,0 +1,18 @@
+     A*                                     TXCKM - manifest for TXCHECK.
+     A*                                     1 row = 1 object check.
+     A*                                     UNIQUE is a file-level keyword:
+     A*                                     must precede the R line, keyword
+     A*                                     at col45 like TEXT() below, not
+     A*                                     col19 (that's the name column -
+     A*                                     real-hardware fix, 2026-09-26,
+     A*                                     see docs/probes.md).
+     A                                      UNIQUE
+     A          R TXCKMR                    TEXT('TXCHECK manifest')
+     A            LESSON         6A         TEXT('Lesson id, e.g. 04-13')
+     A            SEQNBR         3S 0       TEXT('Order within lesson')
+     A            OBJNAME       10A         TEXT('Object name to check')
+     A            OBJTYPE       10A         TEXT('*PGM/*FILE/*DTAARA etc')
+     A            OBJATTR       10A         TEXT('Expect attr, blank=skip')
+     A            CKDESC        50A         TEXT('Shown in PASS/FAIL msg')
+     A          K LESSON
+     A          K SEQNBR

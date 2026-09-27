@@ -1,0 +1,49 @@
+{
+  "batch": "part05-13-pssr",
+  "description": "REDESIGNED 2026-09-27 (advisor review, after 2 real-hardware attempts to trigger za0500-ticket3.rpg's *PSSR via 05-11's own C0511S/JUBADD corruption technique both failed to raise any decimal-data error at all - see docs/probes.md's part05-mch1202-corrupt entries for 'ABCDE' and blanks, both refuted). Rather than guess a third corruption value before understanding what actually triggers a decimal-data error on this hardware (a still-open question, being investigated separately via SQL-based screening - see docs/probes.md), this connection instead confirms the *PSSR/QCMDEXC/CHGDTAARA MECHANISM itself using a DIFFERENT, ALREADY-PROVEN real error: part05-ju0900c-baseline (docs/probes.md, confirmed 2026-09-27) already showed that CALLing the AS-SHIPPED src/legacy/qclsrc/ju0900c.clp (&MINQTY TYPE(*DEC) LEN(3 0)) against za0500-ticket3.rpg (whose *ENTRY PLIST declares MINQTY as 5,0 - ticket 1's own bug, deliberately left unfixed in this file per its own header comment) raises RPG0907 EVERY time, on the very first row, at 'N90 AVAIL COMP MINQTY' - a C-spec calculation-time error squarely within *PSSR's own documented scope ('detail-calculation arithmetic (SUB/COMP/CHAIN with no 56-57 indicator)', za0500-ticket3.rpg's own header). This is NOT literally '05-11の手法を応用して' (05-13's own ticket-3 rubric wording, which names 05-11's corruption technique specifically) - that literal requirement is NOT satisfied by this connection, and remains open pending a real decimal-data-error trigger being found. What THIS connection settles instead is a prerequisite question that was completely unconfirmed before it: whether za0500-ticket3.rpg's *PSSR/CHGDTAARA(*LDA) mechanism actually fires and leaves readable evidence AT ALL when triggered by a real (not hand-forced, unlike ZA0510V's compile-time LOKUP-miss trigger in part05-qcmdexc-runtime) runtime error - a distinct, valuable, and much cheaper thing to confirm now, using the AS-SHIPPED ju0900c.clp (which also gets its own first real-hardware compile with the new CLOF OPNID(JUCHUD) fix as a side effect, at no extra connection cost). C0511S, JUBADD, and CLRJUCHUM are dropped entirely from this manifest - they belong to the still-open 05-11-corruption-value investigation, not this mechanism check.\n\nSteps: RUNTXRESET first (same shared-&LIB defensive reasoning every part05-* manifest uses). Compile src/legacy/qclsrc/ju0900c.clp AS JU0900C (as-shipped, ticket 1's MINQTY bug intentionally present) and solutions/05-13/za0500-ticket3.rpg AS ZA0500 (ticket 3's *PSSR, DLTPGM-first + REPLACE(*YES), same fail-visibly reasoning as every other part05-13-* manifest), plus src/vlda3.clp AS VLDA3 (the same already-reviewed *LDA(21,20) readback helper part05-qcmdexc-runtime/part05-13-pssr's own earlier design already used). RUNCOMBO (CALL PGM(&LIB/JU0900C) PARM('*TEST' '&LIB')) is expected to hit RPG0907 on the very first JUCHUD row exactly as part05-ju0900c-baseline already observed - the only new variable is whether za0500-ticket3.rpg's *PSSR (not present in the as-shipped ZA0500 that baseline connection used) catches it and completes CHGDTAARA before ENDSR('*CANCL'). RUNVLDA3 (CALL PGM(&LIB/VLDA3)) runs last, reading back *LDA(21,20) in the SAME job/call stack - the only reliable way to observe it (job-scoped, per part05-qcmdexc-runtime's own established reasoning). Expected value if *PSSR fires and CHGDTAARA completes: 'ZA0500 SHORT ERR' + 4 trailing blanks (20 bytes total) - see expected/notes.md. RUNMODE stays '*TEST' so ZAIKOM is never mutated (no TXRESET needed afterward beyond what this connection's own RUNTXRESET already does at the start). Prerequisite: TXSETUP has already built the sample DB in this library; run from a branch where solutions/05-13/za0500-ticket3.rpg, src/legacy/qclsrc/ju0900c.clp (with its 2026-09-27 CLOF fix) and src/vlda3.clp all exist, not main.",
+  "steps": [
+    { "type": "file", "localPath": "../../src/legacy/qclsrc/ju0900c.clp", "remoteSrcFile": "QCLSRC", "member": "JU0900C" },
+    { "type": "file", "localPath": "../../solutions/05-13/za0500-ticket3.rpg", "remoteSrcFile": "QRPGSRC", "member": "ZA0500" },
+    { "type": "file", "localPath": "src/vlda3.clp", "remoteSrcFile": "QCLSRC", "member": "VLDA3" },
+
+    {
+      "type": "cl",
+      "label": "RUNTXRESET",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CPJU0900C",
+      "cmd": "DLTPGM PGM(&LIB/JU0900C)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/JU0900C) SRCFILE(&LIB/QCLSRC) SRCMBR(JU0900C) REPLACE(*YES)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CPZA0500",
+      "cmd": "DLTPGM PGM(&LIB/ZA0500)\nMONMSG MSGID(CPF0000)\nCRTRPGPGM PGM(&LIB/ZA0500) SRCFILE(&LIB/QRPGSRC) SRCMBR(ZA0500) REPLACE(*YES)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CPVLDA3",
+      "cmd": "DLTPGM PGM(&LIB/VLDA3)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/VLDA3) SRCFILE(&LIB/QCLSRC) SRCMBR(VLDA3) REPLACE(*YES)",
+      "monmsg": ["CPF0000"]
+    },
+
+    { "type": "collect", "kind": "sql", "sql": "SELECT ZASHO, ZASU, ZAUPD FROM &LIB/ZAIKOM WHERE ZASHO = 'P00001'" },
+
+    {
+      "type": "cl",
+      "label": "RUNCOMBO",
+      "cmd": "CALL PGM(&LIB/JU0900C) PARM('*TEST' '&LIB')",
+      "monmsg": ["CPF0000", "MCH0000", "RPG0000"]
+    },
+    {
+      "type": "cl",
+      "label": "RUNVLDA3",
+      "cmd": "CALL PGM(&LIB/VLDA3)",
+      "monmsg": ["CPF0000"]
+    }
+  ]
+}

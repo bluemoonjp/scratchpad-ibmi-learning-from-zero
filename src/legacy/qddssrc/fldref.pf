@@ -1,0 +1,44 @@
+     A*                                     FLDREF - common field reference.
+     A*                                     Part 5 (legacy). QDDSSRC.
+     A*                                     CONFIRMED, real hardware
+     A*                                     (part05-legacy-probe, 2nd
+     A*                                     connection): compiles at
+     A*                                     Highest Severity 00 (see
+     A*                                     docs/probes.md).
+     A*
+     A*                                     REFFLD target only: other DDS
+     A*                                     are meant to reference these
+     A*                                     fields with REFFLD(name FLDREF).
+     A*                                     FLDREF itself never uses REFFLD.
+     A*
+     A*                                     UNVERIFIED: no DDS Reference doc
+     A*                                     was available among this repo's
+     A*                                     private working notes when this
+     A*                                     was written (none of them is a
+     A*                                     DDS Reference; only one secondary
+     A*                                     reference mentions REFFLD, in an
+     A*                                     authority table, not its syntax/
+     A*                                     usage). Zero actual REFFLD
+     A*                                     referrers exist yet: db/v2/
+     A*                                     juchum.pf still inlines JUNO/
+     A*                                     JUTOK rather than using REFFLD.
+     A*                                     Confirm REFFLD's real syntax on
+     A*                                     the next real-machine connection
+     A*                                     or doc pull.
+     A*
+     A*                                     See FLDREFR (QRPGSRC) for the
+     A*                                     matching RPG III /COPY member of
+     A*                                     these same field names, and
+     A*                                     scripts/check-fldref-fldrefr-
+     A*                                     consistency.mjs for the
+     A*                                     permanent name/length/type/dec
+     A*                                     check between the two files.
+     A          R FLDREFD                   TEXT('Common field definitions')
+     A            TOKCD          6A         TEXT('Customer code')
+     A            TOKNM         30A         TEXT('Customer name')
+     A            JUNO           6A         TEXT('Order number')
+     A            JUTOK          6A         TEXT('Customer code')
+     A            JUSHO          6A         TEXT('Product code')
+     A            JUSU           5S 0       TEXT('Quantity')
+     A            ZASHO          6A         TEXT('Product code')
+     A            ZASU           7S 0       TEXT('Stock quantity')

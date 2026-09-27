@@ -1,0 +1,52 @@
+      * FLDREFR - common field definitions, /COPY member (Part 5).
+      * CONFIRMED, real hardware (part05-legacy-probe, 2nd connection):
+      * compiles at Highest Severity 00 (see docs/probes.md).
+      *
+      * Taken in by ZA0510 via /COPY into ZA0510's I-SPEC area (rpg3.mjs
+      * copyDirective('I', 'FLDREFR')), placed AFTER ZA0510's own
+      * record-level I-specs and BEFORE its C-specs. RPG/400 Reference
+      * ("Figure 1. Order of the Types of Specifications") requires
+      * H-F-E-L-I-C-O source
+      * order; /COPY is expanded in place (copyDirective()'s own
+      * comment: pass 'I' when copying I-spec field/DS definitions).
+      * A C-spec-area /COPY here would land this DS's I-spec lines
+      * after C-specs and break that required order.
+      *
+      * This file IS the copied member, not a copier: it holds no
+      * /COPY of its own, matching RPG/400 Reference's rule that a
+      * copied member may hold any spec except another /COPY.
+      *
+      * Same field names/lengths/types as FLDREF (DDS, QDDSSRC/
+      * fldref.pf), expressed as an RPG III I-spec DS instead, since
+      * REFFLD (DDS A-spec) cannot be /COPY-ed into RPG source.
+      *
+      * Alternative not used: an externally described DS (I-spec col 17
+      * = 'E', file name cols 7-12; rpg400ref.txt lines 9812-9822)
+      * could pull FLDREF's fields in directly without hand-duplicating
+      * them. Manual duplication was chosen instead because ZA0510 is
+      * this design's /COPY reading-exercise object (05-02-05-04, per
+      * design.json's own critique record) - an external DS would not
+      * exercise the /COPY directive itself, which is the actual
+      * teaching point here. CONFIRMED, real hardware
+      * (part05-legacy-probe, 2nd connection): both this DS (via
+      * FLDREFR's own compile) and ZA0510 (which /COPY's it) compile
+      * with 0/00 severity - see docs/probes.md.
+      *
+      * iSpecDS()/option U vs this plain DS: this is an ordinary DS,
+      * not a *LDA-backed U-option DS (see JU0300 for that). JU0300
+      * itself compiled with 0/00 severity in the same connection,
+      * which confirms the UDS syntax compiles - its *LDA read/write
+      * runtime semantics are a separate, still-unconfirmed claim.
+      *
+      * FLDREF/FLDREFR field name/length/type/decimal consistency, and
+      * the RPG III 6-char symbol-name limit, are checked by
+      * scripts/check-fldref-fldrefr-consistency.mjs.
+     ICMNFLD      DS                             72
+     I                                        1   6 TOKCD
+     I                                        7  36 TOKNM
+     I                                       37  42 JUNO
+     I                                       43  48 JUTOK
+     I                                       49  54 JUSHO
+     I                                       55  590JUSU
+     I                                       60  65 ZASHO
+     I                                       66  720ZASU
