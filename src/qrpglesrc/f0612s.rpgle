@@ -166,22 +166,22 @@ dcl-f tokuim keyed usage(*input);
 dcl-f juchum usage(*input);
 
 //-----------------------------------------------------------------------
-// P0612A: the new PRTF (see src/qddssrc/p0612s.prtf). ovf is the named
-// overflow indicator (ilerpgref75.txt lines 27970-27988: "name: The
-// name of a variable that is defined with type indicator ... This
-// indicator is set on when the overflow line is reached").
+// P0612A: the new PRTF (see src/qddssrc/p0612s.prtf).
 //
-// FIXED (2026-09-27, real-hardware finding from part06-12-prtf-cpp-
-// swap): "dcl-ind ovf;" is NOT a real RPG IV keyword (RNF5347/RNF7030:
-// the compiler parsed "dcl" as an undeclared name in an implicit EVAL,
-// since it does not recognize "dcl-ind" as a directive at all - zero
-// hits for "dcl-ind" anywhere in work/design/refs/ilerpgref75.txt
-// either). A standalone indicator is declared like any other DCL-S
-// field, with IND as its type (ilerpgref75.txt line 61218: "dcl-s
-// isAbnormalReturn ind;").
+// REMOVED (2026-09-27, real-hardware finding from part06-12-prtf-cpp-
+// swap): this line used to also declare a named overflow indicator
+// (first "dcl-ind ovf;" - not a real RPG IV keyword, RNF5347/RNF7030;
+// then "dcl-s ovf ind;" plus "oflind(ovf)" on this dcl-f - RNF2037,
+// "The Overflow Indicator is already defined; keyword is ignored",
+// severity 20, which stops compilation under the default GENLVL(10)).
+// Neither work/design/refs/ilerpgref75.txt nor any DDS reference in
+// this repo settles why OFLIND conflicts here for an externally
+// described printer file - rather than guess further, the overflow-
+// reprint feature is dropped outright: it is not on 06-12's own new-
+// syntax list (PRTF/SPACEB/SKIPB/EDTCDE only), and with this lesson's
+// 2-row test data a real page overflow never happens anyway.
 //-----------------------------------------------------------------------
-dcl-s ovf ind;
-dcl-f p0612a printer oflind(ovf) usage(*output);
+dcl-f p0612a printer usage(*output);
 
 dcl-s orderCnt zoned(5:0) inz(0);
 
@@ -217,13 +217,6 @@ dow not %eof(juchum);
     rptjuno = juno;
     rptjudt = judate;
     write rptdtl;
-
-    // On overflow, reprint the header on the new page and clear the
-    // indicator so it can fire again on the next page.
-    if ovf;
-      write rpthdr;
-      ovf = *off;
-    endif;
   endif;
   read juchum;
 enddo;
