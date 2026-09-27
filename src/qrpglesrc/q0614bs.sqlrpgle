@@ -24,38 +24,45 @@
 // work/design/part06-design-v1.md section 5.1 batch
 // "part06-14b-null" calls it over SSH).
 //
-// DESIGN FLAW FOUND, FIX PENDING RE-VERIFICATION (Part 6 source
-// cleanup, P4): the cursor below used to be static SQL ("EXEC SQL
-// DECLARE C2 CURSOR FOR SELECT ... FROM QTEMP/W0614BA ..."). A static
-// SELECT is bound to an access plan AT PRECOMPILE TIME (CRTSQLRPGI),
-// and QTEMP/W0614BA does not exist then -- it is only created when the
-// program actually RUNS, by the embedded CREATE TABLE two steps below.
-// Real-hardware CONFIRMED (docs/probes.md, part06-14b-null, connection
-// #14, verified only with a priming table pre-created outside this
-// program): the static form produced SQL0204 ("W0614BA in QTEMP type
-// *FILE not found") at RUN time, not at compile time -- the CREATE
-// TABLE and DROP TABLE statements are fine as static SQL (no column-
-// level access plan is needed to create or drop an object), but the
-// cursor's SELECT needs actual columns resolved against a real table,
-// which is where precompile-time binding fails. The fix: the cursor's
-// SELECT is now DYNAMIC SQL (PREPARE + DECLARE ... CURSOR FOR the
-// prepared statement, step 3 below) -- this defers access-plan
-// creation to OPEN time, by which point CREATE TABLE has already run
-// in this same job. This is a natural extension of 06-14's own PREPARE
-// technique (that lesson introduces PREPARE with a "?" marker for a
-// search value; this program's PREPARE has no marker at all, since the
-// SELECT text itself is fixed -- only its TARGET TABLE's existence,
-// not its search criteria, is what needed to become dynamic).
-// STATUS: this dynamic-SQL fix itself, and the new TOKLTS/TOKNM
-// TIMESTAMP/VARCHAR columns below, have NOT yet been compiled or run
-// on real hardware without priming - that is exactly what the
-// part06-14b-null re-verification (no priming) will confirm or
-// refute; do not treat this fix as proven until that connection's
-// result updates this header and docs/probes.md.
+// DESIGN FLAW FOUND AND FIXED (Part 6 source cleanup, P4): the cursor
+// below used to be static SQL ("EXEC SQL DECLARE C2 CURSOR FOR SELECT
+// ... FROM QTEMP/W0614BA ..."), and the two INSERT statements below
+// were static too. A static SELECT/INSERT is bound to an access plan
+// AT PRECOMPILE TIME (CRTSQLRPGI), and QTEMP/W0614BA does not exist
+// then -- it is only created when the program actually RUNS, by the
+// embedded CREATE TABLE two steps below. Real-hardware CONFIRMED
+// (docs/probes.md, part06-14b-null connection #14, and
+// part06-decisions-1/-2/-3): the static forms produced SQL0204
+// ("W0614BA in QTEMP type *FILE not found") - first at RUN time with
+// only the cursor static (part06-14b-null #14, verified only with a
+// priming table pre-created outside this program), then as an outright
+// "SQL precompile failed" once the cursor was made dynamic but the two
+// INSERTs were still static (part06-decisions-2) -- the CREATE TABLE
+// and DROP TABLE statements are fine as static SQL (no column-level
+// access plan is needed to create or drop an object), but both SELECT
+// and INSERT need actual columns resolved against a real table. The
+// fix: the cursor's SELECT (PREPARE + DECLARE ... CURSOR FOR the
+// prepared statement, step 3 below) AND both INSERTs (EXECUTE
+// IMMEDIATE against a host variable) are now dynamic SQL -- this
+// defers access-plan creation to run time, by which point CREATE TABLE
+// has already run in this same job. This is a natural extension of
+// 06-14's own PREPARE technique (that lesson introduces PREPARE with a
+// "?" marker for a search value; this program's PREPARE/EXECUTE
+// IMMEDIATE use no marker at all, since the statement text itself is
+// fixed -- only the TARGET TABLE's existence, not any search
+// criteria, is what needed to become dynamic).
 //
-// HARDWARE STATUS: SQL0204 diagnosis above is confirmed (connection
-// #14). This file's dynamic-SQL redesign is unverified pending
-// re-connection. Compile with CRTSQLRPGI.
+// HARDWARE STATUS: CONFIRMED SUCCESS, no priming needed
+// (part06-decisions-3, 2026-09-27). CRTSQLRPGI Highest Severity 00;
+// CALL produced exactly the expected two lines: "C00001 ACME TRADING
+// CO: last order 2026-09-05, last touched 2026-09-05-08.30.00.000000"
+// / "C00099 NEW PROSPECT CO: last order date is NULL (unknown), last
+// touched 2026-09-20-14.15.00.000000" - DATE, NULL/%nullind, VARCHAR
+// (TOKNM), and TIMESTAMP (TOKLTS) all confirmed working together. The
+// one SQL0204 message that still appears in the job log on every run
+// is the FIRST statement (DROP TABLE QTEMP/W0614BA, before it has ever
+// been created) - expected and harmless, exactly why no SQLCODE check
+// follows that statement.
 //
 // On embedded CREATE TABLE in SQLRPGLE (task finding, see report):
 // this program embeds "EXEC SQL CREATE TABLE ...;" and

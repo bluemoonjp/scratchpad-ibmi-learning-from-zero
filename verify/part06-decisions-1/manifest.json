@@ -1,46 +1,282 @@
 {
   "batch": "part06-decisions-1",
-  "description": "Combined decision-forcing connection (jiggly-greeting-crystal.md A/B, advisor-recommended bundling): (1) re-verifies D0611BA/F0611BA (06-11b: SHOTNK now output-only per decision P6-8, chain(e)/%status(1218) lock-conflict error handling added) and F0611A/F0604A (06-11/06-04: F0604A now takes an optional custCode parameter, F0611A's option 5 passes JUTOK - A-5 fix) - all four are WORKSTN/EXFMT programs, V1 compile-check only, no CALL (same established limitation as part06-screens-compile: SSH non-interactive CALL hangs against EXFMT). D0611A/D0604A DDS are unchanged from their already-confirmed part06-screens-compile compile, so are NOT recompiled here. (2) Tries 3 independent candidates for 06-12's removed OFLIND feature (docs/probes.md's part06-12-prtf-cpp-swap RNF2037 finding) in one connection so a second connection is not needed regardless of which (if any) works: T612OFA (externally described P0612A, OFLIND(*INOA) direct), T612OFB (same file, OFLIND(*IN01) numbered form), T612OFC (program-described printer file instead, OFLIND(*INOA)) - all three THROWAWAY probes (verify/part06-12-prtf-cpp-swap/src/), not shipped lesson sources. Reuses the already-compiled P0612A object (part06-12-prtf-cpp-swap, CONFIRMED SUCCESS) for candidates A/B - does not recompile it. (3) Tries both 06-14b redesign candidates WITHOUT priming (docs/probes.md's part06-14b-null SQL0204 finding, connection #14 only succeeded WITH priming): Q0614BA (src/qrpglesrc/q0614bs.sqlrpgle, dynamic-SQL cursor via PREPARE, now also exercises TIMESTAMP/VARCHAR per part06-design-v1.md:321) and Q0614BB (verify/part06-14b-null/src/q0614bb-persistent.sqlrpgle, THROWAWAY candidate 2: static cursor against a table pre-created in a persistent library via RUNSQL, not QTEMP). Q0614BB's persistent work table (W0614BP) is dropped again at the end of this same connection - it is not meant to survive past this comparison.",
+  "description": "[HISTORICAL, NOT RE-RUNNABLE - throwaway candidate source files this manifest references were deleted after the decision they existed to force was made; see docs/probes.md for the outcome] Combined decision-forcing connection (jiggly-greeting-crystal.md A/B, advisor-recommended bundling): (1) re-verifies D0611BA/F0611BA (06-11b: SHOTNK now output-only per decision P6-8, chain(e)/%status(1218) lock-conflict error handling added) and F0611A/F0604A (06-11/06-04: F0604A now takes an optional custCode parameter, F0611A's option 5 passes JUTOK - A-5 fix) - all four are WORKSTN/EXFMT programs, V1 compile-check only, no CALL (same established limitation as part06-screens-compile: SSH non-interactive CALL hangs against EXFMT). D0611A/D0604A DDS are unchanged from their already-confirmed part06-screens-compile compile, so are NOT recompiled here. (2) Tries 3 independent candidates for 06-12's removed OFLIND feature (docs/probes.md's part06-12-prtf-cpp-swap RNF2037 finding) in one connection so a second connection is not needed regardless of which (if any) works: T612OFA (externally described P0612A, OFLIND(*INOA) direct), T612OFB (same file, OFLIND(*IN01) numbered form), T612OFC (program-described printer file instead, OFLIND(*INOA)) - all three THROWAWAY probes (verify/part06-12-prtf-cpp-swap/src/), not shipped lesson sources. Reuses the already-compiled P0612A object (part06-12-prtf-cpp-swap, CONFIRMED SUCCESS) for candidates A/B - does not recompile it. (3) Tries both 06-14b redesign candidates WITHOUT priming (docs/probes.md's part06-14b-null SQL0204 finding, connection #14 only succeeded WITH priming): Q0614BA (src/qrpglesrc/q0614bs.sqlrpgle, dynamic-SQL cursor via PREPARE, now also exercises TIMESTAMP/VARCHAR per part06-design-v1.md:321) and Q0614BB (verify/part06-14b-null/src/q0614bb-persistent.sqlrpgle, THROWAWAY candidate 2: static cursor against a table pre-created in a persistent library via RUNSQL, not QTEMP). Q0614BB's persistent work table (W0614BP) is dropped again at the end of this same connection - it is not meant to survive past this comparison.",
   "steps": [
-    { "type": "file", "localPath": "../../src/qddssrc/d0611bs.dspf", "remoteSrcFile": "QDDSSRC", "member": "D0611BA" },
-    { "type": "file", "localPath": "../../src/qrpglesrc/f0611bs.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0611BA" },
-    { "type": "file", "localPath": "../../src/qrpglesrc/f0611s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0611A" },
-    { "type": "file", "localPath": "../../src/qrpglesrc/f0604s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0604A" },
-    { "type": "file", "localPath": "../part06-12-prtf-cpp-swap/src/t612ofa.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "T612OFA" },
-    { "type": "file", "localPath": "../part06-12-prtf-cpp-swap/src/t612ofb.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "T612OFB" },
-    { "type": "file", "localPath": "../part06-12-prtf-cpp-swap/src/t612ofc.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "T612OFC" },
-    { "type": "file", "localPath": "../../src/qrpglesrc/q0614bs.sqlrpgle", "remoteSrcFile": "QRPGLESRC", "member": "Q0614BA", "ensureSrcFile": { "recordLength": 112 } },
-    { "type": "file", "localPath": "../part06-14b-null/src/q0614bb-persistent.sqlrpgle", "remoteSrcFile": "QRPGLESRC", "member": "Q0614BB", "ensureSrcFile": { "recordLength": 112 } },
-
-    { "type": "cl", "label": "CPD0611BA", "cmd": "CRTDSPF FILE(&LIB/D0611BA) SRCFILE(&LIB/QDDSSRC) SRCMBR(D0611BA) REPLACE(*YES)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "CPF0611BA", "cmd": "CRTBNDRPG PGM(&LIB/F0611BA) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0611BA) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
-    { "type": "cl", "label": "CPF0611A", "cmd": "CRTBNDRPG PGM(&LIB/F0611A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0611A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
-    { "type": "cl", "label": "CPF0604A", "cmd": "CRTBNDRPG PGM(&LIB/F0604A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0604A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
-
-    { "type": "cl", "label": "VSPLPF", "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 6 spooled-file text capture'))", "monmsg": ["CPF0000"] },
-
-    { "type": "cl", "label": "CPT612OFA", "cmd": "CRTBNDRPG PGM(&LIB/T612OFA) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T612OFA) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
-    { "type": "cl", "label": "RUNT612OFA", "cmd": "CALL PGM(&LIB/T612OFA)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
-    { "type": "cl", "label": "CAPT612OFA", "cmd": "CPYSPLF FILE(P0612A) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
-
-    { "type": "cl", "label": "CPT612OFB", "cmd": "CRTBNDRPG PGM(&LIB/T612OFB) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T612OFB) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
-    { "type": "cl", "label": "RUNT612OFB", "cmd": "CALL PGM(&LIB/T612OFB)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
-    { "type": "cl", "label": "CAPT612OFB", "cmd": "CPYSPLF FILE(P0612A) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
-
-    { "type": "cl", "label": "CPT612OFC", "cmd": "CRTBNDRPG PGM(&LIB/T612OFC) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T612OFC) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
-    { "type": "cl", "label": "RUNT612OFC", "cmd": "CALL PGM(&LIB/T612OFC)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
-    { "type": "cl", "label": "CAPT612OFC", "cmd": "CPYSPLF FILE(T612OFC) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
-
-    { "type": "cl", "label": "CPQ0614BA", "cmd": "CRTSQLRPGI OBJ(&LIB/Q0614BA) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0614BA) OBJTYPE(*PGM) COMMIT(*NONE)", "monmsg": ["CPF0000", "RNF0000", "SQL0000", "MCH0000"] },
-    { "type": "cl", "label": "RUNQ0614BA", "cmd": "CALL PGM(&LIB/Q0614BA)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
-    { "type": "cl", "label": "CAPQ0614BA", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
-
-    { "type": "cl", "label": "PERSISTPRIME", "cmd": "RUNSQL SQL('DROP TABLE &LIB/W0614BP') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/W0614BP (TOKCD CHAR(6) NOT NULL, TOKNM VARCHAR(30) NOT NULL, TOKLORD DATE, TOKLTS TIMESTAMP NOT NULL)') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/W0614BP VALUES (''C00001'', ''ACME TRADING CO'', DATE ''2026-09-05'', TIMESTAMP ''2026-09-05-08.30.00.000000'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/W0614BP VALUES (''C00099'', ''NEW PROSPECT CO'', NULL, TIMESTAMP ''2026-09-20-14.15.00.000000'')') COMMIT(*NONE)", "monmsg": ["CPF0000", "SQL0000"] },
-    { "type": "cl", "label": "CPQ0614BB", "cmd": "CRTSQLRPGI OBJ(&LIB/Q0614BB) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0614BB) OBJTYPE(*PGM) COMMIT(*NONE)", "monmsg": ["CPF0000", "RNF0000", "SQL0000", "MCH0000"] },
-    { "type": "cl", "label": "RUNQ0614BB", "cmd": "CALL PGM(&LIB/Q0614BB)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
-    { "type": "cl", "label": "CAPQ0614BB", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "CLEANPERSIST", "cmd": "RUNSQL SQL('DROP TABLE &LIB/W0614BP') COMMIT(*NONE)", "monmsg": ["CPF0000", "SQL0000"] },
-
-    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSPL" }
+    {
+      "type": "file",
+      "localPath": "../../src/qddssrc/d0611bs.dspf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "D0611BA"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/f0611bs.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "F0611BA"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/f0611s.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "F0611A"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/f0604s.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "F0604A"
+    },
+    {
+      "type": "file",
+      "localPath": "../part06-12-prtf-cpp-swap/src/t612ofa.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "T612OFA"
+    },
+    {
+      "type": "file",
+      "localPath": "../part06-12-prtf-cpp-swap/src/t612ofb.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "T612OFB"
+    },
+    {
+      "type": "file",
+      "localPath": "../part06-12-prtf-cpp-swap/src/t612ofc.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "T612OFC"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/q0614bs.sqlrpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "Q0614BA",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../part06-14b-null/src/q0614bb-persistent.sqlrpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "Q0614BB",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "cl",
+      "label": "CPD0611BA",
+      "cmd": "CRTDSPF FILE(&LIB/D0611BA) SRCFILE(&LIB/QDDSSRC) SRCMBR(D0611BA) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPF0611BA",
+      "cmd": "CRTBNDRPG PGM(&LIB/F0611BA) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0611BA) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPF0611A",
+      "cmd": "CRTBNDRPG PGM(&LIB/F0611A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0611A) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPF0604A",
+      "cmd": "CRTBNDRPG PGM(&LIB/F0604A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0604A) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "VSPLPF",
+      "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 6 spooled-file text capture'))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPT612OFA",
+      "cmd": "CRTBNDRPG PGM(&LIB/T612OFA) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T612OFA) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNT612OFA",
+      "cmd": "CALL PGM(&LIB/T612OFA)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPT612OFA",
+      "cmd": "CPYSPLF FILE(P0612A) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPT612OFB",
+      "cmd": "CRTBNDRPG PGM(&LIB/T612OFB) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T612OFB) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNT612OFB",
+      "cmd": "CALL PGM(&LIB/T612OFB)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPT612OFB",
+      "cmd": "CPYSPLF FILE(P0612A) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPT612OFC",
+      "cmd": "CRTBNDRPG PGM(&LIB/T612OFC) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T612OFC) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNT612OFC",
+      "cmd": "CALL PGM(&LIB/T612OFC)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPT612OFC",
+      "cmd": "CPYSPLF FILE(T612OFC) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPQ0614BA",
+      "cmd": "CRTSQLRPGI OBJ(&LIB/Q0614BA) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0614BA) OBJTYPE(*PGM) COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "SQL0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNQ0614BA",
+      "cmd": "CALL PGM(&LIB/Q0614BA)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPQ0614BA",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PERSISTPRIME",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/W0614BP') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/W0614BP (TOKCD CHAR(6) NOT NULL, TOKNM VARCHAR(30) NOT NULL, TOKLORD DATE, TOKLTS TIMESTAMP NOT NULL)') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/W0614BP VALUES (''C00001'', ''ACME TRADING CO'', DATE ''2026-09-05'', TIMESTAMP ''2026-09-05-08.30.00.000000'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/W0614BP VALUES (''C00099'', ''NEW PROSPECT CO'', NULL, TIMESTAMP ''2026-09-20-14.15.00.000000'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPQ0614BB",
+      "cmd": "CRTSQLRPGI OBJ(&LIB/Q0614BB) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0614BB) OBJTYPE(*PGM) COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "SQL0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNQ0614BB",
+      "cmd": "CALL PGM(&LIB/Q0614BB)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPQ0614BB",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLEANPERSIST",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/W0614BP') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYSPL"
+    }
   ]
 }
