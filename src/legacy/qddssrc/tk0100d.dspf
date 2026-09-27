@@ -6,8 +6,9 @@
      A*
      A*                                     CONFIRMED, real hardware
      A*                                     (part05-legacy-probe, 2nd
-     A*                                     connection): compiles with 0
-     A*                                     messages (see docs/probes.md).
+     A*                                     connection): compiles at
+     A*                                     Highest Severity 00 (see
+     A*                                     docs/probes.md).
      A*
      A*                                     Base columns (6/17/19-28/30-34/35/
      A*                                     36-37/38/39-41/42-44/45-) confirmed
