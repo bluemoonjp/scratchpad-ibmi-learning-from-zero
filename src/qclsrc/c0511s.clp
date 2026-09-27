@@ -47,12 +47,16 @@
 /* PARM:                                                                    */
 /*   LIB       library to plant the bad row in. Default *CURLIB.           */
 /*   CLONEDIR  IFS path of the git clone (for jubadd.pf's source). Default */
-/*             ~/scratchpad-ibmi-learning-from-zero.                       */
+/*             ~/ibmi-kyozai (this repo's standard clone-target directory */
+/*             name, not the repo's own name - see any TXSETUP CLONEDIR). */
 /*                                                                          */
 /* Afterward: run JU0900C, read the job log / QPJOBLOG entry for the       */
-/* MCH1202 (05-11's investigation exercise), then run TXRESET to restore   */
-/* JUCHUD to its normal data (TXRESET restores DATA only - it does not     */
-/* need to know about JUBADD, which TXRESET never touches).                */
+/* RPG0907 decimal-data error (05-11's investigation exercise; this was    */
+/* hypothesized as MCH1202 before real-hardware confirmation showed it is */
+/* actually RPG0907, raised at INPUT time by JUCHUD's own I-spec for      */
+/* JUSU - see docs/part05/05-11-decimal-data-error.md), then run TXRESET  */
+/* to restore JUCHUD to its normal data (TXRESET restores DATA only - it   */
+/* does not need to know about JUBADD, which TXRESET never touches).       */
              PGM        PARM(&LIB &CLONEDIR)
 
              DCL        VAR(&LIB) TYPE(*CHAR) LEN(10)
