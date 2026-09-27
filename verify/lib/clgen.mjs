@@ -13,7 +13,7 @@
 // へ INSERT してから終わる。collect ステップは、接続が終わったあとにこの表を SELECT
 // するだけでよい。
 
-import { resolveLibrary } from './config.mjs';
+import { resolveLibrary, resolveLibrary2, substituteLibraryPlaceholders } from './config.mjs';
 
 const PGM_NAME_MAX = 10;
 const CL_MAX_COL = 80;
@@ -75,6 +75,7 @@ export function buildClWrapperSource(manifest, cfg) {
   const pgmName = sanitizePgmName(manifest.batch);
   const clSteps = manifest.steps.filter((s) => s.type === 'cl');
   const lib = resolveLibrary(manifest, cfg); // 既定は開発役 <USER>2、"*B" なら <USER>B
+  const lib2 = resolveLibrary2(manifest, cfg); // 省略時は null(&LIB2 未使用のマニフェスト)
   const logTable = `${lib}/VFYLOG`;
 
   const lines = [];
@@ -105,9 +106,9 @@ export function buildClWrapperSource(manifest, cfg) {
     lines.push(`             MONMSG     MSGID(CPF0000 SQL0000)`);
   }
 
-  // &LIB はCLの実行時変数ではなく、生成時点でこの文字列にそのまま置き換える
+  // &LIB(・&LIB2)はCLの実行時変数ではなく、生成時点でこの文字列にそのまま置き換える
   // プレースホルダー(PARM経由で渡す32バイト・パディングの罠を避けるため)。
-  const substLib = (text) => text.replaceAll('&LIB', lib);
+  const substLib = (text) => substituteLibraryPlaceholders(text, lib, lib2);
 
   clSteps.forEach((step, i) => {
     const label = (step.label || `S${i}`).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
