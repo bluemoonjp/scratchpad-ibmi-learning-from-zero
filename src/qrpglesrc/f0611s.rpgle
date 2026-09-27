@@ -8,13 +8,14 @@
 // src/legacy/qddssrc/tk0100d.dspf and tools/gen/dspf.mjs). This header
 // only covers the RPG-side half of that same contract.
 //
-// HARDWARE-UNTESTED (V1 only, compile-check): this program has not been
-// compiled or run on real hardware this session. Interactive
-// subfile/EXFMT execution is V1-only in this repo's established
-// workflow - SSH non-interactive batches cannot drive a real 5250
-// device (same WORKSTN/EXFMT limitation as 04-11, tk0100.rpg, and
-// f0604s.rpgle). Verify with CRTBNDRPG, then a real 5250 session,
-// before relying on this source.
+// CONFIRMED V1 (compile-check, part06-decisions-1, 2026-09-27):
+// CRTBNDRPG Highest Severity 00, after the option-5 fix (JUTOK now
+// passed to F0604A, see "DEPENDENCY ON F0604A, FIXED" below).
+// Interactive subfile/EXFMT execution (V3) is still untested - SSH
+// non-interactive batches cannot drive a real 5250 device (same
+// WORKSTN/EXFMT limitation as 04-11, tk0100.rpg, and f0604s.rpgle).
+// Verify with a real 5250 session before relying on this file's
+// interactive behavior.
 //
 // LOAD-ALL (primary/documented form): per work/design/part06-design-
 // v1.md's B1-16 disposition, load-all is taught first as the basic
@@ -122,9 +123,10 @@
 // this is a plain Part 6 bug fix that had to land here because nothing
 // downstream (07-02) is allowed to touch this file to work around it.
 //
-// STATUS: hardware-UNTESTED (Part 6 draft, draft/part06 branch).
-// Treat every runtime claim above as "should work per the ILE RPG
-// Language Reference", not as a verified fact.
+// STATUS: CONFIRMED V1 (compile-check, part06-decisions-1,
+// 2026-09-27). Interactive/EXFMT behavior (V3) is still untested -
+// treat runtime claims about the SCREEN'S interactive behavior as
+// "should work per the ILE RPG Language Reference", not as verified.
 //
 // Verified against work/design/refs/ilerpgref75.txt (IBM i 7.5 ILE RPG
 // Language Reference) at these locations:

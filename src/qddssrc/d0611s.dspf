@@ -9,23 +9,24 @@
      A*                                     customer code is actually passed).
      A*                                     Lesson 06-11.
      A*
-     A*                                     HARDWARE-UNTESTED (V1 only,
-     A*                                     compile-check): this
-     A*                                     file has not been compiled on real
-     A*                                     hardware this
-     A*                                     session. Interactive subfile/EXFMT
-     A*                                     execution is
-     A*                                     V1-only in this repo's established
-     A*                                     workflow -
-     A*                                     SSH non-interactive batches cannot
-     A*                                     drive a real
-     A*                                     5250 device (same WORKSTN/EXFMT
-     A*                                     limitation as
-     A*                                     04-11 and tk0100d.dspf; see
+     A*                                     CONFIRMED V1 (compile-check,
+     A*                                     part06-screens-compile,
+     A*                                     2026-09-26): CRTDSPF
+     A*                                     Highest Severity 00.
+     A*                                     Interactive subfile/EXFMT
+     A*                                     execution (V3) is still
+     A*                                     untested - SSH
+     A*                                     non-interactive batches
+     A*                                     cannot drive a real
+     A*                                     5250 device (same
+     A*                                     WORKSTN/EXFMT limitation
+     A*                                     as 04-11 and
+     A*                                     tk0100d.dspf; see
      A*                                     docs/probes.md).
-     A*                                     Verify with CRTDSPF, then a real
-     A*                                     5250 session,
-     A*                                     before relying on this source.
+     A*                                     Verify with a real 5250
+     A*                                     session before relying
+     A*                                     on this file's
+     A*                                     interactive behavior.
      A*
      A*                                     COLUMN POSITIONS: base columns (6=A
      A*                                     literal,
