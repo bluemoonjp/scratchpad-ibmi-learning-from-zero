@@ -1586,7 +1586,11 @@ pub400.com port 2222: Connection timed out`(ネットワーク側の一時的な
   リセット、`expected/notes.md`「前提(2)」の防御が実際に機能した
   確認)。
 - `TXCHECK`: 2件ともPASS(`TXCHECK PASS: ZA0500 still exists and
-  compiles`/`TXCHECK PASS: JU0900C still exists and compiles`)、
+  compiles`/`TXCHECK PASS: JU0900C still exists and compiles`——
+  後者は生のvfylogでは`clgen.mjs`の継続記号バグ(後述)により
+  `JU0900C still              exists and compiles`と内部に余分な
+  空白が入って出力されていた。ここでは読みやすさのため正規化して
+  引用している。判定自体は`PASS`のまま影響なし)、
   要約行も予想どおり2行に分かれ10桁ゼロ・パディング
   (`TXCHECK: lesson 05-13 - 0000000002 passed,`/
   `0000000000 failed.`)——既知の食い違い(レッスン本文は1行・
@@ -1707,11 +1711,35 @@ pub400.com port 2222: Connection timed out`(ネットワーク側の一時的な
   除去されるようになる)。ローカルで新旧両方の折り返し・復元ロジックを
   シミュレートし、修正後は元の文字列と完全一致、修正前は実際に61文字
   (`CPD0074`の閾値超過)に膨張することを確認済み。
-- **影響範囲の確認**: 他のマニフェストで50桁超の引用符付き文字列
-  リテラルを検索したところ、該当は全てSQL文字列(空白に寛容)か
-  マニフェストの`description`フィールド(コンパイル対象外)のみで、
-  このバグによって過去の接続結果の意味が変わるものは見当たらなかった
-  (`TEXT()`のような桁数制限付きパラメーターで初めて表面化した)。
+- **影響範囲の確認(2026-09-27、advisorの指摘を受けて機械的に再調査・
+  訂正)**: 当初「該当は全てSQL文字列で空白に寛容、影響なし」と
+  記録したが、これは不十分な確認だった——SQL**構文**(コマンドの
+  キーワード間)は確かに空白に寛容だが、SQL文字列**リテラルの値**
+  (`VALUES(...)`で実際にテーブルへ格納される値)は別で、そこに
+  余分な空白が literal に混入すれば本物のデータ破損になる。旧版
+  clgen.mjsと現行版で全マニフェストの全CL文を実際に折り返し・
+  復元させて機械的に突き合わせたところ、引用符の内側で折り返しが
+  発生していた箇所は12件。うち3件(`part05-txcheck-probe`の
+  `INSROW`・`part07-05-checkpoint`の`SEEDTXCKM`×3箇所——いずれも
+  このバグ修正**前**に実行済み)は、`TXCKM.CKDESC`列へ格納される
+  説明文字列(例:`'JU0900C still exists and compiles'`)の途中に
+  余分な空白が混入していた(`part05-13-tickets`の実際のvfylogで
+  `JU0900C still              exists and compiles`という形で観測
+  済み——`part05-13-tickets`自身の節にある引用は読みやすさのため
+  正規化した表記で、生の出力そのものではない旨を注記済み)。
+  **ただし、この破損はいずれも`TXCHECK`
+  の`PASS`/`FAIL`判定そのもの(`CHKOBJ`によるオブジェクト実在確認)
+  には影響していない**——`OBJNAME`/`OBJTYPE`列の値は無傷のまま
+  各接続で正しく`PASS`しており(折り返しは主にコンマ区切りの
+  境界に落ちていた)、影響が確認できたのは人間向けの説明文
+  (`CKDESC`)だけ。**このため、これまでのCONFIRMED SUCCESSの結論は
+  どれも変わらない**(advisorの基準どおり、データ依存の結論に影響が
+  出たケースは見つからなかった)。残り9件は全て`TEXT()`パラメーター
+  (`part05-promote-rollback`の3件——修正後に再接続済み——と、
+  `part06-01-cvtrpgsrc`・`part06-0103-freeform`・
+  `part06-14b-null`の各1件、いずれもハーネス専用のコメント的な
+  `TEXT()`/`CREATE TABLE`のSQL構文で、50桁制限に達しないか、
+  データとして読み戻されない値)で、実害なし。
 
 ## 第5部`part05-promote-rollback`の実機検証: CRTDUPOBJによる昇格/
 切り戻し機構を両方向で確認、P44を実機で解決(確認日2026-09-27)
