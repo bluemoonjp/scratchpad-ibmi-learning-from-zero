@@ -1,5 +1,5 @@
 /* TXSNAP command - wraps the TXSNAP *PGM. See txsetup.cmd for why.      */
-             CMD        PROMPT('TXSNAP - snapshot a spooled file')
+             CMD        PROMPT('TXSNAP - save spooled file')
              PARM       KWD(LABEL) TYPE(*CHAR) LEN(10) MIN(1) +
                           PROMPT('Snapshot label (member name)')
              PARM       KWD(LIB) TYPE(*CHAR) LEN(10) DFT(*CURLIB) +
