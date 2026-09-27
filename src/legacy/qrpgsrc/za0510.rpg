@@ -41,12 +41,13 @@
       * that file's own header for its own, independently-designed
       * CHGDTAARA replacement.
       *
-      * CONFIRMED, real hardware: this exact source (diffed byte-for-
-      * byte against verify/part05-qcmdexc-runtime/src/za0510v.rpg,
-      * except that file's intentional TABPCD-final-element rewrite)
-      * was compiled and its *PSSR/CHGDTAARA path actually executed
-      * and fired correctly in the part05-qcmdexc-runtime connection
-      * (see docs/probes.md).
+      * CONFIRMED, real hardware: this file's F/E/I/C/O specs (diffed
+      * against verify/part05-qcmdexc-runtime/src/za0510v.rpg - a
+      * verify-only variant with its own distinct header, whose specs
+      * are otherwise identical except its intentional TABPCD-final-
+      * element rewrite) were compiled and its *PSSR/CHGDTAARA path
+      * actually executed and fired correctly in the
+      * part05-qcmdexc-runtime connection (see docs/probes.md).
       *
       * 1. /COPY placement (FLDREFR).
       *    Per fldrefr.rpg's own header (the authoritative spec for this),

@@ -2,8 +2,9 @@
      A*                                     Part 5 (legacy). QDDSSRC.
      A*                                     CONFIRMED, real hardware
      A*                                     (part05-legacy-probe, 2nd
-     A*                                     connection): compiles with 0
-     A*                                     messages (see docs/probes.md).
+     A*                                     connection): compiles at
+     A*                                     Highest Severity 00 (see
+     A*                                     docs/probes.md).
      A*
      A*                                     REFFLD target only: other DDS
      A*                                     are meant to reference these
