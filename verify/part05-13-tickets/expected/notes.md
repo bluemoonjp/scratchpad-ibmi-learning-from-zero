@@ -175,7 +175,7 @@ ODPが`RUNZA0500H`の時点でまだ残っていた(重複`OPNID`エラー)と�
 
 ## TXCHECKの実際のメッセージ形(2026-09-27追記、レビュー指摘・実績から訂正)
 
-`tools/qclsrc/txcheck.clp`のSUMMARYラベルは、`N passed, `と`N failed.`を
+`tools/qclsrc/txcheck.clp`のSUMMARYラベルは、`N passed,`と`N failed.`を
 **2回に分けて別々の`SNDPGMMSG`で送っている**(`tools/qclsrc/txcheck.clp`の
 SUMMARYラベル自身のソース参照)。そのため`VFYLOG`(ジョブ・ログの取り込み)
 には**2行に分かれて**現れるはずである(1行にまとまった`TXCHECK: lesson
@@ -191,12 +191,12 @@ checkpoint-2026-09-27T03-31-30-435Z.json`、どちらもこのセッションで
 `%TRIM`は前後の空白しか取り除かないため、ゼロ・パディングはそのまま残る
 (`%TRIM`は「先頭のゼロ」を取り除く関数ではない)。実際に観測された行:
 
-```
+```text
 TXCHECK: lesson TEST01 - 0000000001 passed,
 0000000000 failed.
 ```
 
-```
+```text
 TXCHECK: lesson 07-05 - 0000000003 passed,
 0000000000 failed.
 ```
@@ -204,7 +204,7 @@ TXCHECK: lesson 07-05 - 0000000003 passed,
 このマニフェスト(05-13、2件のチェック)で観測されるはずの形は、上と
 同じパターンから類推して:
 
-```
+```text
 TXCHECK PASS: ZA0500 still exists and compiles
 TXCHECK PASS: JU0900C still exists and compiles
 TXCHECK: lesson 05-13 - 0000000002 passed,
