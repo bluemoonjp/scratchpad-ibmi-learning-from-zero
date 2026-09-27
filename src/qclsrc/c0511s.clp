@@ -17,13 +17,21 @@
 /* nibble is C, which is a valid POSITIVE sign nibble. 'ABCDE' is therefore  */
 /* a well-formed zoned decimal encoding of +12345, not corrupted data at    */
 /* all - confirmed on real hardware: OPM RPG/400 read it as JUSU=12345 with  */
-/* no decimal-data error whatsoever (docs/probes.md). Switched the planted  */
-/* value to 5 blanks (EBCDIC X'40' per byte): the zone/sign nibble is 4,    */
-/* which is not a valid sign nibble - the classic real-world cause of a     */
-/* decimal-data error (a blank-filled numeric field). The next arithmetic   */
-/* operation on that row's JUSU (ZA0500's `SUB JUSU AVAIL`, reached via     */
-/* JU0900C) is expected to raise a decimal data error (MCH1202/RPG0907) -   */
-/* still to be reconfirmed on real hardware with this corrected value.      */
+/* no decimal-data error whatsoever (docs/probes.md).                       */
+/* FIXED, part 3 (same connection's own follow-up, 2026-09-27, real         */
+/* hardware): switched the planted value to 5 blanks (EBCDIC X'40' per     */
+/* byte, zone/sign nibble 4) on the assumption that an invalid sign nibble  */
+/* is the classic real-world decimal-data-error trigger - ALSO WRONG,       */
+/* confirmed on real hardware: JUSU read as 0 (not corrupted), again no     */
+/* decimal-data error (docs/probes.md). Both tested values happen to share  */
+/* a common trait: every byte's DIGIT (low) nibble is 0-9 (1,2,3,4,5 for    */
+/* 'ABCDE'; 0,0,0,0,0 for blanks) - this OPM RPG/400 appears to validate    */
+/* only that, ignoring the zone/sign nibble entirely. NOT YET CONFIRMED as  */
+/* the actual rule (2 data points only) - a genuinely invalid corruption    */
+/* value likely needs an invalid DIGIT nibble (A-F), not just an unusual    */
+/* zone/sign nibble. See docs/probes.md for the current plan (SQL-based    */
+/* screening of several byte patterns before spending another RPG-level    */
+/* connection on a third guess).                                           */
 /*                                                                          */
 /* Uses product code P00001 (a real ZAIKOM row, per za0510.rpg's header    */
 /* comment / db/data/load_v1.sql) so the planted row actually reaches      */

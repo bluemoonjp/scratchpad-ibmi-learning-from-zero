@@ -13,22 +13,31 @@
      A*                                     copies records between mismatched
      A*                                     formats without the normal field-
      A*                                     type check, so a row inserted here
-     A*                                     with JUSU=blanks (valid for THIS
-     A*                                     file's own 5A field) lands as
-     A*                                     bytes with an invalid sign nibble
-     A*                                     (X'40') in JUCHUD.JUSU once copied
-     A*                                     across - simulating the *NOCHK-
-     A*                                     caused corruption path the 05-11
-     A*                                     syllabus entry names. FIXED
-     A*                                     (2026-09-27, real hardware):
-     A*                                     JUSU='ABCDE' was tried first, but
-     A*                                     EBCDIC 'A'-'E' (X'C1'-X'C5') is
-     A*                                     actually a VALID positive zoned-
-     A*                                     decimal encoding of +12345 (digit
-     A*                                     nibbles 1-5, sign nibble C) - it
-     A*                                     raised no decimal-data error at
-     A*                                     all (docs/probes.md). Blanks give
-     A*                                     a genuinely invalid sign nibble.
+     A*                                     lands its raw character bytes in
+     A*                                     JUCHUD.JUSU once copied across -
+     A*                                     simulating the *NOCHK-caused
+     A*                                     corruption path the 05-11 syllabus
+     A*                                     entry names. FIXED (2026-09-27,
+     A*                                     real hardware, 2 rounds): JUSU=
+     A*                                     'ABCDE' was tried first - EBCDIC
+     A*                                     'A'-'E' (X'C1'-X'C5') is actually a
+     A*                                     VALID positive zoned-decimal
+     A*                                     encoding of +12345 (digit nibbles
+     A*                                     1-5, sign nibble C) - no decimal-
+     A*                                     data error at all. JUSU=5 blanks
+     A*                                     (X'40', zone/sign nibble 4) was
+     A*                                     tried next on the assumption an
+     A*                                     invalid sign nibble would trigger
+     A*                                     it - ALSO no error (JUSU read as
+     A*                                     0). Both values happen to share
+     A*                                     valid DIGIT (low) nibbles (0-9) on
+     A*                                     every byte; the actual trigger for
+     A*                                     a real decimal-data error on this
+     A*                                     hardware is still unconfirmed -
+     A*                                     see docs/probes.md for the current
+     A*                                     plan (screen candidate byte
+     A*                                     patterns via SQL before spending
+     A*                                     another connection on a guess).
      A          R JUCHDR                    TEXT('05-11 mis-typed staging')
      A            JUNO           6A         TEXT('Order number')
      A            JULINE         3S 0       TEXT('Line number')
