@@ -12,22 +12,23 @@
 /* zoned decimal depending on what was planted (see FIXED note below).     */
 /*                                                                          */
 /* CONFIRMED, real hardware (part05-mch1202-corrupt, 2026-09-27): JUSU=      */
-/* 'ABCDE' is planted deliberately, KEEPING it despite an early finding      */
-/* that it is not, in the strictest sense, corrupted data at all: EBCDIC     */
-/* 'A'-'E' are X'C1'-X'C5' - the digit (low) nibbles are 1-5 (all valid) and */
-/* the LAST byte's zone (high) nibble is C, a valid POSITIVE sign nibble.    */
-/* Under an isolated, verification-only JUCHUM/ticket-1-fixed setup          */
-/* (part05-mch1202-corrupt's own manifest), OPM RPG/400 read this as         */
-/* JUSU=12345 with NO decimal-data error at all - a vividly absurd order     */
-/* quantity, visible via a plain SELECT, silently used in arithmetic.        */
-/* Blanks (X'40' per byte) were tried as an alternative on the assumption    */
-/* that an invalid sign nibble would trigger a real decimal-data error -     */
-/* ALSO refuted on real hardware (JUSU read as 0, still no error). Given     */
-/* NEITHER value raises a decimal-data error through this corruption path,   */
-/* 'ABCDE' was kept as the main demo value specifically because its silent   */
-/* misreading (12345) is the more vivid, teachable illustration - see        */
-/* docs/part05/05-11-decimal-data-error.md's real-hardware notes for the     */
-/* full investigation and the lesson's own reframing around this.           */
+/* 'ABCDE' (EBCDIC X'C1'-X'C5' - digit nibbles 1-5, valid; last byte's zone   */
+/* nibble C, a valid positive sign) is read SILENTLY as JUSU=12345 with NO   */
+/* decimal-data error, under an isolated, verification-only setup. Blanks   */
+/* (X'40' per byte, digit nibble 0) are likewise read silently as JUSU=0.    */
+/* BOTH of those observations came from an isolated setup (single-row       */
+/* JUCHUM, ticket-1-fixed JU0900T) designed to study the corrupted value on  */
+/* its own - they do NOT mean this corruption path never raises a real      */
+/* error. FIXED, part 4 (part05-lesson-decimal, 2026-09-27, real hardware,   */
+/* THIS PROGRAM'S OWN literal use, as a real learner would run it): a       */
+/* value with an INVALID DIGIT (not zone/sign) nibble does raise a real     */
+/* decimal-data error, at INPUT time (za0500.rpg's own I-spec for JUSU,     */
+/* before any calculation runs) - confirmed via '.....' (5 periods, EBCDIC   */
+/* X'4B', digit nibble B): `ZA0500 6400 decimal-data error in field          */
+/* (C G S D F).` -> RPG0907. Planting this value is what this program now   */
+/* does; see docs/part05/05-11-decimal-data-error.md's real-hardware notes  */
+/* and body for the full, corrected story ('ABCDE'/blanks moved to the      */
+/* exercise as the "looks corrupt but reads silently" contrast case).       */
 /*                                                                          */
 /* Uses product code P00001 (a real ZAIKOM row, per za0510.rpg's header    */
 /* comment / db/data/load_v1.sql) so the planted row actually reaches      */
@@ -101,18 +102,29 @@
                           SRCFILE(&LIB/QDDSSRC) SRCMBR(JUBADD) TEXT('05-11 +
                           mis-typed staging'))
 
-             /* Step 2: clear any leftover row from a previous run, then   */
-             /* insert one row with JUSU='ABCDE' - valid character data    */
-             /* for JUBADD's own 5A field. See the header note above: this */
-             /* is kept despite reading back as a valid (not corrupted)    */
-             /* zoned decimal value on this hardware - its silent, absurd  */
-             /* misreading (12345) is the point.                           */
+             /* Step 2: clear ALL rows from JUBADD (not just this JUNO),   */
+             /* then insert one row with JUSU='.....' (5 periods) - valid  */
+             /* character data for JUBADD's own 5A field, an INVALID digit */
+             /* nibble (X'4B', digit B) once its raw bytes land in         */
+             /* JUCHUD.JUSU (see the header note above).                   */
+             /* FIXED (part05-lesson-decimal, 2026-09-27, real hardware):  */
+             /* the DELETE below used to only remove WHERE JUNO='C05119', */
+             /* leaving any OTHER rows a prior JUBADD use might have left  */
+             /* behind - and the CPYF two steps down copies the WHOLE      */
+             /* file, not just this JUNO. A leftover row (from an          */
+             /* unrelated investigation, in this program's own real-       */
+             /* hardware history) got silently re-planted into JUCHUD      */
+             /* alongside C05119, contaminating the very first real-       */
+             /* hardware run of this exact scenario. Blanket DELETE FROM   */
+             /* JUBADD is correct here: JUBADD is pure transient staging,  */
+             /* read only by the CPYF step immediately below in the SAME   */
+             /* run - nothing else ever reads it back.                     */
              RUNSQL     SQL('DELETE FROM ' *CAT %TRIM(&LIB) *CAT +
-                          '/JUBADD WHERE JUNO = ''C05119''') COMMIT(*NONE)
+                          '/JUBADD') COMMIT(*NONE)
              MONMSG     MSGID(CPF0000)
              RUNSQL     SQL('INSERT INTO ' *CAT %TRIM(&LIB) *CAT +
                           '/JUBADD VALUES (''C05119'', 1, ''P00001'', +
-                          ''ABCDE'', 100.00)') COMMIT(*NONE)
+                          ''.....'', 100.00)') COMMIT(*NONE)
 
              /* Step 3: also plant a matching JUCHUM header row, so the    */
              /* JUCHUD row planted below is part of a genuine matched      */
