@@ -1,5 +1,5 @@
 {
-  "batch": "part07-04-actgrp-ext",
+  "batch": "part07-04b-actgrp",
   "description": "B-8 (jiggly-greeting-crystal.md): extends part07-04-actgrp-cl's F0704A confirmation (which only ever CALLed it once) with the full activation-group contrast f0704s.rpgle's own header describes but was never actually run: CALL PGM(F0704A) twice in the SAME job (expect bumpCounter 1,2,3 then CONTINUING 4,5,6 - F0704A is compiled ACTGRP('F0704AG'), a named, non-*NEW activation group that survives a normal return), then RCLACTGRP ACTGRP(F0704AG) (must run from a separate step, after both CALLs have returned), then a THIRD CALL PGM(F0704A) (expect RESET back to 1,2,3). Also builds a *CALLER-bound comparison object, F0704AC, from the SAME source member (src/qrpglesrc/f0704s.rpgle) via CRTRPGMOD (module has no fixed activation group) + CRTPGM ACTGRP(*CALLER) (this OVERRIDES whatever the module's own ctl-opt said, per cl_commands_75.txt's CRTPGM ACTGRP parameter description - CRTBNDRPG-only ctl-opt ACTGRP is a CRTBNDRPG-specific keyword, ilerpgref75.txt line ~24173-24191, f0704s.rpgle's own header already flags this), CALLed twice in the same job to see whether *CALLER (running in the harness's own top-level CL wrapper's activation group) behaves like the named-activation-group case across separate CALLs in the same job - f0704s.rpgle's own header flags this as an explicit unconfirmed TODO. All CALLs use SNDPGMMSG/QMHSNDPM (job log), not QSYSPRT, so the existing vfylog/JOBLOG_INFO collection mechanism is reliable here - no run-section-reading workaround needed for this batch.",
   "steps": [
     { "type": "file", "localPath": "../../src/qrpglesrc/f0704s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0704A", "ensureSrcFile": { "recordLength": 112 } },
@@ -13,7 +13,7 @@
 
     { "type": "cl", "label": "CPF0704ACM", "cmd": "CRTRPGMOD MODULE(&LIB/F0704AC) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0704A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
     { "type": "cl", "label": "CPF0704ACP", "cmd": "DLTPGM PGM(&LIB/F0704AC)\nMONMSG MSGID(CPF0000)\nCRTPGM PGM(&LIB/F0704AC) MODULE(&LIB/F0704AC) ACTGRP(*CALLER)", "monmsg": ["CPF0000", "MCH0000"] },
-    { "type": "cl", "label": "RUNF0704AC1", "cmd": "CALL PGM(&LIB/F0704AC)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] },
-    { "type": "cl", "label": "RUNF0704AC2", "cmd": "CALL PGM(&LIB/F0704AC)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] }
+    { "type": "cl", "label": "RUNAC1", "cmd": "CALL PGM(&LIB/F0704AC)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] },
+    { "type": "cl", "label": "RUNAC2", "cmd": "CALL PGM(&LIB/F0704AC)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] }
   ]
 }
