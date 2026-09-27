@@ -81,9 +81,13 @@
       * over the RPG III 6-char symbol limit (docs/probes.md), so they
       * are renamed via I-spec (cols 21-30 external name, 53-58 program
       * name - RPG/400 Reference p.149/153) to TANCD/TANNM below. This
-      * rename form is only proven for control-level/matching-field
-      * renaming (cols 53-58/59-62, confirmed real compile 04-10); the
-      * cols 21-30 rename itself is reference-based, not yet compiled.
+      * rename form was first proven for control-level/matching-field
+      * renaming (cols 53-58/59-60, confirmed real compile 04-10); the
+      * cols 21-30 rename itself has since also been compile-confirmed,
+      * as this file's current source (unchanged in this respect) is
+      * exactly what part05-legacy-probe (2026-09-26) and
+      * part05-txlegacy-exec (2026-09-27) both compiled, Highest
+      * Severity 00 - so it is no longer merely reference-based.
       *
       * Indicator map (this is the point of the 05-02 lesson):
       *   03     TK0100D CF03(03): real, confirmed F3=Exit signal.
