@@ -1129,8 +1129,12 @@ CALLPRC経由でJUCSRVをバインド)を検証。
   いた(既定値が`*CR`ではないため失敗)。`src/qclsrc/juyakl.clle`に
   `RCDDLM(*CR)`を追加して修正済み(このリポジトリーのIBM一次資料
   取得済みファイルには無い情報のため、ソース自身のコメントに
-  「一次資料未取得、複数の実例報告による」と明記した)。次回接続で
-  この修正が実際に解消するかを確認する。
+  「一次資料未取得、複数の実例報告による」と明記した)。
+  **3回目の接続で解消を確認(CONFIRMED SUCCESS)**: `All records copied
+  from file JUCHUM in <USER>2.`/`JUYAKL: done. Next order number is now
+  3.`——`RCDDLM(*CR)`追加だけで完全に解消した。
+
+これでP1の#12は完了。次は#13(`part06-1314-sql`、SQL7008再現を含む)。
 
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
