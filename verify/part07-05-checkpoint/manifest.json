@@ -5,6 +5,8 @@
     { "type": "file", "localPath": "../../solutions/07-05/zaisrv.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "ZAISRV", "ensureSrcFile": { "recordLength": 112 } },
     { "type": "file", "localPath": "../../solutions/07-05/zaisrv.bnd", "remoteSrcFile": "QSRVSRC", "member": "ZAISRV", "ensureSrcFile": { "recordLength": 112 } },
     { "type": "file", "localPath": "../../solutions/07-05/driver.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "DRIVER" },
+    { "type": "file", "localPath": "../../tools/qddssrc/txckm.pf", "remoteSrcFile": "QDDSSRC", "member": "TXCKM" },
+    { "type": "file", "localPath": "../../tools/qclsrc/txcheck.clp", "remoteSrcFile": "QCLSRC", "member": "TXCHECK" },
 
     { "type": "cl", "label": "CPZAISMOD", "cmd": "CRTRPGMOD MODULE(&LIB/ZAISRV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(ZAISRV) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
     { "type": "cl", "label": "CPZAISSRV", "cmd": "CRTSRVPGM SRVPGM(&LIB/ZAISRV) MODULE(&LIB/ZAISRV) EXPORT(*SRCFILE) SRCFILE(&LIB/QSRVSRC) SRCMBR(ZAISRV) ACTGRP(*CALLER) REPLACE(*YES)", "monmsg": ["CPF0000", "MCH0000"] },
@@ -16,6 +18,12 @@
     { "type": "cl", "label": "CAPDRIVER", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
 
     { "type": "cl", "label": "VZAISPGM", "cmd": "DSPSRVPGM SRVPGM(&LIB/ZAISRV) OUTPUT(*PRINT)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "CPTXCKM", "cmd": "CHKOBJ OBJ(&LIB/TXCKM) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/TXCKM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TXCKM))", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPTXCHECK", "cmd": "CRTCLPGM PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHECK) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "SEEDTXCKM", "cmd": "RUNSQL SQL('DELETE FROM &LIB/TXCKM WHERE LESSON=''07-05''') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''07-05'', 1, ''ZAISRV'', ''*SRVPGM'', '' '', ''ZAISRV service program exists'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''07-05'', 2, ''ZAISRVBD'', ''*BNDDIR'', '' '', ''ZAISRVBD binding directory exists'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''07-05'', 3, ''DRIVER'', ''*PGM'', '' '', ''DRIVER checkpoint program exists'')') COMMIT(*NONE)", "monmsg": ["CPF0000", "SQL0000"] },
+    { "type": "cl", "label": "RUNTXCHECK", "cmd": "CALL PGM(&LIB/TXCHECK) PARM('07-05' '&LIB')", "monmsg": ["CPF0000", "MCH0000"] },
+
     { "type": "cl", "label": "RUNTXRESET", "cmd": "&LIB/TXRESET LIB(&LIB)", "monmsg": ["CPF0000"] },
 
     { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSPL" },
