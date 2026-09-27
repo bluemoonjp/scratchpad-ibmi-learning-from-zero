@@ -90,9 +90,19 @@
                 SNDPGMMSG  MSG('JU0900C: ZA0500 ended abnormally.')
              ENDDO
 
-TXCLOF:      CLOF       FILE(JUCHUD)
-             MONMSG     MSGID(CPF0000)
-             DLTOVR     FILE(JUCHUD)
+/* FIXED (2026-09-27, found while designing verify/part05-13-tickets:      */
+/* this file was branched from the as-shipped ju0900c.clp before its own   */
+/* real-hardware fix below was applied, so it still had the pre-fix       */
+/* CLOF FILE(JUCHUD) line - CLOF does not take a FILE keyword and         */
+/* part05-legacy-probe's real CRTCLPGM rejected it with CPD0043 (same      */
+/* finding as tools/qclsrc/txcheck.clp's own header comment). Ported the   */
+/* as-shipped fix over: JUCHUD is never DCLF'd in this program (only       */
+/* OVRDBF/OPNQRYF'd, for ZA0500 to share via SHARE(*YES)), and ZA0500      */
+/* (F-spec IP) auto-closes its own files on LR before returning here, so   */
+/* there is nothing left of this program's own to close by the time       */
+/* TXCLOF runs. Still unconfirmed on real hardware with THIS file's own    */
+/* MINQTY LEN(5 0) change combined in - see docs/probes.md.                */
+TXCLOF:      DLTOVR     FILE(JUCHUD)
              MONMSG     MSGID(CPF0000)
              DLTOVR     FILE(JUCHUM)
              MONMSG     MSGID(CPF0000)
