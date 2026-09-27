@@ -107,12 +107,15 @@
 //     CRTRPGMOD MODULE(<USER>1/JUCSRV) SRCFILE(<USER>1/QRPGLESRC)
 //               SRCMBR(JUCSRV)
 //     CRTSRVPGM SRVPGM(<USER>1/JUCSRV) MODULE(<USER>1/JUCSRV)
-//               EXPORT(*ALL)
+//               EXPORT(*ALL) ACTGRP(*CALLER)
 // (CRTSRVPGM/CRTRPGMOD parameter shapes confirmed against
 // cl_commands_75.txt lines 6994-7166 and 8582-8630 respectively. Per
 // cl_commands_75.txt line 7239-7247, CRTSRVPGM's own EXPORT default is
 // *SRCFILE, not *ALL - so EXPORT(*ALL) MUST be spelled out explicitly
-// here, which is itself this lesson's Issue #8 checklist item.)
+// here, which is itself this lesson's Issue #8 checklist item.
+// ACTGRP(*CALLER) real-hardware confirmed, part07-0203-srvpgm,
+// docs/probes.md - this service program runs in whichever activation
+// group its caller is currently in, rather than creating its own.)
 //
 // Binding directory (07-02, so callers can resolve JUCSRV via *LIBL
 // instead of a hardcoded library name):
@@ -172,7 +175,7 @@
 //
 //     CRTSRVPGM SRVPGM(<USER>1/JUCSRV) MODULE(<USER>1/JUCSRV)
 //               EXPORT(*SRCFILE) SRCFILE(<USER>1/QSRVSRC)
-//               SRCMBR(JUCSRV)
+//               SRCMBR(JUCSRV) ACTGRP(*CALLER)
 //
 // ----------------------------------------------------------------
 // 07-03 step 3: countCustOrders(custCode: char(6) const): zoned(5:0)
