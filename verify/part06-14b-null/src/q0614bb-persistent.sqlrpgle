@@ -14,9 +14,9 @@
 // step in this same verify manifest - see manifest.json's
 // PERSISTPRIME step). Static SQL against a table that already exists
 // at precompile time needs no PREPARE/DECLARE-FOR-prepared-statement
-// gymnastics at all. §0.6 (part06-design-v1.md:321) still holds: this
-// table is NOT the shared sample-DB schema, just a different (non-
-// QTEMP) home for the same private demo table.
+// gymnastics at all. Section 0.6 (part06-design-v1.md:321) still
+// holds: this table is NOT the shared sample-DB schema, just a
+// different (non-QTEMP) home for the same private demo table.
 //
 // If this candidate also works, whichever one the connection prefers
 // wins; if only one works, that is decisive. Either way this file is
