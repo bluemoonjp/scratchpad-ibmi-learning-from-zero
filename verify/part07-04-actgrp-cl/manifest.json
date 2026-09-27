@@ -7,6 +7,8 @@
     { "type": "file", "localPath": "../../tools/qclsrc/txmsgf.clp", "remoteSrcFile": "QCLSRC", "member": "TXMSGF" },
     { "type": "file", "localPath": "src/diagcurlib.clp", "remoteSrcFile": "QCLSRC", "member": "DIAGCURLIB" },
 
+    { "type": "sh", "label": "MKWORK", "cmd": "mkdir -p $HOME/work" },
+
     { "type": "cl", "label": "CPF0704A", "cmd": "CRTBNDRPG PGM(&LIB/F0704A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0704A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
     { "type": "cl", "label": "RUNF0704A", "cmd": "CALL PGM(&LIB/F0704A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
 
