@@ -193,17 +193,23 @@ dcl-f juchum usage(*input);
 // externally described printer files, not to *INOA in general. *IN01's
 // compile AND run-time behavior were BOTH confirmed with a throwaway
 // 100-line WRITE loop probe (verify/part06-12-prtf-cpp-swap/src/
-// t612ofb.rpgle, NOT shipped) - CONFIRMED SUCCESS, all 100 lines
-// printed correctly (found in the connection result's own "run"
+// t612ofb.rpgle, NOT shipped) - CONFIRMED: it COMPILES, and all 100
+// lines actually PRINT (found in the connection result's own "run"
 // section text - CPYSPLF cannot capture this file's spooled output in
 // this harness's job environment, a separate, unrelated limitation
 // also confirmed for QSYSPRT itself, part06-0103-freeform). *IN01
-// never turned on across those 100 lines (the default form length is
-// evidently longer); this lesson's own normal 2-row run below never
-// overflows a page either, so *IN01 stays *OFF for every real run of
-// F0612A itself - the page-break exercise (06-12 lesson text, not yet
-// written) is where a learner is meant to actually force and observe
-// overflow (e.g. by overriding FORMLEN to something small).
+// never turned on across those 100 lines - UNCONFIRMED whether this
+// means the default form length is simply longer than 100 lines, or
+// whether overflow detection cannot work at all in a job with no real
+// spooled file (the same missing-real-spool-file condition that
+// breaks CPYSPLF might also mean there is no real page geometry to
+// overflow against) - not yet distinguished. This lesson's own normal
+// 2-row run below never overflows a page either, so *IN01 stays *OFF
+// for every real run of F0612A itself - the page-break exercise
+// (06-12 lesson text, not yet written) needs a follow-up probe (e.g.
+// OVRPRTF FILE(QSYSPRT) PAGESIZE(12 132) OVRFLW(10) before a ~30-line
+// WRITE loop) to settle whether overflow can be observed at all in
+// this harness before deciding whether that exercise is V2 or V3-only.
 //-----------------------------------------------------------------------
 dcl-f p0612a printer usage(*output) oflind(*in01);
 

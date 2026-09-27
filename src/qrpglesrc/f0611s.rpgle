@@ -9,8 +9,10 @@
 // only covers the RPG-side half of that same contract.
 //
 // CONFIRMED V1 (compile-check, part06-decisions-1, 2026-09-27):
-// CRTBNDRPG Highest Severity 00, after the option-5 fix (JUTOK now
-// passed to F0604A, see "DEPENDENCY ON F0604A, FIXED" below).
+// CRTBNDRPG Highest Severity 00. (Option 5 calls F0604A with no
+// parameters, same as it always has - see "DEPENDENCY ON F0604A"
+// below for the real JUTOK-passing bug and why its fix is deferred to
+// 06-12, not landed here.)
 // Interactive subfile/EXFMT execution (V3) is still untested - SSH
 // non-interactive batches cannot drive a real 5250 device (same
 // WORKSTN/EXFMT limitation as 04-11, tk0100.rpg, and f0604s.rpgle).
@@ -106,22 +108,29 @@
 // silently swallowed gap - a natural follow-up exercise is "clear OPT
 // after processing a row, using CHAIN(rrn):SFL1 + UPDATE".
 //
-// DEPENDENCY ON F0604A, FIXED (Part 6 source cleanup): F0604A originally
-// had no *ENTRY PLIST/dcl-pi at all (dcl-f d0604a workstn; with zero
-// parameters) - a fully self-contained interactive screen that prompts
-// for its OWN customer code via TOKCD on its own JUCFMT record format,
-// so it could not receive a passed customer code from this list. This
-// was a genuine bug (the task brief's "call F0604A passing that row's
-// customer code" silently was not happening), not a design choice, so
-// f0604s.rpgle now takes an optional entry parameter
-// (custCode char(6) const options(*nopass) - see its own header) and
-// this program's dcl-pr/CALLP below pass JUTOK, the selected row's
-// customer code (SFL1's own field, filled by READC via the same-name
-// auto-match trick - see the LOAD-ALL header note above). NOTE for the
-// P7-9-driven 07-02 work: this fix is unrelated to that decision (which
-// forbids editing D0611A/F0611A for JUCSRV's getCustName integration) -
-// this is a plain Part 6 bug fix that had to land here because nothing
-// downstream (07-02) is allowed to touch this file to work around it.
+// DEPENDENCY ON F0604A (real bug, fix DEFERRED to 06-12 - see below):
+// F0604A has no *ENTRY PLIST/dcl-pi at all (dcl-f d0604a workstn; with
+// zero parameters) - a fully self-contained interactive screen that
+// prompts for its OWN customer code via TOKCD on its own JUCFMT record
+// format, so it cannot receive a passed customer code from this list.
+// This is a genuine bug (the task brief's "call F0604A passing that
+// row's customer code" silently does not happen), not a design choice
+// - but giving F0604A a program-entry dcl-pi belongs to 06-12
+// (part06-design-v1.md's own B1-16 disposition explicitly defers
+// program-entry dcl-pi there, where it is actually taught as new
+// syntax; a brief attempt to fix this directly in 06-04/06-11's own
+// files was reverted for exactly that reason - see f0604s.rpgle's own
+// header for the same reversion note). This program calls F0604A with
+// a zero-parameter dcl-pr extpgm('F0604A') prototype - the same shape
+// f0605s.rpgle already uses for R0409A, which likewise has no *ENTRY
+// PLIST - and a plain parameterless CALLP; the learner will retype the
+// customer code on F0604A's own screen after it comes up. THE 06-12
+// LESSON TEXT MUST REVISIT THIS: add F0604A's entry parameter and this
+// program's JUTOK-passing CALLP as an explicit step there, once dcl-pi
+// is new material. NOTE for the P7-9-driven 07-02 work: this is a
+// separate, unrelated concern (P7-9 forbids editing D0611A/F0611A for
+// JUCSRV's getCustName integration specifically) - do not conflate the
+// two when 06-12 makes its own edit here.
 //
 // STATUS: CONFIRMED V1 (compile-check, part06-decisions-1,
 // 2026-09-27). Interactive/EXFMT behavior (V3) is still untested -
@@ -160,14 +169,12 @@ dcl-f juchum disk;
 
 //-----------------------------------------------------------------------
 // dcl-pr / EXTPGM: zero-parameter prototype for F0604A (06-04, order
-// inquiry). See the "DISCOVERED DEPENDENCY MISMATCH" header note above
-// for why this is parameterless - F0604A's own dcl-f has no *ENTRY
-// PLIST to receive an argument. Same shape as f0605s.rpgle's r0409a
-// prototype.
+// inquiry). See the "DEPENDENCY ON F0604A" header note above for why
+// this is parameterless - F0604A's own dcl-f has no *ENTRY PLIST to
+// receive an argument (fix deferred to 06-12). Same shape as
+// f0605s.rpgle's r0409a prototype.
 //-----------------------------------------------------------------------
-dcl-pr f0604a extpgm('F0604A');
-  custCode char(6) const options(*nopass);
-end-pr;
+dcl-pr f0604a extpgm('F0604A') end-pr;
 
 dcl-s rrn1 packed(4:0) inz(0);
 
@@ -244,10 +251,7 @@ dow not *in03;
     dow not %eof(d0611a);
       select;
         when opt = '5';
-          // JUTOK: this row's customer code, filled by READC via the
-          // same-name auto-match trick (see LOAD-ALL header note) -
-          // passed to F0604A so the learner does not retype it.
-          callp f0604a(jutok);
+          callp f0604a();
         when opt = ' ';
           // Blank OPT reaching here means the user typed a space and
           // then backspaced/cleared it - a genuine "changed to blank"

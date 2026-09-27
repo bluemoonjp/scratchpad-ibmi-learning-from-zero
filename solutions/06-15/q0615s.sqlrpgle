@@ -49,6 +49,11 @@
 // PRODUCT" for that case instead of skipping the row. This is a
 // deliberate, documented difference between the two halves, not an
 // oversight - the SQL half's job is to be the simplest possible JOIN.
+// JOIN is already-taught material (docs/part02/02-06-sql-inquiry.md),
+// not new here. The LOWSTOCK judgment itself is computed in RPG below
+// (if wZasu < wShohat), NOT with a SQL CASE expression - CASE is not
+// taught anywhere in this repo, and this checkpoint's own design
+// section states its content as "no new syntax at all".
 //
 // SQLSTATE-vs-SQLCODE convention: same as q0613s.sqlrpgle/
 // q0614bs.sqlrpgle - the FETCH loop tests SQLSTATE = '00000' to
@@ -77,8 +82,7 @@ dcl-s padded char(7);
 exec sql SET OPTION commit = *none, naming = *sys;
 
 exec sql DECLARE C1 CURSOR FOR
-  SELECT Z.ZASHO, S.SHONM, Z.ZASU, S.SHOHAT,
-         CASE WHEN Z.ZASU < S.SHOHAT THEN 'LOWSTOCK' ELSE '' END
+  SELECT Z.ZASHO, S.SHONM, Z.ZASU, S.SHOHAT
     FROM ZAIKOM Z
     JOIN SHOHIM S ON Z.ZASHO = S.SHOCD
     ORDER BY Z.ZASHO;
@@ -93,9 +97,17 @@ if SQLCODE < 0;
 endif;
 
 exec sql
-  FETCH C1 INTO :wZasho, :wShonm, :wZasu, :wShohat, :wStatus;
+  FETCH C1 INTO :wZasho, :wShonm, :wZasu, :wShohat;
 
 dow SQLSTATE = '00000';
+  // LOWSTOCK judgment computed here in RPG, not in the SQL SELECT
+  // above - see the "SQL JOIN" header note.
+  if wZasu < wShohat;
+    wStatus = 'LOWSTOCK';
+  else;
+    wStatus = *blanks;
+  endif;
+
   clear prtLine;
   %subst(prtText:3:6)   = wZasho;
   %subst(prtText:13:30) = wShonm;
@@ -116,7 +128,7 @@ dow SQLSTATE = '00000';
   write qsysprt prtLine;
 
   exec sql
-    FETCH C1 INTO :wZasho, :wShonm, :wZasu, :wShohat, :wStatus;
+    FETCH C1 INTO :wZasho, :wShonm, :wZasu, :wShohat;
 enddo;
 
 exec sql CLOSE C1;

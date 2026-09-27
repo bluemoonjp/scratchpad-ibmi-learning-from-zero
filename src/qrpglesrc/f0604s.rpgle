@@ -104,9 +104,15 @@
 // this constraint - see docs/part04/04-08-jucinq3-report.md for why
 // R0408A itself never needed this (single CALL = single scan).
 //
-// STATUS: CONFIRMED V1 (compile-check, part06-decisions-1,
-// 2026-09-27): CRTBNDRPG Highest Severity 00, after adding the
-// optional custCode entry parameter (see the header note above).
+// STATUS: CONFIRMED V1 (compile-check, part06-screens-compile,
+// 2026-09-26): CRTBNDRPG Highest Severity 00, this exact parameterless
+// form. (A later session briefly gave this file a program-entry
+// dcl-pi/custCode parameter to fix 06-11's F0611A option 5 - reverted:
+// part06-design-v1.md's own B1-16 disposition deliberately defers
+// program-entry dcl-pi to 06-12, where it is actually taught. F0611A's
+// option-5/JUTOK fix now belongs to 06-12's own lesson content instead
+// - see f0611s.rpgle's header for the same reversion and the pointer
+// to where that fix will actually land.)
 // Per R0411A's own hardware note (04-11, "verification range limits"):
 // CRTDSPF/CRTBNDRPG compilation (V1) IS realistically checkable over
 // non-interactive SSH, but EXFMT's interactive read-from-5250 cannot be
@@ -154,25 +160,7 @@ dcl-f d0604a workstn;
 dcl-f tokuim keyed;
 dcl-f juchum;
 
-// FIXED (Part 6 source cleanup, 06-11's F0611A option 5 depends on this):
-// an optional entry parameter lets a caller pre-fill TOKCD instead of
-// making the learner retype a customer code already visible on another
-// screen. OPTIONS(*NOPASS) keeps the old zero-parameter CALL PGM(F0604A)
-// (bare 5250 test, no PARM) working exactly as before - see the mainline
-// below, which only touches TOKCD when a code was actually passed.
-dcl-pi *n;
-  custCode char(6) const options(*nopass);
-end-pi;
-
 dcl-s ordCount packed(3:0);
-
-// Pre-fill TOKCD from the caller's parameter, if one was passed, BEFORE
-// the first EXFMT - the learner still presses Enter once to see the
-// order list (EXFMT/WORKSTN screens cannot be skipped), but never has to
-// retype a code the caller already knew.
-if %parms >= 1 and custCode <> *blanks;
-  tokcd = custCode;
-endif;
 
 dow not *in03;
   exfmt jucfmt;
