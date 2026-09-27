@@ -1237,6 +1237,30 @@ verify harnessでしか通用しない(実際の学習者は5250で`CRTSQLRPGI`�
 コンパイルする」という工程を明示的に加える、等)。このverifyマニフェスト
 自身は(harnessの中でだけ)CONFIRMED SUCCESS。
 
+## 第6部`part06-12-prtf-cpp-swap`の実機検証(確認日 2026-09-27、1回目の接続で1件発見)
+
+`JUCINQC`(03-09の既存CPP)を初めて`<USER>2`でコンパイルし、`JUCINQ`
+コマンド(03-11)を新設してCPP=`JUCINQC`へ切り替え・実行するベースライン
+確認と、新CPP`F0612A`(PRTF)への切り替えを検証。
+
+- **ベースラインは完全に成功**: `JUCINQ TOKCD('C00001')`(CPP=JUCINQC)
+  実行結果は`J00001 20260901`/`J00003 20260905`——06-01で確認済みの
+  R0408A・Q0614Aの結果と一致。CPP切り替えの土台(`CRTCMD`・`CHGCMD`・
+  `CALL PGM(QCMDEXC) PARM('JUCINQ ...' 22)`経由の呼び出し)が正しく
+  動くことを確認した。
+- **`F0612A`のコンパイルが実バグでSeverity 30失敗**: `dcl-ind ovf;`は
+  実在しないRPG IVキーワードだった(`work/design/refs/ilerpgref75.txt`
+  に`dcl-ind`の記載は一件も無い)。コンパイラーは`dcl`を暗黙のEVAL文の
+  未定義名として解釈し(`RNF5347`/`RNF7030`)、以降の宣言・
+  `dcl-f p0612a printer oflind(ovf)...`・全レコード様式名(`RPTHDR`/
+  `RPTCUST`/`RPTNM`/`RPTDTL`/`RPTJUNO`/`RPTJUDT`/`RPTTOT`/`RPTCNT`/
+  `ORDERCNT`/`OVF`)が軒並み「未定義」で連鎖的に失敗した。正しい構文は
+  `dcl-s ovf ind;`(`ilerpgref75.txt`61218行目の実例`dcl-s
+  isAbnormalReturn ind;`で確認)。`src/qrpglesrc/f0612s.rpgle`を修正
+  済み、次回接続で再挑戦する。
+
+これでP1の#15は継続中(F0612A修正の再検証待ち)。
+
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。

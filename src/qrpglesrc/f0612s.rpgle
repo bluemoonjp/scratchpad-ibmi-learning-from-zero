@@ -170,8 +170,17 @@ dcl-f juchum usage(*input);
 // overflow indicator (ilerpgref75.txt lines 27970-27988: "name: The
 // name of a variable that is defined with type indicator ... This
 // indicator is set on when the overflow line is reached").
+//
+// FIXED (2026-09-27, real-hardware finding from part06-12-prtf-cpp-
+// swap): "dcl-ind ovf;" is NOT a real RPG IV keyword (RNF5347/RNF7030:
+// the compiler parsed "dcl" as an undeclared name in an implicit EVAL,
+// since it does not recognize "dcl-ind" as a directive at all - zero
+// hits for "dcl-ind" anywhere in work/design/refs/ilerpgref75.txt
+// either). A standalone indicator is declared like any other DCL-S
+// field, with IND as its type (ilerpgref75.txt line 61218: "dcl-s
+// isAbnormalReturn ind;").
 //-----------------------------------------------------------------------
-dcl-ind ovf;
+dcl-s ovf ind;
 dcl-f p0612a printer oflind(ovf) usage(*output);
 
 dcl-s orderCnt zoned(5:0) inz(0);
