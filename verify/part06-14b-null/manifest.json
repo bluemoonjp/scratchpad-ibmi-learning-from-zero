@@ -5,6 +5,7 @@
     { "type": "file", "localPath": "../../src/qrpglesrc/q0614bs.sqlrpgle", "remoteSrcFile": "QRPGLESRC", "member": "Q0614BA", "ensureSrcFile": { "recordLength": 112 } },
 
     { "type": "cl", "label": "VSPLPF", "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 6 spooled-file text capture'))", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "PRIMEW0614", "cmd": "RUNSQL SQL('CREATE TABLE QTEMP/W0614BA (TOKCD CHAR(6) NOT NULL, TOKNM CHAR(30) NOT NULL, TOKLORD DATE)') COMMIT(*NONE)", "monmsg": ["CPF0000", "SQL0000"] },
     { "type": "cl", "label": "CPQ0614BA", "cmd": "CRTSQLRPGI OBJ(&LIB/Q0614BA) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0614BA) OBJTYPE(*PGM) COMMIT(*NONE)", "monmsg": ["CPF0000", "RNF0000", "SQL0000", "MCH0000"] },
     { "type": "cl", "label": "RUNQ0614BA", "cmd": "CALL PGM(&LIB/Q0614BA)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
     { "type": "cl", "label": "CAPQ0614BA", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
