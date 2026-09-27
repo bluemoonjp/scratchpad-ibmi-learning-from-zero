@@ -278,8 +278,17 @@ FAILED:      CALLSUBR   SUBR(ERRSUBR)
 
              CHGVAR     VAR(&TOSTMF) VALUE('/home/' *TCAT %TRIM(&USRPRF) +
                           *TCAT '/work/juchum_export.csv')
+/* FIXED (2026-09-27, real-hardware finding from part07-04-actgrp-cl):   */
+/* without RCDDLM below, this failed every time with CPF2845 "The copy   */
+/* did not complete for reason code 11" + CPF2817 "Copy command ended    */
+/* because of error" - reason code 11 means the record delimiter for a   */
+/* stream-file EXPORT target must be *CR, and RCDDLM's own default is    */
+/* not *CR. Confirmed against multiple independent real-world reports of */
+/* this exact CPF2845/reason-11 combination for CPYTOIMPF (not an IBM    */
+/* Knowledge Center page fetched into this repo's work/design/refs/, so  */
+/* flagged here rather than cited as a first-party source).              */
              CPYTOIMPF  FROMFILE(&LIB/JUCHUM) TOSTMF(&TOSTMF) +
-                          MBROPT(*REPLACE) STMFCCSID(1208)
+                          MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CR)
 
              SNDPGMMSG  MSG('JUYAKL: done. Next order number is now ' +
                           *BCAT %CHAR(&NEXTNO) *BCAT '.')

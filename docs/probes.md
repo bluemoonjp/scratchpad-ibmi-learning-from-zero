@@ -1073,8 +1073,6 @@ CONFIRMED SUCCESS。**
   こと。また05-11(MCH1202)のマニフェスト設計時は、この接続で確定した
   実際のメッセージID(`RPG0907`)とエスケープ経路を踏まえること。
 
-P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
-
 ## 第7部サービス・プログラムの実機検証: `part07-0203-srvpgm`(確認日 2026-09-27)
 
 `JUCSRV`(*SRVPGM: `getCustName`/`countCustOrders`)とその結合ディレクトリー
@@ -1098,8 +1096,6 @@ P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 これでP1の#11は完了。次は#12(`part07-04-actgrp-cl`)。
 
-P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
-
 ## 第7部`part07-04-actgrp-cl`の実機検証(確認日 2026-09-27、1回目の接続で1件発見)
 
 `F0704A`(STATIC変数・活性化グループ)と`JUYAKL`(JUYAKCのILE CL書き直し、
@@ -1114,21 +1110,27 @@ CALLPRC経由でJUCSRVをバインド)を検証。
   以降のJUNODA/JUMSGF関連処理は正しく動作した。
 - **JUYAKLの`CALLPRC`は成功**: `getCustName(C00001) = ' ACME TRADING CO '`
   ——DCLPRCOPT BNDSRVPGM経由のCALLPRCが実際に動くことを初めて確認した。
-- **`BACK`サブルーチンで実バグ発見**: `CPYTOIMPF FROMFILE(&LIB/JUCHUM)
-  TOSTMF('/home/<user>/work/juchum_export.csv') ...`が
-  `CPF2845: The copy did not complete for reason code 11.`/`CPF2817:
-  Copy command ended because of error.`で失敗。原因はこのリポジトリーの
-  どのツールもPUB400上に`~/work/`ディレクトリーを作成していないこと
-  (`git grep`で確認済み、TXSETUP等のどれも作らない)——CPYTOIMPFの
-  ターゲット・ディレクトリーが存在しなかったための失敗と推測される
-  (reason code 11の正式な意味はIBM資料未確認、次回接続の結果で推測の
-  当否を判断する)。エラーはJUYAKL自身の`ERRSUBR`(`SNDPGMMSG MSGID
-  (JUM0001) ... MSGTYPE(*ESCAPE)`)で捕捉され、ラッパーの
-  `MONMSG(CPF0000)`まで正しく伝播して`RUNJUYAKL FAILED`、ハングせず
-  `part07-04-actgrp-cl DONE`まで到達(設計は正しく機能している)。
-- **対応**: マニフェストに`sh`ステップ`mkdir -p $HOME/work`を追加
-  (fileステップの後・clステップの前に自動的に挟まる仕組みを利用)。
-  次回接続で解消を確認する。
+- **`BACK`サブルーチンで実バグ発見(2回の接続で原因を特定)**:
+  `CPYTOIMPF FROMFILE(&LIB/JUCHUM) TOSTMF('/home/<user>/work/
+  juchum_export.csv') ...`が`CPF2845: The copy did not complete for
+  reason code 11.`/`CPF2817: Copy command ended because of error.`で
+  失敗。エラー自体はJUYAKL自身の`ERRSUBR`(`SNDPGMMSG MSGID(JUM0001)
+  ... MSGTYPE(*ESCAPE)`)で捕捉され、ラッパーの`MONMSG(CPF0000)`まで
+  正しく伝播して`RUNJUYAKL FAILED`、ハングせず`part07-04-actgrp-cl
+  DONE`まで到達(エラー処理の設計自体は正しく機能している)。
+  **1回目の接続時の仮説(`~/work/`ディレクトリー不在)は誤りだった**:
+  マニフェストに`mkdir -p $HOME/work`を追加して2回目の接続で再実行
+  したが、`mkdir`自体は無エラーで成功したにもかかわらず全く同じ
+  `CPF2845`/reason code 11が再現した。Web検索で複数の実例報告
+  (code400.comフォーラム、midrange-lメーリングリスト・アーカイブ)を
+  確認したところ、**reason code 11は「ストリーム・ファイルへの
+  エクスポート時、RCDDLMパラメーターは`*CR`でなければならない」**
+  という既知の制約で、`juyakl.clle`の`CPYTOIMPF`は`RCDDLM`を省略して
+  いた(既定値が`*CR`ではないため失敗)。`src/qclsrc/juyakl.clle`に
+  `RCDDLM(*CR)`を追加して修正済み(このリポジトリーのIBM一次資料
+  取得済みファイルには無い情報のため、ソース自身のコメントに
+  「一次資料未取得、複数の実例報告による」と明記した)。次回接続で
+  この修正が実際に解消するかを確認する。
 
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
