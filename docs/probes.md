@@ -1363,6 +1363,62 @@ Severity 00でコンパイル・実行成功。**
 
 ## 未実施のプローブ
 
+## 第5部`part05-txmigr-to2`(接続A)の実機検証: CPF4131を初めて再現(確認日2026-09-27)
+
+05-09(CPF4131・TXMIGR TO(2))の2接続構成のうち接続A。**CONFIRMED SUCCESS。**
+1回目の接続はハーネス自体のバグ(下記「verify harnessのクラッシュ」節参照)で
+クラッシュ、修正後の2回目はネットワーク側のタイムアウトで3時間停止、3回目で
+成功した。
+
+- **`TXSETUP LIB(&LIB2)`が実際に投入先ライブラリーを指定できることを確認**
+  (ソース読解の推測ではなく実機で確認): `<USER>B`にDBVER=1の全表
+  (TOKUIM/SHOHIM/JUCHUM/JUCHUD/ZAIKOM/TANTOM/JUCHUL1/TOKUIL1)を新規構築、
+  `TXSTATE`も作成(`TXSTATUS: DBVER=0000000001 in library <USER>B`)。
+- `JU0900C`・`ZA0500`・`JU0300`・`RUNPROBE`(検証専用ヘルパー)を、この時点の
+  (v1形式)`JUCHUM`/`JUCHUL1`に対してコンパイル(`ZA0500`・`JU0300`は
+  Highest Severity 00)。
+- ベース・スナップショット(`DSPFD TYPE(*ATR) OUTPUT(*OUTFILE)`、`FDJM0`/
+  `FDJL0`): `JUCHUM`は4フィールド・26バイト。
+- **`RUNCHGPF`(`db/v2/juchum.pf`への`CHGPF`)が成功**: `8 records copied
+  from member JUCHUM.`/`File JUCHUM in library <USER>B changed.`
+- 事後スナップショット(`FDJM1`/`FDJL0B`): `JUCHUM`は**5フィールド・36
+  バイトに変化**(`JUDLV`列追加を裏付け)。`JUCHUL1`も同時点でDSPFDすると
+  同じ5フィールド・36バイトを報告する(DSPFDは常に「今の実体」を報告する
+  ため、これ自体は「古いプログラムから見て何が起きるか」の直接証拠には
+  ならない——その証拠は次の2点)。
+- **`RUNPROBE`(旧形式でコンパイル済み)が`JUCHUM`を開こうとして`CPF4131`
+  (レコード様式レベル・チェック不一致)で失敗することを確認**:
+  `Level check on file JUCHUM in library <USER>B with member JUCHUM.`→
+  `RUNPROBE: CPF4131 CONFIRMED - JUCHUM record format level check failed.`
+  ——**05-09が教えたい核心の実機再現に、この教材で初めて成功した。**
+- **`JU0900C`(同じく旧形式でコンパイル済み)も同じ`CPF4131`で`JUCHUM`を
+  読めず**、`JU0900C: could not read JUCHUM.`と自分のSNDPGMMSGで報告
+  (ハングせず正常に継続)。その後`JUCHUD`を開き`ZA0500`をCALLするが、
+  これは(このマニフェストがチケット未修正のas-shippedソースを使って
+  いるため)part05-ju0900c-baselineと同じチケット1のバグ(`RPG0907`)に
+  別途遭遇する——**CPF4131とチケット1のバグは無関係の別事象として、両方が
+  この1回の接続で観測できた。**
+- `TXMIGR`本体(TO(2)による再コンパイル)はこの接続では実行しない(意図的
+  な設計、接続Bで実行)——この接続の役目は「CPF4131が起きる`before`状態を
+  確実に作る」ところまで。
+
+これで接続Aは完了。次は接続B(`part05-txmigr-to2b`、TXMIGR TO(2)を実行し
+CPF4131が解消することを確認)。
+
+## verify harnessのクラッシュ・バグ発見と3時間停止(確認日2026-09-27)
+
+`part05-txmigr-to2`の1回目の接続試行で、`verify/lib/ssh.mjs`の実バグにより
+Node.jsプロセス自体が未処理例外でクラッシュした:`child.stdin`(Writable
+ストリーム)に`error`ハンドラーが無く、書き込み失敗(このマニフェストが
+これまでで最大級のスクリプト・サイズだったことが関係している可能性)で
+`Emitted 'error' event on Socket instance`が発生し、収集済みのstdout/stderr
+ごと失われた。修正(`child.stdin.on('error', () => {})`追加、実際の終了判定
+は`child.on('close')`に委ねる)をmain経由でdraft/part05→draft/part06へ
+前方マージ・CI確認済み。修正後の2回目の接続では`ssh: connect to host
+pub400.com port 2222: Connection timed out`(ネットワーク側の一時的な問題
+と思われる)が発生し、`refused_or_timeout`歯止めにより3時間停止した。3回目
+(3時間経過後)で成功した。
+
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。
