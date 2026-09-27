@@ -1,0 +1,43 @@
+{
+  "batch": "part05-decimal-screen",
+  "description": "Investigative, verify-only manifest (NOT part of the taught curriculum) designed after 2 real-hardware attempts to trigger a decimal-data error via 05-11's C0511S/JUBADD technique both failed: JUSU='ABCDE' (EBCDIC X'C1'-X'C5', digit nibbles 1-5, zone/sign nibble C) and JUSU=5 blanks (X'40', digit nibble 0, zone/sign nibble 4) BOTH read back cleanly with no decimal-data error at all (docs/probes.md, part05-mch1202-corrupt, both connections). Both tested values happen to share one trait: every byte's DIGIT (low) nibble is 0-9 (valid). This manifest screens several candidate byte patterns whose DIGIT nibbles are OUTSIDE 0-9 (A-F, genuinely invalid for a BCD digit) via a cheap SQL-only check BEFORE spending an RPG-chain connection on a specific value - per advisor review, since guessing a third value blind would repeat the same expensive mistake.\n\nTechnique: reuses JUBADD (src/legacy/qddssrc/jubadd.pf, 5A JUSU field) and CPYF FMTOPT(*NOCHK) exactly as C0511S does (same proven mechanism, not a new one), planting SEVERAL rows at once (JUNO='C0513x') using TYPED PUNCTUATION CHARACTERS chosen for stable, long-established EBCDIC code positions (period '.', comma ',', colon ':') rather than SQL hex literals - hex literals into a CHAR column were considered and rejected: DB2 for i's own documented behavior treats a hex string literal as an implicit CAST to CHAR FOR BIT DATA, which can trigger CCSID conversion rather than a literal byte pass-through (IBM support note 'Using a literal that is a mixture of characters and hexadecimal (or binary) bytes', found via WebSearch 2026-09-27) - an unnecessary new risk when the already-proven CPYF FMTOPT(*NOCHK) + typed-character technique (used successfully twice already this session) can express the same byte patterns just as precisely, since period/comma/colon's EBCDIC code points are old, stable assignments essentially universal across Latin-alphabet EBCDIC code pages (unlike e.g. '#'/'@' which vary more by national code page, and unlike quote/backslash characters which would need CL/SQL escaping). Candidates (all 5 bytes, chosen to isolate whether the DIGIT nibble specifically is what triggers an error, independent of the zone/sign nibble): C05130 = '.....' (period x5, typically X'4B' - digit B throughout, zone 4); C05131 = ',,,,,' (comma x5, typically X'6B' - digit B throughout, zone 6, a different zone than C05130 with the SAME invalid digit, to check whether zone matters at all once the digit is already invalid); C05132 = ':::::' (colon x5, typically X'7A' - digit A throughout, zone 7); C05133 = '0000.' (four valid zoned zeros + one period - valid digits 0000 in the first 4 bytes, with the invalid digit specifically in the LAST byte, which doubles as the sign position - isolates whether an invalid digit specifically in the sign byte matters differently than an invalid digit elsewhere). Exact hex values for all 4 are unconfirmed until this connection's own HEX(JUSU) collect reads them back (this description does not assert them as fact - the point of typed characters over hex literals is precisely that this connection's own results confirm the actual bytes, rather than trusting a paper mapping).\n\nEach candidate gets its OWN independent collect step (SELECT JUNO, JULINE, JUSHO, JUSU, HEX(JUSU) FROM &LIB/JUCHUD WHERE JUNO = 'C0513x') so that if SQL itself rejects reading one candidate's JUSU (SQLSTATE-class conversion/mapping error, e.g. SQL0802), that failure is isolated to its own collect step and does not prevent the other candidates' collect steps from running - collect steps in this harness already run independently per-query (verify/lib/batch.mjs), confirmed by part05-promote-rollback's own collect:sql:5/6 CLI-ERROR-but-isolated precedent (docs/probes.md). A candidate that SQL itself rejects (rather than silently reading, however incorrectly) is the strongest, cheapest evidence that its byte pattern is genuinely invalid zoned decimal on this hardware - SQL and RPG have already been observed to agree on JUSU's value for both prior candidates (both returned the same value from a plain SELECT as ZA0500 itself printed), so SQL rejecting a value is treated as a reliable predictor that RPG would also raise a decimal-data error on it, worth spending a follow-up RPG-chain connection on. This manifest does NOT call JU0900C/ZA0500 at all - it is SQL-only, purely to narrow the candidate list before that follow-up connection. No JUCHUM rows are planted for any of these JUNO values (unlike C0511S, which pairs a JUCHUD detail row with a matching JUCHUM header) since this manifest never runs the JU0900C/ZA0500 M1/MR matching cycle - only a direct SQL SELECT of JUCHUD.JUSU, which does not require a matching JUCHUM row at all.\n\nJUBADD self-containment: same CHKOBJ+conditional-CRTPF idiom used elsewhere in this repo (build only if missing, touch nothing if it already exists) - JUBADD may already exist in this shared &LIB from earlier part05-mch1202-corrupt/part05-13-pssr connections. Unlike those manifests, CLRPREV here does a BLANKET DELETE FROM &LIB/JUBADD (not a per-JUNO delete) before inserting this manifest's 4 candidates - safe because JUBADD is purely transient staging (its rows are read only by the CPYF step immediately below, in THIS SAME connection; no other manifest ever reads JUBADD back after its own CPYF has already run, so any leftover row from a prior connection, e.g. part05-mch1202-corrupt's own JUNO='C05119' staging row, has already served its purpose and is safe to clear). JUCHUD itself is untouched by CLRPREV - only CLRJUCHUD (a separate, narrowly-scoped DELETE WHERE JUNO IN (this manifest's own 4 JUNO values only)) touches JUCHUD, so any OTHER manifest's own JUCHUD rows (including a leftover part05-mch1202-corrupt JUNO='C05119' row, if TXRESET has not run since) are left alone. Prerequisite: TXSETUP has already built the sample DB in this library. RUNTXRESET is NOT run here (this manifest does not need JUCHUM/ZAIKOM in any particular state, and running it would be a needless side effect on this shared &LIB for an investigative-only connection) - but it does mean this manifest cannot assume JUCHUD has no stray rows from earlier connections at these exact JUNO values, hence CLRJUCHUD's DELETE-before-CPYF guard.",
+  "steps": [
+    { "type": "file", "localPath": "../../src/legacy/qddssrc/jubadd.pf", "remoteSrcFile": "QDDSSRC", "member": "JUBADD" },
+
+    {
+      "type": "cl",
+      "label": "CPJUBADD",
+      "cmd": "CHKOBJ OBJ(&LIB/JUBADD) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/JUBADD) SRCFILE(&LIB/QDDSSRC) SRCMBR(JUBADD))",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CLRPREV",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/JUBADD') COMMIT(*NONE)",
+      "monmsg": ["CPF0000", "SQL0000"]
+    },
+    {
+      "type": "cl",
+      "label": "INSCANDS",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/JUBADD VALUES (''C05130'', 1, ''P00001'', ''.....'', 100.00), (''C05131'', 1, ''P00001'', '',,,,,'', 100.00), (''C05132'', 1, ''P00001'', '':::::'', 100.00), (''C05133'', 1, ''P00001'', ''0000.'', 100.00)') COMMIT(*NONE)",
+      "monmsg": ["CPF0000", "SQL0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CLRJUCHUD",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/JUCHUD WHERE JUNO IN (''C05130'', ''C05131'', ''C05132'', ''C05133'')') COMMIT(*NONE)",
+      "monmsg": ["CPF0000", "SQL0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CPYCANDS",
+      "cmd": "CPYF FROMFILE(&LIB/JUBADD) TOFILE(&LIB/JUCHUD) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": ["CPF0000"]
+    },
+
+    { "type": "collect", "kind": "sql", "sql": "SELECT JUNO, JULINE, JUSHO, JUSU, HEX(JUSU) AS JUSU_HEX FROM &LIB/JUCHUD WHERE JUNO = 'C05130'" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT JUNO, JULINE, JUSHO, JUSU, HEX(JUSU) AS JUSU_HEX FROM &LIB/JUCHUD WHERE JUNO = 'C05131'" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT JUNO, JULINE, JUSHO, JUSU, HEX(JUSU) AS JUSU_HEX FROM &LIB/JUCHUD WHERE JUNO = 'C05132'" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT JUNO, JULINE, JUSHO, JUSU, HEX(JUSU) AS JUSU_HEX FROM &LIB/JUCHUD WHERE JUNO = 'C05133'" }
+  ]
+}
