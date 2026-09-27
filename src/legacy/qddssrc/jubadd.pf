@@ -8,25 +8,27 @@
      A*                                     (27 bytes) but a different type
      A*                                     for that one field.
      A*
-     A*                                     Used by src/legacy/qclsrc/
-     A*                                     c0511s.clp with CPYF FMTOPT(*NOCHK)
-     A*                                     (general IBM i knowledge, NOT
-     A*                                     confirmed against any primary
-     A*                                     source in work/design/refs/ or a
-     A*                                     real compile this session -
-     A*                                     verify before relying on this):
-     A*                                     FMTOPT(*NOCHK) is documented
-     A*                                     (outside this repo) to copy
-     A*                                     records between mismatched
+     A*                                     Used by src/qclsrc/c0511s.clp with
+     A*                                     CPYF FMTOPT(*NOCHK): FMTOPT(*NOCHK)
+     A*                                     copies records between mismatched
      A*                                     formats without the normal field-
-     A*                                     type check, so a row inserted
-     A*                                     here with JUSU='ABCDE' (valid for
-     A*                                     THIS file's own 5A field) lands
-     A*                                     as invalid zoned-decimal bytes in
-     A*                                     JUCHUD.JUSU once copied across -
-     A*                                     simulating the *NOCHK-caused
-     A*                                     corruption path the 05-11
-     A*                                     syllabus entry names.
+     A*                                     type check, so a row inserted here
+     A*                                     with JUSU=blanks (valid for THIS
+     A*                                     file's own 5A field) lands as
+     A*                                     bytes with an invalid sign nibble
+     A*                                     (X'40') in JUCHUD.JUSU once copied
+     A*                                     across - simulating the *NOCHK-
+     A*                                     caused corruption path the 05-11
+     A*                                     syllabus entry names. FIXED
+     A*                                     (2026-09-27, real hardware):
+     A*                                     JUSU='ABCDE' was tried first, but
+     A*                                     EBCDIC 'A'-'E' (X'C1'-X'C5') is
+     A*                                     actually a VALID positive zoned-
+     A*                                     decimal encoding of +12345 (digit
+     A*                                     nibbles 1-5, sign nibble C) - it
+     A*                                     raised no decimal-data error at
+     A*                                     all (docs/probes.md). Blanks give
+     A*                                     a genuinely invalid sign nibble.
      A          R JUCHDR                    TEXT('05-11 mis-typed staging')
      A            JUNO           6A         TEXT('Order number')
      A            JULINE         3S 0       TEXT('Line number')

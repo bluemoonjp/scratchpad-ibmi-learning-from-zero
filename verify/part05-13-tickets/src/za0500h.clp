@@ -85,7 +85,21 @@
                 SNDPGMMSG  MSG('ZA0500H: ZA0500 ended abnormally.')
              ENDDO
 
-TXCLOF:      DLTOVR     FILE(JUCHUD)
+/* FIXED (2026-09-27, real hardware - see src/legacy/qclsrc/ju0900c.clp's  */
+/* matching fix for the full finding): close both this program's own ODPs */
+/* before returning. JUCHUM was DCLF'd above with no OPNID (defaults to    */
+/* *NONE) -> CLOSE OPNID(*NONE). JUCHUD was OPNQRYF'd with no explicit     */
+/* OPNID -> defaults to the unqualified file name -> CLOF OPNID(JUCHUD).   */
+/* Without this, a caller running this program twice in the same job (or  */
+/* any other program sharing this OPNID afterward) hits "OPNID(JUCHUD)     */
+/* for file JUCHUD already exists" - exactly what part05-13-tickets'       */
+/* RUNZA0500H itself observed when JU0900C's own (then-unclosed) ODP was   */
+/* still open from RUNCOMBO immediately before it.                        */
+TXCLOF:      CLOF       OPNID(JUCHUD)
+             MONMSG     MSGID(CPF0000)
+             CLOSE      OPNID(*NONE)
+             MONMSG     MSGID(CPF0000)
+             DLTOVR     FILE(JUCHUD)
              MONMSG     MSGID(CPF0000)
              DLTOVR     FILE(JUCHUM)
              MONMSG     MSGID(CPF0000)
