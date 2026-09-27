@@ -1,14 +1,14 @@
       * JU0300 - order list (JUCHUM/JUCHUL1) with L1/L2 subtotals
       * and a grand total, Part 5 (legacy system).
       *
-      * NOT YET COMPILED on real hardware (this session is out of SSH
-      * connection budget). Column positions come only from rpg3.mjs
-      * and, where noted below, from RPG/400 Reference by inference -
-      * not from a real CRTRPGPGM. See docs/probes.md before relying
-      * on any construct here that is flagged unverified below.
+      * CONFIRMED, real hardware (part05-legacy-probe, 2nd connection):
+      * compiles with 0/00 severity (see docs/probes.md). See
+      * docs/probes.md before relying on any construct here that is
+      * still flagged unverified below (compile success does not by
+      * itself confirm every runtime behavior this file documents).
       *
-      * Design deviations from work/design/part05-legacy-design.json
-      * design.objects[2], and why:
+      * Design deviations from this design's original purpose text,
+      * and why:
       *
       * 1. Control level assignment DELIBERATELY DEVIATES from the
       *    design purpose text's own example, "L1(customer=JUTOK)".

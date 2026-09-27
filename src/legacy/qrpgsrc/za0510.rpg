@@ -41,12 +41,12 @@
       * that file's own header for its own, independently-designed
       * CHGDTAARA replacement.
       *
-      * NOT YET COMPILED ON REAL HARDWARE. Column positions come only
-      * from tools/gen/rpg3.mjs and, where noted below, from RPG/400
-      * Reference (work/design/refs/rpg400ref.txt) by inference - not
-      * from a real CRTRPGPGM. Verify with CRTRPGPGM before relying on
-      * this source, including the *PSSR block's new CHGDTAARA command
-      * above.
+      * CONFIRMED, real hardware: this exact source (diffed byte-for-
+      * byte against verify/part05-qcmdexc-runtime/src/za0510v.rpg,
+      * except that file's intentional TABPCD-final-element rewrite)
+      * was compiled and its *PSSR/CHGDTAARA path actually executed
+      * and fired correctly in the part05-qcmdexc-runtime connection
+      * (see docs/probes.md).
       *
       * 1. /COPY placement (FLDREFR).
       *    Per fldrefr.rpg's own header (the authoritative spec for this),
@@ -286,10 +286,10 @@
       *    fire; it is included as the "fatal LOKUP miss" case the design
       *    brief asks for.
       *
-      * 9. QCMDEXC is NOT documented anywhere in rpg400ref.txt (grepped this
-      *    session for QCMDEXC - zero matches), and has no real-compile record
-      *    in docs/probes.md; work/design/part05-legacy-design.json's own
-      *    unverifiedGeneratorFeatures says the same. It is called here as an
+      * 9. QCMDEXC is NOT documented anywhere in the RPG/400 Reference this
+      *    repo's private working notes had on hand when this was written
+      *    (grepped for QCMDEXC - zero matches), and had no real-compile
+      *    record in docs/probes.md at that time either. It is called here as an
       *    ordinary CALL to the system program QSYS/QCMDEXC (RPG/400
       *    Reference's CALL opcode, p.214-217 - CALL itself IS confirmed by
       *    primary source, only the specific target program QCMDEXC is not),
