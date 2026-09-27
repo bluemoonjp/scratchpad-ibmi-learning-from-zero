@@ -1,0 +1,10 @@
+{
+  "batch": "part06-decisions-3",
+  "description": "Confirms the FULLY fixed Q0614BA (src/qrpglesrc/q0614bs.sqlrpgle): both design flaws found in part06-decisions-1/-2 are now fixed - (1) the cursor's SELECT is dynamic SQL (PREPARE+DECLARE FOR S1), (2) the two INSERT statements are ALSO now dynamic SQL (EXECUTE IMMEDIATE against a host variable) after part06-decisions-2 found 'SQL precompile failed' persisted even with only the cursor fixed, and (3) the TIMESTAMP literal format switched from 'yyyy-mm-dd-hh.mm.ss.nnnnnn' to the ANSI/ISO 'yyyy-mm-dd hh:mm:ss' form after the former was rejected at real-hardware run time. IMPORTANT LESSON FROM part06-decisions-1/-2: CPYSPLF FILE(QSYSPRT) never finds a real spooled file in this harness's job (same root cause as the pre-existing part06-0103-freeform finding, docs/probes.md - QSYSPRT output from this qsh-launched job flows directly into SSH stdout, captured in the RESULT JSON's own 'run' section, not as a real spool object) - this manifest does NOT attempt CPYSPLF/collect for Q0614BA's output at all; read the 'run' section text directly for the actual printed lines instead.",
+  "steps": [
+    { "type": "file", "localPath": "../../src/qrpglesrc/q0614bs.sqlrpgle", "remoteSrcFile": "QRPGLESRC", "member": "Q0614BA", "ensureSrcFile": { "recordLength": 112 } },
+
+    { "type": "cl", "label": "CPQ0614BA", "cmd": "CRTSQLRPGI OBJ(&LIB/Q0614BA) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0614BA) OBJTYPE(*PGM) COMMIT(*NONE)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "SQL0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNQ0614BA", "cmd": "CALL PGM(&LIB/Q0614BA)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] }
+  ]
+}

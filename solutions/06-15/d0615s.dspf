@@ -104,7 +104,7 @@
      A                                      ROLLDOWN(26)
      A                                      CF03(03)
      A                                      OVERLAY
-     A                                  1  2'D0615A - Stock inquiry (ZAIKOM+SHOHIM)'
+     A                                  1  2'D0615A - Stock inquiry'
      A                                  3  2'Code'
      A                                  3 10'Name'
      A                                  3 42'Qty'
