@@ -170,6 +170,7 @@ dcl-s wLastOrder date NULLIND;
 // Dynamic SQL text for the cursor (step 3) - see the DESIGN FLAW
 // header note for why this needed to become dynamic.
 dcl-s cursorSql varchar(200);
+dcl-s insertSql varchar(200);
 
 exec sql SET OPTION commit = *none, naming = *sys;
 
@@ -207,15 +208,34 @@ endif;
 
 // One row with a real last-order date, one row where it is unknown
 // (NULL). TOKLTS (NOT NULL) always gets a real value.
-exec sql
-  INSERT INTO QTEMP/W0614BA (TOKCD, TOKNM, TOKLORD, TOKLTS)
-    VALUES ('C00001', 'ACME TRADING CO', DATE '2026-09-05',
-            TIMESTAMP '2026-09-05-08.30.00.000000');
+//
+// SECOND DESIGN-FLAW FIX (part06-decisions-2 re-verification): these
+// two INSERT statements were ALSO still static SQL against
+// QTEMP/W0614BA, which does not exist at CRTSQLRPGI precompile time -
+// same root cause as the cursor above (CREATE TABLE/DROP TABLE do not
+// need column-level access plans and stay static; INSERT does, and
+// real-hardware confirmed this fails with "SQL precompile failed"
+// even after the cursor alone was made dynamic). EXECUTE IMMEDIATE
+// against a host variable (no parameter markers needed for a fixed
+// statement) defers this the same way PREPARE does for the cursor.
+//
+// TIMESTAMP LITERAL FORMAT FIX (part06-decisions-2 re-verification):
+// the original 'yyyy-mm-dd-hh.mm.ss.nnnnnn' form (matching RPG's own
+// Z-literal timestamp format) was rejected at real-hardware run time
+// ("Syntax of date, time, or timestamp value not valid") when tried
+// via a CL RUNSQL statement with this exact text. rbafy75.txt (search
+// "the ANSI/ISO standard date, time, or timestamp format") documents
+// only the space-and-colons ISO form as guaranteed - switched to
+// that form here too rather than risk the same failure.
+insertSql = 'INSERT INTO QTEMP/W0614BA (TOKCD, TOKNM, TOKLORD, TOKLTS)'
+  + ' VALUES (''C00001'', ''ACME TRADING CO'', DATE ''2026-09-05'','
+  + ' TIMESTAMP ''2026-09-05 08:30:00'')';
+exec sql EXECUTE IMMEDIATE :insertSql;
 
-exec sql
-  INSERT INTO QTEMP/W0614BA (TOKCD, TOKNM, TOKLORD, TOKLTS)
-    VALUES ('C00099', 'NEW PROSPECT CO', NULL,
-            TIMESTAMP '2026-09-20-14.15.00.000000');
+insertSql = 'INSERT INTO QTEMP/W0614BA (TOKCD, TOKNM, TOKLORD, TOKLTS)'
+  + ' VALUES (''C00099'', ''NEW PROSPECT CO'', NULL,'
+  + ' TIMESTAMP ''2026-09-20 14:15:00'')';
+exec sql EXECUTE IMMEDIATE :insertSql;
 
 // --- 3. cursor over the 2 demo rows, DYNAMIC SQL (see DESIGN FLAW ---
 //        header note). PREPARE binds cursorSql's text to statement

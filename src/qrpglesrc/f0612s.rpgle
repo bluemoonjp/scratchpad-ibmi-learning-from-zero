@@ -186,14 +186,24 @@ dcl-f juchum usage(*input);
 // but only the numbered-indicator family actually compiles against an
 // EXTERNALLY DESCRIBED printer file on this PUB400 PTF level - the
 // *INOA family appears to be reserved/already-claimed for externally
-// described printer files specifically (unconfirmed exactly why; not
-// worth further guessing given a working alternative exists). *IN01's
-// compile-time validity was confirmed with a throwaway 100-line WRITE
-// loop probe (verify/part06-12-prtf-cpp-swap/src/t612ofb.rpgle, NOT
-// shipped) - this lesson's own normal 2-row run below never actually
-// overflows a page, so *IN01 stays *OFF for every real run of F0612A
-// itself; the page-break exercise (06-12 lesson text, not yet written)
-// is where a learner is meant to actually force and observe overflow.
+// described printer files specifically - CONFIRMED (part06-decisions-2):
+// the identical oflind(*inoa) keyword compiles and runs fine on a
+// PROGRAM-described printer file (verify/part06-12-prtf-cpp-swap/src/
+// t612ofc.rpgle, using QSYSPRT), so the conflict is specific to
+// externally described printer files, not to *INOA in general. *IN01's
+// compile AND run-time behavior were BOTH confirmed with a throwaway
+// 100-line WRITE loop probe (verify/part06-12-prtf-cpp-swap/src/
+// t612ofb.rpgle, NOT shipped) - CONFIRMED SUCCESS, all 100 lines
+// printed correctly (found in the connection result's own "run"
+// section text - CPYSPLF cannot capture this file's spooled output in
+// this harness's job environment, a separate, unrelated limitation
+// also confirmed for QSYSPRT itself, part06-0103-freeform). *IN01
+// never turned on across those 100 lines (the default form length is
+// evidently longer); this lesson's own normal 2-row run below never
+// overflows a page either, so *IN01 stays *OFF for every real run of
+// F0612A itself - the page-break exercise (06-12 lesson text, not yet
+// written) is where a learner is meant to actually force and observe
+// overflow (e.g. by overriding FORMLEN to something small).
 //-----------------------------------------------------------------------
 dcl-f p0612a printer usage(*output) oflind(*in01);
 

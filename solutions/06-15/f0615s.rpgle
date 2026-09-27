@@ -4,7 +4,7 @@
 // R0413A's (04-13) and F0607A's (06-07) LOWSTOCK judgment (ZASU <
 // SHOHAT) as a read-only, load-all subfile - no OPT/selection field at
 // all, since nothing here needs to be acted on (part06-design-v1.md's
-// own 06-15 section: "内容: 新出なし" - no new syntax at all). This
+// own 06-15 section states its content as "no new syntax at all"). This
 // is the SUBFILE half of the checkpoint; see q0615s.sqlrpgle for the
 // SQL half (a non-interactive batch report using an embedded SQL
 // cursor JOIN instead of CHAIN, confirmable over SSH).
