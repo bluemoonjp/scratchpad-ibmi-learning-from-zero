@@ -5,10 +5,16 @@
 // src/qrpgsrc/r0409s.rpg). Written for lesson 06-08 (file I/O with
 // dcl-f, likerec, and %kds).
 //
-// STATUS: hardware-UNTESTED as of 2026-09-26. This source has NOT
-// been compiled or run on PUB400. Treat every behavior described
-// below as unverified (docs/style-guide.md V1/V2/V3 scale) until a
-// real CRTBNDRPG + CALL session updates this header with a result.
+// STATUS: CONFIRMED V2 (part06-08-writedelete, 2026-09-27).
+// CRTBNDRPG Highest Severity 00. CALL produced the exact expected line
+// for all three outcomes (confirmed via separate exercise-variant
+// compiles, matching R0409A's own established exercise convention):
+// "P00001  0000045  SHORT" (qty=999), "P99999  0000000  NOTFOUND",
+// "P00001  0000043  OK" (the real qty=2 default run, ZASU 45->43).
+// The WRITE/DELETE/%kds-DELETE/%fields round trip against ZTEST1
+// produced no error messages (silent success, as designed). TXRESET
+// afterward restored ZAIKOM to its original 6-row state (confirmed by
+// a follow-up SELECT).
 //
 // ====================================================================
 // WARNING: THIS PROGRAM WRITES TO THE SHARED ZAIKOM TABLE.

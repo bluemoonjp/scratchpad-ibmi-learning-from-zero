@@ -2204,6 +2204,31 @@ C00099 NEW PROSPECT CO: last order date is NULL (unknown), last touched 2026-09-
 ——候補1(動的SQL)を採用、候補2(永続ライブラリー)はこれ以上
 追試しない。**
 
+## 第6部`part06-08-writedelete`の実機検証: OK/SHORT/NOTFOUND全経路+WRITE/DELETE/%kds/%fields、CONFIRMED SUCCESS(確認日2026-09-27)
+
+`F0608A`(06-08、`ZAHIK4`)を、R0409A(04-09)自身の確立された演習方式
+(リテラルを書き換えて再コンパイル・再実行)にならい、3つの経路すべてで
+確認。**接続1回でCONFIRMED SUCCESS。**
+
+- 3オブジェクトともHighest Severity 00でコンパイル成功。
+- 結果JSONの`run`セクションを直接読んで確認(`part06-decisions-2`の
+  教訓どおり、`CPYSPLF`は使わない):
+  - `qty=999`版: `P00001  0000045  SHORT`(45 < 999、正しくSHORT判定)。
+  - `prod='P99999'`版: `P99999  0000000  NOTFOUND`(該当なし、
+    `CLEAR`によりZASUは0000000)。
+  - 実際に配布する既定版(`qty=2`、`P00001`): `P00001  0000043  OK`
+    (45→43に正しく更新)。
+- `runWriteDeleteDemo`(既定`*on`)による`ZTEST1`へのWRITE・
+  `%fields`限定UPDATE・`%kds`によるDELETEの一連は、エラー・メッセージ
+  0件で完了(正常終了)。
+- `RUNTXRESET`実行後、`SELECT * FROM ZAIKOM`で全6行が初期値
+  (`P00001`=45・`P00002`=3・`P00003`=250・`P00004`=60・`P00005`=12・
+  `P00006`=22)に戻っていることを確認済み。
+
+これでB-4は完了。SHORT/NOTFOUND確認用の使い捨てソース2本
+(`f0608t-short.rpgle`・`f0608t-notfound.rpgle`)は確認後に削除済み
+(マニフェスト自体は履歴として残すが再実行はできない)。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P44)以外は未実施。特に:
