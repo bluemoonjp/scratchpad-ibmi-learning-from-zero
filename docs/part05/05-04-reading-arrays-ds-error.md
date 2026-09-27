@@ -34,7 +34,7 @@
 - `INFSR`/`*PSSR`(ファイルの例外/エラー・サブルーチン)
 - `QCMDEXC`(RPG から CL コマンドを実行する。長さは15,5のパック10進数)
 
-#### 読めればよい項目(別枠)
+### 読めればよい項目(別枠)
 
 - `CVTOPT`/`ALWNULL`(`CRTRPGPGM`自身が持つ、SQLのDATE/TIME/TIMESTAMP型・可変長・NULL許容列の扱い方を決めるコンパイル・オプション)
 
