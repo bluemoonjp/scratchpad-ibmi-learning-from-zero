@@ -9,7 +9,7 @@
 /* (every verify/ connection went through C0511RUN instead) and would    */
 /* leave &CLONEDIR reading up to 168 bytes past what a 32-byte-padded    */
 /* literal actually supplies. This command exists so the lesson's own    */
-/* 実演 can invoke C0511S the safe way (matching how 05-02/05-06/07-04    */
+/* demonstration can invoke C0511S the safe way (matching how other      */
 /* etc. already teach *CMD wrappers for exactly this trap).              */
              CMD        PROMPT('C0511S - plant a decimal data error')
              PARM       KWD(LIB) TYPE(*CHAR) LEN(10) DFT(*CURLIB) +
