@@ -731,6 +731,99 @@ advisorレビューで指摘: 第5部の複数レッスン(`05-06`・`05-07`・`
 `05-09`自身の新出リストにCVTOPT/ALWNULLは元々含まれておらず、学習目標
 への影響は無い。
 
+## 第5部QCMDEXC経路の実機検証: `part05-qcmdexc-runtime`(確認日 2026-09-27)
+
+`za0510.rpg`(05-04)の`*PSSR`/`QCMDEXC`/`CHGDTAARA(*LDA)`経路を、検証専用の
+別名オブジェクト(`ZA0510V`、TABPCDの最終要素だけ`P00006`→`P09999`に
+書き換えた版)で発火させ、同一ジョブ内のCLヘルパー`VLDA`が`RTVDTAARA`で
+`*LDA`を読み戻して`SNDPGMMSG`で報告する設計。**1回の接続でCONFIRMED
+SUCCESS。**
+
+- `ZA0510V`・`VLDA`・`ZA0500T3`(05-13チケット1模範解答、コンパイルのみ
+  対象)の3オブジェクトとも Highest Severity 00 でコンパイル成功。
+- 実行結果: `VLDA: *LDA(1,20)=[ZA0510 ERROR        ]` — `expected/notes.md`
+  が期待した文字列と完全一致(12文字+空白8文字パディングの推測も実証された)。
+- **新発見**: `*PSSR`の`ENDSR '*CANCL'`実行後、ジョブ・ログには
+  `Error RPG0000 caused program ZA0510V to stop.`という異常終了メッセージが
+  記録され、呼び出し元のCLラッパーは`MONMSG MSGID(...RPG0000)`で捕捉して
+  `RUNZA1V FAILED`マーカーを送っていた。それでも`CHGDTAARA`自体は
+  `*PSSR`内で正常に実行済みで、`*LDA`への書き込みは失われていない。
+  `expected/notes.md`が事前に「`RUNZA1V FAILED`の有無は成否判定に使わない」
+  と明記していた判断は正しかった。05-04の演習7が「`DSPDTAARA`で確認する」
+  という手順のみを教え、プログラムの終了状態には触れていない点とも整合する。
+
+これでP1の#10.5は完了。次は#10.6(`part05-txlegacy-exec`)。
+
+## 第5部TXLEGACY自体の実機検証: `part05-txlegacy-exec`(確認日 2026-09-27)
+
+これまでの検証(`part05-legacy-probe`等)は、TXLEGACYが本来やる仕事
+(CLONEDIR配下の実ツリーから自分でCPYFRMSTMFする)を一度も実行せず、同じ
+オブジェクトを`file`/`cl`ステップで直接コンパイルして代替していただけ
+だった。今回、TXLEGACYが依存する9ファイルをCLONEDIR相当の相対パスへ
+`file`ステップ(remotePath指定、CPYFRMSTMFは実行しない)で配置し、続けて
+`sh`ステップの`CPYTOSTMF`で実際にCCSID1208へバイト変換したうえで、
+TXLEGACY自身をCALLした(`RUNTXLEG`という小さなCLヘルパー経由、TXLEGACYの
+`*CMD`はラッパーのコンパイル時点ではまだ存在しないため)。**1回の接続で
+CONFIRMED SUCCESS。**
+
+- **CCSID診断(`DEBUGCCSID`ステップ)で確認**: `CPYTOSTMF`後の
+  `za0500.rpg`は実際にCCSID1208のタグが付き、バイト列も本物のASCII
+  (`od -x`実測: `2a20 5a41 3035 3030`などが`* ZA0500`と正しく対応)。
+  タグとバイト列が一致しているため、TXLEGACY自身の
+  `CPYFRMSTMF...STMFCCSID(1208)`は破損なく成功する——heredoc直書き
+  (既定でCCSID273/EBCDIC、`harness-selftest`で確認済み)とは別の経路で
+  1208を正しく再現できることを実証した。
+- **TXLEGACY本体の実行**: 8オブジェクト(FLDREF・FLDREFR・TK0100D・
+  MN0000D・TK0100・JU0300・ZA0500・JU0900C・MN0000C、うちTK0100/JU0300/
+  ZA0500はRPGでHighest Severity 00)全てがこの接続のタイムスタンプで
+  新規作成され、`TXLEGACY: done.`まで到達。状態データ域`TXLEGST`も
+  新規作成された(初回ロード)。
+- **`RUNTXLEG`ヘルパーによる確認**: 同一ジョブ内で`TXLEGST`を
+  `RTVDTAARA`し`TXLEGRUN: TXLEGST=[Y]`と報告——TXLEGACYが自分の状態
+  データ域を正しく書き込み、直後に読み戻せることを確認した。
+- 副産物: `DLTTXCMD`/`DLTTXLST`は初回実行のため「オブジェクトが無い」で
+  想定どおり失敗しMONMSGで捕捉、`CPTXLEGCMD`が`*CMD`を新規作成。
+
+これでP1の#10.6は完了。次は#10.7(`part05-ju0900c-baseline`)。
+
+## 05-13チケット1のバグが実機でどう現れるか: `part05-ju0900c-baseline`(確認日 2026-09-27)
+
+`JU0900C`(`&MINQTY TYPE(*DEC) LEN(3 0)`)から`ZA0500`(`*ENTRY PLIST`が同じ
+位置を`MINQTY 5,0`として読む)を、as-shippedの状態(バグ未修正)のまま
+`CALL`し、ticket 1のバグが初めて実機でどう現れるかを観察した。
+**`expected/notes.md`が事前に立てた「本命の予想」(パックド10進数のビット
+配置から確定的に導出、advisor指摘)が、メッセージIDの1点を除いて完全に
+的中した。**
+
+- **1行も印字されないまま、1回目の接続で確実に発生した。** `RPG0907:
+  ZA0500 8100 decimal-data error in field (C G S D F).` →
+  `RPG9001: Error RPG0907 caused program ZA0500 to stop.` →
+  `CPF9999: Function check. RPG9001 unmonitored by JU0900C at statement
+  7400, instruction X'0056'.` → `JU0900C: ZA0500 ended abnormally.`
+  という順でエスケープし、ハングせず`part05-ju0900c-baseline DONE`まで
+  正常に到達した(`run`セクションを走査し、`J00001`等の受注行や
+  `OK`/`SHORT`/`NOTFOUND`の実行時出力が1件も無いことも確認済み——
+  1行目の`LOKUP`成立後、最初に`&MINQTY`を参照する`N90 AVAIL COMP
+  MINQTY`(統合ソース上のstatement 8100、コンパイル時のクロス・
+  リファレンスで確認)で即座に落ちている)。
+- **予想と実際の食い違いは1点だけ: メッセージIDが`MCH1202`ではなく
+  `RPG0907`だった。** 予想の根拠(パックド10進数の桁数不一致で不正な
+  ニブル値になる)自体は正しかった——実際に発生したのも同じ「10進データ・
+  エラー」という分類のメッセージであり、`RPG0907`はOPM RPG/400自身の
+  10進データ・エラー・メッセージ(`MCH1202`はおそらくMI/ILEレベルの
+  等価物であり、OPM RPG/400からは自分自身のメッセージ体系で報告される)。
+  結論(「ticket 1のバグは、このデータでは毎回確実に起きる」)には影響
+  しない。
+- **`ZAIKOM`は接続前後で完全に不変**(`RUNMODE='*TEST'`により`UPDAT`が
+  一度も実行されなかったことの直接確認)。
+- **影響**: 05-13・`src/legacy/tickets/ticket1.md`の「まれに」という
+  表現、および`ju0900c.clp`自身のヘッダー・コメントの「corrupting its
+  low-order digit」という説明は、どちらも実態と食い違っている——本文
+  執筆時(P4)に「毎回確実に、1行目で」という実測どおりの表現へ書き直す
+  こと。また05-11(MCH1202)のマニフェスト設計時は、この接続で確定した
+  実際のメッセージID(`RPG0907`)とエスケープ経路を踏まえること。
+
+
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。
