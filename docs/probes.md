@@ -2010,6 +2010,98 @@ TXLEGACY・C0511S)は「今回初めてコンパイルする」段になるた�
 ファイルを作らないという既知の挙動(`part06-0103-freeform`参照)により、
 構造的にV3(対話操作)専用のまま。
 
+## 第6部`part06-decisions-1`の実機検証: 06-11b/06-11/06-04の修正確認、06-12 OFLIND再挑戦、06-14b再設計の2候補(確認日2026-09-27)
+
+`jiggly-greeting-crystal.md`のA節(ソース修正)・B節(追加検証)を受けた、
+決定を左右する項目をまとめた1回の接続。
+
+**06-11b/06-11/06-04の修正確認(V1、コンパイルのみ)**: `D0611BA`
+(`SHOTNK`を`7S 2O`へ変更、決定P6-8どおり出力専用化)・`F0611BA`
+(`chain(e)`+`%error`/`%status(1218)`によるレコード・ロック競合の
+エラー処理を追加)・`F0611A`(オプション5で`F0604A`へ`JUTOK`を渡す
+よう修正)・`F0604A`(`custCode char(6) const options(*nopass)`を
+追加、渡されればEXFMT前に`TOKCD`へ代入)——**全4件ともHighest
+Severity 00でコンパイル成功。** いずれもWORKSTN/EXFMTのためCALLは
+実施せず(既存の確立済み制約どおりV1止まり)。
+
+**06-12 OFLINDの3候補、1回の接続で決着**: `docs/probes.md`上の
+`part06-12-prtf-cpp-swap`節が記録した`RNF2037`(「Overflow Indicator
+は既に定義されている」)を受け、3つの独立した候補をTHROWAWAYメンバー
+(`verify/part06-12-prtf-cpp-swap/src/t612of{a,b,c}.rpgle`、
+出荷ソースではない)として同一接続で試した:
+
+- **候補A**(`oflind(*inoa)`を`dcl-f p0612a`に直接指定、独立した
+  `dcl-s ovf`宣言なし): **失敗**。`RNS9308`/`RNS9310`
+  (severity 20、コンパイル失敗)——以前の`dcl-s ovf ind;`+
+  `oflind(ovf)`と同じ失敗クラス。この失敗が`CPF9999`(「Function
+  check. RNS9310 unmonitored by TPART06DEC」)としてラッパーCL
+  プログラム自身に一瞬エスケープした(monmsgに`RNS0000`を含めて
+  いなかったため)が、包括的な`CPF0000`監視で最終的に捕捉され、
+  後続ステップは全て正常に続行した。
+- **候補B**(`oflind(*in01)`、番号標識版): **コンパイル成功
+  (Highest Severity 00)。** `ilerpgref75.txt`(27970-27988行目)は
+  `*INOA`-`*INOG`/`*INOV`(名前付き)と`*IN01`-`*IN99`(番号)の
+  両方をOFLINDの有効なパラメーターとして挙げているが、この
+  PUB400のPTFレベルでは外部記述PRTFに対して番号標識版だけが実際に
+  コンパイルを通ることが確定した。
+- **候補C**(内部記述PRTF、`oflind(*inoa)`): このマニフェスト上の
+  記述ミス(印刷装置ファイル名を`t612ofc`という独自名にしていた)
+  により`CPF4101`(オブジェクトが見つからない)で実行時に失敗——
+  **OFLINDそのものの検証にはならなかった**(内部記述の印刷装置
+  ファイルは`QSYSPRT`のように既存のシステム・オブジェクトに
+  対してのみ暗黙オープンできる。任意の名前では`CRTPRTF`等で
+  事前にオブジェクトを作らない限りOPENが`CPF4101`で失敗する
+  ——`f0607s.rpgle`/`f0608s.rpgle`が`QSYSPRT`しか使っていない
+  理由そのもの)。`QSYSPRT`へ差し替えて`part06-decisions-2`で
+  再接続する。
+- **候補B/Cの実際のスプール出力captureは同一接続内で失敗**
+  (`CPYSPLF`が`CPF3303`「File ... not found」)——ただし対応する
+  `CALL`ステップ自体はエラー・メッセージを一切出していない
+  (プログラムは正常終了したと推測される)。候補Aの`RNS9310`
+  Function Checkが同一ジョブの以降のスプール処理を乱した可能性が
+  高いという仮説のもと、`part06-decisions-2`で候補Aを含めずに
+  候補B単体・候補C(修正版)を再接続して切り分ける。
+- **`f0612s.rpgle`は候補B(`oflind(*in01)`)を採用して更新済み**
+  (このコンパイル成功のみをもって採用——実際のオーバーフロー
+  発火・再印字の実演はまだ未確認、`part06-decisions-2`または
+  06-12本文執筆時の別接続で確認する)。
+
+**06-14b再設計の2候補、primingなしで比較**:
+
+- **候補1(動的SQL、`src/qrpglesrc/q0614bs.sqlrpgle`採用)**:
+  カーソルを`PREPARE S1 FROM :cursorSql; DECLARE C2 CURSOR FOR S1;`
+  へ変更(06-14の`PREPARE`技法の自然な延長)。`TIMESTAMP`型
+  (`TOKLTS`列、NOT NULL)・`VARCHAR`型(`TOKNM`列)を追加、
+  design:321の新出3型(DATE/TIMESTAMP/VARCHAR)を初めて全て使用。
+  **コンパイルはHighest Severity 00で成功、`CALL`もエラー・
+  メッセージ無し(正常終了と推測)——ただし`CPYSPLF FILE(QSYSPRT)`
+  が候補Bと同じ理由(前段の候補A `RNS9310`)で失敗し、実際の
+  印字内容(NULL/非NULL・TIMESTAMPの表示)はまだ確認できていない。**
+- **候補2(永続ライブラリー、`verify/part06-14b-null/src/
+  q0614bb-persistent.sqlrpgle`、THROWAWAY)**: `&LIB`直下に
+  `W0614BP`をコンパイル前に`RUNSQL`で作成(`PERSISTPRIME`
+  ステップ)、静的カーソルのまま(`PREPARE`不要)。**コンパイルは
+  Highest Severity 00で成功、`CALL`もエラー無し——同じ理由で
+  `CPYSPLF`のみ失敗、実際の印字内容は未確認。**
+- 両候補ともコンパイル・呼び出し自体は成功しており、
+  `SQL0204`(旧設計の既知の欠陥)は候補1・候補2のどちらでも
+  再発しなかった。**「動的SQL化」「QTEMPをやめて永続ライブラリー」
+  のどちらの再設計も、少なくともコンパイル・実行の入口までは
+  正しく機能することが確認できた。** 実際の印字結果(NULL行・
+  非NULL行の判別、TIMESTAMPの表示)の確認と、最終的にどちらを
+  採用するかの決定は`part06-decisions-2`に持ち越す(現時点では
+  design:321の狙い(06-14の直後という並びに自然に合う)に沿って
+  候補1を暫定採用、`src/qrpglesrc/q0614bs.sqlrpgle`はすでに候補1へ
+  更新済み)。
+
+**教訓(次回以降のマニフェスト設計に反映)**: RPGコンパイラーの
+severity 20エラーは`RNFnnnn`だけでなく`RNS93xx`(コンパイル・
+ステータス通知)としても現れ、後者は`monmsg`リストへ`RNF0000`を
+入れていても捕捉されない。CL文の`CALL`が実行時例外で失敗する
+場合も`RNX`/`RNQ`プレフィックスがあり得る——`part06-decisions-2`
+以降のCRTBNDRPG/CRTSQLRPGIステップの`monmsg`には`RNS0000`、
+CALLステップには`RNX0000`も追加した。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P44)以外は未実施。特に:

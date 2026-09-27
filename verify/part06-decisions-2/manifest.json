@@ -1,0 +1,32 @@
+{
+  "batch": "part06-decisions-2",
+  "description": "Follow-up to part06-decisions-1 (docs/probes.md), isolating the two items whose spooled-file capture failed there (CPF3303 'File ... not found') despite their CALL steps logging zero error messages - hypothesis: T612OFA's severity-20 compile failure earlier in that SAME connection's job produced an unmonitored CPF9999 Function Check (RNS9310 unmonitored by the wrapper), which may have left the job's spooled-output state disrupted for the rest of that connection. This connection drops candidate A entirely (already confirmed failing, no need to retry) and re-runs candidate B (T612OFB, oflind(*in01) - confirmed COMPILING at Highest Severity 00 in part06-decisions-1, but its CPYSPLF FILE(P0612A) failed) and a FIXED candidate C (T612OFC source renamed to use QSYSPRT - part06-decisions-1 found the original name choice itself was a bug, CPF4101/RNX1216, unrelated to OFLIND) in a clean job with nothing before them that could disrupt spooling. Also re-runs both 06-14b candidates (Q0614BA dynamic-SQL, Q0614BB persistent-library - both compiled/ran with zero error messages in part06-decisions-1 but also failed CPYSPLF FILE(QSYSPRT) the same way) to get a clean read on whether their redesigns actually work.",
+  "steps": [
+    { "type": "file", "localPath": "../part06-12-prtf-cpp-swap/src/t612ofb.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "T612OFB" },
+    { "type": "file", "localPath": "../part06-12-prtf-cpp-swap/src/t612ofc.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "T612OFC" },
+    { "type": "file", "localPath": "../../src/qrpglesrc/q0614bs.sqlrpgle", "remoteSrcFile": "QRPGLESRC", "member": "Q0614BA", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "../part06-14b-null/src/q0614bb-persistent.sqlrpgle", "remoteSrcFile": "QRPGLESRC", "member": "Q0614BB", "ensureSrcFile": { "recordLength": 112 } },
+
+    { "type": "cl", "label": "VSPLPF", "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 6 spooled-file text capture'))", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "CPT612OFB", "cmd": "CRTBNDRPG PGM(&LIB/T612OFB) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T612OFB) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNT612OFB", "cmd": "CALL PGM(&LIB/T612OFB)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPT612OFB", "cmd": "CPYSPLF FILE(P0612A) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "CPT612OFC", "cmd": "CRTBNDRPG PGM(&LIB/T612OFC) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T612OFC) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNT612OFC", "cmd": "CALL PGM(&LIB/T612OFC)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPT612OFC", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "CPQ0614BA", "cmd": "CRTSQLRPGI OBJ(&LIB/Q0614BA) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0614BA) OBJTYPE(*PGM) COMMIT(*NONE)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "SQL0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNQ0614BA", "cmd": "CALL PGM(&LIB/Q0614BA)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPQ0614BA", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "PERSISTPRIME", "cmd": "RUNSQL SQL('DROP TABLE &LIB/W0614BP') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/W0614BP (TOKCD CHAR(6) NOT NULL, TOKNM VARCHAR(30) NOT NULL, TOKLORD DATE, TOKLTS TIMESTAMP NOT NULL)') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/W0614BP VALUES (''C00001'', ''ACME TRADING CO'', DATE ''2026-09-05'', TIMESTAMP ''2026-09-05-08.30.00.000000'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/W0614BP VALUES (''C00099'', ''NEW PROSPECT CO'', NULL, TIMESTAMP ''2026-09-20-14.15.00.000000'')') COMMIT(*NONE)", "monmsg": ["CPF0000", "SQL0000"] },
+    { "type": "cl", "label": "CPQ0614BB", "cmd": "CRTSQLRPGI OBJ(&LIB/Q0614BB) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0614BB) OBJTYPE(*PGM) COMMIT(*NONE)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "SQL0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNQ0614BB", "cmd": "CALL PGM(&LIB/Q0614BB)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPQ0614BB", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CLEANPERSIST", "cmd": "RUNSQL SQL('DROP TABLE &LIB/W0614BP') COMMIT(*NONE)", "monmsg": ["CPF0000", "SQL0000"] },
+
+    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSPL" }
+  ]
+}
