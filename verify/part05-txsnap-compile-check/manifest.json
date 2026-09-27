@@ -1,0 +1,18 @@
+{
+  "batch": "part05-txsnap-compile-check",
+  "description": "Minimal, standalone confirmation that tools/qclsrc/txsnap.clp (05-08's regression-comparison tool, never compiled on real hardware this session) and its *CMD wrapper tools/qcmdsrc/txsnap.cmd both actually compile. Every other Part 5 tool that had never been compiled this session turned out to have a real bug on first real-hardware attempt (txmigr's DCLF placement, txcheck's CLOF/UNIQUE, txlegacy's label length, c0511s's USRPRF keyword and 30-char PROMPT limit) - txsnap.cmd's own PROMPT text ('TXSNAP - snapshot a spooled file', 32 chars) was found and fixed the same way before this connection (see git history). This connection only compiles both objects (CRTCLPGM, then CRTCMD via an sh step so the *CMD exists before any later cl-wrapper reference to it) - it does not run TXSNAP (CPYSPLF against a real spooled file remains V3/interactive, per work/human-checklist.md).",
+  "steps": [
+    { "type": "file", "localPath": "../../tools/qclsrc/txsnap.clp", "remoteSrcFile": "QCLSRC", "member": "TXSNAP" },
+    { "type": "file", "localPath": "../../tools/qcmdsrc/txsnap.cmd", "remoteSrcFile": "QCMDSRC", "member": "TXSNAP" },
+
+    { "type": "sh", "label": "DLTTXSNAPCMD", "cmd": "system \"DLTCMD CMD(&LIB/TXSNAP)\" 2>&1" },
+    { "type": "sh", "label": "CRTTXSNAPCMD", "cmd": "system \"CRTCMD CMD(&LIB/TXSNAP) PGM(*LIBL/TXSNAP) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXSNAP)\" 2>&1" },
+
+    {
+      "type": "cl",
+      "label": "CPTXSNAP",
+      "cmd": "DLTPGM PGM(&LIB/TXSNAP)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/TXSNAP) SRCFILE(&LIB/QCLSRC) SRCMBR(TXSNAP) REPLACE(*YES)",
+      "monmsg": ["CPF0000"]
+    }
+  ]
+}
