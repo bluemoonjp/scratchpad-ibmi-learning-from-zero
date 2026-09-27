@@ -1419,6 +1419,65 @@ pub400.com port 2222: Connection timed out`(ネットワーク側の一時的な
 と思われる)が発生し、`refused_or_timeout`歯止めにより3時間停止した。3回目
 (3時間経過後)で成功した。
 
+## 第5部`part05-txmigr-to2b`(接続B)の実機検証: 重大な発見(コンパイル前提の欠陥)(確認日2026-09-27)
+
+05-09/05-12(TXMIGR TO(2))の接続B。**CONFIRMED SUCCESS(ただし1件、実際の
+学習者向けレッスンの致命的な欠陥を発見)。**
+
+- **重大な発見: `CPTXMIGRRW`(意図的な「無防備」コンパイル試行)が実際に
+  失敗した。** `Program TXMIGR not created.`/`CPTXMIGRRW FAILED.`(通常の
+  コンパイル・リストすら出ない、`CPF0801`のみ)——**TXMIGRは、`QTEMP/
+  TXMDBR`・`QTEMP/TXMPGM`が事前に存在しないと、そもそもコンパイルすら
+  できないことが実機で確定した。** 05-09/05-12のレッスン本文には、
+  この2つのQTEMPファイルを先に用意する手順が無いため、**実在の学習者が
+  レッスンどおりに`CRTCLPGM PGM(TXMIGR)`を試すと、このマニフェストの
+  意図的な「無防備試行」と全く同じ理由で確実に失敗する。**
+  (ハーネス側の`PRIMEDBR`/`PRIMEOBJ`という回避策で用意した後の2回目の
+  試行は成功——`Program TXMIGR created in library <USER>2.`)。
+- **この発見を受け、`tools/qclsrc/txmigr.clp`自体を再設計・修正した**
+  (実在するレッスン内容のバグとして、priming前提ではなく根本修正):
+  `DCLF FILE(QTEMP/TXMDBR)`/`DCLF FILE(QTEMP/TXMPGM)`(実行時にしか
+  存在しないファイルへの直接DCLF)をやめ、IBM提供のモデル・ファイル
+  `QSYS/QADSPDBR`(DSPDBRの既定OUTFILE書式、Web検索で確認)・
+  `QSYS/QADSPOBJ`(DSPOBJDの既定OUTFILE書式、Web検索で確認)へ
+  DCLFする方式に変更。これらは常に実在するため、コンパイル時点で
+  `QTEMP`側の状態に依存しなくなる。実行時は`OVRDBF`でモデル・ファイルを
+  実際の`QTEMP/TXMDBR`/`QTEMP/TXMPGM`へリダイレクトする(古典的な
+  DCLF+OVRDBFの型)。フィールド名(`WHREFI`/`WHRELI`/`WHRTYP`/`WHTYPE`・
+  `ODOBNM`/`ODOBAT`)自体は新しい推測ではなく、`part05-legacy-probe`の
+  実測(`WHREFI`/`WHRELI`)と、この接続B自身のRECOMPILEループが実際に
+  正しく動いた実績(`ODOBNM`/`ODOBAT`)で、どちらも既に確認済みの値を
+  そのまま使っている。**この修正自体はまだ実機で確認していない**
+  (`verify/part05-txmigr-compile-check`という最小マニフェストで次回
+  接続で確認予定)。
+- **`TXMIGR`本体の実行結果(以下、修正前の設計のままで確認できたこと)**:
+  - Step 1(`CHGPF`): 既に接続Aで適用済みの変更を冪等に再適用(`8
+    records copied`/`File JUCHUM in library <USER>B changed.`)、正常。
+  - Step 2(`CRTLF`によるJUCHUL1再構築): **`JUCHUL1`が既に存在するため
+    失敗**(`File JUCHUL1 in library <USER>B already exists.`/`TXMIGR:
+    could not recreate JUCHUL1.`)——`txmigr.clp`自身のコメントが最初
+    から明記していたとおりの、意図された・無害な失敗(既存LFの削除は
+    しない設計)。**つまりTXMIGR単体では、既に存在する依存論理ファイル
+    自体はリフレッシュされない。**
+  - Step 3(`DSPOBJD`+全`*PGM`再コンパイル): `JU0300`・`JU0900C`・
+    `RUNPROBE`・`ZA0500`、全て成功(該当分はHighest Severity 00)。
+  - `TXMIGR: done. DBVER=0000000002...update TXSTATE by hand if this
+    tool did not.`——**この注記どおり、`TXSTATE`は実際に更新されて
+    いなかった**(直後の`TXSTATUS`は`DBVER=0000000001`のまま)。
+    TXMIGR自身の完了メッセージが正直に予告していた制約が、実機でも
+    そのとおりだった。
+  - **`RUNPROBE`(TXMIGRによって再コンパイル済み)が`JUCHUM`を再度読むと
+    `CPF4131`は解消**: `RUNPROBE: RCVF succeeded and read a JUCHUM row
+    - no CPF4131, format levels agree.`——**プログラム側の
+    level-checkは、TXMIGRのStep 3だけで解消することを確認した。**
+  - マニフェスト側で手動`DLTF`+`CRTLF`により`JUCHUL1`を実際に
+    リフレッシュし、`JU0300`も再々コンパイル(Highest Severity 00)、
+    その後`TXSTATUS`は`DBVER=0000000002`(手動でのTXSTATE更新を
+    別途行った結果)。
+
+これで接続Bは完了。次は`part05-txmigr-compile-check`(txmigr.clp再設計の
+確認)。
+
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P19, P22, P23 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。

@@ -49,107 +49,68 @@
              DCL        VAR(&SRC) TYPE(*CHAR) LEN(200)
              DCL        VAR(&TOMBR) TYPE(*CHAR) LEN(200)
              DCL        VAR(&DBVERC) TYPE(*CHAR) LEN(10)
-             /* &D_WHREFI/&D_WHRELI (DSPDBR outfile) and &P_ODOBNM/         */
-             /* &P_ODOBAT (DSPOBJD outfile) are NOT declared here on        */
-             /* purpose: each DCLF below auto-declares its own outfile's    */
-             /* fields, PREFIXED with its own OPNID() value and an          */
-             /* underscore (CONFIRMED, ibm.com/docs/api/v1/content/         */
-             /* ssw_ibm_i_75/cl/dclf.htm, fetched 2026-09-27 for verify/     */
-             /* part05-txmigr-to2b: "If the OPNID parameter value is not    */
-             /* *NONE, the variable name is the field name prefixed with    */
-             /* an ampersand (&), the value specified for the OPNID         */
-             /* parameter, and an underscore." - declaring these names      */
-             /* here too would be a duplicate-name compile error.           */
+             /* &WHREFI/&WHRELI (DSPDBR outfile) and &ODOBNM/&ODOBAT        */
+             /* (DSPOBJD outfile) are NOT declared here on purpose: each    */
+             /* DCLF below auto-declares its own outfile's fields under     */
+             /* those exact names (OPNID(*NONE), the default - no prefix -  */
+             /* applies, since these two record formats (QWHDRDBR/QLIDOBJD) */
+             /* do not share any field name), and declaring them twice      */
+             /* would be a duplicate-name compile error.                    */
              /*                                                            */
-             /* OPNID is D/P (single letter), not TXMDBR/TXMPGM (this       */
-             /* file's own QTEMP file names). Ordinary CL variable names    */
-             /* declared by DCL are commonly said to be capped at 11        */
-             /* characters including the ampersand (WebSearch, 2026-09-27,  */
-             /* citing '&NBRDLTPGMMSG is invalid because it is too long')   */
-             /* - but the dclf.htm page fetched just above gives ITS OWN    */
-             /* example as '&FILE1_CUSTNAME' (14 characters after &),       */
-             /* which contradicts a flat 10-after-& reading if that same    */
-             /* limit applies to OPNID-generated names. This is NOT settled */
-             /* either way by anything this repo has fetched or holds as a  */
-             /* primary source - it is left as an open question, not        */
-             /* asserted as confirmed. D/P are used anyway, as the          */
-             /* conservative choice that sidesteps the question entirely:   */
-             /* &D_WHRELI/&D_WHREFI/&P_ODOBNM/&P_ODOBAT (8 characters       */
-             /* after &) are short enough to be legal under EITHER          */
-             /* reading, so this choice costs nothing regardless of which    */
-             /* interpretation turns out to be right. The single-letter     */
-             /* OPNID choice is unrelated to the FILE(QTEMP/TXMDBR)/        */
-             /* FILE(QTEMP/TXMPGM) qualifiers just below, which are         */
-             /* untouched: OPNID only affects RCVF/field-variable naming,   */
-             /* never the file name itself.                                */
-
-             /* FIXED (2026-09-27, found by static review before a real   */
-             /* connection, ahead of the 2F TXMIGR manifest): both DCLF    */
-             /* statements below used to sit right before their first use  */
-             /* (Step 2/Step 3 further down, after several executable      */
-             /* statements) - OPM CL requires every DCL/DCLF to precede all */
-             /* executable statements in the program, so the compile would */
-             /* have failed outright (this is the same rule already        */
-             /* relied on above: &D_WHREFI/&D_WHRELI/&P_ODOBNM/&P_ODOBAT    */
-             /* can only be used because DCLF runs before they are read).   */
-             /* Moved both here, into the declare section.                  */
-             /* UNVERIFIED risk this reorder does not resolve: DCLF must   */
-             /* also find the named file at COMPILE time to read its       */
-             /* record format, but QTEMP/TXMDBR and QTEMP/TXMPGM are only  */
-             /* created at RUN time, by the DSPDBR/DSPOBJD OUTFILE steps    */
-             /* further down in this same program - whether CRTCLPGM can   */
-             /* compile this at all (in a job where those QTEMP files do   */
-             /* not yet exist) is not something a source reading can       */
-             /* settle; needs an actual CRTCLPGM attempt to confirm or      */
-             /* refute. verify/part05-txmigr-to2 works around this by      */
-             /* priming both QTEMP files (via a throwaway DSPDBR/DSPOBJD   */
-             /* OUTFILE run against an object that already exists) before  */
-             /* CRTCLPGM'ing this program in the SAME job - but also runs  */
-             /* one totally unprimed CRTCLPGM attempt first, specifically  */
-             /* to observe whether a real learner's fresh job (no such     */
-             /* priming) can compile this at all; see that manifest's own  */
-             /* description for the result.                                */
+             /* REDESIGNED (2026-09-27, real-hardware finding from          */
+             /* verify/part05-txmigr-to2b): the previous design DCLF'd      */
+             /* QTEMP/TXMDBR and QTEMP/TXMPGM directly - files that only    */
+             /* exist at RUN time, created by this same program's own       */
+             /* DSPDBR/DSPOBJD OUTFILE steps further down. A deliberately   */
+             /* unprimed CRTCLPGM attempt (verify/part05-txmigr-to2b's own  */
+             /* CPTXMIGRRW step) confirmed this genuinely fails to compile  */
+             /* in a job where those QTEMP files do not already exist       */
+             /* ("Program TXMIGR not created" / CPF0801, no compile listing */
+             /* at all) - exactly the risk the previous version of this     */
+             /* comment flagged as open. This means a real learner          */
+             /* following 05-09/05-12 as written could never compile        */
+             /* TXMIGR at all, since nothing creates QTEMP/TXMDBR or        */
+             /* QTEMP/TXMPGM ahead of time for them either.                 */
              /*                                                            */
-             /* FIXED (2026-09-27, verify/part05-txmigr-to2 design, static  */
-             /* review): added explicit OPNID() to both DCLF statements     */
-             /* below and to both RCVF statements further down. This repo's */
-             /* own work/design/refs/cl_commands_75.txt has no DCLF/RCVF    */
-             /* page at all (confirmed by grep - genuinely absent, not      */
-             /* just unread), so this was NOT settled against a primary    */
-             /* source in this repo when first written; it followed        */
-             /* long-standing general CL knowledge instead (a bare RCVF     */
-             /* with no OPNID() is only valid when exactly one file is      */
-             /* DCLF'd in the whole program - with two, as here, RCVF       */
-             /* must say which one).                                        */
+             /* FIX: DCLF against the IBM-supplied MODEL outfiles for       */
+             /* DSPDBR/DSPOBJD instead - QSYS/QADSPDBR (format QWHDRDBR)    */
+             /* and QSYS/QADSPOBJ (format QLIDOBJD) - which always exist,   */
+             /* so the compile no longer depends on this program's own      */
+             /* QTEMP files existing yet (WebSearch, 2026-09-27: IBM        */
+             /* Knowledge Center/setgetweb.com DSPDBR and DSPOBJD command   */
+             /* descriptions both name their model outfile and format this  */
+             /* way; not independently fetched as a full primary-source     */
+             /* page in this repo, since the pages found were not directly  */
+             /* fetchable - flagged as a secondary-source citation, not a   */
+             /* first-party one). The field names themselves (WHRTYP/       */
+             /* WHREFI/WHRELI/WHTYPE, ODOBNM/ODOBAT) are NOT a new guess:    */
+             /* they are exactly the names already CONFIRMED against real   */
+             /* hardware above (part05-legacy-probe's DSPDBR dump) and by   */
+             /* verify/part05-txmigr-to2b's own successful RECOMPILE loop    */
+             /* (DSPOBJD's ODOBNM/ODOBAT correctly drove CRTRPGPGM/          */
+             /* CRTCLPGM for every real object in the library) - both ran   */
+             /* against whatever format DSPDBR/DSPOBJD default to when no   */
+             /* OUTFILEFMT is given, which is exactly QWHDRDBR/QLIDOBJD.    */
+             /* At RUN time, OVRDBF redirects each model file to this       */
+             /* program's own real QTEMP/TXMDBR or QTEMP/TXMPGM (created    */
+             /* moments earlier by this same program's own DSPDBR/DSPOBJD  */
+             /* OUTFILE step) before the first RCVF against it - see Step   */
+             /* 2/Step 3 below. Still not exercised by an actual CRTCLPGM   */
+             /* on real hardware.                                          */
              /*                                                            */
-             /* CONFIRMED (2026-09-27, second static review for verify/     */
-             /* part05-txmigr-to2b, WebFetch of ibm.com/docs/api/v1/        */
-             /* content/ssw_ibm_i_75/cl/dclf.htm): giving OPNID() a real    */
-             /* value (not *NONE) does NOT just label the open instance -   */
-             /* it RENAMES every field variable DCLF auto-declares for      */
-             /* that file, prefixing each with the OPNID value and an       */
-             /* underscore ("If the OPNID parameter value is not *NONE,     */
-             /* the variable name is the field name prefixed with an       */
-             /* ampersand (&), the value specified for the OPNID            */
-             /* parameter, and an underscore."). The EARLIER static review   */
-             /* above (still-genuinely-unconfirmed-on-real-hardware, as     */
-             /* this same paragraph used to say) had missed this: it        */
-             /* originally used OPNID(TXMDBR)/OPNID(TXMPGM), and then       */
-             /* used the OLD, unqualified field names (&WHRELI/&WHREFI/     */
-             /* &ODOBNM/&ODOBAT) everywhere below - once OPNID(TXMDBR) is    */
-             /* in force those old names are simply UNDECLARED (DCLF only   */
-             /* declares the PREFIXED forms), so that version would have    */
-             /* failed to compile on undeclared-variable errors regardless   */
-             /* of any length question. Switched to single-letter           */
-             /* OPNID(D)/OPNID(P), and every use of WHRELI/WHREFI/ODOBNM/    */
-             /* ODOBAT below now carries that short prefix (&D_WHRELI/       */
-             /* &D_WHREFI/&P_ODOBNM/&P_ODOBAT) - this resolves the          */
-             /* undeclared-name problem regardless of the separate,          */
-             /* still-open variable-name-length question the DCL section     */
-             /* comment above discusses. Still not exercised by an actual    */
-             /* CRTCLPGM on real hardware.                                   */
-             DCLF       FILE(QTEMP/TXMDBR) OPNID(D)
-             DCLF       FILE(QTEMP/TXMPGM) OPNID(P)
+             /* RCVF still needs to say which of the two DCLF'd files to    */
+             /* read (a bare RCVF with no OPNID() is only valid when        */
+             /* exactly one file is DCLF'd in the whole program - this      */
+             /* repo's own work/design/refs/cl_commands_75.txt has no       */
+             /* DCLF/RCVF page at all, confirmed absent by grep, so this    */
+             /* follows long-standing general CL knowledge, not a primary   */
+             /* source held here). With OPNID(*NONE) at DCLF time (the      */
+             /* default, relied on above for unprefixed field names),       */
+             /* RCVF's own OPNID() parameter takes the FILE's own name as    */
+             /* the implicit identifier - RCVF OPNID(QADSPDBR) / RCVF        */
+             /* OPNID(QADSPOBJ) below.                                       */
+             DCLF       FILE(QSYS/QADSPDBR)
+             DCLF       FILE(QSYS/QADSPOBJ)
 
              /* Safety net: see tools/qclsrc/txsetup.clp for why this      */
              /* matters (an unmonitored *ESCAPE can hang a non-interactive */
@@ -196,10 +157,16 @@
                           OUTFILE(QTEMP/TXMDBR)
              MONMSG     MSGID(CPF0000) EXEC(DO)
                 SNDPGMMSG  MSG('TXMIGR: DSPDBR failed - check the +
-                             D_WHREFI/D_WHRELI field names in this +
+                             WHREFI/WHRELI field names in this +
                              program against a real OUTFILE dump.')
                 GOTO       CMDLBL(RECOMPILE)
              ENDDO
+             /* Redirect the model file this program actually DCLF'd       */
+             /* (QADSPDBR) to the real outfile DSPDBR just built, so RCVF   */
+             /* below reads OUR data, not QADSPDBR itself (which DSPDBR     */
+             /* never touches). SHARE(*NO): this program has not opened     */
+             /* either file yet (DCLF alone does not open it).              */
+             OVRDBF     FILE(QADSPDBR) TOFILE(QTEMP/TXMDBR) SHARE(*NO)
 
 /* No DLTF before CRTLF here, on purpose: CRTPF/CRTLF have no REPLACE      */
 /* parameter (confirmed: neither is in the "has REPLACE" group with       */
@@ -209,45 +176,50 @@
 /* exists) - never deletes anything. (WHREFI is confirmed to always name  */
 /* the dependent logical file, never JUCHUM itself - see header comment - */
 /* so the wrong-object-type risk this comment used to flag no longer     */
-/* applies. Its DCLF-generated variable name is &D_WHREFI, per the OPNID-  */
-/* prefixing rule confirmed just above - OPNID(D), not OPNID(TXMDBR),      */
-/* to stay under the CL variable-name-length limit.)                       */
-NEXTDBR:     RCVF       OPNID(D)
-             MONMSG     MSGID(CPF0864) EXEC(GOTO CMDLBL(RECOMPILE))
-             IF         COND(&D_WHRELI *NE &LIB) THEN(GOTO CMDLBL(NEXTDBR))
-             CRTLF      FILE(&LIB/&D_WHREFI) SRCFILE(&LIB/QDDSSRC) +
-                          SRCMBR(&D_WHREFI)
+/* applies.)                                                              */
+NEXTDBR:     RCVF       OPNID(QADSPDBR)
+             MONMSG     MSGID(CPF0864) EXEC(GOTO CMDLBL(DLTOVRDBR))
+             IF         COND(&WHRELI *NE &LIB) THEN(GOTO CMDLBL(NEXTDBR))
+             CRTLF      FILE(&LIB/&WHREFI) SRCFILE(&LIB/QDDSSRC) +
+                          SRCMBR(&WHREFI)
              MONMSG     MSGID(CPF0000) EXEC(SNDPGMMSG MSG('TXMIGR: could +
-                          not recreate ' *CAT %TRIM(&D_WHREFI) *CAT '.'))
+                          not recreate ' *CAT %TRIM(&WHREFI) *CAT '.'))
              GOTO       CMDLBL(NEXTDBR)
+
+DLTOVRDBR:   DLTOVR     FILE(QADSPDBR)
+             MONMSG     MSGID(CPF0000)
 
 /* --- Step 3: recompile every *PGM in the library (see header comment). */
 RECOMPILE:   DSPOBJD    OBJ(&LIB/*ALL) OBJTYPE(*PGM) OUTPUT(*OUTFILE) +
                           OUTFILE(QTEMP/TXMPGM)
              MONMSG     MSGID(CPF0000) EXEC(DO)
                 SNDPGMMSG  MSG('TXMIGR: DSPOBJD failed - check the +
-                             P_ODOBNM/P_ODOBAT field names in this +
+                             ODOBNM/ODOBAT field names in this +
                              program against a real OUTFILE dump.')
                 GOTO       CMDLBL(TXDONE)
              ENDDO
+             OVRDBF     FILE(QADSPOBJ) TOFILE(QTEMP/TXMPGM) SHARE(*NO)
 
-NEXTPGM:     RCVF       OPNID(P)
-             MONMSG     MSGID(CPF0864) EXEC(GOTO CMDLBL(TXDONE))
-             IF         COND(&P_ODOBAT *EQ 'RPG') THEN(DO)
-                CRTRPGPGM  PGM(&LIB/&P_ODOBNM) SRCFILE(&LIB/QRPGSRC) +
-                             SRCMBR(&P_ODOBNM) REPLACE(*YES)
+NEXTPGM:     RCVF       OPNID(QADSPOBJ)
+             MONMSG     MSGID(CPF0864) EXEC(GOTO CMDLBL(DLTOVROBJ))
+             IF         COND(&ODOBAT *EQ 'RPG') THEN(DO)
+                CRTRPGPGM  PGM(&LIB/&ODOBNM) SRCFILE(&LIB/QRPGSRC) +
+                             SRCMBR(&ODOBNM) REPLACE(*YES)
                 MONMSG     MSGID(CPF0000) EXEC(SNDPGMMSG MSG('TXMIGR: +
-                             could not recompile ' *CAT %TRIM(&P_ODOBNM) +
+                             could not recompile ' *CAT %TRIM(&ODOBNM) +
                              *CAT ' (RPG).'))
              ENDDO
-             IF         COND(&P_ODOBAT *EQ 'CLP') THEN(DO)
-                CRTCLPGM   PGM(&LIB/&P_ODOBNM) SRCFILE(&LIB/QCLSRC) +
-                             SRCMBR(&P_ODOBNM) REPLACE(*YES)
+             IF         COND(&ODOBAT *EQ 'CLP') THEN(DO)
+                CRTCLPGM   PGM(&LIB/&ODOBNM) SRCFILE(&LIB/QCLSRC) +
+                             SRCMBR(&ODOBNM) REPLACE(*YES)
                 MONMSG     MSGID(CPF0000) EXEC(SNDPGMMSG MSG('TXMIGR: +
-                             could not recompile ' *CAT %TRIM(&P_ODOBNM) +
+                             could not recompile ' *CAT %TRIM(&ODOBNM) +
                              *CAT ' (CLP).'))
              ENDDO
              GOTO       CMDLBL(NEXTPGM)
+
+DLTOVROBJ:   DLTOVR     FILE(QADSPOBJ)
+             MONMSG     MSGID(CPF0000)
 
 TXDONE:      CHGVAR     VAR(&DBVERC) VALUE(&TO)
              SNDPGMMSG  MSG('TXMIGR: done. DBVER=' *CAT %TRIM(&DBVERC) +
