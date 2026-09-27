@@ -1,8 +1,9 @@
      A*                                     FLDREF - common field reference.
      A*                                     Part 5 (legacy). QDDSSRC.
-     A*                                     NOT compiled on real hardware
-     A*                                     yet (SSH connection budget is
-     A*                                     exhausted this session).
+     A*                                     CONFIRMED, real hardware
+     A*                                     (part05-legacy-probe, 2nd
+     A*                                     connection): compiles with 0
+     A*                                     messages (see docs/probes.md).
      A*
      A*                                     REFFLD target only: other DDS
      A*                                     are meant to reference these
@@ -10,20 +11,19 @@
      A*                                     FLDREF itself never uses REFFLD.
      A*
      A*                                     UNVERIFIED: no DDS Reference doc
-     A*                                     is in this repo's work/design/
-     A*                                     refs (7 docs there; none is a
-     A*                                     DDS Reference. Only secref75.txt
-     A*                                     mentions REFFLD, in an authority
-     A*                                     table, not its syntax/usage).
-     A*                                     Zero actual REFFLD referrers
-     A*                                     exist yet: db/v2/juchum.pf still
-     A*                                     inlines JUNO/JUTOK rather than
-     A*                                     using REFFLD. Confirm REFFLD's
-     A*                                     real syntax on the next real-
-     A*                                     machine connection or doc pull
-     A*                                     (see design.json openQuestions,
-     A*                                     itself local-only: work/ is
-     A*                                     gitignored in this repo).
+     A*                                     was available among this repo's
+     A*                                     private working notes when this
+     A*                                     was written (none of them is a
+     A*                                     DDS Reference; only one secondary
+     A*                                     reference mentions REFFLD, in an
+     A*                                     authority table, not its syntax/
+     A*                                     usage). Zero actual REFFLD
+     A*                                     referrers exist yet: db/v2/
+     A*                                     juchum.pf still inlines JUNO/
+     A*                                     JUTOK rather than using REFFLD.
+     A*                                     Confirm REFFLD's real syntax on
+     A*                                     the next real-machine connection
+     A*                                     or doc pull.
      A*
      A*                                     See FLDREFR (QRPGSRC) for the
      A*                                     matching RPG III /COPY member of
