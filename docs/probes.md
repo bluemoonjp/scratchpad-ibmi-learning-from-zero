@@ -1447,9 +1447,11 @@ pub400.com port 2222: Connection timed out`(ネットワーク側の一時的な
   `ODOBNM`/`ODOBAT`)自体は新しい推測ではなく、`part05-legacy-probe`の
   実測(`WHREFI`/`WHRELI`)と、この接続B自身のRECOMPILEループが実際に
   正しく動いた実績(`ODOBNM`/`ODOBAT`)で、どちらも既に確認済みの値を
-  そのまま使っている。**この修正自体はまだ実機で確認していない**
-  (`verify/part05-txmigr-compile-check`という最小マニフェストで次回
-  接続で確認予定)。
+  そのまま使っている。**この修正自体、最初の実装(両方のDCLFとも既定の
+  `OPNID(*NONE)`のまま)は実機で失敗した**——詳細は次の
+  `part05-txmigr-compile-check`の節を参照。最終的に確認できたのは
+  `DCLF ... OPNID(D)`/`DCLF ... OPNID(P)`(明示的に別々のOPNIDを
+  つける)版。
 - **`TXMIGR`本体の実行結果(以下、修正前の設計のままで確認できたこと)**:
   - Step 1(`CHGPF`): 既に接続Aで適用済みの変更を冪等に再適用(`8
     records copied`/`File JUCHUM in library <USER>B changed.`)、正常。
@@ -1477,6 +1479,40 @@ pub400.com port 2222: Connection timed out`(ネットワーク側の一時的な
 
 これで接続Bは完了。次は`part05-txmigr-compile-check`(txmigr.clp再設計の
 確認)。
+
+## 第5部`part05-txmigr-compile-check`の実機検証: txmigr.clp再設計の確認、
+および途中で見つかった2件目の実機バグ(確認日2026-09-27)
+
+`tools/qclsrc/txmigr.clp`の再設計(前節参照、DCLFをIBM提供のモデル・
+ファイル`QSYS/QADSPDBR`/`QSYS/QADSPOBJ`へ向ける方式)の確認。
+**CONFIRMED SUCCESS(ただし1回目の実装は実機で失敗し、修正が必要
+だった)。**
+
+- **1回目の実装(両方のDCLFとも既定の`OPNID(*NONE)`のまま)は
+  コンパイル自体が失敗した**: `CPD0303: DCLF with OPNID parameter
+  *NONE declared previously`(通常のコンパイル・リストすら出ない)。
+  実機で確認できた新しい規則: **1つのプログラム中で`OPNID(*NONE)`
+  (既定値)を使えるDCLF'd済みファイルは、最大1つまで**——`RCVF`が
+  無指定(`OPNID()`省略)で使えるファイルが1つまでという既存の制約
+  (`tools/qclsrc/txsetup.clp`のコメント参照)と、全く同じ「無指定は
+  1つまで」の規則が、DCLF自身の`OPNID()`にも及ぶことが分かった。
+  このプログラムはDCLFが2つ(`QADSPDBR`・`QADSPOBJ`)あるため、
+  どちらもデフォルトの`OPNID(*NONE)`のままでは衝突する。
+- **修正: 両方のDCLFに明示的な別々のOPNIDをつけた**
+  (`DCLF FILE(QSYS/QADSPDBR) OPNID(D)`・
+  `DCLF FILE(QSYS/QADSPOBJ) OPNID(P)`)。これに伴い、DCLFが
+  自動宣言するフィールド名も`OPNID()`の値がアンダースコア付きで
+  前置される仕様(IBM資料`dclf.htm`で確認済み、このセッション前半で
+  発見)により、`&D_WHREFI`/`&D_WHRELI`/`&P_ODOBNM`/`&P_ODOBAT`と
+  改名した。`RCVF`側も`RCVF OPNID(D)`/`RCVF OPNID(P)`に対応させた。
+- **この修正版で本接続を実行し、優先の前提無し(QTEMPに
+  `TXMDBR`/`TXMPGM`が無い、完全に素のジョブ)から
+  `CRTCLPGM PGM(&LIB/TXMIGR)`が成功した**:
+  `Program TXMIGR created in library <USER>2. Maximum error
+  severity 10.`——エラーなし(Severity 10は情報レベルのみ)。
+  **これで05-09/05-12レッスンの致命的な欠陥(前節参照)は
+  `tools/qclsrc/txmigr.clp`側の恒久修正で解消したことが実機で
+  確定した。**
 
 P02〜P44 のうち、上記(P01, P08 の一部)以外は未実施。特に:
 
