@@ -13,31 +13,29 @@
      A*                                     copies records between mismatched
      A*                                     formats without the normal field-
      A*                                     type check, so a row inserted here
-     A*                                     lands its raw character bytes in
-     A*                                     JUCHUD.JUSU once copied across -
-     A*                                     simulating the *NOCHK-caused
-     A*                                     corruption path the 05-11 syllabus
-     A*                                     entry names. FIXED (2026-09-27,
-     A*                                     real hardware, 2 rounds): JUSU=
-     A*                                     'ABCDE' was tried first - EBCDIC
-     A*                                     'A'-'E' (X'C1'-X'C5') is actually a
-     A*                                     VALID positive zoned-decimal
-     A*                                     encoding of +12345 (digit nibbles
-     A*                                     1-5, sign nibble C) - no decimal-
-     A*                                     data error at all. JUSU=5 blanks
-     A*                                     (X'40', zone/sign nibble 4) was
-     A*                                     tried next on the assumption an
-     A*                                     invalid sign nibble would trigger
-     A*                                     it - ALSO no error (JUSU read as
-     A*                                     0). Both values happen to share
-     A*                                     valid DIGIT (low) nibbles (0-9) on
-     A*                                     every byte; the actual trigger for
-     A*                                     a real decimal-data error on this
-     A*                                     hardware is still unconfirmed -
-     A*                                     see docs/probes.md for the current
-     A*                                     plan (screen candidate byte
-     A*                                     patterns via SQL before spending
-     A*                                     another connection on a guess).
+     A*                                     with JUSU='ABCDE' (valid for THIS
+     A*                                     file's own 5A field) lands as
+     A*                                     C1C2C3C4C5 in JUCHUD.JUSU once
+     A*                                     copied across - simulating the
+     A*                                     *NOCHK-caused corruption path the
+     A*                                     05-11 syllabus entry names.
+     A*                                     CONFIRMED (2026-09-27, real
+     A*                                     hardware, part05-mch1202-corrupt,
+     A*                                     under an isolated verification-only
+     A*                                     setup): EBCDIC 'A'-'E' (X'C1'-
+     A*                                     X'C5') happens to be a VALID
+     A*                                     positive zoned-decimal encoding of
+     A*                                     +12345 (digit nibbles 1-5, sign
+     A*                                     nibble C) - it raises NO decimal-
+     A*                                     data error at all; OPM RPG/400
+     A*                                     silently reads JUSU=12345. Kept as
+     A*                                     the planted value anyway: this
+     A*                                     silent, absurd misreading is a
+     A*                                     more teachable illustration of
+     A*                                     *NOCHK's real danger than a crash
+     A*                                     would be - see
+     A*                                     docs/part05/05-11-decimal-data-
+     A*                                     error.md's real-hardware notes.
      A          R JUCHDR                    TEXT('05-11 mis-typed staging')
      A            JUNO           6A         TEXT('Order number')
      A            JULINE         3S 0       TEXT('Line number')

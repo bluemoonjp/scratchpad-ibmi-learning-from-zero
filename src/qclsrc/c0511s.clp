@@ -11,27 +11,23 @@
 /* raw character bytes in JUCHUD.JUSU, which may or may not be valid       */
 /* zoned decimal depending on what was planted (see FIXED note below).     */
 /*                                                                          */
-/* FIXED, part 2 (part05-mch1202-corrupt, 2026-09-27, real hardware): the   */
-/* first version planted JUSU='ABCDE'. EBCDIC 'A'-'E' are X'C1'-X'C5' - the  */
-/* digit (low) nibbles are 1-5 (all valid) and the LAST byte's zone (high)   */
-/* nibble is C, which is a valid POSITIVE sign nibble. 'ABCDE' is therefore  */
-/* a well-formed zoned decimal encoding of +12345, not corrupted data at    */
-/* all - confirmed on real hardware: OPM RPG/400 read it as JUSU=12345 with  */
-/* no decimal-data error whatsoever (docs/probes.md).                       */
-/* FIXED, part 3 (same connection's own follow-up, 2026-09-27, real         */
-/* hardware): switched the planted value to 5 blanks (EBCDIC X'40' per     */
-/* byte, zone/sign nibble 4) on the assumption that an invalid sign nibble  */
-/* is the classic real-world decimal-data-error trigger - ALSO WRONG,       */
-/* confirmed on real hardware: JUSU read as 0 (not corrupted), again no     */
-/* decimal-data error (docs/probes.md). Both tested values happen to share  */
-/* a common trait: every byte's DIGIT (low) nibble is 0-9 (1,2,3,4,5 for    */
-/* 'ABCDE'; 0,0,0,0,0 for blanks) - this OPM RPG/400 appears to validate    */
-/* only that, ignoring the zone/sign nibble entirely. NOT YET CONFIRMED as  */
-/* the actual rule (2 data points only) - a genuinely invalid corruption    */
-/* value likely needs an invalid DIGIT nibble (A-F), not just an unusual    */
-/* zone/sign nibble. See docs/probes.md for the current plan (SQL-based    */
-/* screening of several byte patterns before spending another RPG-level    */
-/* connection on a third guess).                                           */
+/* CONFIRMED, real hardware (part05-mch1202-corrupt, 2026-09-27): JUSU=      */
+/* 'ABCDE' is planted deliberately, KEEPING it despite an early finding      */
+/* that it is not, in the strictest sense, corrupted data at all: EBCDIC     */
+/* 'A'-'E' are X'C1'-X'C5' - the digit (low) nibbles are 1-5 (all valid) and */
+/* the LAST byte's zone (high) nibble is C, a valid POSITIVE sign nibble.    */
+/* Under an isolated, verification-only JUCHUM/ticket-1-fixed setup          */
+/* (part05-mch1202-corrupt's own manifest), OPM RPG/400 read this as         */
+/* JUSU=12345 with NO decimal-data error at all - a vividly absurd order     */
+/* quantity, visible via a plain SELECT, silently used in arithmetic.        */
+/* Blanks (X'40' per byte) were tried as an alternative on the assumption    */
+/* that an invalid sign nibble would trigger a real decimal-data error -     */
+/* ALSO refuted on real hardware (JUSU read as 0, still no error). Given     */
+/* NEITHER value raises a decimal-data error through this corruption path,   */
+/* 'ABCDE' was kept as the main demo value specifically because its silent   */
+/* misreading (12345) is the more vivid, teachable illustration - see        */
+/* docs/part05/05-11-decimal-data-error.md's real-hardware notes for the     */
+/* full investigation and the lesson's own reframing around this.           */
 /*                                                                          */
 /* Uses product code P00001 (a real ZAIKOM row, per za0510.rpg's header    */
 /* comment / db/data/load_v1.sql) so the planted row actually reaches      */
@@ -106,17 +102,17 @@
                           mis-typed staging'))
 
              /* Step 2: clear any leftover row from a previous run, then   */
-             /* insert one row with JUSU=blanks (5 spaces) - valid         */
-             /* character data for JUBADD's own 5A field, an INVALID sign  */
-             /* nibble (X'40') once its raw bytes land in JUCHUD.JUSU (see */
-             /* the FIXED, part 2 header note above - 'ABCDE' was tried    */
-             /* first and turned out to be a valid, not corrupted, value). */
+             /* insert one row with JUSU='ABCDE' - valid character data    */
+             /* for JUBADD's own 5A field. See the header note above: this */
+             /* is kept despite reading back as a valid (not corrupted)    */
+             /* zoned decimal value on this hardware - its silent, absurd  */
+             /* misreading (12345) is the point.                           */
              RUNSQL     SQL('DELETE FROM ' *CAT %TRIM(&LIB) *CAT +
                           '/JUBADD WHERE JUNO = ''C05119''') COMMIT(*NONE)
              MONMSG     MSGID(CPF0000)
              RUNSQL     SQL('INSERT INTO ' *CAT %TRIM(&LIB) *CAT +
                           '/JUBADD VALUES (''C05119'', 1, ''P00001'', +
-                          ''     '', 100.00)') COMMIT(*NONE)
+                          ''ABCDE'', 100.00)') COMMIT(*NONE)
 
              /* Step 3: also plant a matching JUCHUM header row, so the    */
              /* JUCHUD row planted below is part of a genuine matched      */
