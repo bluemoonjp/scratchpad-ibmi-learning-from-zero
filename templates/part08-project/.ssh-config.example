@@ -1,0 +1,15 @@
+# PUB400 への接続例(~/.ssh/config に追記して使う)。
+#
+# IdentitiesOnly yes が重要: これを付けないと、ssh-agent に登録済みの
+# 他の鍵もまとめて提示してしまうことがある。PUB400 は認証に2回失敗すると
+# 接続を止める(docs/style-guide.md の作法どおり)ため、鍵を1本に絞る。
+#
+# 接続コマンドの形自体は docs/probes.md の実測(02-04で確認済み)のとおり:
+#   ssh -i <鍵> -p 2222 -o IdentitiesOnly=yes <ユーザー名>@pub400.com
+
+Host pub400
+    HostName pub400.com
+    Port 2222
+    User your_username_here
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
