@@ -1,6 +1,6 @@
 # 06-14 埋め込み SQL (2): カーソル・動的 SQL・コミットメント制御
 
-> 所要時間: 75分(長め)/ 前提レッスン: 06-13 / 目標番号: 5 / 観測方法: `WRKSPLF` / 道具: SSH(`CPYFRMSTMF` でのソース取り込み)、5250(`CRTSQLRPGI`・`CALL`・`WRKSPLF`)/ 同時接続数: 5250×1(SSHでのソース取り込みは都度接続し直します。02-04・05-01・06-04と同じやり方です)/ 作る・変えるオブジェクト: `<USER>1/Q0614A`(SQLRPGLE)/ DBVER: 1 / 依存するプローブ: P12(`TOKUIM`は未journaled、確認済み)・`part06-1314-sql`検証バッチ(`CRTSQLRPGI`のOBJ/SRCFILE/SRCMBR/OBJTYPE/COMMIT構文、Highest Severity 00で確認)/ PTF 依存: なし / 容量の目安: わずか
+> 所要時間: 75分(長め)/ 前提レッスン: 06-13 / 目標番号: 5 / 観測方法: `WRKSPLF` / 道具: SSH(`CPYFRMSTMF` でのソース取り込み)、5250(`CRTSQLRPGI`・`CALL`・`WRKSPLF`)/ 同時接続数: 5250×1(SSHでのソース取り込みは1回の接続でまとめて行います)/ 作る・変えるオブジェクト: `<USER>1/Q0614A`(SQLRPGLE)/ DBVER: 1 / 依存するプローブ: P12(`TOKUIM`は未journaled、確認済み)・`part06-1314-sql`検証バッチ(`CRTSQLRPGI`のOBJ/SRCFILE/SRCMBR/OBJTYPE/COMMIT構文、Highest Severity 00で確認)/ PTF 依存: なし / 容量の目安: わずか
 
 ## ゴール
 

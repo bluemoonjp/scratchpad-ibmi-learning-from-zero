@@ -825,8 +825,11 @@ IBM公式ドキュメントの記述(許される実行環境を明示的に列�
 他の深さのパターンを実際に実機確認したわけではない。**`jucutl.rpgle`
 (M0701B)自身の以前のヘッダー・コメントはこれを「呼び出しの深さの
 問題」と誤って推測していたが、実際には(上記の1パターンに関する限り)
-深さは無関係で、`f0605s.rpgle`/`f0606s.rpgle`の直接(1段)呼び出しも同様に
-壊れている。**
+深さは無関係だった。`f0605s.rpgle`/`f0606s.rpgle`は`sendMsg`
+サブプロシージャーを一字一句そのまま複製して持っており(grepで確認)、
+`jucutl.rpgle`と全く同じコードである以上、同じ`CPD0031`で壊れると
+強く推論できるが、この2ファイル単独でのコンパイル・実行による
+独立した再確認は行っていない。**
 
 **全リポジトリーをQCMDEXC呼び出しで検索し、影響範囲を確定した:**
 `f0605s.rpgle`・`f0606s.rpgle`・`jucutl.rpgle`(いずれもRPG IV、
@@ -1200,9 +1203,8 @@ CALLPRC経由でJUCSRVをバインド)を検証。
 `Q0614BA`(06-14b: DATE/NULL・`ALWNULL(*USRCTL)`・`%nullind`)を検証。
 
 **【訂正、Wave 2執筆時に発見】1回目(priming無し)の接続を「実行時に
-致命的に失敗した」と記録していたが、これは誤りだった。** 生の結果
-JSON(`work/verify/results/part06-14b-null-2026-09-27T02-00-13-404Z.json`)
-を直接読み直したところ:
+致命的に失敗した」と記録していたが、これは誤りだった。** 該当接続
+(`part06-14b-null`、1回目)の生の結果JSONを直接読み直したところ:
 
 - コンパイルは`SQL1103`(severity 10、`W0614BA`の列定義をカタログでは
   なく文中の記述から推測、3箇所で発生)を伴いつつ成功し(RPGコンパイル
@@ -1235,8 +1237,8 @@ priming が「修正した」わけではない。印字結果(2行)は1回目�
 failed)で**コンパイル自体が失敗**しており、原因は2件の静的`INSERT`
 文の`TIMESTAMP`リテラルが当時RPGネイティブの`Z`形式のままだったこと
 による`SQL0180`(severity 30、日時リテラルの構文誤り、INSERT文2箇所)
-だった(`work/verify/results/part06-decisions-1-2026-09-27T22-17-19-406Z.json`
-のQ0614BAコンパイル・リストで直接確認)。`part06-decisions-2`の記録が
+だった(`part06-decisions-1`接続の生の結果JSON、Q0614BAコンパイル・
+リストで直接確認)。`part06-decisions-2`の記録が
 当時「INSERTにもSELECTと同じ列レベルのアクセス・プランが必要」と
 書いていたのも同じ理由で不正確——実際の診断は`SQL1103`ではなく
 `SQL0180`だった。TIMESTAMPリテラルをANSI/ISO形式に直したうえで
@@ -1289,7 +1291,7 @@ null指標の橋渡し、`ALWNULL(*USRCTL)`/`NULLIND`キーワードは、
 コンパイル成功。直接`CALL`・`JUCINQ`コマンド経由(CPP切り替え後)とも
 同一の正しいレポートを出力:
 
-```
+```text
 JUCINQ4 - ORDER INQUIRY REPORT        CUSTOMER: C00001
 ACME TRADING CO                 J00001  20260901
 ACME TRADING CO                 J00003  20260905
@@ -1346,7 +1348,7 @@ Severity 00でコンパイル・実行成功。**
 - **`DRIVER`の10件のロック・テストが全て期待どおりの結果**(単一の
   `CALL`内・同一活性化グループでの一連の呼び出し、という設計どおり):
 
-  ```
+  ```text
   0-BASELINE       P00001 QTY=0        OK= Y ZASU=45       get() peek
   1-RESERVE-OK     P00001 QTY=2        OK= Y ZASU=43       expect ON, -qty
   2-RESERVE-SHORT  P00001 QTY=9999999  OK= N ZASU=43       expect OFF, same
@@ -2217,7 +2219,7 @@ primingなしで単独確認。
 2行を印字した**(結果JSONの`run`セクションで直接確認、`CPYSPLF`は
 使わず——上記の教訓どおり):
 
-```
+```text
 C00001 ACME TRADING CO: last order 2026-09-05, last touched 2026-09-05-08.30.00.000000
 C00099 NEW PROSPECT CO: last order date is NULL (unknown), last touched 2026-09-20-14.15.00.000000
 ```
@@ -2279,6 +2281,7 @@ severity 30以上のエラーで失敗した場合だけ**(`REPLACE(*YES)`が働
 記録される**という紛らわしい失敗を実際に踏んだ。
 
 **今後のマニフェスト作成での対策**:
+
 1. CLラベルは全て10文字以内にする(超過分は`.slice(0,10)`で切り詰められ、
    異なるラベル同士が衝突しうる)。
 2. 接続後は必ず`compile`セクションを読み、severity 30以上のメッセージ
@@ -2335,7 +2338,7 @@ B-5、1回目の接続。
   期待どおり失敗——QSYSPRTの既知の制約)を確認したところ、**採点表と
   完全一致**:
 
-  ```
+  ```text
   P00001    DESK LAMP                           0000045
   P00002    OFFICE CHAIR                        0000003       LOWSTOCK
   P00003    NOTEBOOK PACK                       0000250
