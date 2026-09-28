@@ -5,10 +5,13 @@
 // src/qrpgsrc/r0413s.rpg). Written for lesson 06-07 (data structures
 // and arrays).
 //
-// STATUS: hardware-UNTESTED as of 2026-09-26. This source has NOT
-// been compiled or run on PUB400. Treat every behavior described
-// below as unverified (docs/style-guide.md V1/V2/V3 scale) until a
-// real CRTBNDRPG + CALL session updates this header with a result.
+// STATUS: CONFIRMED (part06-0509-procs-files, 2026-09-27): CRTBNDRPG
+// Highest Severity 00, CALL reproduced the same low-stock judgment as
+// the 04-13 checkpoint - P00002 (OFFICE CHAIR) and P00005 (USB CABLE)
+// printed LOWSTOCK, the other 4 products did not, and the array-lookup
+// bonus line ("BONUS: LOOKUP P00002 -> INDEX 2") matched too (V2,
+// confirmed by reading the connection's raw run-section text). See
+// docs/probes.md's part06-0509-procs-files section.
 //
 // WHAT CHANGED VS R0413A (same business rule, different mechanism):
 //   R0413A made ZAIKOM the RPG-cycle primary file (keyed, "IP") and

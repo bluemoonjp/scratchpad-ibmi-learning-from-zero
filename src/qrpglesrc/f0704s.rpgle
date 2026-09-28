@@ -3,11 +3,18 @@
 // F0704A - STATIC local variables and activation-group lifetime (Part 7,
 // lesson 07-04).
 //
-// STATUS: hardware-UNTESTED (Part 7 draft, draft/part06 branch). This
-// source has not been compiled or run on PUB400 yet. Neither has Part 6,
-// which this Part 7 draft otherwise depends on (part07-design-v1.md
-// section 0, preamble). Treat every runtime claim below as "should work
-// per the cited IBM i 7.5 references", not as a verified fact.
+// STATUS: CONFIRMED (part07-04b-actgrp, 2026-09-27): CRTBNDRPG Highest
+// Severity 00. The named-activation-group continue/reset sequence is
+// fully confirmed: CALL PGM(F0704A) (1st) returned 1,2,3; CALL
+// PGM(F0704A) (2nd, no RCLACTGRP) returned 4,5,6 (continuation);
+// RCLACTGRP ACTGRP(F0704AG); CALL PGM(F0704A) (3rd) returned 1,2,3
+// again (reset). The *NEW-vs-*CALLER contrast described below remains
+// unconfirmed - CRTRPGMOD itself rejects this file's own
+// ctl-opt actgrp('F0704AG') (severity 20, since that keyword is
+// CRTBNDRPG-only), which blocked building a same-source *CALLER
+// comparison object; treat that contrast as reasoning from the primary
+// sources, not as a verified fact. See docs/probes.md's
+// part07-04b-actgrp section.
 //
 // WHAT THIS DEMONSTRATES: a subprocedure-local STATIC variable holds its
 // value across repeated calls WITHIN one program activation (ordinary

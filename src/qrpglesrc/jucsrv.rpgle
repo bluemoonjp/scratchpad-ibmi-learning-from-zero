@@ -15,10 +15,15 @@
 // NEW, independent client programs (f0702s.rpgle/F0702A,
 // f0703s.rpgle/F0703A) - never wired into the live JUCINQ command.
 //
-// STATUS: hardware-UNTESTED (Part 7 draft, draft/part07 branch). This
-// source has not been compiled or run on PUB400 yet. Treat every
-// runtime claim below as "should work per the ILE RPG Language
-// Reference / ILE Concepts", not as a verified fact.
+// STATUS: CONFIRMED on real hardware, across multiple connections
+// (part07-0203-srvpgm, part07-03-signature - see docs/probes.md and
+// src/qsrvsrc/jucsrv.bnd's own header for the full sequence,
+// including the EXPORT(*ALL)-vs-binder-source signature-violation
+// story 07-03 is built around). getCustName and countCustOrders are
+// both confirmed working (correct customer name, correct order count
+// across two same-activation-group calls). pingJucsrv is confirmed
+// only as a signature-breaking placeholder (07-03's own point), not
+// for any return value of its own.
 //
 // ----------------------------------------------------------------
 // 07-02: getCustName(custCode: char(6) const): char(30)
