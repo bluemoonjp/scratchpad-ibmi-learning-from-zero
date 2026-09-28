@@ -2,7 +2,9 @@
 //=======================================================================
 // TSTJUCSRV - TESTKIT-based test case for JUCSRV (Part 8, lesson
 // 08-04). Runs the 10 cases listed in work/design/part08-design-v1.md
-// section 2, 08-04, against JUCSRV's three exported procedures
+// section 2, 08-04, plus one deliberately-failing case (00, added by
+// this file, not in the design doc's own list - see its own comment
+// below), against JUCSRV's three exported procedures
 // (src/qrpglesrc/jucsrv.rpgle: getCustName, countCustOrders,
 // pingJucsrv - already CONFIRMED working on real hardware,
 // part07-0203-srvpgm/part07-03-signature, docs/probes.md).
@@ -103,6 +105,24 @@ dcl-pr assertTrue extproc(*dclcase);
 end-pr;
 
 testInit();
+
+// --- 00: DELIBERATELY WRONG expected value - not one of the design
+// doc's 10 cases. Every one of THOSE 10 is expected to PASS if
+// JUCSRV/ZAISRV/TESTKIT all work correctly, so without this case
+// TESTKIT's own FAIL/*ESCAPE path (src/qrpglesrc/testkit.sqlrpgle's
+// header, "WHY VOID, NOT ind") would never actually run on the FIRST
+// connection that compiles any of this. 999 can never equal
+// countCustOrders('C00001') (expected 2, see case 04 below), so this
+// assertion is GUARANTEED to fail. What to check in TESTRES/the job
+// log afterward: (a) this row shows RESULT='FAIL' with EXPECTED=999,
+// ACTUAL=2; (b) case 01 immediately below still ran and logged its own
+// row - if it did not, MONITOR did not actually let execution continue
+// past the *ESCAPE the way this file's design assumes.
+//-----------------------------------------------------------------------
+monitor;
+  assertEqualsNum('00-DELIBERATE-FAIL-DEMO' : 999 : countCustOrders('C00001'));
+on-error;
+endmon;
 
 // --- 1-3: getCustName ---------------------------------------------
 monitor;
