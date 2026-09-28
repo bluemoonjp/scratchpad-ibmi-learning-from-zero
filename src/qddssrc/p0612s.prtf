@@ -5,9 +5,22 @@
      A*                                     swap onto the JUCINQ command) - this
      A*                                     file only covers the DDS/PRTF side.
      A*
-     A*                                     STATUS: hardware-UNTESTED (Part 6
-     A*                                     draft, draft/part06 branch). Not
-     A*                                     yet compiled or run on PUB400.
+     A*                                     STATUS: P0612A itself (this DDS,
+     A*                                     compiled via CRTPRTF) has been
+     A*                                     CONFIRMED on real hardware across
+     A*                                     3 connections (part06-decisions-1,
+     A*                                     part06-decisions-2, part06-b6-
+     A*                                     batch, see docs/probes.md):
+     A*                                     compiles Highest Severity 00,
+     A*                                     RPTHDR/RPTDTL/RPTTOT all print,
+     A*                                     OFLIND(*IN01) overflow fires
+     A*                                     correctly. F0612A (the shipped
+     A*                                     RPG program that actually WRITEs
+     A*                                     to this PRTF) has NOT itself been
+     A*                                     compiled/run yet - the above
+     A*                                     confirmations come from throwaway
+     A*                                     probe programs sharing this same
+     A*                                     DDS object, not from F0612A.
      A*
      A*                                     Ports R0408A/JUCINQ3 (04-08,
      A*                                     src/qrpgsrc/r0408s.rpg) O-spec
@@ -114,15 +127,26 @@
      A*                                     count subtotal: an explicit
      A*                                     accumulator + explicit WRITE,
      A*                                     with no RPG-cycle total time
-     A*                                     (see f0612s.rpgle). EDTCDE(4),
-     A*                                     not (3), so a zero count still
-     A*                                     prints "0" instead of blank
-     A*                                     (04-08 lesson prose: edit code
-     A*                                     3 blanks zero, 4 keeps it).
+     A*                                     (see f0612s.rpgle). EDTCDE(3),
+     A*                                     not (4), so a zero count still
+     A*                                     prints "0" instead of blank.
+     A*                                     CORRECTED 2026-09-28: an earlier
+     A*                                     version of this field used
+     A*                                     EDTCDE(4) on the (backwards)
+     A*                                     belief that 4 shows zero and 3
+     A*                                     blanks it - the opposite is true
+     A*                                     (work/design/refs/ilerpgref75.txt
+     A*                                     Table 95, "Prints Zero Balance"
+     A*                                     column: odd codes 1/3 show a
+     A*                                     zero balance, even codes 2/4
+     A*                                     blank it). See docs/probes.md
+     A*                                     for the full correction,
+     A*                                     including the 04-08 lesson-text
+     A*                                     fix this same finding required.
      A*                                     SPACEB(2): blank line then this
      A*                                     total line - UNCONFIRMED syntax,
      A*                                     see header above.
      A          R RPTTOT
      A                                      SPACEB(2)
-     A            RPTCNT         5S 0O     2EDTCDE(4)
+     A            RPTCNT         5S 0O     2EDTCDE(3)
      A                                    10'ORDER(S) FOR THIS CUSTOMER'

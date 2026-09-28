@@ -111,11 +111,19 @@
 // intentional, task-directed deviation from that one design-doc
 // table, not an oversight.
 //
-// STATUS: hardware-UNTESTED (Part 6 draft, draft/part06 branch). This
-// source, and P0612A, have not been compiled, run, or CHGCMD-attached
-// to JUCINQ on PUB400 yet. Treat every runtime claim here as "should
-// work per the ILE RPG Language Reference / CL command reference", not
-// as a verified fact.
+// STATUS: F0612A itself (this exact program) has NOT yet been
+// CRTBNDRPG'd, run, or CHGCMD-attached to JUCINQ on PUB400. Treat any
+// claim about F0612A as a whole as "should work per the ILE RPG
+// Language Reference / CL command reference", not as a verified fact -
+// a dedicated compile-check connection for F0612A itself is still
+// pending. However, P0612A (src/qddssrc/p0612s.prtf, the DDS this
+// program WRITEs to) HAS been compiled and run on real hardware,
+// across 3 connections (part06-decisions-1, part06-decisions-2,
+// part06-b6-batch - see docs/probes.md and p0612s.prtf's own header),
+// via throwaway probe programs sharing this same DDS object. Every
+// individual RPG-side technique used below (OFLIND, program-entry
+// dcl-pi, CHAIN/%found) is separately confirmed too - see each
+// section's own citation.
 //
 // Verified against work/design/refs/ilerpgref75.txt (IBM i 7.5 ILE RPG
 // Language Reference, 73451 lines) and cl_commands_75.txt at
