@@ -2032,9 +2032,13 @@ Severity 00でコンパイル成功。** いずれもWORKSTN/EXFMTのためCALL�
 出荷ソースではない)として同一接続で試した:
 
 - **候補A**(`oflind(*inoa)`を`dcl-f p0612a`に直接指定、独立した
-  `dcl-s ovf`宣言なし): **失敗**。`RNS9308`/`RNS9310`
-  (severity 20、コンパイル失敗)——以前の`dcl-s ovf ind;`+
-  `oflind(ovf)`と同じ失敗クラス。この失敗が`CPF9999`(「Function
+  `dcl-s ovf`宣言なし): **失敗**。実際の原因は`RNF2014`
+  (「The parameter for keyword OFLIND is not valid; keyword is
+  ignored.」、severity 20)——保存済みコンパイル・リストで確認
+  済み。以前の`dcl-s ovf ind;`+`oflind(ovf)`が起こした`RNF2037`
+  (「Overflow Indicator is already defined」)とは**別のメッセージ**
+  だが、結果(この外部記述PRTFで`*INOA`が拒否される)は同じ。この
+  失敗が`CPF9999`(「Function
   check. RNS9310 unmonitored by TPART06DEC」)としてラッパーCL
   プログラム自身に一瞬エスケープした(monmsgに`RNS0000`を含めて
   いなかったため)が、包括的な`CPF0000`監視で最終的に捕捉され、

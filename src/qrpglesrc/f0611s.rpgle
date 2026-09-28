@@ -8,11 +8,11 @@
 // src/legacy/qddssrc/tk0100d.dspf and tools/gen/dspf.mjs). This header
 // only covers the RPG-side half of that same contract.
 //
-// CONFIRMED V1 (compile-check, part06-decisions-1, 2026-09-27):
-// CRTBNDRPG Highest Severity 00. (Option 5 calls F0604A with no
-// parameters, same as it always has - see "DEPENDENCY ON F0604A"
-// below for the real JUTOK-passing bug and why its fix is deferred to
-// 06-12, not landed here.)
+// CONFIRMED V1 (compile-check, part06-screens-compile, 2026-09-26):
+// CRTBNDRPG Highest Severity 00, this exact parameterless-option-5
+// form. (A later session briefly compiled a JUTOK-passing version in
+// part06-decisions-1 - reverted, see "DEPENDENCY ON F0604A" below for
+// why that fix is deferred to 06-12 instead of landing here.)
 // Interactive subfile/EXFMT execution (V3) is still untested - SSH
 // non-interactive batches cannot drive a real 5250 device (same
 // WORKSTN/EXFMT limitation as 04-11, tk0100.rpg, and f0604s.rpgle).
@@ -132,8 +132,8 @@
 // JUCSRV's getCustName integration specifically) - do not conflate the
 // two when 06-12 makes its own edit here.
 //
-// STATUS: CONFIRMED V1 (compile-check, part06-decisions-1,
-// 2026-09-27). Interactive/EXFMT behavior (V3) is still untested -
+// STATUS: CONFIRMED V1 (compile-check, part06-screens-compile,
+// 2026-09-26). Interactive/EXFMT behavior (V3) is still untested -
 // treat runtime claims about the SCREEN'S interactive behavior as
 // "should work per the ILE RPG Language Reference", not as verified.
 //
