@@ -233,20 +233,22 @@ end-proc;
 //=======================================================================
 // printLine - one DTL line. Column positions FIXED (part08-05-f0805a
 // 3rd connection, 2026-09-28 - see docs/probes.md and f0805as.rpgle's
-// own printDetail header note, same finding and same fix applied here
-// pre-emptively, before this file's own first run): this file's
-// original positions were golden-master.md's own OBSERVED ZA0500
-// columns, on the assumption that declaring %subst position N here
-// would reproduce real print column N. F0805A's own real output
-// showed that assumption is wrong for this family of %subst-based
-// rewrites - declaring position N actually lands at real column N+1,
-// the same +1 pattern golden-master.md separately shows between the
-// ORIGINAL programs' own O-spec end-column arithmetic and their own
-// real observed columns. The mechanism is not established. Corrected
-// here by subtracting 1 from every start column below, matching
-// f0805as.rpgle's own fix exactly, so this file's real printed output
-// (once run) should line up with ZA0500's own real observed columns
-// directly, not with a naive copy of them.
+// own printDetail header note for the full explanation, same finding
+// and same fix applied here pre-emptively, before this file's own
+// first run): this file's original positions were golden-master.md's
+// own OBSERVED ZA0500 columns (copied directly). golden-master.md
+// (corrected after F0805A's own finding) shows the real pattern: for
+// za0500.rpg's OWN O-spec, the naive start column derived from the
+// O-spec's own stated end column (end - length + 1; e.g. JUNO's
+// O-spec end column 6, length 6, gives 1) is consistently 1 LESS than
+// the column where that field actually prints (2). This same +1 shift
+// applies to a %subst-based rewrite's own declared position too (see
+// f0805as.rpgle - confirmed there on real hardware). FIXED by
+// declaring each %subst position as the O-SPEC-DERIVED start column
+// instead (JUNO: 1, not 2), matching f0805as.rpgle's own fix exactly,
+// so this file's real printed output (once run) should reproduce
+// ZA0500's real observed columns correctly. The mechanism behind this
+// shared +1 shift is not established.
 // JUNO@1(6) JUSHO@9(6) JUSU@17(5, UNEDITED - zero-padded, NOT
 // zero-suppressed, matching za0500.rpg's own O-spec, which applies no
 // edit code to JUSU at all) statusText right-justified ending at

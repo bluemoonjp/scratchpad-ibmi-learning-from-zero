@@ -165,20 +165,27 @@ return;
 // printDetail - one DTL line. Column positions (FIXED, part08-05-f0805a
 // 3rd connection, 2026-09-28 - see docs/probes.md and this file's own
 // STATUS note: the 1st draft's positions were golden-master.md's own
-// OBSERVED columns (e.g. JUNO's observed start column 6), on the
-// assumption that declaring %subst position N here would reproduce
-// real print column N. That assumption was wrong - a byte-for-byte
-// diff showed F0805A's real printed output was JU0300's own real
-// printed output shifted exactly 1 column right, uniformly, on every
-// line: declaring %subst position N in THIS program's own printer
-// output actually lands at real column N+1, the same +1 pattern
-// golden-master.md separately shows between JU0300's own O-spec
-// end-column arithmetic and JU0300's own real observed columns (see
-// golden-master.md, corrected to document this after this finding -
-// it did NOT already note it beforehand). The mechanism is not
-// established; the fix is empirical - subtract 1 from every start
-// column below so F0805A's OWN printed output lines up with JU0300's
-// real observed columns directly, not with a naive copy of them.):
+// OBSERVED columns (e.g. JUNO's observed start column 6, copied
+// directly). That was wrong - a byte-for-byte diff showed F0805A's
+// real printed output was JU0300's own real printed output shifted
+// exactly 1 column right, uniformly, on every line. golden-master.md
+// (corrected after this finding to document it - it did NOT note this
+// beforehand) shows the actual pattern: for JU0300's OWN O-spec, the
+// naive start column derived from the O-spec's own stated end column
+// (end - length + 1; e.g. JUNO's O-spec end column 10, length 6, gives
+// 5) is consistently 1 LESS than the column where that field is
+// actually observed to print (6). This same +1 print-shift turned out
+// to apply to THIS program too: declaring %subst position 6 (the
+// OBSERVED column, already one more than the O-spec-derived value)
+// made F0805A print at column 7 - one too many. FIXED by declaring
+// each %subst position as the O-SPEC-DERIVED start column instead
+// (JUNO: 5, not 6) - since both JU0300's O-spec-based printing AND
+// F0805A's %subst-based printing exhibit the identical +1 shift from
+// their own declared/derived start to their real printed column, using
+// the O-spec-derived value here reproduces JU0300's real observed
+// output exactly. The mechanism behind this shared +1 shift is NOT
+// established (true of both program styles alike, so it is not a
+// WRITE-vs-O-spec artifact) - only the empirical fix is confirmed.):
 // JUNO@5(6) JUTOK@15(6) JUDATEZ@25(8, edit code Z) JUTAN@37(6).
 //=======================================================================
 dcl-proc printDetail;
