@@ -2663,7 +2663,7 @@ Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・�
 - **`CHGCURLIB1`(`CHGCURLIB CURLIB(&LIB)`)により、`testInit()`の無修飾`CREATE TABLE`が`<USER>2`(`&LIB`)に作られることを確認**(ジョブ・ログに「Current library changed to `<USER>2`.」)。`docs/probes.md`の`part07-04-actgrp-cl`節が指摘した「ハーネスの既定ではCURLIBが`<USER>1`のまま」という罠を、この`CHGCURLIB1`ステップで正しく回避できている。
 - **`callStackCtr=2`での`QMHSNDPM(*ESCAPE)`とMONITORの組み合わせが設計どおりに動作**: 意図的に失敗させた`00-DELIBERATE-FAIL-DEMO`(期待値999、実際の`countCustOrders('C00001')`=2)がジョブ・ログに「TESTKIT: assertion failed - 00-DELIBERATE-FAIL-DEMO.」を記録した直後も、ラッパー自身の`RUNTSTJUCSRV`ステップに「FAILED」マーカーが一切出なかった——`CALL PGM(TSTJUCSRV)`自体は正常終了で返ってきたことを意味し、`MONITOR`がエスケープを捉え、`TSTJUCSRV`のメインラインが最後まで実行された強い状況証拠になった(2回目の接続で直接確認、後述)。
 - **TSTZAISRVの11件のアサーションが全てPASS**。特に境界値2件(`1-RESERVE-EXACT-OK`/`1B-STOCK-ZERO`)・`2B-STOCK-UNCHANGED`(値`7`)が、`db/data/load_v1.sql`の実際のP00001初期値`45`ではなく、`SEEDQTEMP`ステップで注入した`7`を見ていたことから、**`OVRDBF FILE(ZAIKOM) TOFILE(QTEMP/ZAIKOM) OVRSCOPE(*JOB)`が、`ACTGRP(*NEW)`の`TSTZAISRV`から`ACTGRP(*CALLER)`で活性化される`ZAISRV`内部の`dcl-f zaikom`のオープンまで正しく届いていたことを直接確認できた**(advisorが指摘した、P43のOVRDBFが同一活性化グループ内でしか確認されていないという懸念への回答)。
-- **`shared-zaikom-check`collectが本物の`&LIB/ZAIKOM`のP00001を`45`のまま示した**——共有テーブルには一切触れていないことを独立に確認(QTEMP分離が機能した証拠)。
+- `shared-zaikom-check`collectは本物の`&LIB/ZAIKOM`のP00001を`45`のまま示した。**ただしこれ単独ではQTEMP分離が機能した証拠にはならない**——`TSTZAISRV`自身の5ケースは意図的にnet-zero設計(reserve/releaseが必ず対になっている)なので、万一`OVRDBF`が効かず本物の`ZAIKOM`を直接操作していたとしても、最終的には同じく`45`に戻っていたはずである。QTEMP分離が実際に機能したことを直接示す証拠は、上の行(`TESTRES`が`45`ではなく`7`/`10`/`7`を記録したこと)の方であり、この`shared-zaikom-check`はあくまで「(分離が機能したにせよしなかったにせよ)接続終了時点で本物のテーブルは初期値に戻っている」という補助的な確認にとどまる。
 
 **1回目の接続で見つけた実バグ(修正済み)**: `testInit()`が`CREATE TABLE`(存在すれば無視)に加えて`DELETE FROM TESTRES`も行う設計だった。`TSTJUCSRV`・`TSTZAISRV`はどちらも自分のメインラインの先頭で`testInit()`を呼ぶため、同じ接続内で`TSTJUCSRV`→`TSTZAISRV`の順に実行すると、**`TSTZAISRV`自身の`testInit()`が`TSTJUCSRV`の記録した11行を消してから自分の11行を書き込んでいた**(1回目のcollectが`TSTZAISRV`の11行だけを返した理由)。`testInit()`から`DELETE`を削除し(以後はテーブルの存在確認のみ)、マニフェスト側に明示的な`CLEARTESTRES`(`DELETE FROM &LIB/TESTRES`、VFYLOGと同じ「接続の先頭で1回だけ空にする」パターン)ステップを追加して2回目の接続で再検証した。
 
@@ -2672,7 +2672,7 @@ Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・�
 - **`TSTJUCSRV`の実ケース12件(設計書の10項目、09・10がそれぞれ2アサーションに分かれるため実際は12件)が全てPASS**: `getCustName('C00001')`='ACME TRADING CO'、`getCustName('C00002')`='NORTH STAR LTD'、`getCustName('Z99999')`='NOTFOUND'、`countCustOrders('C00001')`=2、`countCustOrders('C00002')`=1、`countCustOrders('C00003')`=2、`countCustOrders('Z99999')`=0、`pingJucsrv()`=Y、`countCustOrders('C00001')`の同一活性化グループ内2連続呼び出し(JUCHUM再位置付け修正の検証)が両方とも2、`getCustName`→`countCustOrders`の呼び出し順序入れ替えも影響無し——**`db/data/load_v1.sql`の実データに基づく設計書の期待値が、すべて実機の値と一致した。**
 - **`00-DELIBERATE-FAIL-DEMO`はFAILのまま(期待999・実際2)**、かつ直後の`01-GETNAME-C00001`以降12件全てが記録されている——**MONITORによる継続実行を直接確認(1回目の状況証拠を裏付け)。**
 - **`TSTZAISRV`の11件も再度全てPASS**(QTEMPの再構築・再注入も再現性あり)。
-- **`shared-zaikom-check`は今回も`45`のまま**——2回の接続を通じて共有`ZAIKOM`には一切触れていない。`TXRESET`は不要。
+- `shared-zaikom-check`は今回も`45`のまま(上の注記のとおり、これ単独はQTEMP分離の証拠ではなく補助確認)。`TESTRES`側の`7`/`10`/`7`(今回も同じ値)が実質的な証拠であることに変わりない。`TXRESET`は不要。
 - 合計: `TESTRES` 24行(1 FAIL + 23 PASS)、`testres-summary`集計と一致。
 
 **結論**: `TESTKIT`・`TSTJUCSRV`・`TSTZAISRV`はCONFIRMED SUCCESS。08-04レッスン本文執筆時にそのまま使える実測値が揃った。

@@ -12,6 +12,16 @@
 // src/qrpglesrc/q0613s.sqlrpgle) and QMHSNDPM (06-09,
 // src/qrpglesrc/f0609s.rpgle).
 //
+// STATUS: CONFIRMED (part08-04-testkit, 2026-09-28, 2 connections):
+// CRTSQLRPGI OBJTYPE(*MODULE) and CRTSRVPGM both Highest Severity 00.
+// All four exported procedures work as designed - see
+// solutions/08-04/tstjucsrv.rpgle and tstzaisrv.rpgle for the 23
+// real assertions this confirms (all PASS) and docs/probes.md's
+// part08-04-testkit section for the full connection record. Every
+// design point flagged below as unconfirmed at write time (SET OPTION
+// placement, the *ESCAPE/callStackCtr mechanics, testInit()'s CURLIB
+// dependency) is now settled - see each note's own follow-up.
+//
 // DEVIATION FROM work/design/part08-design-v1.md's file list, FLAGGED:
 // that design lists this file as "src/qrpglesrc/testkit.rpgle" (plain
 // RPGLE, not embedded SQL). This file is .sqlrpgle (CRTSQLRPGI,
@@ -96,10 +106,13 @@
 // catches the escape and can inspect TESTRES for what failed)". This
 // exact interaction (does execution actually reach a caller's next
 // statement on the *ESCAPE path, or does the caller need MONITOR even
-// to see its OWN following line skipped) is flagged as the single
-// biggest unconfirmed assumption in this file - the 08-04 verify
-// manifest's very first cases should include one deliberately-failing
-// assertion, wrapped in MONITOR, specifically to observe this.
+// to see its OWN following line skipped) was this file's single
+// biggest open question at write time - CONFIRMED (part08-04-testkit,
+// 2nd connection, 2026-09-28): TSTJUCSRV's own deliberately-failing
+// case 00 (verify/part08-04-testkit/src/tstjucsrv-faildemo.rpgle,
+// wrapped in MONITOR) failed as designed, and all 12 real cases after
+// it still logged their own TESTRES rows in the same run - MONITOR
+// does let execution continue to the caller's next statement.
 //
 // callStackCtr 2 (not 0 or 1): ilerpgref75.txt's own sendException()
 // example takes this as a caller-supplied parameter (stackOffsetToRpg)
@@ -119,10 +132,9 @@
 // instead - probably harmless in practice, since an unhandled *ESCAPE
 // at one level ordinarily percolates up to the next level's own
 // handler, but offset 2 is used instead so this comment does not have
-// to rely on that percolation behavior being correct.) Confirmed by
-// inspection only (this file has not yet been compiled or run) -
-// flagged alongside the WHY VOID note above as something the first
-// 08-04 connection must settle.
+// to rely on that percolation behavior being correct.) CONFIRMED
+// (part08-04-testkit, 2026-09-28) - see the WHY VOID note above for
+// the evidence; offset 2 correctly reaches the test-case code.
 //
 // PUB400 placeholders: <lib> stands for the learner's own library; no
 // real PUB400 user or library name appears in this file.
@@ -166,14 +178,14 @@ end-pr;
 // why: "All Definition specifications ... must appear before the first
 // Calculation specification" (ilerpgref75.txt, "Order of
 // Specifications"), and SET OPTION itself "compiles down to C-spec-
-// equivalent code" (same file's header). UNCONFIRMED: q0613s.sqlrpgle's
-// own file has a single cycle-main mainline, not a NOMAIN module with
-// multiple dcl-proc blocks - whether a module-level SET OPTION is even
-// valid sitting here, outside every dcl-proc, in a NOMAIN module has
-// not been checked against any primary source in this repo. This is
-// the placement most consistent with the one rule this repo HAS
-// confirmed (D-specs before the first C-spec); the first 08-04
-// connection settles whether it is also sufficient on its own.
+// equivalent code" (same file's header). q0613s.sqlrpgle's own file
+// has a single cycle-main mainline, not a NOMAIN module with multiple
+// dcl-proc blocks, so whether a module-level SET OPTION is even valid
+// sitting here, outside every dcl-proc, was open at write time. This
+// placement - the one most consistent with the one rule this repo HAD
+// confirmed (D-specs before the first C-spec) - is now itself
+// CONFIRMED (part08-04-testkit, 2026-09-28): CRTSQLRPGI compiled this
+// module Highest Severity 00.
 exec sql SET OPTION commit = *none, naming = *sys, closqlcsr = *endmod;
 
 //=======================================================================
