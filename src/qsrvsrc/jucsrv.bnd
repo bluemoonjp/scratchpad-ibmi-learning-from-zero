@@ -42,14 +42,33 @@
 /* ileconcepts75.txt's own worked example (Example 3, cited above)     */
 /* exactly.                                                            */
 /*                                                                     */
+/* CONFIRMED on real hardware (part07-03-signature, 2026-09-27), the   */
+/* full narrative this file exists to demonstrate: a 2-procedure       */
+/* module (getCustName+pingJucsrv) built with EXPORT(*ALL), with a     */
+/* client (F0702A) bound against it, keeps working across a REBUILD    */
+/* of the same EXPORT(*ALL) service program - UNTIL a 3rd export       */
+/* (countCustOrders) is added while still EXPORT(*ALL): the next CALL  */
+/* to the UNCHANGED, never-recompiled F0702A then fails with "Program  */
+/* signature violation" (MCH4431). Switching to EXPORT(*SRCFILE) with  */
+/* THIS binder source (PGMLVL(*PRV) exactly reproducing the original   */
+/* 2-symbol signature) - via either CRTSRVPGM or UPDSRVPGM, both       */
+/* confirmed working - immediately restores the SAME UNCHANGED F0702A  */
+/* to working order, with no recompile. This is the complete proof     */
+/* that binder source's PGMLVL(*PRV) mechanism does exactly what it    */
+/* promises: preserve compatibility for existing *ALL-bound clients    */
+/* while a NEW client (F0703A, needing countCustOrders) is added at    */
+/* the same time.                                                      */
+/*                                                                     */
 /* EXPORT SYMBOL names are all QUOTED, mixed-case, and match           */
 /* jucsrv.rpgle's own EXTPROC(*DCLCASE) choice on each procedure's      */
 /* DCL-PI exactly (getCustName, pingJucsrv, countCustOrders) - see     */
 /* that file's header comment for why *DCLCASE was used instead of     */
 /* relying on the compiler's default (uppercase) export name.          */
-/* TODO: verify - the case-matching behavior between a module's        */
-/* *DCLCASE-derived export name and a quoted EXPORT SYMBOL string has  */
-/* not been hardware-tested in this repo.                              */
+/* CONFIRMED (part07-0203-srvpgm, part07-03-signature, 2026-09-27):    */
+/* the case-matching between a module's *DCLCASE-derived export name   */
+/* and a quoted EXPORT SYMBOL string works exactly as expected - both  */
+/* F0702A (getCustName) and F0703A (countCustOrders) resolved and ran  */
+/* correctly against this binder-source-built JUCSRV.                  */
 /*                                                                     */
 /* Snapshot note (this repo holds only ONE state of this file, the     */
 /* final one, per commit): the 07-03-step-2 intermediate state (a      */
