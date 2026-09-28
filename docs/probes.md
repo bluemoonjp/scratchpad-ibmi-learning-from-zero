@@ -2333,6 +2333,35 @@ B-5、1回目の接続。
 Highest Severity 00、Q0615Aの印字内容が採点表と完全一致、TXCHECK
 3 passed/0 failed)。
 
+## 第7部`part07-03-signature`の実機検証: 1回目は自分のバグでシナリオが崩れたが、`Program signature violation`のメッセージを実機確認(確認日2026-09-27)
+
+B-7、1回目の接続。**候補として用意した2手続き版のスループアウェイ・
+ベースライン(`jucsrvb1.rpgle`)が実バグでコンパイル失敗**
+(`RNF7062`、severity 30: 「JUCHUM用のuser-controlled OPENが無い」
+——`countCustOrders`だけが持っていた`open juchum;`を含む手続きを
+丸ごと削って作った2手続き版に、`dcl-f juchum ... usropn;`宣言だけ
+削除し忘れて残していたのが原因)。この結果、意図した「2手続き
+ベースライン」ではなく**既存の3手続きモジュールがそのまま
+`EXPORT(*ALL)`でベースラインになってしまい**、想定していた手順どおり
+にはシナリオが進まなかった。
+
+**ただし、意図と違う段階で、想定していたメッセージ自体は実機確認できた**:
+`EXPORT(*ALL)`から`EXPORT(*SRCFILE)`(実物の`jucsrv.bnd`、バインダー
+言語)へ切り替えた直後の`F0702A`呼び出しで
+**`MCH4431: Program signature violation.`** が実際に発生した
+(`Error found on CALL command.`を伴う)。`UPDSRVPGM`も構文どおり
+成功(`Service program JUCSRV in <lib> updated.`)。`F0703A`
+(`countCustOrders`、新しい`PGMLVL(*CURRENT)`の3シンボル署名)は
+問題なく成功。使い捨ての`*BNDDIR`(`TOSSBD`)作成→`DLTOBJ
+OBJTYPE(*BNDDIR)`も成功。
+
+`jucsrvb1.rpgle`の`dcl-f juchum ... usropn;`行を削除して修正済み
+(`countCustOrders`を持たない2手続き版なので不要)。**次回接続で、
+本来意図していた「2手続き`EXPORT(*ALL)`ベースライン→3つ目の
+エクスポート追加でF0702Aが壊れる→バインダー言語で`PGMLVL(*PRV)`が
+元の2シンボル署名を保存しF0702Aが直る」という完全なシナリオを
+再確認する。**
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P44)以外は未実施。特に:

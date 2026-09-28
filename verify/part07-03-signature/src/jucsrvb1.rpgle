@@ -307,14 +307,15 @@ ctl-opt nomain;
 //-----------------------------------------------------------------------
 dcl-f tokuim keyed usage(*input);
 
-//-----------------------------------------------------------------------
-// JUCHUM: sequential READ access, added in 07-03 step 3 for
-// countCustOrders. USROPN so this file does NOT open automatically at
-// module initialization - see the "JUCHUM repositioning" header note
-// above for why an explicit, every-call CLOSE/OPEN pair is required
-// instead.
-//-----------------------------------------------------------------------
-dcl-f juchum usage(*input) usropn;
+// JUCHUM (usropn) intentionally OMITTED from this 2-procedure baseline
+// - it belongs to countCustOrders (07-03 step 3), which this baseline
+// deliberately excludes to reconstruct the step-2 signature. Keeping
+// the dcl-f without any matching OPEN (countCustOrders was the only
+// place that opened it) fails real-hardware with RNF7062 ("There is
+// no OPEN operation for file JUCHUM that specifies user-controlled"),
+// confirmed the first time this file was compiled (part07-03-signature,
+// severity 30) - removed here rather than worked around, since neither
+// remaining procedure (getCustName, pingJucsrv) touches JUCHUM at all.
 
 //=======================================================================
 // getCustName - 07-02. Port of f0612s.rpgle lines 186-191 (CHAIN TOKUIM
