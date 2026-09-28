@@ -2605,6 +2605,37 @@ J〜M・通貨記号への言及が無いことを確認した——訂正が必
 
 ZAIKOM/SHOHIMへの書き込みは一切無いため、TXRESETは実施していない。
 
+## `part06-b8-compile`: F0605B/D0702A/F0702Bのコンパイル確認(確認日 2026-09-28)
+
+`JUCSRV`(*MODULE→*SRVPGM再作成、`JUCSRVBD`は登録済みのため変更なし)
+を前提に、3件の未検証オブジェクトをまとめて確認した。全ステップ
+`compile`セクションでセベリティ30以上・CPD無しを確認済み。
+
+- **`F0605B`(06-05、`**FREE`からの`QCMDEXC`)完了・CONFIRMED
+  SUCCESS**: `CRTBNDRPG`でHighest Severity 00、`CALL`も成功。直後の
+  `DSPDTAARA DTAARA(*LDA)`(`run`セクションのテキストで確認——この
+  ハーネスの非対話SSHジョブでは印字出力が実際のスプール・ファイルに
+  ならないため、`WRKSPLF`ではなくこの経路で確認している)は、
+  「Offset 0」行の内容が20文字の空白に続けて`F0605B OK`——つまり
+  21バイト目から`F0605B OK`(9文字)——であることを示した。
+  `CHGDTAARA DTAARA(*LDA (21 20)) VALUE('F0605B OK')`の設計どおり。
+  05-04のRPG III版(`za0510.rpg`、`part05-qcmdexc-runtime`、`*LDA`の
+  1〜20バイト目)とは別のバイト範囲であり、両方の実演を同じジョブで
+  続けて試しても干渉しないことも合わせて確認できた。
+- **`D0702A`(07-02、発展・任意演習のDSPF)完了・CONFIRMED SUCCESS
+  (V1のみ)**: `CRTDSPF`で`CPC7301`(ファイル作成)、診断メッセージ
+  無し。WORKSTN/`EXFMT`を伴う対話実行は、このハーネスの非対話SSH
+  ジョブでは検証できない(ハングの恐れ)ため、意図的にCALLしていない
+  ——V1(コンパイル確認)止まり。
+- **`F0702B`(07-02、発展・任意演習のRPG、`JUCSRV`の`getCustName`を
+  ロード・ループ内で呼ぶ)完了・CONFIRMED SUCCESS(V1のみ)**:
+  `CRTBNDRPG`で`RNS9304`・Highest Severity 00。`JUCSRVBD`経由の
+  `getCustName`呼び出しがバインド時点で解決することを確認した。
+  `D0702A`と同じ理由でCALLはしていない——実際のREAD/WRITE/
+  `getCustName`呼び出しの実行時経路(V2以上)は未検証のまま。
+
+ZAIKOM/SHOHIMへの書き込みは一切無いため、TXRESETは実施していない。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P44)以外は未実施。特に:
