@@ -1,0 +1,82 @@
+{
+  "batch": "part06-b6-batch",
+  "description": "[HISTORICAL for the OVRPRTF probe half - src/t612ofrf.rpgle was deleted after the overflow-detection question was settled (see docs/probes.md); the D0611AP/F0611AP compile-check half is unaffected by that deletion and this manifest structure remains otherwise valid] B-6 (jiggly-greeting-crystal.md, advisor review items 1 and 4): two independent checks bundled in one connection. (1) Compiles the 06-11 page-at-a-time variant (D0611AP/F0611AP, src/qddssrc/d0611ps.dspf + src/qrpglesrc/f0611ps.rpgle - fresh objects, V1 compile-check only, WORKSTN/EXFMT cannot run non-interactively) - per the design's own B1-16 disposition and Issue #7's own 06-11 checklist line, this variant stays in scope (not narrowed to load-all only). (2) A THROWAWAY OVRPRTF overflow probe (src/t612ofrf.rpgle, reusing P0612A's own externally described record formats and the confirmed-working oflind(*in01)) - forces a small page size (OVRPRTF PAGESIZE(12 132) OVRFLW(10)) before a 30-line WRITE loop, to settle whether *IN01 can ever actually turn ON in this harness's job (part06-decisions-2 found it compiles and prints but never fires across 100 default-page-length lines) - this determines whether 06-12's page-break exercise can be V2 or must stay V3-only. Printed output for both read from the connection result's own 'run' section (CPYSPLF reliably fails for printer-file output in this harness's job, part06-0103-freeform/part06-decisions-2).",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../src/qddssrc/d0611ps.dspf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "D0611AP"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/f0611ps.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "F0611AP"
+    },
+    {
+      "type": "file",
+      "localPath": "src/t612ofrf.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "T612OFRF"
+    },
+    {
+      "type": "cl",
+      "label": "CPD0611AP",
+      "cmd": "CRTDSPF FILE(&LIB/D0611AP) SRCFILE(&LIB/QDDSSRC) SRCMBR(D0611AP) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPF0611AP",
+      "cmd": "CRTBNDRPG PGM(&LIB/F0611AP) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0611AP) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPOFRF",
+      "cmd": "CRTBNDRPG PGM(&LIB/T612OFRF) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T612OFRF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OVRPTF",
+      "cmd": "OVRPRTF FILE(P0612A) PAGESIZE(12 132) OVRFLW(10)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNOFRF",
+      "cmd": "CALL PGM(&LIB/T612OFRF)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTOVRPTF",
+      "cmd": "DLTOVR FILE(P0612A)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    }
+  ]
+}

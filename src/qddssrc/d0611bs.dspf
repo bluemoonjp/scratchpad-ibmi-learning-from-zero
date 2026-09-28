@@ -1,0 +1,315 @@
+     A*                                     D0611BA - Product master (SHOHIM)
+     A*                                     maintenance:
+     A*                                     list + add/change/delete. Lesson
+     A*                                     06-11b.
+     A*
+     A*                                     CONFIRMED V1 (compile-check,
+     A*                                     part06-decisions-1,
+     A*                                     2026-09-27): CRTDSPF Highest
+     A*                                     Severity 00, after the
+     A*                                     SHOTNK output-only fix
+     A*                                     (decision P6-8). Interactive
+     A*                                     subfile/EXFMT execution
+     A*                                     (V3) is still untested - SSH
+     A*                                     non-interactive batches
+     A*                                     cannot drive a real 5250
+     A*                                     device (same WORKSTN/EXFMT
+     A*                                     limitation as 04-11,
+     A*                                     tk0100d.dspf, and d0611s.dspf).
+     A*                                     Verify with a real 5250
+     A*                                     session before relying on
+     A*                                     this file's interactive
+     A*                                     behavior.
+     A*
+     A*                                     *** THIS SCREEN WRITES TO THE SHARED
+     A*                                     SHOHIM TABLE ***
+     A*                                     SHOHIM (product master) is also read
+     A*                                     by 04-13
+     A*                                     (product stock-shortage report),
+     A*                                     06-07's exercise
+     A*                                     (array + %LOOKUP port of 04-13's
+     A*                                     logic), and 06-15's
+     A*                                     checkpoint (stock inquiry). Every
+     A*                                     add/change/delete
+     A*                                     done through F0611BA (below) is a
+     A*                                     REAL, PERSISTENT
+     A*                                     change to that same shared data -
+     A*                                     see f0611bs.rpgle's
+     A*                                     header for the full TXRESET
+     A*                                     instruction this implies.
+     A*
+     A*                                     COLUMN POSITIONS: base columns (6=A
+     A*                                     literal, 17=name
+     A*                                     type, 19-28=name, 30-34=length,
+     A*                                     35=type, 36-
+     A*                                     37=decimals, 38=usage, 39-41=row,
+     A*                                     42-44=col,
+     A*                                     45-=keyword) confirmed by CRTDSPF in
+     A*                                     probe 04-11
+     A*                                     (docs/probes.md). SFL/SFLCTL keyword
+     A*                                     usage below
+     A*                                     follows the same house pattern as
+     A*                                     d0611s.dspf (06-11)
+     A*                                     and src/legacy/qddssrc/tk0100d.dspf
+     A*                                     (Part 5) - see
+     A*                                     either file's own header for the 4
+     A*                                     documented
+     A*                                     tools/gen/dspf.mjs gaps this works
+     A*                                     around the same
+     A*                                     way (plain recordFormat(name,'SFL')
+     A*                                     instead of
+     A*                                     sflRecordFormat(), etc). These
+     A*                                     SFL-specific column
+     A*                                     positions are THEMSELVES still
+     A*                                     unverified on real
+     A*                                     hardware
+     A*                                     (verify/part05-gen-probe/src/t0sfl.d
+     A*                                     spf has
+     A*                                     not yet been run per docs/probes.md)
+     A*                                     - verify with
+     A*                                     CRTDSPF before relying on this file.
+     A*
+     A*                                     NO DDS CONDITIONING INDICATORS (cols
+     A*                                     7-16) are used
+     A*                                     anywhere in this file, same policy
+     A*                                     as d0611s.dspf/
+     A*                                     tk0100d.dspf (04-11's unresolved
+     A*                                     CPD7410/CPD7606/
+     A*                                     CPD5238 failure - see either file's
+     A*                                     header). SFLDSP/
+     A*                                     SFLDSPCTL on SFL2CTL are therefore
+     A*                                     always-on
+     A*                                     (unconditioned). SFLCLR is
+     A*                                     intentionally NOT used
+     A*                                     either (same reasoning as
+     A*                                     tk0100d.dspf/d0611s.dspf) -
+     A*                                     this maintenance screen genuinely
+     A*                                     DOES need to
+     A*                                     refresh the list after every
+     A*                                     add/change/delete, so it
+     A*                                     uses the OTHER technique
+     A*                                     tk0100d.dspf's own header
+     A*                                     already names as the alternative to
+     A*                                     SFLCLR: "rewrite
+     A*                                     RRN 1..SFLPAG in place (CHAIN
+     A*                                     RRN/UPDATE, blank-
+     A*                                     filling a short last page) so the
+     A*                                     subfile never needs
+     A*                                     an actual clear." f0611bs.rpgle's
+     A*                                     reloadSfl2
+     A*                                     subprocedure implements exactly
+     A*                                     that. See its header
+     A*                                     for the full explanation.
+     A*
+     A*                                     SFLNXTCHG: deliberately NOT used on
+     A*                                     SFL2 (same
+     A*                                     reasoning as
+     A*                                     d0611s.dspf/f0611s.rpgle) - normal
+     A*                                     READC
+     A*                                     changed-only filtering is wanted
+     A*                                     here, so OPT is not
+     A*                                     force-marked "changed" on every
+     A*                                     record.
+     A*
+     A*                                     MESSAGE SUBFILE: NOT used in this
+     A*                                     file (unlike 06-11's
+     A*                                     d0611s.dspf). Scope decision: 06-11
+     A*                                     already
+     A*                                     demonstrates the SFL/message-subfile
+     A*                                     pairing as new
+     A*                                     material; this lesson's own new
+     A*                                     material is chain-for-
+     A*                                     update discipline and
+     A*                                     add/change/delete, so status
+     A*                                     text uses the simpler,
+     A*                                     already-established plain-
+     A*                                     output-field MOVEL/assignment
+     A*                                     technique instead (same
+     A*                                     technique R0411A/tk0100d.dspf use
+     A*                                     for their own NOTFOUND/
+     A*                                     error text) - see STATMSG below and
+     A*                                     f0611bs.rpgle's
+     A*                                     header.
+     A*
+     A*                                     SHOCD PROTECTION DURING CHANGE:
+     A*                                     DTLFMT's SHOCD field
+     A*                                     below is usage B (input-capable) in
+     A*                                     BOTH add and
+     A*                                     change mode, because conditioning it
+     A*                                     to output-only
+     A*                                     for change-mode specifically would
+     A*                                     need a DDS
+     A*                                     conditioning indicator (avoided
+     A*                                     above). This is NOT a
+     A*                                     silent gap: f0611bs.rpgle's header
+     A*                                     documents the
+     A*                                     compensating control (the program
+     A*                                     re-asserts the
+     A*                                     original key from a saved variable
+     A*                                     immediately before
+     A*                                     UPDATE, regardless of whatever the
+     A*                                     user may have typed
+     A*                                     into this field) - read that header
+     A*                                     before assuming
+     A*                                     SHOCD is safely protected by this
+     A*                                     DDS alone.
+     A*
+     A*                                     CONTRACT with f0611bs.rpgle:
+     A*                                     SFL2/DTLFMT/DLTCONFFMT
+     A*                                     fields (SHOCD/SHONM/SHOTNK/SHOHAT)
+     A*                                     match SHOHIM's own
+     A*                                     field names/lengths exactly
+     A*                                     (db/v1/shohim.pf: SHOCD
+     A*                                     6A key, SHONM 30A, SHOTNK 7S 2,
+     A*                                     SHOHAT 5S 0) so CHAIN/
+     A*                                     READ/UPDATE/WRITE fill and read them
+     A*                                     via the same
+     A*                                     same-name auto-match trick used
+     A*                                     throughout this repo
+     A*                                     (R0408A/R0411A/f0604s.rpgle/f0611s.r
+     A*                                     pgle). RRN2 (the
+     A*                                     SFILE keyword's RRN field) is an
+     A*                                     RPG-only variable (no
+     A*                                     DDS field). CF06(06) on SFL2CTL =
+     A*                                     add mode; OPT '2'/'4'
+     A*                                     on a subfile row = change/delete.
+     A*                                     MODETXT (DTLFMT) is a
+     A*                                     plain output field f0611bs.rpgle
+     A*                                     MOVELs 'ADD'/'CHANGE'
+     A*                                     into, same plain-output-field
+     A*                                     technique as MORE in
+     A*                                     d0611s.dspf.
+     A*
+     A*                                     References checked this session:
+     A*                                     ilerpgref75.txt -
+     A*                                     SFILE(recformat:rrnfield) keyword
+     A*                                     (~line 28400), READC
+     A*                                     (~line 62000), CHAIN (~line 53190),
+     A*                                     UPDATE (~line
+     A*                                     65809), DELETE (~line 55181), UNLOCK
+     A*                                     (~line 65693);
+     A*                                     tools/gen/dspf.mjs (SFL/SFLCTL
+     A*                                     helper functions +
+     A*                                     header);
+     A*                                     src/legacy/qddssrc/tk0100d.dspf
+     A*                                     (house SFL
+     A*                                     pattern, and the "rewrite in place
+     A*                                     instead of SFLCLR"
+     A*                                     technique this file actually
+     A*                                     implements); db/v1/
+     A*                                     shohim.pf (field names/lengths).
+     A*
+     A                                      DSPSIZ(24 80 *DS3)
+     A          R SFL2                      SFL
+     A            OPT            1A  B  4  2
+     A            SHOCD          6A  O  4  5
+     A            SHONM         30A  O  4 13
+     A            SHOTNK         7S 2O  4 45
+     A            SHOHAT         5S 0O  4 56
+     A          R SFL2CTL                   SFLCTL(SFL2)
+     A                                      SFLSIZ(20)
+     A                                      SFLPAG(10)
+     A                                      SFLDSP
+     A                                      SFLDSPCTL
+     A                                      ROLLUP(25)
+     A                                      ROLLDOWN(26)
+     A                                      CF03(03)
+     A*                                     CF06(06): F6 = add a new product (no
+     A*                                     existing row
+     A*                                     selected - handled entirely in
+     A*                                     f0611bs.rpgle via
+     A*                                     *IN06, not tied to any OPT value).
+     A                                      CF06(06)
+     A                                      CF12(12)
+     A*                                     FIXED (part06-screens-compile
+     A*                                     prep, 2026-09-26, based on the
+     A*                                     confirmed real-hardware fix in
+     A*                                     src/legacy/qddssrc/tk0100d.dspf
+     A*                                     - docs/probes.md's part05-
+     A*                                     legacy-probe section): a SFLCTL
+     A*                                     record cannot carry positioned
+     A*                                     output both above (title/column
+     A*                                     headers) AND below (STATMSG/
+     A*                                     F3=Exit) its own subfile -
+     A*                                     CPD7812 ("Subfile control
+     A*                                     record overlaps subfile
+     A*                                     record"). Split the footer into
+     A*                                     R SFL2FTR below; added OVERLAY
+     A*                                     here so SFL2FTR's own output
+     A*                                     survives once SFL2CTL is
+     A*                                     (re)written on top of it.
+     A*                                     f0611bs.rpgle WRITEs SFL2FTR
+     A*                                     immediately before each EXFMT
+     A*                                     SFL2CTL.
+     A                                      OVERLAY
+     A                                  1  2'D0611BA - Product maintenance'
+     A                                  3  2'Op'
+     A                                  3  5'Code'
+     A                                  3 13'Name'
+     A                                  3 45'Price'
+     A                                  3 56'Reord'
+     A*                                     SFL2FTR: split out of SFL2CTL
+     A*                                     above (CPD7812 fix, see its
+     A*                                     comment). STATMSG: plain output
+     A*                                     field, same MOVEL/assignment
+     A*                                     technique R0411A uses for NOTFOUND
+     A*                                     text - see the
+     A*                                     "MESSAGE SUBFILE" header note above
+     A*                                     for why this file
+     A*                                     does not use a message subfile.
+     A          R SFL2FTR
+     A            STATMSG       40A  O 15  2
+     A                                 23  2'F3=Exit F6=Add 2=Change 4=Delete'
+     A*                                     DTLFMT: single-record add/change
+     A*                                     entry format. Not a
+     A*                                     subfile record - reused as-is for
+     A*                                     both add and change
+     A*                                     (see MODETXT and the
+     A*                                     SHOCD-protection header note
+     A*                                     above).
+     A          R DTLFMT
+     A                                      CF12(12)
+     A            MODETXT       10A  O  1  2
+     A                                  3  2'Code:'
+     A            SHOCD          6A  B  3 10
+     A                                  5  2'Name:'
+     A            SHONM         30A  B  5 10
+     A                                  7  2'Unit price:'
+     A*                                     SHOTNK is O (output-only), not B -
+     A*                                     decisions-2026-09.md P6-8 (3
+     A*                                     judges): editable fields are
+     A*                                     SHONM/SHOHAT only, so this
+     A*                                     zoned(7:2) unit price never
+     A*                                     needs an EDTCDE (an uncounted new
+     A*                                     construct 06-11b's own new-syntax
+     A*                                     budget has no room for). A newly
+     A*                                     added product's SHOTNK is always
+     A*                                     0 (f0611bs.rpgle's add branch)
+     A*                                     until changed elsewhere - the
+     A*                                     lesson text must say this plainly
+     A*                                     rather than leave it looking like
+     A*                                     a bug.
+     A            SHOTNK         7S 2O  7 15
+     A                                  9  2'Reorder point:'
+     A            SHOHAT         5S 0B  9 17
+     A                                 12  2'Enter=Save   F12=Cancel'
+     A*                                     DLTCONFFMT: delete confirmation -
+     A*                                     required because
+     A*                                     DELETE is irreversible (task
+     A*                                     instructions). F12 =
+     A*                                     cancel, Enter = confirm. SHOCD/SHONM
+     A*                                     here are output-
+     A*                                     only (display only what is about to
+     A*                                     be deleted) -
+     A*                                     this format has no input fields at
+     A*                                     all, so the SHOCD-
+     A*                                     protection concern above does not
+     A*                                     apply to it.
+     A          R DLTCONFFMT
+     A                                      CF12(12)
+     A                                  1  2'Delete this product?'
+     A                                  3  2'Code:'
+     A            SHOCD          6A  O  3 10
+     A                                  5  2'Name:'
+     A            SHONM         30A  O  5 10
+     A                                  8  2'Enter=Confirm delete   F12=Cancel'

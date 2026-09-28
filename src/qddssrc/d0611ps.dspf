@@ -1,0 +1,99 @@
+     A*                                     D0611AP - JUCLST4, PAGE-AT-A-TIME
+     A*                                     variant of D0611A (06-11).
+     A*                                     Implements the "PAGE-AT-A-TIME
+     A*                                     CONVERSION NOTE" both
+     A*                                     d0611s.dspf's and f0611s.rpgle's
+     A*                                     own headers already describe in
+     A*                                     detail (read those two headers
+     A*                                     for the full technique
+     A*                                     rationale - this file only
+     A*                                     restates the concrete DDS
+     A*                                     changes, not the reasoning).
+     A*
+     A*                                     HARDWARE STATUS: CONFIRMED
+     A*                                     V1 (compile-check,
+     A*                                     part06-b6-batch,
+     A*                                     2026-09-27): CRTDSPF
+     A*                                     Highest Severity 00. V1 only
+     A*                                     (compile-check) is realistic -
+     A*                                     same WORKSTN/EXFMT limitation
+     A*                                     as every other Part 6 screen.
+     A*
+     A*                                     ONLY DIFFERENCES FROM D0611A
+     A*                                     (see that file for everything
+     A*                                     else - column positions,
+     A*                                     message subfile, no-DDS-
+     A*                                     conditioning-indicator policy,
+     A*                                     etc. - all identical):
+     A*                                     (1) SFLSIZ(9999)->SFLSIZ(4)
+     A*                                     and SFLPAG(14)->SFLPAG(3) -
+     A*                                     SFLPAG deliberately small
+     A*                                     (3, not a more realistic
+     A*                                     14) so that JUCHUM's 8
+     A*                                     sample rows actually span
+     A*                                     3 pages (3+3+2) and PAGEDOWN
+     A*                                     has something to demonstrate;
+     A*                                     with SFLPAG(14), all 8 rows
+     A*                                     would already fit on the
+     A*                                     first page and this exercise
+     A*                                     would show nothing. SFLSIZ is
+     A*                                     SFLPAG+1 (4), the usual
+     A*                                     one-extra-slot convention.
+     A*                                     (2) No other DDS keyword
+     A*                                     changes - SFLEND is
+     A*                                     deliberately NOT used here
+     A*                                     either (same reasoning
+     A*                                     d0611s.dspf's own header
+     A*                                     gives for D0611A: MORE, a
+     A*                                     plain output field on
+     A*                                     SFL1FTR, stands in for it -
+     A*                                     f0611ps.rpgle MOVELs
+     A*                                     'MORE...'/'BOTTOM' into it
+     A*                                     depending on whether JUCHUM
+     A*                                     is exhausted yet).
+     A                                      DSPSIZ(24 80 *DS3)
+     A          R SFL1                      SFL
+     A            OPT            1A  B  4  2
+     A            JUNO           6A  O  4  5
+     A            JUTOK          6A  O  4 13
+     A            JUDATE         8S 0O  4 21
+     A            JUTAN          6A  O  4 31
+     A          R SFL1CTL                   SFLCTL(SFL1)
+     A                                      SFLSIZ(4)
+     A                                      SFLPAG(3)
+     A                                      SFLDSP
+     A                                      SFLDSPCTL
+     A                                      ROLLUP(25)
+     A                                      ROLLDOWN(26)
+     A                                      CF03(03)
+     A                                      OVERLAY
+     A                                  1  2'JUCLST4P - Order list (page)'
+     A                                  3  2'Op'
+     A                                  3  5'Order#'
+     A                                  3 13'Cust'
+     A                                  3 21'Date'
+     A                                  3 31'Rep'
+     A          R SFL1FTR
+     A*                                     FIXED (Wave 2 review): OVERLAY
+     A*                                     added, matching the same fix
+     A*                                     applied to d0611s.dspf's own
+     A*                                     SFL1FTR (same bug: without it,
+     A*                                     WRITE SFL1FTR would clear
+     A*                                     whatever MSGCTL/sendInvalidOpt()
+     A*                                     just wrote). Needs a fresh V1
+     A*                                     recompile check (not yet re-run).
+     A                                      OVERLAY
+     A            MORE          10A  O 20  2
+     A                                 23  2'F3=Exit  Roll=Page'
+     A          R MSGSFL                    SFL
+     A                                      SFLMSGRCD(24)
+     A            MSGKEY                    SFLMSGKEY
+     A            PGMQ                      SFLPGMQ
+     A          R MSGCTL                    SFLCTL(MSGSFL)
+     A                                      SFLSIZ(2)
+     A                                      SFLPAG(1)
+     A                                      SFLDSP
+     A                                      SFLDSPCTL
+     A                                      SFLINZ
+     A                                      OVERLAY
+     A            PGMQ                      SFLPGMQ

@@ -1,0 +1,20 @@
+     A                                      DSPSIZ(24 80 *DS3)
+     A                                      INDARA
+     A          R JUCFMT
+     A                                      CF03(03)
+     A                                  1  2'Customer code:'
+     A            TOKCD          6A  I  1 17
+     A                                  3  2'Name:'
+     A            TOKNM         30A  O  3  8
+     A                                  5  2'Orders:'
+     A                                  6  2'Order no'
+     A                                  6 13'Order date'
+     A            ORDNO1         6A  O  7  2
+     A            ORDDT1         8S 0O  7 13
+     A            ORDNO2         6A  O  8  2
+     A            ORDDT2         8S 0O  8 13
+     A            ORDNO3         6A  O  9  2
+     A            ORDDT3         8S 0O  9 13
+     A            ORDNO4         6A  O 10  2
+     A            ORDDT4         8S 0O 10 13
+     A                                 12  2'F3=Exit'

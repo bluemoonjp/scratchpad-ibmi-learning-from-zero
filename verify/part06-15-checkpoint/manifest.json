@@ -1,0 +1,32 @@
+{
+  "batch": "part06-15-checkpoint",
+  "description": "06-15 checkpoint (stock inquiry, subfile+SQL, part06-design-v1.md's own 'no new syntax' section): compiles D0615A/F0615A (solutions/06-15/d0615s.dspf, f0615s.rpgle - the subfile half, V1 compile-check only, WORKSTN/EXFMT cannot run non-interactively) and Q0615A (solutions/06-15/q0615s.sqlrpgle - the SQL half, a plain batch report with no interactive I/O, confirmable V2 by CALLing it and comparing its printed output against the grading table: 6 rows, exactly P00002 and P00005 flagged LOWSTOCK, confirmed real hardware by F0607A per docs/probes.md's part06-0509-procs-files section). Also seeds and runs TXCHECK for lesson 06-15 (completion condition C5), mirroring 07-05-checkpoint's own SEEDTXCKM pattern - these are the SAME literal DELETE+INSERT statements the 06-15 lesson text must show the learner running themselves (same reasoning as 05-13-checkpoint-tickets.md's own TXCKM section - a verify-manifest-only seed step would be the same 'verified path != taught path' trap 05-11 already fell into once). UNLIKE 07-05-checkpoint (which only ever CALLed the TXCHECK *PGM directly), this manifest ALSO compiles tools/qcmdsrc/txcheck.cmd's *CMD wrapper (fixing a PROMPT()-too-long bug found in the process, this wrapper had never been compiled before) and invokes the ACTUAL taught form, 'TXCHECK LESSON(...) LIB(...)'. A first attempt embedded this directly as CALL PGM(QCMDEXC) PARM('TXCHECK LESSON(''06-15'') LIB(&LIB)' 39) in the manifest's own cl step text - it compiled but FAILED at run time ('String \"          \" contains a character that is not valid', LIB parsed as all-blank) for a reason not yet root-caused. Replaced with the SAME proven pattern verify/part05-txlegacy-exec/src/txlegrun.clp already uses successfully: a small helper CL program (src/txchkrun.clp, CALL PGM(&LIB/TXCHKRUN) PARM('06-15' '&LIB')) that builds the command string at RUNTIME via CHGVAR/*TCAT/%TRIM before calling QCMDEXC - this also sidesteps CPD0030 (a bare command invocation in the wrapper's own source would fail since the command does not exist yet at the wrapper's OWN compile time). This checkpoint is READ-ONLY against ZAIKOM/SHOHIM (no WRITE/UPDATE/DELETE anywhere in either half), so no TXRESET is needed at the end - but the lesson's own warm-up must confirm 06-11b's TXRESET cleanup already happened (part06-design-v1.md:338), since 06-11b's maintenance screen CAN change SHOHIM/ZAIKOM-adjacent data the grading table above assumes is at its fresh/reset values.",
+  "steps": [
+    { "type": "file", "localPath": "../../solutions/06-15/d0615s.dspf", "remoteSrcFile": "QDDSSRC", "member": "D0615A" },
+    { "type": "file", "localPath": "../../solutions/06-15/f0615s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0615A" },
+    { "type": "file", "localPath": "../../solutions/06-15/q0615s.sqlrpgle", "remoteSrcFile": "QRPGLESRC", "member": "Q0615A", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "../../tools/qddssrc/txckm.pf", "remoteSrcFile": "QDDSSRC", "member": "TXCKM" },
+    { "type": "file", "localPath": "../../tools/qclsrc/txcheck.clp", "remoteSrcFile": "QCLSRC", "member": "TXCHECK" },
+
+    { "type": "cl", "label": "CPD0615A", "cmd": "CRTDSPF FILE(&LIB/D0615A) SRCFILE(&LIB/QDDSSRC) SRCMBR(D0615A) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPF0615A", "cmd": "CRTBNDRPG PGM(&LIB/F0615A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0615A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
+    { "type": "cl", "label": "CPQ0615A", "cmd": "CRTSQLRPGI OBJ(&LIB/Q0615A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0615A) OBJTYPE(*PGM) COMMIT(*NONE)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "SQL0000", "MCH0000"] },
+
+    { "type": "cl", "label": "VSPLPF", "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 6 spooled-file text capture'))", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "RUNQ0615A", "cmd": "CALL PGM(&LIB/Q0615A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPQ0615A", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
+
+    { "type": "file", "localPath": "../../tools/qcmdsrc/txcheck.cmd", "remoteSrcFile": "QCMDSRC", "member": "TXCHECK", "ensureSrcFile": { "recordLength": 92 } },
+    { "type": "file", "localPath": "src/txchkrun.clp", "remoteSrcFile": "QCLSRC", "member": "TXCHKRUN" },
+
+    { "type": "cl", "label": "CPTXCKM", "cmd": "CHKOBJ OBJ(&LIB/TXCKM) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/TXCKM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TXCKM))", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPTXCHECK", "cmd": "CHKOBJ OBJ(&LIB/TXCHECK) OBJTYPE(*PGM)\nMONMSG MSGID(CPF9801) EXEC(CRTCLPGM PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHECK))", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPTXCHKCMD", "cmd": "DLTCMD CMD(&LIB/TXCHECK)\nMONMSG MSGID(CPF0000)\nCRTCMD CMD(&LIB/TXCHECK) PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXCHECK)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPTXCHKRUN", "cmd": "CRTCLPGM PGM(&LIB/TXCHKRUN) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHKRUN) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "SEEDTXCKM", "cmd": "RUNSQL SQL('DELETE FROM &LIB/TXCKM WHERE LESSON=''06-15''') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''06-15'', 1, ''D0615A'', ''*FILE'', '' '', ''D0615A display file exists'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''06-15'', 2, ''F0615A'', ''*PGM'', '' '', ''F0615A subfile checkpoint exists'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''06-15'', 3, ''Q0615A'', ''*PGM'', '' '', ''Q0615A SQL checkpoint exists'')') COMMIT(*NONE)", "monmsg": ["CPF0000", "SQL0000"] },
+    { "type": "cl", "label": "RUNTXCHECK", "cmd": "CALL PGM(&LIB/TXCHKRUN) PARM('06-15' '&LIB')", "monmsg": ["CPF0000", "MCH0000"] },
+
+    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSPL" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/ZAIKOM ORDER BY ZASHO" }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "batch": "part07-04-actgrp-cl",
+  "description": "Compiles and runs F0704A (activation-group/STATIC-variable demo, src/qrpglesrc/f0704s.rpgle) and JUYAKL (ILE-CL rewrite of JUYAKC via CRTBNDCL, src/qclsrc/juyakl.clle). JUYAKL genuinely depends on two Part-3-origin objects this repo's Part 6/7 manifests never provisioned: JUNODA (a *DTAARA, 03-06/tools/qclsrc/... pattern) and JUMSGF (a *MSGF with JUM0001 registered, created by tools/qclsrc/txmsgf.clp) - both are provisioned here first via the same CHKOBJ+conditional-create idiom this repo uses throughout, so a fresh <USER>2 that only has Part 4's objects + Part 6/7's own new objects can still run this batch standalone. JUYAKL also depends on JUCSRV already existing (via DCLPRCOPT BNDSRVPGM(*LIBL/JUCSRV)) - this manifest assumes part07-0203-srvpgm has already been run in this same library (a real ordering dependency, noted in the design doc). Per the design's own §9 item 13 and §0.6: the first real step here is a diagnostic RTVJOBA CURLIB() report, to settle what the verify harness's ADDLIBLE-only job setup (no CHGCURLIB) actually returns, BEFORE trusting JUYAKL's own CURLIB-dependent logic (JUNODA/JUMSGF access) to work correctly - if this diagnostic shows an unexpected library, JUYAKL's own steps later in this same batch are expected to behave oddly and that should be interpreted in light of this first finding, not treated as a fresh mystery.",
+  "steps": [
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0704s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0704A", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "../../src/qclsrc/juyakl.clle", "remoteSrcFile": "QCLSRC", "member": "JUYAKL" },
+    { "type": "file", "localPath": "../../tools/qclsrc/txmsgf.clp", "remoteSrcFile": "QCLSRC", "member": "TXMSGF" },
+    { "type": "file", "localPath": "src/diagcurlib.clp", "remoteSrcFile": "QCLSRC", "member": "DIAGCURLIB" },
+
+    { "type": "sh", "label": "MKWORK", "cmd": "mkdir -p $HOME/work" },
+
+    { "type": "cl", "label": "CPF0704A", "cmd": "CRTBNDRPG PGM(&LIB/F0704A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0704A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNF0704A", "cmd": "CALL PGM(&LIB/F0704A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+
+    { "type": "cl", "label": "CPDIAGCL", "cmd": "CRTCLPGM PGM(&LIB/DIAGCURLIB) SRCFILE(&LIB/QCLSRC) SRCMBR(DIAGCURLIB) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "RUNDIAGCL", "cmd": "CALL PGM(&LIB/DIAGCURLIB)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "CPJUNODA", "cmd": "CHKOBJ OBJ(&LIB/JUNODA) OBJTYPE(*DTAARA)\nMONMSG MSGID(CPF9801) EXEC(CRTDTAARA DTAARA(&LIB/JUNODA) TYPE(*DEC) LEN(6 0) VALUE(0))", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "CHGCURLIB1", "cmd": "CHGCURLIB CURLIB(&LIB)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPTXMSGF", "cmd": "CRTCLPGM PGM(&LIB/TXMSGF) SRCFILE(&LIB/QCLSRC) SRCMBR(TXMSGF) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "RUNTXMSGF", "cmd": "CALL PGM(&LIB/TXMSGF) PARM('&LIB')", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPJUYAKL", "cmd": "CRTBNDCL PGM(&LIB/JUYAKL) SRCFILE(&LIB/QCLSRC) SRCMBR(JUYAKL) REPLACE(*YES)", "monmsg": ["CPF0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNJUYAKL", "cmd": "CALL PGM(&LIB/JUYAKL)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] }
+  ]
+}

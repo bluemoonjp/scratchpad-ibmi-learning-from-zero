@@ -1,0 +1,18 @@
+      * R0612Z - THROWAWAY probe (verify/part06-b7-bundle only, not
+      * shipped): edit codes 1-4 applied to a value forced to zero,
+      * to settle whether the unsuppressed side (1/3) prints a
+      * leading 0 digit or just a decimal point + zeros. See
+      * docs/probes.md / docs/part04/04-08-jucinq3-report.md.
+     H
+     FQSYSPRT O   F     132            PRINTER
+     C                     Z-ADD0         TOTL1   92
+     C                     Z-ADD0         TOTL2   92
+     C                     Z-ADD0         TOTL3   92
+     C                     Z-ADD0         TOTL4   92
+     C                     EXCPT
+     C                     SETON                     LR
+     OQSYSPRT E
+     O                         TOTL1 1   20
+     O                         TOTL2 2   30
+     O                         TOTL3 3   40
+     O                         TOTL4 4   50

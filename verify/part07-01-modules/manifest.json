@@ -1,0 +1,16 @@
+{
+  "batch": "part07-01-modules",
+  "description": "Compiles M0701A (main module, src/qrpglesrc/m0701s.rpgle) and M0701B 'JUCUTL' (nomain utility module, src/qrpglesrc/jucutl.rpgle, exports calcTaxTotal/sendMsg) separately via CRTRPGMOD, then binds them into one *PGM (F0701A) via CRTPGM MODULE(M0701A M0701B) ACTGRP(*NEW) - per work/design/part07-design-v1.md's 07-01 finding that ACTGRP/DFTACTGRP ctl-opt keywords inside a module's own source are only honored under a direct CRTBNDRPG compile (ilerpgref75.txt lines 24185/25080), so CRTPGM's own ACTGRP parameter must be explicit here. jucutlp.rpgleinc is /included by both source files (CPYFRMSTMF transfers it as a member, referenced via /copy at compile time - no separate compile step of its own). Calls F0701A once (M0701A's mainline calls into M0701B's exported procedures; both report via the QCMDEXC/SNDPGMMSG job-log technique already established in F0605A/F0606A, captured automatically by VFYLOG). FIXED (part07-01-modules, 2026-09-26, real-hardware CRTCLPGM): the original design used DSPPGM PGM(...) DETAIL(*MODULE) OUTPUT(*OUTFILE) to confirm two distinct *MODULE objects are bound into F0701A, but DSPPGM does not support OUTPUT(*OUTFILE) at all (CPD0043 'Keyword OUTFILE not valid for this command' - confirmed via web search of IBM's own DSPPGM documentation and forum reports of the same limitation). Replaced with a direct SQL query against QSYS2.BOUND_MODULE_INFO (the modern SQL Services equivalent of DSPPGM's *MODULE detail), which needs no OUTFILE/CL step at all - this is now the actual teaching point of this lesson.",
+  "steps": [
+    { "type": "file", "localPath": "../../src/qrpglesrc/jucutlp.rpgleinc", "remoteSrcFile": "QRPGLESRC", "member": "JUCUTLP", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "../../src/qrpglesrc/jucutl.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "JUCUTL" },
+    { "type": "file", "localPath": "../../src/qrpglesrc/m0701s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "M0701A" },
+
+    { "type": "cl", "label": "CPM0701B", "cmd": "CRTRPGMOD MODULE(&LIB/M0701B) SRCFILE(&LIB/QRPGLESRC) SRCMBR(JUCUTL) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "CPM0701A", "cmd": "CRTRPGMOD MODULE(&LIB/M0701A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(M0701A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "CPF0701A", "cmd": "CRTPGM PGM(&LIB/F0701A) MODULE(&LIB/M0701A &LIB/M0701B) ACTGRP(*NEW) REPLACE(*YES)", "monmsg": ["CPF0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNF0701A", "cmd": "CALL PGM(&LIB/F0701A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+
+    { "type": "collect", "kind": "sql", "sql": "SELECT PROGRAM_LIBRARY, PROGRAM_NAME, BOUND_MODULE_LIBRARY, BOUND_MODULE, MODULE_ATTRIBUTE FROM QSYS2.BOUND_MODULE_INFO WHERE PROGRAM_LIBRARY = '&LIB' AND PROGRAM_NAME = 'F0701A' ORDER BY BOUND_MODULE" }
+  ]
+}

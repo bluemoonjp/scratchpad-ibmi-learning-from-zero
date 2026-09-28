@@ -1,0 +1,134 @@
+     A*                                     D0702A - "JUCLST4, JUCSRV
+     A*                                     version" (nickname, lesson
+     A*                                     prose only): a load-all subfile
+     A*                                     listing JUCHUM (order#/
+     A*                                     customer code/date/rep),
+     A*                                     PLUS a JUNM column (customer
+     A*                                     name), filled by the RPG
+     A*                                     side (src/qrpglesrc/
+     A*                                     f0702bs.rpgle, object
+     A*                                     F0702B) calling JUCSRV's
+     A*                                     getCustName for every row.
+     A*                                     Part 7, lesson 07-02,
+     A*                                     ADVANCED/OPTIONAL exercise
+     A*                                     (not part of 07-02's own
+     A*                                     mandatory verification -
+     A*                                     see work/design/decisions-
+     A*                                     2026-09.md, entry P7-9, and
+     A*                                     the lesson's own real-
+     A*                                     hardware notes section).
+     A*
+     A*                                     STATUS: CONFIRMED V1 (part06-
+     A*                                     b8-compile, 2026-09-28):
+     A*                                     CRTDSPF produced CPC7301
+     A*                                     (file D0702A created) with no
+     A*                                     diagnostics.
+     A*                                     Interactive subfile/EXFMT
+     A*                                     execution is still V3
+     A*                                     (learner's own 5250 session,
+     A*                                     never run over this
+     A*                                     repository's non-interactive
+     A*                                     SSH harness - see docs/
+     A*                                     probes.md's WORKSTN/EXFMT
+     A*                                     caveat), same as every other
+     A*                                     WORKSTN file in this repo.
+     A*
+     A*                                     STRUCTURAL TEMPLATE: this
+     A*                                     file is a close copy of
+     A*                                     src/qddssrc/d0611s.dspf
+     A*                                     (D0611A, 06-11) - same
+     A*                                     DSPSIZ/SFL/SFLCTL/SFL1FTR
+     A*                                     shape, same column
+     A*                                     positions for JUNO/JUTOK/
+     A*                                     JUDATE/JUTAN, same
+     A*                                     OVERLAY/CPD7812 footer
+     A*                                     split (a SFLCTL record
+     A*                                     cannot carry positioned
+     A*                                     output both above and below
+     A*                                     its own subfile - see
+     A*                                     d0611s.dspf's own header for
+     A*                                     the confirmed real-hardware
+     A*                                     fix this file reuses
+     A*                                     unchanged). Per the P7-9
+     A*                                     decision, this exercise
+     A*                                     deliberately drops what
+     A*                                     D0611A has that this one
+     A*                                     does not need:
+     A*                                     - OPT (row-selection field)
+     A*                                     and its "5=order inquiry"
+     A*                                     column - this exercise's
+     A*                                     whole point is a SECOND real
+     A*                                     caller of getCustName, not
+     A*                                     option-5 machinery.
+     A*                                     - MSGSFL/MSGCTL (message
+     A*                                     subfile) - with no OPT
+     A*                                     field there is no invalid-
+     A*                                     option case to report.
+     A*                                     Everything else (SFLSIZ/
+     A*                                     SFLPAG/SFLDSP/SFLDSPCTL/
+     A*                                     ROLLUP/ROLLDOWN/CF03/
+     A*                                     OVERLAY, the load-all
+     A*                                     strategy, the unconditioned-
+     A*                                     SFLDSP + always-write-at-
+     A*                                     least-one-row discipline) is
+     A*                                     unchanged from D0611A - see
+     A*                                     that file's own header for
+     A*                                     the full rationale, not
+     A*                                     repeated here.
+     A*
+     A*                                     ADDED: JUNM (30A, output-
+     A*                                     only, not an external
+     A*                                     JUCHUM field - screen-only,
+     A*                                     same "not tied to any DB
+     A*                                     file" status D0611A's own
+     A*                                     OPT field had). f0702bs.rpgle
+     A*                                     fills it explicitly (JUNM =
+     A*                                     getCustName(jutok)) before
+     A*                                     each WRITE, since - unlike
+     A*                                     JUNO/JUTOK/JUDATE/JUTAN -
+     A*                                     there is no same-named
+     A*                                     JUCHUM field for WORKSTN/DB
+     A*                                     auto-match to fill it from.
+     A*
+     A*                                     NO DDS CONDITIONING
+     A*                                     INDICATORS anywhere in this
+     A*                                     file, same policy as
+     A*                                     D0611A/tk0100d.dspf (see
+     A*                                     those files' own headers).
+     A                                      DSPSIZ(24 80 *DS3)
+     A          R SFL1                      SFL
+     A            JUNO           6A  O  4  5
+     A            JUTOK          6A  O  4 13
+     A            JUDATE         8S 0O  4 21
+     A            JUTAN          6A  O  4 31
+     A            JUNM          30A  O  4 41
+     A          R SFL1CTL                   SFLCTL(SFL1)
+     A                                      SFLSIZ(9999)
+     A                                      SFLPAG(14)
+     A                                      SFLDSP
+     A                                      SFLDSPCTL
+     A                                      ROLLUP(25)
+     A                                      ROLLDOWN(26)
+     A                                      CF03(03)
+     A*                                     OVERLAY: see D0611A's own
+     A*                                     header (CPD7812 fix) -
+     A*                                     SFL1CTL carries only the
+     A*                                     top header here; the footer
+     A*                                     lives in SFL1FTR below.
+     A                                      OVERLAY
+     A                                  1  2'JUCLST4 (JUCSRV) - Order list'
+     A                                  3  5'Order#'
+     A                                  3 13'Cust'
+     A                                  3 21'Date'
+     A                                  3 31'Rep'
+     A                                  3 41'Name'
+     A*                                     SFL1FTR: split out of
+     A*                                     SFL1CTL above, same
+     A*                                     CPD7812 fix as D0611A. MORE:
+     A*                                     f0702bs.rpgle MOVELs
+     A*                                     'BOTTOM' here (load-all has
+     A*                                     nothing left to fetch),
+     A*                                     same technique as D0611A.
+     A          R SFL1FTR
+     A            MORE          10A  O 20  2
+     A                                 23  2'F3=Exit  Roll=Page'

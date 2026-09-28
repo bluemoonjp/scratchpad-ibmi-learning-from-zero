@@ -1,0 +1,186 @@
+{
+  "batch": "part07-03-signature",
+  "description": "[HISTORICAL, NOT RE-RUNNABLE - the throwaway 2-procedure baseline source (src/jucsrvb1.rpgle) this manifest references was deleted after the full narrative was confirmed; see docs/probes.md and src/qsrvsrc/jucsrv.bnd for the outcome] B-7 (jiggly-greeting-crystal.md): reconstructs 07-03's real signature-violation narrative using real object names (JUCSRV/JUCSRVBD/F0702A/F0703A, matching part07-0203-srvpgm's already-confirmed final state) instead of a throwaway scenario, per F0702A's own header comment (its signature history: getCustName-only (07-02) -> rebound once after pingJucsrv existed, EXPORT(*ALL) (07-03 step 2) -> countCustOrders added, binder source with PGMLVL(*PRV) preserving the 2-symbol signature (07-03 step 3)). Steps: (1) build JUCSRV from a THROWAWAY 2-procedure module (verify/part07-03-signature/src/jucsrvb1.rpgle, getCustName+pingJucsrv only, countCustOrders removed - NOT shipped) with EXPORT(*ALL), then CRTBNDRPG F0702A fresh against it (bnddir('JUCSRVBD') resolution) - this is the step-2 baseline signature. (2) Rebuild JUCSRV from the REAL, full src/qrpglesrc/jucsrv.rpgle (3 procedures) STILL under EXPORT(*ALL) - WITHOUT recompiling F0702A - then CALL F0702A: expect a signature-violation failure, captured via the job log (F0702A uses SNDPGMMSG/QMHSNDPM already, so no QSYSPRT/CPYSPLF capture concern here). (3) Switch JUCSRV to EXPORT(*SRCFILE) via CRTSRVPGM using the REAL src/qsrvsrc/jucsrv.bnd (2 PGMLVL blocks - *PRV preserves the exact 2-symbol signature F0702A was bound against in step 1). (4) Apply the SAME EXPORT(*SRCFILE) state again via UPDSRVPGM (never tried in this repo before - jucsrv.bnd's own header note lists this as a valid, expected command for this exact object). (5) CALL F0702A again - SAME object as step 1, never recompiled - expect SUCCESS this time (PGMLVL(*PRV) signature match). (6) CRTBNDRPG + CALL F0703A (needs countCustOrders, PGMLVL(*CURRENT)) - expect SUCCESS. (7) Create then DLTOBJ a THROWAWAY, disposable *BNDDIR (not JUCSRVBD) to confirm DLTOBJ OBJTYPE(*BNDDIR) syntax. By step 3/4, JUCSRV is back in its real final state regardless of step 2's exact outcome (every step runs unconditionally, MONMSG-caught) - no separate restore step is needed, and step 5/6 themselves prove the restore worked. This manifest does NOT rerun part07-05-checkpoint's ZAISRV (a separate service program, unaffected by JUCSRV's own signature history).",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "src/jucsrvb1.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "JUCSRVB1"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/jucsrv.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "JUCSRV",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qsrvsrc/jucsrv.bnd",
+      "remoteSrcFile": "QSRVSRC",
+      "member": "JUCSRV",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/f0702s.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "F0702A"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/f0703s.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "F0703A"
+    },
+    {
+      "type": "cl",
+      "label": "CPBASEMOD",
+      "cmd": "CRTRPGMOD MODULE(&LIB/JUCSRV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(JUCSRVB1) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPBASESRV",
+      "cmd": "CRTSRVPGM SRVPGM(&LIB/JUCSRV) MODULE(&LIB/JUCSRV) EXPORT(*ALL) ACTGRP(*CALLER) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPF0702A1",
+      "cmd": "CRTBNDRPG PGM(&LIB/F0702A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0702A) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNF0702A0",
+      "cmd": "CALL PGM(&LIB/F0702A) PARM('C00001')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPFULLMOD",
+      "cmd": "CRTRPGMOD MODULE(&LIB/JUCSRV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(JUCSRV) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPFULLSRV",
+      "cmd": "CRTSRVPGM SRVPGM(&LIB/JUCSRV) MODULE(&LIB/JUCSRV) EXPORT(*ALL) ACTGRP(*CALLER) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNF0702ABK",
+      "cmd": "CALL PGM(&LIB/F0702A) PARM('C00001')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPSRCSRV",
+      "cmd": "CRTSRVPGM SRVPGM(&LIB/JUCSRV) MODULE(&LIB/JUCSRV) EXPORT(*SRCFILE) SRCFILE(&LIB/QSRVSRC) SRCMBR(JUCSRV) ACTGRP(*CALLER) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "UPDSRCSRV",
+      "cmd": "UPDSRVPGM SRVPGM(&LIB/JUCSRV) MODULE(&LIB/JUCSRV) EXPORT(*SRCFILE) SRCFILE(&LIB/QSRVSRC) SRCMBR(JUCSRV)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNF0702AFIX",
+      "cmd": "CALL PGM(&LIB/F0702A) PARM('C00001')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPF0703A",
+      "cmd": "CRTBNDRPG PGM(&LIB/F0703A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0703A) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNF0703A",
+      "cmd": "CALL PGM(&LIB/F0703A) PARM('C00001')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTOSSBD",
+      "cmd": "CRTBNDDIR BNDDIR(&LIB/TOSSBD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTTOSSBD",
+      "cmd": "DLTOBJ OBJ(&LIB/TOSSBD) OBJTYPE(*BNDDIR)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    }
+  ]
+}
