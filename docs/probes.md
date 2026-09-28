@@ -810,17 +810,22 @@ OUTPUT(*OUTFILE)`)にも発見、まだ実機接続していないが先回り�
 成功した(M0701B・M0701A・F0701Aとも作成、`QSYS2.BOUND_MODULE_INFO`も
 期待どおり2行返した)。しかし実行時に別の実バグが見つかった。**
 
-**バグ: `SNDPGMMSG`は`QCMDEXC`経由では(呼び出し元がRPGでもCLでも、
-どんな呼び出しの深さでも)絶対に実行できない。** `CPD0031`
+**バグ: `SNDPGMMSG`は`QCMDEXC`経由では実行できない。** `CPD0031`
 「Command SNDPGMMSG not allowed in this setting」で確認。IBM公式
 Docsを2箇所直接引用で確認: QCMDEXC自体のDocs(`rbam6/execp.htm`)は
 「commands that can only be used in CL procedures or programs cannot
 be run by the QCMDEXC program」と明記し、`SNDPGMMSG`自身のDocsは
 実行を許される環境を「Compiled CL program or interpreted REXX」だけと
-定める——RPGは実行元言語である以上、`QCMDEXC`をどう経由してもここには
-入れない。**`jucutl.rpgle`(M0701B)自身の以前のヘッダー・コメントは
-これを「呼び出しの深さの問題」と誤って推測していたが、実際には深さは
-無関係で、`f0605s.rpgle`/`f0606s.rpgle`の直接(1段)呼び出しも同様に
+定める。**実機で実際に確認できたのは「RPGモジュールが束縛したサブ
+プロシージャー(NOMAINモジュール)経由でQCMDEXCを呼ぶ」という1パターン
+のみ**(`M0701A`→`sendMsg`in`M0701B`→`QCMDEXC`)。「呼び出し元の言語
+(RPG/CL)・呼び出しの深さに関わらず一律に起きる」という一般化は、
+IBM公式ドキュメントの記述(許される実行環境を明示的に列挙しており、
+そこにRPGが無い)からの妥当な推論ではあるが、CLからの呼び出しや
+他の深さのパターンを実際に実機確認したわけではない。**`jucutl.rpgle`
+(M0701B)自身の以前のヘッダー・コメントはこれを「呼び出しの深さの
+問題」と誤って推測していたが、実際には(上記の1パターンに関する限り)
+深さは無関係で、`f0605s.rpgle`/`f0606s.rpgle`の直接(1段)呼び出しも同様に
 壊れている。**
 
 **全リポジトリーをQCMDEXC呼び出しで検索し、影響範囲を確定した:**
@@ -846,22 +851,26 @@ Highest Severity 00で作成され、`RUNF0701A`も成功(3つの`sendMsg`呼び
 M0701A/M0701Bの2行を返した。`part07-01-modules DONE`まで到達
 (FAILSAFEに落ちず)。**CONFIRMED SUCCESS。**
 
-**影響**: `docs/design/part06-design-v1.md`が`QMHSNDPM`の新出構文を
-06-09に置いている点との整合性は未解決(`f0605s.rpgle`/`f0606s.rpgle`
-=06-05/06-06が06-09より前に`QMHSNDPM`を使うことになった)。P4(第6部
-本文執筆)の前に、批評パネル等でこの前倒しの扱いを決めること。
+**影響**: `f0605s.rpgle`/`f0606s.rpgle`(06-05/06-06)が06-09より前に
+`QMHSNDPM`を使うことになった点は、批評パネルの決定により解決済み
+(qualified/likedsという一般概念は06-07、`QMHSNDPM`の詳しい構文は
+06-09が担当し、06-05/06-06は前方参照のみを置く形)。06-09
+(`docs/part06/06-09-exception-handling-debugging.md`)は、この扱いに
+沿って`QMHSNDPM`の詳細な説明を実際に提供している。
 
 ## 第5部 QCMDEXC 教材の再設計: `za0510.rpg`(05-04)・`za0500-ticket3.rpg`(05-13)(確認日 2026-09-26、接続なしでの再設計)
 
 `src/legacy/qrpgsrc/za0510.rpg`(05-04)と`solutions/05-13/za0500-ticket3.rpg`
 (05-13のチケット3演習)は、どちらも`SNDPGMMSG`を`QCMDEXC`経由で実行
 しようとしていた。第7部`jucutl.rpgle`(`part07-01-modules`)の実機検証で、
-`SNDPGMMSG`は`QCMDEXC`経由では(呼び出し元がRPGでもCLでも、どんな
-深さでも)実行できないと判明した(`CPD0031`「Command SNDPGMMSG not
-allowed in this setting」。IBM公式Docsで確認: QCMDEXC自体は「commands
-that can only be used in CL procedures or programs cannot be run by
-the QCMDEXC program」、SNDPGMMSG自身は実行可能な環境を「Compiled CL
-program or interpreted REXX」のみと定める)。全リポジトリーをQCMDEXC
+`SNDPGMMSG`は`QCMDEXC`経由では実行できないと判明した(`CPD0031`
+「Command SNDPGMMSG not allowed in this setting」。IBM公式Docsで確認:
+QCMDEXC自体は「commands that can only be used in CL procedures or
+programs cannot be run by the QCMDEXC program」、SNDPGMMSG自身は
+実行可能な環境を「Compiled CL program or interpreted REXX」のみと
+定める——実機で確認できたのはRPGモジュールからの1パターンのみで、
+「呼び出し元の言語・深さに関わらず一律」という一般化はIBM公式Docs
+からの推論であり、それ自体を実機確認したわけではない)。全リポジトリーをQCMDEXC
 呼び出しで検索した結果、この2ファイルにも同じ壊れたパターンが見つかった。
 **05-04自身の教える要点は
 「QCMDEXCで任意のCLコマンドを実行できる」ことであり、`SNDPGMMSG`は
@@ -1186,56 +1195,60 @@ CALLPRC経由でJUCSRVをバインド)を検証。
 
 これでP1の#13は完了。次は#14(`part06-14b-null`)。
 
-## 第6部`part06-14b-null`の実機検証(確認日 2026-09-27、1回目の接続で設計上の重大な問題を発見)
+## 第6部`part06-14b-null`の実機検証(確認日 2026-09-27)
 
 `Q0614BA`(06-14b: DATE/NULL・`ALWNULL(*USRCTL)`・`%nullind`)を検証。
 
-- **コンパイルはHighest Severity 00で成功したが、実行時に致命的に失敗した。**
-  ソース自身の見出しコメントが予想していたとおり`SQL1103`(コンパイル時
-  警告、severity 10、`W0614BA`の列定義をカタログではなく文中の記述から
-  推測、`CREATE TABLE`とその後の2件の`INSERT`・`DECLARE CURSOR`の
-  計3箇所で発生)は出たが、コメントは「これは無害」と書いていた——
-  **実際には無害ではなかった**: 実行時に`SQL0204: W0614BA in QTEMP
-  type *FILE not found.`が発生し、印字出力(`run`セクションを走査して
-  実際の印字行が皆無であることを確認済み)が一切無いまま
-  `*inlr=*on; return`で静かに終了した(ラッパー自身の`RUNQ0614BA`
-  ステップはFAILEDマーカーを出していない——`Q0614BA`内部でエラーが
-  捕捉されず`SQLSTATE`ベースの`dow`ループが単に0回で抜けたと推測される)。
-- **推定される原因**: 静的組み込みSQL(`DECLARE CURSOR`・`INSERT`)は
-  プリコンパイル時点で`W0614BA`が実在しないため、`SQL1103`により
-  「文中の記述から推測した列定義」で仮のアクセス・プランを作るが、
-  そのプラン自体は実在するオブジェクトに正しくバインドされておらず、
-  実行時に自分自身の`CREATE TABLE`(同一ジョブ内、直前)で作った
-  実物のテーブルを見つけられない、という「コンパイル時に存在しない
-  QTEMPテーブルに対する静的SQL」特有の既知の落とし穴と考えられる
-  (一次資料での確定はできていない、複数の状況証拠からの推測)。
-- **重要**: これはverify harness固有の問題ではなく、**実際の学習者が
-  このレッスンをそのまま実施しても同じ理由で同じ失敗になる可能性が
-  高い**——本文執筆(P4)前に、`q0614bs.sqlrpgle`自体の設計見直しが
-  必要(動的SQL化、またはテーブルを先に恒久的に作ってからコンパイル
-  する2段階構成、等)。
-- **対応(このマニフェストの検証を先へ進めるための暫定策)**:
-  `CPQ0614BA`の前に`PRIMEW0614`ステップ(`RUNSQL`で`W0614BA`と同一
-  構造のテーブルをコンパイル前に作成)を追加し、プリコンパイル時点で
-  実在するテーブルを見せる。次回接続で「これで直るかどうか」自体が
-  上記の推定原因の検証になる。
+**【訂正、Wave 2執筆時に発見】1回目(priming無し)の接続を「実行時に
+致命的に失敗した」と記録していたが、これは誤りだった。** 生の結果
+JSON(`work/verify/results/part06-14b-null-2026-09-27T02-00-13-404Z.json`)
+を直接読み直したところ:
 
-**2回目の接続でCONFIRMED(推定原因が正しかったと実証)**: primingを
-入れただけで`SQL0204`は消え、実際に印字も出た: `C00001 ACME TRADING
-CO: last order 2026-09-05` / `C00099 NEW PROSPECT CO: last order date
-is NULL (unknown)`。`%nullind`によるSQLインジケーター⇔RPGネイティブ
-null指標の橋渡しも、`ALWNULL(*USRCTL)`/`NULLIND`キーワードも、ロジック
-自体は完全に正しい。**ただしこれは「プリコンパイル時にQTEMPの対象
-テーブルが実在しないと、実行時に自分自身で作ってもSQL0204になる」と
-いう実在する設計上の欠陥を確定させたということでもある——**
-`q0613s.sqlrpgle`(06-13)と違い、こちらは`priming`という回避策が
-verify harnessでしか通用しない(実際の学習者は5250で`CRTSQLRPGI`した
-直後に`CALL`すると同じ`SQL0204`に遭遇するはず、事前に別途テーブルを
-作っておく手順は自然な学習の流れに無い)。**P4(第6部本文執筆)前に
-`q0614bs.sqlrpgle`自体の再設計が必須**(候補: 動的SQLに変更する、
-レッスンの手順に「先に空のCREATE TABLEを1回実行してから本体を
-コンパイルする」という工程を明示的に加える、等)。このverifyマニフェスト
-自身は(harnessの中でだけ)CONFIRMED SUCCESS。
+- コンパイルは`SQL1103`(severity 10、`W0614BA`の列定義をカタログでは
+  なく文中の記述から推測、3箇所で発生)を伴いつつ成功し(RPGコンパイル
+  自身の`Final Summary`はWarning 0・Error 0・Severe Error 0、
+  「00 highest severity」)、`run`セクションの末尾には**期待どおりの
+  2行が実際に印字されていた**: `C00001 ACME TRADING CO: last order
+  2026-09-05` / `C00099 NEW PROSPECT CO: last order date is NULL
+  (unknown)`。
+- `SQL0204: W0614BA in QTEMP type *FILE not found.`はこの接続で
+  **1回だけ**発生しており、これはプログラム冒頭の`DROP TABLE`
+  (テーブルがまだ存在しない、想定内・無害)に対応するもので、
+  実行時のクラッシュではない。「印字出力が一切無いまま静かに終了した」
+  という当初の記述は、`run`セクション全体を十分に走査せずに書かれた
+  誤読だった。
+- したがって、この接続単独では「`SQL1103`だけでは実行時失敗を
+  起こさない」ことが示されており、「静的SQLがコンパイル時に存在しない
+  QTEMPテーブルへの静的アクセス・プランを作ると実行時に失敗する」
+  という設計上の問題自体は、この接続では実証されていない。
+
+**2回目の接続(priming有り)**: `CPQ0614BA`の前に`PRIMEW0614`ステップ
+(`RUNSQL`で`W0614BA`と同一構造のテーブルをコンパイル前に作成)を
+追加して再実行。ジョブ・ログの`SQL0204`は0件になったが、これは
+「冒頭の`DROP TABLE`が今度は実在するテーブルを見つけられた」という
+違いによるものであり、1回目の接続で起きていなかった実行時失敗を
+priming が「修正した」わけではない。印字結果(2行)は1回目と同一。
+
+**その後、`part06-decisions-1`/`part06-decisions-2`で判明した本当の
+原因**: 動的SQLへの再設計を試みた`part06-decisions-1`の接続で、当時の
+`CPQ0614BA`(静的SQLのまま)は実際には`SQL9001`(SQL precompile
+failed)で**コンパイル自体が失敗**しており、原因は2件の静的`INSERT`
+文の`TIMESTAMP`リテラルが当時RPGネイティブの`Z`形式のままだったこと
+による`SQL0180`(severity 30、日時リテラルの構文誤り、INSERT文2箇所)
+だった(`work/verify/results/part06-decisions-1-2026-09-27T22-17-19-406Z.json`
+のQ0614BAコンパイル・リストで直接確認)。`part06-decisions-2`の記録が
+当時「INSERTにもSELECTと同じ列レベルのアクセス・プランが必要」と
+書いていたのも同じ理由で不正確——実際の診断は`SQL1103`ではなく
+`SQL0180`だった。TIMESTAMPリテラルをANSI/ISO形式に直したうえで
+カーソル・INSERTとも動的SQL化したことで`part06-decisions-3`にて
+最終的にCONFIRMED SUCCESSとなった(下記参照)。**結論として、静的SQL
+がQTEMPの未実在テーブルに対して実行時に失敗するという仮説自体は、
+この教材のどの接続でも直接実証されていない**——動的SQL化が必要
+だった実際の理由は、TIMESTAMPリテラルの構文誤りによるコンパイル
+失敗(`SQL0180`)を、後から動的SQL化のついでに一緒に修正したため
+判別しにくくなっていた。`%nullind`によるSQLインジケーター⇔RPGネイティブ
+null指標の橋渡し、`ALWNULL(*USRCTL)`/`NULLIND`キーワードは、
+最初のpriming無し接続の時点で既にロジックとして正しく動作していた。
 
 ## 第6部`part06-12-prtf-cpp-swap`の実機検証(確認日 2026-09-27、1回目の接続で1件発見)
 
@@ -2144,18 +2157,22 @@ CALLステップには`RNX0000`も追加した。
   コンパイル・実行できる**(`RNF2037`/`RNS9308`は外部記述PRTFに
   対してのみ起きる、という当初の仮説がこれで裏付けられた)。
 - **06-14bにもう1件の設計欠陥を発見**: `Q0614BA`(動的SQLカーソル
-  化済み)は今回も`SQL precompile failed`で失敗した——原因は
-  カーソルではなく、**2件の`INSERT INTO QTEMP/W0614BA`が依然として
-  静的SQLのままだった**こと(プリコンパイル時に存在しないQTEMPの
-  表に対する列レベルのアクセス・プランが必要になるのはSELECTだけ
-  でなくINSERTも同じ、という当初のCREATE/DROPだけ例外という理解が
-  不十分だった)。`RUNQ0614BA`(CALL)自体はメッセージ0件で完了して
-  いたため、実は**旧セッションから残っていた(古い設計の)
-  `Q0614BA`オブジェクトがそのままCALLされ**(`REPLACE(*YES)`は
-  プリコンパイル失敗時には効かないため)、`run`セクションに
-  旧形式の出力(`C00001 ACME TRADING CO: last order 2026-09-05`等、
-  `TOKLTS`表示なし)が見つかった——**これは新設計の確認ではなく、
-  古いオブジェクトの残存確認に過ぎない**。
+  化済み)は今回も`SQL precompile failed`(`SQL9001`)で失敗した。
+  **【訂正、Wave 2執筆時に発見】当初「2件の`INSERT INTO
+  QTEMP/W0614BA`が依然として静的SQLのままで、INSERTにもSELECTと
+  同じ列レベルのアクセス・プランが必要」と記録していたが、実際の
+  コンパイル・リストを読み直すと診断は`SQL1103`ではなく`SQL0180`
+  (「Syntax of date, time, or timestamp value not valid」、
+  severity 30、ソース213行目・218行目=2件の静的INSERTの
+  `TIMESTAMP`リテラル部分)だった。** 原因はアクセス・プランの
+  問題ではなく、当時まだRPGネイティブの`Z`形式(ダッシュ+ピリオド
+  区切り)のままだった`TIMESTAMP`リテラルの構文誤り。`RUNQ0614BA`
+  (CALL)自体はメッセージ0件で完了していたため、実は**旧セッション
+  から残っていた(古い設計の)`Q0614BA`オブジェクトがそのまま
+  CALLされ**(`REPLACE(*YES)`はプリコンパイル失敗時には効かないため)、
+  `run`セクションに旧形式の出力(`C00001 ACME TRADING CO: last order
+  2026-09-05`等、`TOKLTS`表示なし)が見つかった——**これは新設計の
+  確認ではなく、古いオブジェクトの残存確認に過ぎない**。
 - **候補2(永続ライブラリー版、`Q0614BB`)の`PERSISTPRIME`ステップも
   失敗**: `VALUES (''C00001'', ''ACME TRADING CO'', DATE
   ''2026-09-05'', TIMESTAMP ''2026-09-05-08.30.00.000000'')`という
@@ -2298,8 +2315,9 @@ CONFIRMED SUCCESSとなった。
 
 **`*CALLER`比較版(`F0704AC`)は別の理由で失敗**: 同一ソースから
 `CRTRPGMOD`(モジュールのみ)→`CRTPGM ACTGRP(*CALLER)`という2段構成
-を試みたが、`CRTRPGMOD`自体が`Compilation stopped. Severity 20
-errors found in program.`で失敗した。原因は`f0704s.rpgle`自身の
+を試みたが、`CRTRPGMOD`自体が`RNF1324`(「Keywords DFTACTGRP, ACTGRP,
+or USRPRF are not allowed.」)で`Compilation stopped. Severity 20
+errors found in program.`となり失敗した。原因は`f0704s.rpgle`自身の
 `ctl-opt`が`actgrp('F0704AG')`を含んでおり、これは同ファイルの
 ヘッダーが既に引用済みのとおり「`CRTBNDRPG`でのみ有効」——
 `CRTRPGMOD`はこのキーワード自体を受け付けない。`*CALLER`比較を
@@ -2365,6 +2383,21 @@ B-7、1回目の接続。**候補として用意した2手続き版のスルー�
 問題なく成功。使い捨ての`*BNDDIR`(`TOSSBD`)作成→`DLTOBJ
 OBJTYPE(*BNDDIR)`も成功。
 
+**この「意図と違う段階」自体が、ILE Conceptsの記述を裏付ける追加の
+証拠になっている**: throwawayベースラインのコンパイル失敗により、
+`JUCSRV`は(2手続きではなく)既存の3手続きモジュールからそのまま
+`EXPORT(*ALL)`で再構築され、`F0702A`はその3シンボル・
+`EXPORT(*ALL)`(アルファベット順)署名に束縛された。その状態でも
+プレーンな`EXPORT(*ALL)`再構築(同じ3手続き)には耐えたが、
+`jucsrv.bnd`の**宣言順**(`getCustName`・`pingJucsrv`・
+`countCustOrders`——アルファベット順なら`countCustOrders`・
+`getCustName`・`pingJucsrv`の順になるはず)による
+`PGMLVL(*CURRENT)`ブロックへ切り替えた途端に`MCH4431`で壊れた。
+これは「`EXPORT(*ALL)`は手続き数+アルファベット順で署名を計算し、
+バインダー言語はソースに書いた順序を使う」というILE Conceptsの
+記述どおりの挙動が、意図しない形ながら実機で裏付けられたことを
+意味する。
+
 `jucsrvb1.rpgle`の`dcl-f juchum ... usropn;`行を削除して修正済み
 (`countCustOrders`を持たない2手続き版なので不要)。
 
@@ -2388,12 +2421,16 @@ OBJTYPE(*BNDDIR)`も成功。
    updated.`で構文・動作とも成功確認。
 7. `F0702A`を**依然再コンパイルせずに**もう一度`CALL`
    → **成功(`getCustName(C00001) = ACME TRADING CO`)。** これで
-   `PGMLVL(*PRV)`の明示的な2シンボル署名が、`EXPORT(*ALL)`が
-   同じ2手続きに対して計算した署名と実際に一致することを実機で
-   確認した——07-03(バインダー言語)の核心の主張(「バインダー
-   言語へ切り替えれば、既存クライアントの互換性を保ったまま
-   新しいエクスポートを追加できる」)がPUB400で成立することを
-   実証済み。
+   `PGMLVL(*PRV)`の明示的な2シンボル署名(`getCustName`・
+   `pingJucsrv`)が、`EXPORT(*ALL)`が同じ2手続きに対して計算した
+   署名と実際に一致することを実機で確認した——07-03(バインダー
+   言語)の核心の主張(「バインダー言語へ切り替えれば、既存
+   クライアントの互換性を保ったまま新しいエクスポートを追加できる」)
+   がPUB400で成立することを実証済み。**ただしこれはこの2シンボルの
+   ケースに限った実証である**: 上記「意図と違う段階」の3シンボルの
+   ケースが示すとおり、`PGMLVL(*PRV)`/`(*CURRENT)`が`EXPORT(*ALL)`の
+   署名を再現するのは、バインダー・ソースに書く順序が`EXPORT(*ALL)`
+   自身のアルファベット順と一致する場合に限られる。
 8. `F0703A`(新規コンパイル、`countCustOrders`使用)も成功、
    2回連続呼び出しの値も一致(`JUCHUM`再配置ロジックの正しさを
    確認)。
@@ -2437,7 +2474,7 @@ B-6。1回の接続でCONFIRMED SUCCESS。
 
 ## 訂正: 04-08の編集コード・ゼロ時表示は逆だった(確認日 2026-09-28)
 
-第6部06-12(別レッスン、まだ未公開)のOFLIND検証中、ゼロ値を渡した
+第6部06-12(別レッスン)のOFLIND検証中、ゼロ値を渡した
 フィールド(`EDTCDE(3)`)が実機で可視の`0`を印字していたことに気づいた。
 **これは「編集コード3はゼロを空白にする」という当時の理解と矛盾する。**
 一次資料(ILE RPG言語リファレンス・RPG/400リファレンスの編集コード
@@ -2471,9 +2508,9 @@ JSONは既に残っておらず、当時どういう手順で確認したか再�
 %editc`で検索し、04-02・付録F(BIF早見表)・付録A(用語集)には
 非ゼロ値(`1738.00`、桁区切りのみ)の記述しかなく、ゼロ時表示や
 J〜M・通貨記号への言及が無いことを確認した——訂正が必要なのは04-08
-のみ。ドラフト側の06-12レッスンにも同種の逆転した記述があり、
-そちらでも合わせて訂正する予定(ゼロ件数を表示するという設計意図に
-合わせるには、偶数ではなく奇数の編集コードが正しかった)。
+のみ。ドラフト側の06-12レッスンにも同種の逆転した記述があったため
+合わせて訂正済み(ゼロ件数を表示するという設計意図に合わせるには、
+偶数ではなく奇数の編集コードが正しかった)。
 
 **未確認のまま残っている点**: ゼロ残高を表示する側(1・3)が小数位置
 ありのフィールドで実際に`.00`(先頭`0`なし)と印字するかどうかは、

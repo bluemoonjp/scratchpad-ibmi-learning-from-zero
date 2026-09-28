@@ -18,10 +18,14 @@
 // own QCMDEXC Docs state "commands that can only be used in CL
 // procedures or programs cannot be run by the QCMDEXC program", and
 // SNDPGMMSG's own Docs restrict it to "Compiled CL program or
-// interpreted REXX" - never RPG, at any call depth, confirmed on real
-// hardware (CPD0031, docs/probes.md's part07-01-modules section).
-// src/legacy/qrpgsrc/za0510.rpg (05-04, RPG III) hit the exact same
-// wall and replaced its demo command with CHGDTAARA - this file reuses
+// interpreted REXX" - never RPG. Confirmed on real hardware for one
+// pattern (an RPG module calling a bound subprocedure that itself
+// calls QCMDEXC, CPD0031, docs/probes.md's part07-01-modules section)
+// - "never RPG at any call depth" is a reasonable inference from IBM's
+// own docs (their allowed-environments list never includes RPG), not
+// itself hardware-tested beyond that one pattern.
+// src/legacy/qrpgsrc/za0510.rpg (05-04, RPG III) was rewritten for the
+// same reason, based on this same finding - this file reuses
 // that same safe, ALLOW(*ALL) replacement command, ported to RPG IV
 // free-form QCMDEXC syntax instead of RPG III's CALL/PARM opcodes.
 //
