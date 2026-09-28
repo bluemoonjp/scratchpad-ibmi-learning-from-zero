@@ -89,20 +89,29 @@
 // WHY VOID, NOT ind: an earlier draft of this file had every assert
 // procedure RETURN an ind (pass/fail), on the assumption a caller might
 // want to branch on it directly. Dropped because it invites a race
-// against the *ESCAPE mechanism below: on failure, this procedure sends
-// (via its raiseFail() helper) an *ESCAPE message targeted at its OWN
+// against the *ESCAPE mechanism below: on failure, this procedure's
+// own raiseFail() helper sends an *ESCAPE message targeted at its OWN
 // caller (callStackCtr 2, not 1 - see "callStackCtr 2" below for why
-// the offset is counted from raiseFail's own call to QMHSNDPM) before
-// it returns - per the primary-source worked example this pattern is
-// built on (ilerpgref75.txt lines 13744-13773, "Procedure to send an
-// exception", QMHSNDPM call quoted verbatim in sendException() there),
-// an unhandled *ESCAPE aimed at the caller's call level activates once
-// control actually returns there, before that caller's own next
-// statement runs - so a caller that reads this procedure's return value
-// on the failure path would, in the unwrapped (no MONITOR) case, never
-// actually reach the statement that reads it. Rather than design around
-// an interaction this repo has not yet run on real hardware, this file
-// drops the return value entirely: PASS is "execution continued past
+// the offset is counted from raiseFail's own call to QMHSNDPM) - per
+// the primary-source worked example this pattern is built on
+// (ilerpgref75.txt lines 13744-13773, "Procedure to send an
+// exception", QMHSNDPM call quoted verbatim in sendException() there).
+// This is NOT a normal return followed by a later activation:
+// ileconcepts75.txt's own description of the *ESCAPE message type
+// states plainly "You will not receive control after sending an
+// escape exception message", and ilerpgprogguide75.txt's "Returning
+// from a Called Program or Procedure" section describes a procedure
+// ending abnormally - never reaching its own return; - when
+// something outside it (here, an escape message aimed directly at
+// its own caller) ends its invocation. So raiseFail's own call stack
+// entry, and this procedure's, are both cancelled without ever
+// executing their own return; statement - a caller that reads this
+// procedure's return value on the failure path would, in the
+// unwrapped (no MONITOR) case, never actually reach the statement
+// that reads it, precisely because this procedure's own invocation
+// never gets that far. Rather than design around an interaction this
+// repo has not yet run on real hardware, this file drops the return
+// value entirely: PASS is "execution continued past
 // this call", FAIL is "an escape condition interrupted the caller
 // (unless it wrapped the call in MONITOR/ON-ERROR, in which case it
 // catches the escape and can inspect TESTRES for what failed)". This
