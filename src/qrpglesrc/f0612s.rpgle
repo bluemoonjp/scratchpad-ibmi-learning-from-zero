@@ -174,13 +174,16 @@ dcl-f juchum usage(*input);
 // "dcl-s ovf ind;" + "oflind(ovf)" (RNF2037, "The Overflow Indicator is
 // already defined", severity 20). A THIRD attempt, "oflind(*inoa)"
 // (the named special indicator directly, no separate dcl-s at all -
-// candidate A of 3 tried in the same connection) hit the SAME severity-
-// 20 compile failure as the *inoa-via-ovf attempt (RNS9308/RNS9310 in
-// the job log; the specific RNFnnnn was not captured, but the failure
-// class matches). A FOURTH attempt, oflind(*in01) - a NUMBERED
-// indicator instead of the *INOA-*INOG/*INOV named-overflow family -
-// compiled cleanly (Highest Severity 00, confirmed real hardware,
-// candidate B of the same connection). Both forms are listed as valid
+// candidate A of 3 tried in the same connection) hit a DIFFERENT
+// severity-20 error this time - RNF2014, "The parameter for keyword
+// OFLIND is not valid; keyword is ignored" (confirmed in the saved
+// compile listing, part06-decisions-1's own "run" section) - a
+// distinct message from RNF2037, but the same practical outcome
+// (*INOA rejected on this externally described printer file). A
+// FOURTH attempt, oflind(*in01) - a NUMBERED indicator instead of the
+// *INOA-*INOG/*INOV named-overflow family - compiled cleanly (Highest
+// Severity 00, confirmed real hardware, candidate B of the same
+// connection). Both forms are listed as valid
 // OFLIND parameters in ilerpgref75.txt lines 27970-27988 ("Valid
 // Parameters: *INOA-*INOG, *INOV" / "*IN01 through *IN99" separately),
 // but only the numbered-indicator family actually compiles against an
