@@ -12,11 +12,22 @@
      A*                                     part06-decisions-2, part06-b6-
      A*                                     batch, see docs/probes.md):
      A*                                     compiles Highest Severity 00,
-     A*                                     RPTHDR/RPTDTL/RPTTOT all print,
-     A*                                     OFLIND(*IN01) overflow fires
-     A*                                     correctly. F0612A (the shipped
-     A*                                     RPG program that actually WRITEs
-     A*                                     to this PRTF) has NOT itself been
+     A*                                     RPTDTL and RPTTOT both print
+     A*                                     correctly (confirmed by directly
+     A*                                     reading each connection's raw
+     A*                                     "run" section text, not
+     A*                                     CPYSPLF/WRKSPLF), OFLIND(*IN01)
+     A*                                     overflow fires correctly. RPTHDR
+     A*                                     (the banner record) is NOT yet
+     A*                                     confirmed - none of the 3
+     A*                                     throwaway probe programs that
+     A*                                     produced the above evidence ever
+     A*                                     WRITEs it (checked directly
+     A*                                     against each connection's raw
+     A*                                     output, 2026-09-28). F0612A (the
+     A*                                     shipped RPG program that actually
+     A*                                     WRITEs to this PRTF, including
+     A*                                     RPTHDR) has NOT itself been
      A*                                     compiled/run yet - the above
      A*                                     confirmations come from throwaway
      A*                                     probe programs sharing this same
