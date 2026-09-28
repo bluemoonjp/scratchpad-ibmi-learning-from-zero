@@ -9,29 +9,46 @@
      A*                                     compiled via CRTPRTF) and F0612A
      A*                                     (the shipped RPG program that
      A*                                     WRITEs to it) are BOTH CONFIRMED
-     A*                                     on real hardware (part06-
+     A*                                     on real hardware. The FIRST
+     A*                                     confirmation of F0612A itself
+     A*                                     (direct CALL, and via the real
+     A*                                     JUCINQ command after CHGCMD
+     A*                                     swapped its CPP - see f0612s.
+     A*                                     rpgle's own header for the full
+     A*                                     CPP-swap story) was part06-12-
+     A*                                     prtf-cpp-swap's 3rd connection
+     A*                                     (2026-09-27): "RNS9304: Program
+     A*                                     F0612A placed... 00 highest
+     A*                                     severity", and the full report
+     A*                                     (RPTHDR banner + 2 RPTDTL rows +
+     A*                                     RPTTOT) printed correctly TWICE
+     A*                                     in the same connection's "run"
+     A*                                     section (once before, once
+     A*                                     after the CPP swap - both calls
+     A*                                     hit the same real object).
+     A*                                     Further connections (part06-
      A*                                     decisions-1, part06-decisions-2,
      A*                                     part06-b6-batch, part06-b7-
-     A*                                     bundle - see docs/probes.md):
-     A*                                     compile Highest Severity 00,
-     A*                                     RPTHDR/RPTDTL/RPTTOT all print
-     A*                                     correctly (confirmed by directly
-     A*                                     reading each connection's raw
-     A*                                     "run" section text, not
-     A*                                     CPYSPLF/WRKSPLF), OFLIND(*IN01)
-     A*                                     overflow fires correctly AND
-     A*                                     RPTHDR can be re-WRITEn on
-     A*                                     overflow with *IN01 reset back
-     A*                                     off (part06-b7-bundle's T612OFHR
-     A*                                     probe printed the banner 3
-     A*                                     times across a 20-line forced-
-     A*                                     overflow loop). F0612A's own
+     A*                                     bundle - see docs/probes.md)
+     A*                                     added: OFLIND(*IN01) overflow
+     A*                                     fires correctly; RPTHDR can be
+     A*                                     re-WRITEn on overflow with
+     A*                                     *IN01 reset back off (part06-
+     A*                                     b7-bundle's T612OFHR probe
+     A*                                     printed the banner 3 times
+     A*                                     across a 20-line forced-
+     A*                                     overflow loop); F0612A's own
      A*                                     zero-orders case (customer
      A*                                     'C99999', no matching JUCHUM
-     A*                                     rows) was also confirmed
-     A*                                     directly: RPTTOT printed a
+     A*                                     rows) printed RPTTOT with a
      A*                                     visible "0" (EDTCDE(3), not
-     A*                                     blank).
+     A*                                     blank). All read directly from
+     A*                                     each connection's raw "run"
+     A*                                     section text, not CPYSPLF/
+     A*                                     WRKSPLF (this harness's non-
+     A*                                     interactive jobs never create a
+     A*                                     real spooled file for printer
+     A*                                     output).
      A*
      A*                                     Ports R0408A/JUCINQ3 (04-08,
      A*                                     src/qrpgsrc/r0408s.rpg) O-spec
