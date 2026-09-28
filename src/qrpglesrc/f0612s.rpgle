@@ -9,9 +9,10 @@
 //   EXISTING JUCINQ command (03-11, src/qcmdsrc/jucinq.cmd), replacing
 //   JUCINQC (03-09), via:
 //       CHGCMD CMD(<USER>1/JUCINQ) PGM(<USER>1/F0612A)
-//   This CPP swap has never been executed anywhere in this repo before
-//   (design doc section 0.4: JUCINQ's CPP has never actually been
-//   swapped). CHGCMD "does not change the parameter descriptions
+//   CONFIRMED (part06-12-prtf-cpp-swap, 2026-09-27): this CPP swap has
+//   been executed and the JUCINQ command called through it - see the
+//   STATUS section below for the full real-hardware account. CHGCMD
+//   "does not change the parameter descriptions
 //   or validity checking information in the command definition object"
 //   (work/design/refs/cl_commands_75.txt, lines 18-27) - the caller-
 //   facing interface of JUCINQ stays exactly as it is today. That means
@@ -111,20 +112,34 @@
 // intentional, task-directed deviation from that one design-doc
 // table, not an oversight.
 //
-// STATUS: CONFIRMED V2 (part06-b7-bundle, 2026-09-28): F0612A itself
-// (this exact program, not a throwaway probe) was CRTBNDRPG'd (Highest
-// Severity 00) and CALLed directly with a nonexistent customer code
+// STATUS: CONFIRMED V2, including the CPP swap itself. The FIRST
+// confirmation of F0612A (this exact program, not a throwaway probe)
+// was part06-12-prtf-cpp-swap's 3rd connection (2026-09-27): CRTBNDRPG
+// Highest Severity 00 ("RNS9304: Program F0612A placed... 00 highest
+// severity"), then CALLed directly with 'C00001' - the full report
+// (RPTHDR banner + 2 RPTDTL rows + RPTTOT) printed correctly, matching
+// R0408A's/Q0614A's own confirmed values (J00001/J00003). The SAME
+// connection then executed the CPP swap this header's very first
+// paragraph describes - CHGCMD CMD(<lib>/JUCINQ) PGM(<lib>/F0612A) -
+// and called JUCINQ TOKCD('C00001') via QCMDEXC: the identical report
+// printed a SECOND time, through the real command, with its CPP now
+// pointing at F0612A. This is the first time this repo's JUCINQ command
+// has actually been invoked and produced real output (03-11's own
+// command definition had never been CALLed before). The interactive
+// F4-prompt path itself is still V3 (SSH is non-interactive) - the
+// underlying CHGCMD+CALL mechanism is V2-confirmed.
+// part06-b7-bundle (2026-09-28) added a second, independent
+// confirmation of F0612A - CALLed with a nonexistent customer code
 // ('C99999', same convention 04-08's own exercise 3 uses) - RPTHDR
-// printed the banner, and RPTTOT printed a visible "0" order count
-// (EDTCDE(3), confirming the zero-balance direction end to end through
-// the shipped program itself, not just throwaway probes sharing its
-// DDS). CHGCMD-attachment to JUCINQ (the CPP swap) is still untested.
-// P0612A (src/qddssrc/p0612s.prtf) is separately confirmed across 4
-// connections total (part06-decisions-1, part06-decisions-2, part06-
-// b6-batch, part06-b7-bundle - see docs/probes.md and p0612s.prtf's
-// own header). Every individual RPG-side technique used below (OFLIND,
-// program-entry dcl-pi, CHAIN/%found) is separately confirmed too -
-// see each section's own citation.
+// printed the banner again, and RPTTOT printed a visible "0" order
+// count (EDTCDE(3), confirming the zero-balance direction end to end).
+// P0612A (src/qddssrc/p0612s.prtf) is separately confirmed across 5
+// connections total (part06-12-prtf-cpp-swap, part06-decisions-1,
+// part06-decisions-2, part06-b6-batch, part06-b7-bundle - see
+// docs/probes.md and p0612s.prtf's own header). Every individual
+// RPG-side technique used below (OFLIND, program-entry dcl-pi,
+// CHAIN/%found) is separately confirmed too - see each section's own
+// citation.
 //
 // Verified against work/design/refs/ilerpgref75.txt (IBM i 7.5 ILE RPG
 // Language Reference, 73451 lines) and cl_commands_75.txt at
