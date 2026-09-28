@@ -6,32 +6,32 @@
      A*                                     file only covers the DDS/PRTF side.
      A*
      A*                                     STATUS: P0612A itself (this DDS,
-     A*                                     compiled via CRTPRTF) has been
-     A*                                     CONFIRMED on real hardware across
-     A*                                     3 connections (part06-decisions-1,
-     A*                                     part06-decisions-2, part06-b6-
-     A*                                     batch, see docs/probes.md):
-     A*                                     compiles Highest Severity 00,
-     A*                                     RPTDTL and RPTTOT both print
+     A*                                     compiled via CRTPRTF) and F0612A
+     A*                                     (the shipped RPG program that
+     A*                                     WRITEs to it) are BOTH CONFIRMED
+     A*                                     on real hardware (part06-
+     A*                                     decisions-1, part06-decisions-2,
+     A*                                     part06-b6-batch, part06-b7-
+     A*                                     bundle - see docs/probes.md):
+     A*                                     compile Highest Severity 00,
+     A*                                     RPTHDR/RPTDTL/RPTTOT all print
      A*                                     correctly (confirmed by directly
      A*                                     reading each connection's raw
      A*                                     "run" section text, not
      A*                                     CPYSPLF/WRKSPLF), OFLIND(*IN01)
-     A*                                     overflow fires correctly. RPTHDR
-     A*                                     (the banner record) is NOT yet
-     A*                                     confirmed - none of the 3
-     A*                                     throwaway probe programs that
-     A*                                     produced the above evidence ever
-     A*                                     WRITEs it (checked directly
-     A*                                     against each connection's raw
-     A*                                     output, 2026-09-28). F0612A (the
-     A*                                     shipped RPG program that actually
-     A*                                     WRITEs to this PRTF, including
-     A*                                     RPTHDR) has NOT itself been
-     A*                                     compiled/run yet - the above
-     A*                                     confirmations come from throwaway
-     A*                                     probe programs sharing this same
-     A*                                     DDS object, not from F0612A.
+     A*                                     overflow fires correctly AND
+     A*                                     RPTHDR can be re-WRITEn on
+     A*                                     overflow with *IN01 reset back
+     A*                                     off (part06-b7-bundle's T612OFHR
+     A*                                     probe printed the banner 3
+     A*                                     times across a 20-line forced-
+     A*                                     overflow loop). F0612A's own
+     A*                                     zero-orders case (customer
+     A*                                     'C99999', no matching JUCHUM
+     A*                                     rows) was also confirmed
+     A*                                     directly: RPTTOT printed a
+     A*                                     visible "0" (EDTCDE(3), not
+     A*                                     blank).
      A*
      A*                                     Ports R0408A/JUCINQ3 (04-08,
      A*                                     src/qrpgsrc/r0408s.rpg) O-spec

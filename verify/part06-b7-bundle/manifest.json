@@ -1,0 +1,41 @@
+{
+  "batch": "part06-b7-bundle",
+  "description": "Bundled connection settling advisor's items 3/4/5 for 06-12/07-05 (2026-09-28). (1) Rebuilds P0612A (src/qddssrc/p0612s.prtf, RPTCNT now EDTCDE(3) after the 04-08 edit-code correction) and compiles F0612A (src/qrpglesrc/f0612s.rpgle) for the FIRST time - both were only ever exercised via throwaway probes sharing the DDS object before this connection, per p0612s.prtf's own STATUS header (2026-09-28). (2) Compiles F0612B/F0612C (src/qrpglesrc/f0612bs.rpgle, f0612cs.rpgle - new objects owned by 06-12 per appendix E section 3.1, since editing F0604A/F0611A in place would break those lessons' own already-written worked examples), reusing D0604A/D0611A unchanged (recreated here defensively with REPLACE(*YES) in case they are not still present in this library). (3) A throwaway OFLIND header-reprint probe (src/t612ofhr.rpgle, T612OFHR) under the same OVRPRTF(PAGESIZE(12 132) OVRFLW(10)) trick part06-b6-batch used, going one step further: re-WRITEs RPTHDR when *IN01 fires and resets the indicator, to show a concrete 'header re-prints on overflow' demonstration - neither part06-decisions-2 nor part06-b6-batch's own probes ever WRITE RPTHDR at all. (4) Calls the real F0612A with a nonexistent customer code ('C99999', same convention 04-08's own exercise 3 uses) to observe RPTTOT's RPTCNT print a visible '0' for a zero order count, through the SHIPPED program (not a probe copy) - settles 06-12's own EDTCDE(3) question end to end. (5) A throwaway RPG III O-spec probe (src/r0612z.rpg, R0612Z) forcing a 2-decimal packed field to 0.00 and printing it under edit codes 1/2/3/4 side by side - settles whether the unsuppressed side (1/3) prints a leading '0' digit ('0.00') or just a decimal point + zeros ('.00'), per work/design/refs/ilerpgref75.txt lines 22391-22395 and rpg400ref.txt lines 22859-22864 (both say 'a decimal notation followed by n zeros', i.e. no leading digit) - this directly checks the wording just corrected on main (commits b3bf169, 99d56e7). (6) Confirms lesson 07-05's TXCHECK *CMD form actually works end to end (tools/qcmdsrc/txcheck.cmd + a copy of verify/part06-15-checkpoint/src/txchkrun.clp's proven CHGVAR/*TCAT/%TRIM-at-runtime pattern, called for lesson '07-05' - TXCKM's own 07-05 rows were already seeded by part07-05-checkpoint's own connection, so no reseed here). No ZAIKOM/SHOHIM writes anywhere in this manifest - no TXRESET needed. Printed output read from the connection result's own 'run' section throughout (CPYSPLF reliably fails for printer-file output in this harness's job, part06-0103-freeform/part06-decisions-2) - no VSPLPF/CPYSPLF steps here.",
+  "steps": [
+    { "type": "file", "localPath": "../../src/qddssrc/p0612s.prtf", "remoteSrcFile": "QDDSSRC", "member": "P0612A" },
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0612s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0612A" },
+    { "type": "file", "localPath": "../../src/qddssrc/d0604s.dspf", "remoteSrcFile": "QDDSSRC", "member": "D0604A" },
+    { "type": "file", "localPath": "../../src/qddssrc/d0611s.dspf", "remoteSrcFile": "QDDSSRC", "member": "D0611A" },
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0612bs.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0612B" },
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0612cs.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0612C" },
+    { "type": "file", "localPath": "src/t612ofhr.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "T612OFHR" },
+    { "type": "file", "localPath": "src/r0612z.rpg", "remoteSrcFile": "QRPGSRC", "member": "R0612Z" },
+    { "type": "file", "localPath": "../../tools/qddssrc/txckm.pf", "remoteSrcFile": "QDDSSRC", "member": "TXCKM" },
+    { "type": "file", "localPath": "../../tools/qclsrc/txcheck.clp", "remoteSrcFile": "QCLSRC", "member": "TXCHECK" },
+    { "type": "file", "localPath": "../../tools/qcmdsrc/txcheck.cmd", "remoteSrcFile": "QCMDSRC", "member": "TXCHECK", "ensureSrcFile": { "recordLength": 92 } },
+    { "type": "file", "localPath": "../part06-15-checkpoint/src/txchkrun.clp", "remoteSrcFile": "QCLSRC", "member": "TXCHKRUN" },
+
+    { "type": "cl", "label": "CPP0612A", "cmd": "CRTPRTF FILE(&LIB/P0612A) SRCFILE(&LIB/QDDSSRC) SRCMBR(P0612A) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPF0612A", "cmd": "CRTBNDRPG PGM(&LIB/F0612A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0612A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
+    { "type": "cl", "label": "CPD0604A", "cmd": "CRTDSPF FILE(&LIB/D0604A) SRCFILE(&LIB/QDDSSRC) SRCMBR(D0604A) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPD0611A", "cmd": "CRTDSPF FILE(&LIB/D0611A) SRCFILE(&LIB/QDDSSRC) SRCMBR(D0611A) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPF0612B", "cmd": "CRTBNDRPG PGM(&LIB/F0612B) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0612B) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
+    { "type": "cl", "label": "CPF0612C", "cmd": "CRTBNDRPG PGM(&LIB/F0612C) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0612C) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
+    { "type": "cl", "label": "CPOFHR", "cmd": "CRTBNDRPG PGM(&LIB/T612OFHR) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T612OFHR) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
+    { "type": "cl", "label": "CPR0612Z", "cmd": "CRTRPGPGM PGM(&LIB/R0612Z) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0612Z) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "RUNR0612Z", "cmd": "CALL PGM(&LIB/R0612Z)", "monmsg": ["CPF0000", "RPG0000", "MCH0000"] },
+
+    { "type": "cl", "label": "OVRPTF", "cmd": "OVRPRTF FILE(P0612A) PAGESIZE(12 132) OVRFLW(10)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "RUNOFHR", "cmd": "CALL PGM(&LIB/T612OFHR)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] },
+    { "type": "cl", "label": "DLTOVRPTF", "cmd": "DLTOVR FILE(P0612A)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "RUNF0612AZ", "cmd": "CALL PGM(&LIB/F0612A) PARM('C99999')", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] },
+
+    { "type": "cl", "label": "CPTXCKM", "cmd": "CHKOBJ OBJ(&LIB/TXCKM) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/TXCKM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TXCKM))", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPTXCHECK", "cmd": "CRTCLPGM PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHECK) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPTXCHKCMD", "cmd": "DLTCMD CMD(&LIB/TXCHECK)\nMONMSG MSGID(CPF0000)\nCRTCMD CMD(&LIB/TXCHECK) PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXCHECK)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPTXCHKRUN", "cmd": "CRTCLPGM PGM(&LIB/TXCHKRUN) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHKRUN) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "RUNTXCHECK", "cmd": "CALL PGM(&LIB/TXCHKRUN) PARM('07-05' '&LIB')", "monmsg": ["CPF0000", "MCH0000"] }
+  ]
+}

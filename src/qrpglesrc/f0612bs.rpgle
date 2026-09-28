@@ -40,14 +40,11 @@
 //   Enter once to see the order list (EXFMT/WORKSTN cannot be skipped),
 //   but never has to retype a code the caller (F0612C) already knew.
 //
-// STATUS: NOT YET COMPILED (draft/part06 branch, 2026-09-28). An earlier
-// session compiled this exact shape under the names F0604A/custCode in
-// part06-decisions-1 (commit ef7e330, later reverted) - Highest Severity
-// 00 there. Renaming the object to F0612B (and citing it from F0612C's
-// own dcl-pr as extpgm('F0612B'), not 'F0604A') means that prior compile
-// does not carry over as-is; a fresh V1 compile-check under these exact
-// names is still needed before this counts as CONFIRMED. Track this
-// alongside 06-12's other pending real-hardware items (docs/probes.md).
+// STATUS: CONFIRMED V1 (compile-check, part06-b7-bundle, 2026-09-28):
+// CRTBNDRPG Highest Severity 00, under this exact object name (F0612B).
+// Same WORKSTN/EXFMT limitation as every other Part 6 screen - V1
+// (compile-check) is the realistic ceiling; interactive behavior (V3)
+// is still untested.
 //
 // Verified against work/design/refs/ilerpgref75.txt at the same
 // citations f0604s.rpgle's own header already gives for DCL-F/WORKSTN/
