@@ -35,18 +35,15 @@
 // describes), so the learner no longer retypes a code already visible
 // on this screen.
 //
-// STATUS: NOT YET COMPILED (draft/part06 branch, 2026-09-28). An earlier
-// session compiled this exact shape (JUTOK-passing CALLP, parameterized
-// dcl-pr) under the name F0611A/extpgm('F0604A') in part06-decisions-1
-// (commit ef7e330, later reverted) - Highest Severity 00 there. Renaming
-// both the calling object (F0612C) and the called program's prototype
-// (extpgm('F0612B'), not 'F0604A') means that prior compile does not
-// carry over as-is; a fresh V1 compile-check under these exact names is
-// still needed before this counts as CONFIRMED. Track this alongside
-// 06-12's other pending real-hardware items (docs/probes.md). NOTE for
-// the P7-9-driven 07-02 work: F0611A/D0611A themselves are untouched by
-// this file, so P7-9's "do not edit D0611A/F0611A for JUCSRV's
-// getCustName integration" restriction is unaffected either way.
+// STATUS: CONFIRMED V1 (compile-check, part06-b7-bundle, 2026-09-28):
+// CRTBNDRPG Highest Severity 00, under this exact object name (F0612C)
+// and calling extpgm('F0612B') (also confirmed the same connection).
+// Same WORKSTN/EXFMT limitation as every other Part 6 screen - V1
+// (compile-check) is the realistic ceiling; interactive behavior (V3)
+// is still untested. NOTE for the P7-9-driven 07-02 work: F0611A/D0611A
+// themselves are untouched by this file, so P7-9's "do not edit D0611A/
+// F0611A for JUCSRV's getCustName integration" restriction is
+// unaffected either way.
 //
 // Verified against work/design/refs/ilerpgref75.txt at the same
 // citations f0611s.rpgle's own header already gives for SFILE/READC/

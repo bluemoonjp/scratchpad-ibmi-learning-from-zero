@@ -111,19 +111,20 @@
 // intentional, task-directed deviation from that one design-doc
 // table, not an oversight.
 //
-// STATUS: F0612A itself (this exact program) has NOT yet been
-// CRTBNDRPG'd, run, or CHGCMD-attached to JUCINQ on PUB400. Treat any
-// claim about F0612A as a whole as "should work per the ILE RPG
-// Language Reference / CL command reference", not as a verified fact -
-// a dedicated compile-check connection for F0612A itself is still
-// pending. However, P0612A (src/qddssrc/p0612s.prtf, the DDS this
-// program WRITEs to) HAS been compiled and run on real hardware,
-// across 3 connections (part06-decisions-1, part06-decisions-2,
-// part06-b6-batch - see docs/probes.md and p0612s.prtf's own header),
-// via throwaway probe programs sharing this same DDS object. Every
-// individual RPG-side technique used below (OFLIND, program-entry
-// dcl-pi, CHAIN/%found) is separately confirmed too - see each
-// section's own citation.
+// STATUS: CONFIRMED V2 (part06-b7-bundle, 2026-09-28): F0612A itself
+// (this exact program, not a throwaway probe) was CRTBNDRPG'd (Highest
+// Severity 00) and CALLed directly with a nonexistent customer code
+// ('C99999', same convention 04-08's own exercise 3 uses) - RPTHDR
+// printed the banner, and RPTTOT printed a visible "0" order count
+// (EDTCDE(3), confirming the zero-balance direction end to end through
+// the shipped program itself, not just throwaway probes sharing its
+// DDS). CHGCMD-attachment to JUCINQ (the CPP swap) is still untested.
+// P0612A (src/qddssrc/p0612s.prtf) is separately confirmed across 4
+// connections total (part06-decisions-1, part06-decisions-2, part06-
+// b6-batch, part06-b7-bundle - see docs/probes.md and p0612s.prtf's
+// own header). Every individual RPG-side technique used below (OFLIND,
+// program-entry dcl-pi, CHAIN/%found) is separately confirmed too -
+// see each section's own citation.
 //
 // Verified against work/design/refs/ilerpgref75.txt (IBM i 7.5 ILE RPG
 // Language Reference, 73451 lines) and cl_commands_75.txt at
@@ -225,6 +226,15 @@ dcl-f juchum usage(*input);
 // *ON). CONCLUSION: *IN01 overflow detection WORKS correctly in this
 // harness - the page-break exercise (06-12 lesson text) CAN be
 // documented as V2 (real-hardware confirmed), not V3-only.
+//
+// HEADER RE-PRINT ON OVERFLOW, CONFIRMED (2026-09-28, part06-b7-
+// bundle): a follow-up throwaway probe (T612OFHR, same OVRPRTF trick,
+// 20-line loop) went one step further than RPTCNT alone - it re-WRITEs
+// RPTHDR each time *IN01 fires and resets the indicator back *off. The
+// banner ("JUCINQ4 - ORDER INQUIRY REPORT ... CUSTOMER: HDR00n") printed
+// 3 times across the 20 lines, at the expected overflow points. This is
+// the concrete "header re-prints on a new page" demonstration for
+// 06-12's page-break exercise, not just an RPTCNT-only inference.
 //-----------------------------------------------------------------------
 dcl-f p0612a printer usage(*output) oflind(*in01);
 

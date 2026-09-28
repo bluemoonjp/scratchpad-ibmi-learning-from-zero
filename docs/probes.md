@@ -2513,6 +2513,49 @@ J〜M・通貨記号への言及が無いことを確認した——訂正が必
   という方向性自体(奇数=表示・偶数=空白)は、この重なりがあっても
   観察できており(04-08の訂正の核心はここ)、揺らいでいない。
 
+## `part06-b7-bundle`: advisor項目3・4・5を1接続で決着(確認日 2026-09-28)
+
+`jiggly-greeting-crystal.md`のadvisorレビュー3回目で残っていた3項目
+(JUTOK修正の置き場所・RPG III編集コードのゼロ印字・07-05のTXCHECK
+`*CMD`形)を1回の接続にまとめて実施した。全ステップ`compile`セクション
+でセベリティ30以上・CPD無しを確認済み。
+
+- **項目3(F0612B/F0612C)完了・CONFIRMED SUCCESS**: `F0612B`(`F0604A`
+  の`custCode`パラメーター付きコピー)・`F0612C`(`F0611A`のオプション5
+  修正版コピー、`callp f0612b(jutok)`)とも`CRTBNDRPG`でHighest
+  Severity 00。`D0604A`・`D0611A`(既存DDS、変更なし)も同じ接続で
+  再作成し存在を確認した。06-04・06-11自身のソース(`f0604s.rpgle`・
+  `f0611s.rpgle`)は変更していない。
+- **項目5a(OFLINDヘッダー再印字)完了・CONFIRMED SUCCESS**: 新規
+  使い捨てプローブ`T612OFHR`が、`OVRPRTF FILE(P0612A) PAGESIZE(12 132)
+  OVRFLW(10)`のもとで20行の`WRITE RPTDTL`ループを回し、`*IN01`が
+  発火するたびに`RPTHDR`を書き直して標識を`*off`に戻す、という
+  実演を行った。**`run`セクションに`JUCINQ4 - ORDER INQUIRY REPORT`
+  のバナーが3回(`CUSTOMER: HDR001`→`HDR002`→`HDR003`)印字されている
+  ことを確認した**——06-12の改ページ演習に使える、具体的な「オーバー
+  フロー時にヘッダーが再印字される」実演がこれで手に入った。
+- **項目5b(ゼロ件数のF0612A実行)完了・CONFIRMED SUCCESS**: `F0612A`
+  自体を初めて`CRTBNDRPG`(Highest Severity 00)し、存在しない得意先
+  コード(`'C99999'`、04-08の演習3と同じ流儀)で`CALL`した。`run`
+  セクションに`JUCINQ4 - ORDER INQUIRY REPORT        CUSTOMER: C99999`
+  に続けて`0   ORDER(S) FOR THIS CUSTOMER`と印字されており、`RPTCNT`
+  (`EDTCDE(3)`)がゼロ件数でも可視の`0`を印字することを、スロー
+  アウェイ・プローブ経由ではなく出荷版`F0612A`自身で確認できた。
+- **項目4(RPG III編集コードのゼロ印字)完了(詳細は上記04-08続報の
+  節を参照)**: 編集コード3/4は明確にCONFIRMED、編集コード1/2は
+  プローブ自身の桁重なりで文字までは未確認(方向性は確認済み)。
+- **項目5c(07-05のTXCHECK `*CMD`形)完了・CONFIRMED SUCCESS**:
+  `tools/qcmdsrc/txcheck.cmd`の`*CMD`ラッパーと、`part06-15-checkpoint`
+  で確立済みの`TXCHKRUN`ヘルパー(`CHGVAR`/`*TCAT`/`%TRIM`で実行時に
+  コマンド文字列を組み立ててから`QCMDEXC`)を、レッスン`'07-05'`向けに
+  再利用した。`run`セクションに`TXCHECK: lesson 07-05 - 0000000003
+  passed, 0000000000 failed`と印字され、`*CMD`経由の呼び出しが問題なく
+  動くことを確認した(`TXCKM`の07-05向け行は`part07-05-checkpoint`が
+  既に投入済みのため、再投入はしていない)。07-05本文執筆時にこの形を
+  採用するかどうかは、まだ書かれていない07-05本文自身の執筆時に決める。
+
+ZAIKOM/SHOHIMへの書き込みは一切無いため、TXRESETは実施していない。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P44)以外は未実施。特に:
