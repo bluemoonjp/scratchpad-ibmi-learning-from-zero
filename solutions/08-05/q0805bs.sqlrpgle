@@ -95,8 +95,6 @@ dcl-pi *n;
   minqty packed(5:0);
 end-pi;
 
-exec sql SET OPTION commit = *none, naming = *sys, closqlcsr = *endmod;
-
 dcl-ds line len(132) end-ds;
 
 // C1 (JUCHUD) host variables.
@@ -114,6 +112,18 @@ dcl-s haveHeader ind inz(*off);
 
 dcl-s avail packed(7:0);
 dcl-s statusText char(8);
+
+// SET OPTION must come AFTER every D-spec above (same rule
+// testkit.sqlrpgle's own header documents in detail, confirmed
+// working there, part08-04-testkit) and BEFORE the first executable
+// statement - q0613s.sqlrpgle/q0614s.sqlrpgle's own established
+// placement (right after the last dcl-s, before the first EXEC SQL
+// DECLARE CURSOR/PREPARE) is followed here exactly; an earlier draft
+// of this file had it too early (between dcl-pi and the remaining
+// dcl-ds/dcl-s lines below), which would have put several D-specs
+// after this C-spec-equivalent statement - fixed before this file's
+// own first compile attempt.
+exec sql SET OPTION commit = *none, naming = *sys, closqlcsr = *endmod;
 
 exec sql
   DECLARE C1 CURSOR FOR
