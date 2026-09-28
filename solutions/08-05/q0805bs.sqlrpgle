@@ -234,15 +234,19 @@ end-proc;
 // printLine - one DTL line. Column positions FIXED (part08-05-f0805a
 // 3rd connection, 2026-09-28 - see docs/probes.md and f0805as.rpgle's
 // own printDetail header note, same finding and same fix applied here
-// pre-emptively, before this file's own first run): golden-master.md's
-// "+1 offset from the O-spec's stated end columns" note was already
-// baked into these OBSERVED positions once; F0805A's own real output
-// showed that same +1 reappears a SECOND time between the golden
-// master's observed columns and a %subst-based rewrite's own real
-// printed output. Corrected here by subtracting 1 from every start
-// column below, matching f0805as.rpgle's own fix exactly, so this
-// file's real printed output (once run) should line up with ZA0500's
-// own real printed output, not with golden-master.md's literal numbers.
+// pre-emptively, before this file's own first run): this file's
+// original positions were golden-master.md's own OBSERVED ZA0500
+// columns, on the assumption that declaring %subst position N here
+// would reproduce real print column N. F0805A's own real output
+// showed that assumption is wrong for this family of %subst-based
+// rewrites - declaring position N actually lands at real column N+1,
+// the same +1 pattern golden-master.md separately shows between the
+// ORIGINAL programs' own O-spec end-column arithmetic and their own
+// real observed columns. The mechanism is not established. Corrected
+// here by subtracting 1 from every start column below, matching
+// f0805as.rpgle's own fix exactly, so this file's real printed output
+// (once run) should line up with ZA0500's own real observed columns
+// directly, not with a naive copy of them.
 // JUNO@1(6) JUSHO@9(6) JUSU@17(5, UNEDITED - zero-padded, NOT
 // zero-suppressed, matching za0500.rpg's own O-spec, which applies no
 // edit code to JUSU at all) statusText right-justified ending at
