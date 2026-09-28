@@ -164,15 +164,21 @@ return;
 //=======================================================================
 // printDetail - one DTL line. Column positions (FIXED, part08-05-f0805a
 // 3rd connection, 2026-09-28 - see docs/probes.md and this file's own
-// STATUS note: the 1st draft's positions were the golden master's
-// OBSERVED columns, but golden-master.md's own "+1 offset from the
-// O-spec's stated end columns" note applies identically to THIS
-// program's %subst positions too - confirmed by a byte-for-byte diff
-// showing F0805A's real printed output is JU0300's own real printed
-// output shifted exactly 1 column right, uniformly, on every line. The
-// mechanism is not established; the fix is empirical - subtract 1 from
-// every start column below so F0805A's OWN printed output lines up with
-// JU0300's, not with golden-master.md's literal numbers.):
+// STATUS note: the 1st draft's positions were golden-master.md's own
+// OBSERVED columns (e.g. JUNO's observed start column 6), on the
+// assumption that declaring %subst position N here would reproduce
+// real print column N. That assumption was wrong - a byte-for-byte
+// diff showed F0805A's real printed output was JU0300's own real
+// printed output shifted exactly 1 column right, uniformly, on every
+// line: declaring %subst position N in THIS program's own printer
+// output actually lands at real column N+1, the same +1 pattern
+// golden-master.md separately shows between JU0300's own O-spec
+// end-column arithmetic and JU0300's own real observed columns (see
+// golden-master.md, corrected to document this after this finding -
+// it did NOT already note it beforehand). The mechanism is not
+// established; the fix is empirical - subtract 1 from every start
+// column below so F0805A's OWN printed output lines up with JU0300's
+// real observed columns directly, not with a naive copy of them.):
 // JUNO@5(6) JUTOK@15(6) JUDATEZ@25(8, edit code Z) JUTAN@37(6).
 //=======================================================================
 dcl-proc printDetail;
