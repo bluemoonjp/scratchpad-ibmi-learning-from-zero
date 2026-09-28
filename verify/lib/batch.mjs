@@ -243,6 +243,22 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
         `TOMBR('/QSYS.LIB/${lib}.LIB/QCLSRC.FILE/${pgmName}.MBR') MBROPT(*REPLACE)${wrapperStmfCcsid}" 2>&1`,
     );
     lines.push(`echo ${MARKER('compile')}`);
+    // DLTPGM before CRTCLPGM (real-hardware finding, 2026-09-27,
+    // part06-decisions-1/part07-04-actgrp-ext): pgmNameForBatch()
+    // truncates the batch name to 10 characters, so two differently-
+    // named batches can share the same wrapper program name (already
+    // observed for part05-txmigr-*/part06-decisions-*). REPLACE(*YES)
+    // on CRTCLPGM does NOT replace the object when the compile itself
+    // fails (e.g. a duplicate 10-char-truncated CL label, CPD0717) -
+    // the OLD object from a completely unrelated prior batch is then
+    // silently CALLed instead, producing misleading, hard-to-detect
+    // output. Deleting the wrapper object first (MONMSG, harmless if
+    // it does not exist) means a failed compile leaves NOTHING under
+    // this name, so the next CALL fails loudly (CPD0170, "Program not
+    // found") instead of silently running a stale, unrelated program.
+    lines.push(
+      `system "DLTPGM PGM(${lib}/${pgmName})" 2>&1`,
+    );
     lines.push(
       `system "CRTCLPGM PGM(${lib}/${pgmName}) SRCFILE(${lib}/QCLSRC) SRCMBR(${pgmName}) REPLACE(*YES)" 2>&1`,
     );
