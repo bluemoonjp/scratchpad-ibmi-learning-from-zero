@@ -8,26 +8,39 @@
 // part07-05-checkpoint, docs/probes.md).
 //
 // ====================================================================
-// WARNING: THIS PROGRAM (VIA ZAISRV) MUTATES THE SHARED ZAIKOM TABLE.
-// Same warning as solutions/07-05/zaisrv.rpgle's and driver.rpgle's own
-// headers repeat: ZAIKOM is the SAME physical file R0409A (04-09) and
-// F0608A (06-08) already write to, and that 04-13/06-07/06-11b/06-15
-// all READ and depend on its known values. RUN <USER>2/TXRESET AFTER
-// THIS PROGRAM, exactly as 07-05's own lesson text must instruct for
-// driver.rpgle. This program's own sequence (below) is designed to be
-// net-zero on ZAIKOM when every case runs to completion - but exactly
-// like driver.rpgle, a run that stops partway through (a genuine
-// hardware surprise) would NOT be net-zero, so TXRESET is required
-// regardless, not a substitute.
+// UNLIKE driver.rpgle: THIS PROGRAM DOES NOT TOUCH THE SHARED ZAIKOM
+// TABLE - it is QTEMP-ISOLATED by design (work/design/part08-design-v1.md
+// section 2, 08-04, the adopted "QTEMP isolation design"), not by
+// anything in this .rpgle file itself. ZAISRV's own internal
+// "dcl-f zaikom disk usage(*update) keyed;" (solutions/07-05/zaisrv.rpgle)
+// opens whatever object the name ZAIKOM resolves to at that moment; this
+// program never overrides it itself. It is the 08-04 VERIFY MANIFEST's
+// job to CRTDUPOBJ a QTEMP copy of ZAIKOM (seeded with a value this
+// program's own get()/reserve()/release() calls could not otherwise
+// have reached, so the resulting TESTRES rows themselves are evidence
+// of which file ZAISRV actually opened) and OVRDBF ZAIKOM TOFILE(QTEMP/
+// ZAIKOM) BEFORE calling this program, at the wrapper's own call level
+// (ZAISRV is ACTGRP(*CALLER), so it activates into this program's own
+// activation - the override needs to be in place before ZAISRV's
+// module is first activated, not just before this program's mainline
+// starts). If the manifest ever fails to set up that override, this
+// program's calls fall through to the SAME shared ZAIKOM 04-13/06-07/
+// 06-11b/06-15 all depend on - unlike driver.rpgle (07-05), which
+// deliberately DOES mutate the shared table and requires
+// <USER>2/TXRESET afterward, this program's own design intent is to
+// never need TXRESET at all.
 // ====================================================================
 //
-// EACH CASE RESTORES ZAIKOM TO ITS OWN STARTING POINT BEFORE THE NEXT
-// CASE BEGINS (unlike driver.rpgle, which runs its steps as one
-// continuous net-zero sequence) - this keeps every case's own
-// "current ZASU" reference (per the design doc's own case 1/2 wording,
-// "qty = the current ZASU" / "qty = the current ZASU + 1") meaningful
-// on its own, independent of what an earlier case did, rather than
-// chaining off whatever case 1 happened to leave behind.
+// EACH CASE RESTORES ITS OWN COPY OF ZAIKOM TO ITS OWN STARTING POINT
+// BEFORE THE NEXT CASE BEGINS (unlike driver.rpgle, which runs its
+// steps as one continuous net-zero sequence) - this keeps every case's
+// own "current ZASU" reference (per the design doc's own case 1/2
+// wording, "qty = the current ZASU" / "qty = the current ZASU + 1")
+// meaningful on its own, independent of what an earlier case did,
+// rather than chaining off whatever case 1 happened to leave behind.
+// This restore discipline is unrelated to the QTEMP isolation above -
+// it would matter even if this program DID run against the real,
+// shared ZAIKOM.
 //
 // WHY EACH ASSERTION IS WRAPPED IN ITS OWN MONITOR/ON-ERROR: same
 // reasoning as solutions/08-04/tstjucsrv.rpgle's own header - see that
