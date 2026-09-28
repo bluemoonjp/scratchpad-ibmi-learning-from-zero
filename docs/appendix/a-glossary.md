@@ -11,6 +11,7 @@
 - [CL](#cl)
 - [RPG III](#rpg-iii)
 - [保守・運用(第5部)](#保守運用第5部)
+- [RPG IV(第6〜7部)](#rpg-iv第67部)
 
 ### 5250・基本操作(画面・オブジェクト・ジョブ)
 
@@ -182,3 +183,37 @@
 | Rollback | 切り戻し | 05-12 |
 | Runbook | 手順書 | 05-12 |
 | Zone nibble | ゾーン・ニブル | 05-11 |
+
+### RPG IV(第6〜7部)
+
+| 英語 | 日本語 | 初出レッスン |
+|---|---|---|
+| Access path | アクセス・パス | 06-14 |
+| Activation group | 活動化グループ | 06-05 |
+| Bound call | バウンド呼び出し(プログラム呼び出しとの対比) | 06-05 |
+| Bind by copy | コピーによる結合 | 07-01 |
+| Bind by reference | 参照による結合 | 07-01 |
+| Binder language | バインダー言語(`STRPGMEXP`/`EXPORT SYMBOL`/`ENDPGMEXP`) | 07-03 |
+| Binding directory (`*BNDDIR`) | バインディング・ディレクトリー | 07-02 |
+| Built-in function (BIF) | 組み込み関数 | 06-01b |
+| Cursor | カーソル | 06-14 |
+| Dynamic SQL | 動的SQL | 06-14 |
+| Embedded SQL | 埋め込みSQL | 06-13 |
+| Fixed-form | 固定形式 | 06-01 |
+| Free-form | 自由形式 | 06-01 |
+| Fully free-form | 完全自由形式(`**FREE`) | 06-03 |
+| Indicator data structure (INDDS) | 標識データ構造 | 06-10 |
+| Module (`*MODULE`) | モジュール | 07-01 |
+| Named indicator | 名前付き標識 | 06-03 |
+| Null | NULL(値が無いことを表す第3の状態) | 06-14b |
+| Null indicator | NULL標識 | 06-14b |
+| Prepared statement | 準備済みステートメント | 06-14 |
+| Program signature violation | プログラム署名違反(`MCH4431`) | 07-03 |
+| Program-entry Procedure Interface | プログラム本体の手続きインターフェース(固定形式`*ENTRY PLIST`の自由形式版) | 06-12 |
+| Prototype | プロトタイプ | 06-05 |
+| Qualified data structure | 名前空間を分けたデータ構造 | 06-07 |
+| Service program (`*SRVPGM`) | サービス・プログラム | 07-02 |
+| Signature | シグネチャー | 07-02 |
+| Static SQL | 静的SQL | 06-14 |
+| Subfile | サブファイル | 06-11 |
+| Subprocedure | サブプロシージャー | 06-05 |
