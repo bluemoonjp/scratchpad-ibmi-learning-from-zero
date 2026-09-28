@@ -18,16 +18,20 @@
      A*                                     the lesson's own real-
      A*                                     hardware notes section).
      A*
-     A*                                     STATUS: V1-only (compile-
-     A*                                     check), NOT YET compiled on
-     A*                                     real hardware - a future
-     A*                                     connection will confirm
-     A*                                     this. Interactive subfile/
-     A*                                     EXFMT execution is V3
-     A*                                     (learner's own 5250 session)
-     A*                                     regardless, same as every
-     A*                                     other WORKSTN file in this
-     A*                                     repo.
+     A*                                     STATUS: CONFIRMED V1 (part06-
+     A*                                     b8-compile, 2026-09-28):
+     A*                                     CRTDSPF produced CPC7301
+     A*                                     (file D0702A created) with no
+     A*                                     diagnostics.
+     A*                                     Interactive subfile/EXFMT
+     A*                                     execution is still V3
+     A*                                     (learner's own 5250 session,
+     A*                                     never run over this
+     A*                                     repository's non-interactive
+     A*                                     SSH harness - see docs/
+     A*                                     probes.md's WORKSTN/EXFMT
+     A*                                     caveat), same as every other
+     A*                                     WORKSTN file in this repo.
      A*
      A*                                     STRUCTURAL TEMPLATE: this
      A*                                     file is a close copy of

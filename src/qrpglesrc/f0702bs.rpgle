@@ -49,8 +49,13 @@
 // verbatim from f0702s.rpgle - see that file's own header for the full
 // EXTPROC(*DCLCASE) rationale (not repeated here).
 //
-// STATUS: V1-only (compile-check only), NOT YET compiled on real
-// hardware - a future connection will confirm this. Per the P7-9
+// STATUS: CONFIRMED V1 (part06-b8-compile, 2026-09-28): CRTBNDRPG
+// against JUCSRVBD reported RNS9304, Program F0702B placed, 00 highest
+// severity - the getCustName call resolves and binds cleanly against
+// D0702A/JUCHUM. Deliberately NOT CALLed in that connection (WORKSTN/
+// EXFMT execution hangs over this repository's non-interactive SSH
+// harness - see docs/probes.md's WORKSTN/EXFMT caveat), so the actual
+// read/write/getCustName runtime path remains untested. Per the P7-9
 // decision, this exercise's verification is V1 (compile-check) plus
 // the learner's own manual V3 test (a real 5250 session); it is
 // deliberately NOT part of 07-02's own mandatory/automated

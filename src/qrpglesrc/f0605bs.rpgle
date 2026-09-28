@@ -42,21 +42,25 @@
 // za0510.rpg's own header gives for preferring this over SNDPGMMSG,
 // which never gave inspectable proof of delivery either).
 //
-// STATUS: NOT YET COMPILED (draft/part06 branch). The underlying
-// technique (QCMDEXC + CHGDTAARA(*LDA), ALLOW(*ALL)) is separately
-// CONFIRMED on real hardware in RPG III form (part05-qcmdexc-runtime,
-// src/legacy/qrpgsrc/za0510.rpg) - only this specific RPG IV free-form
-// port of the same technique has not itself been compiled/run yet. A
-// future connection should confirm this file before it is taught as
-// V2; until then, treat it as V1-unverified (should compile per the
-// ILE RPG Language Reference, not yet proven).
+// STATUS: CONFIRMED V2 (part06-b8-compile, 2026-09-28): CRTBNDRPG
+// Highest Severity 00, CALL succeeded, and DSPDTAARA DTAARA(*LDA)
+// OUTPUT(*PRINT) - read from the connection's raw run-section text,
+// not WRKSPLF (this harness's non-interactive SSH jobs never create a
+// real spooled file for printer output) - showed the exact expected
+// value at the exact expected byte offset: "Offset 0" row's content
+// is 20 blanks followed by "F0605B OK" (i.e. the string starts at
+// byte 21, length 9, matching DTAARA(*LDA (21 20)) VALUE('F0605B
+// OK')). This directly confirms both the QCMDEXC call itself and the
+// underlying CHGDTAARA(*LDA) technique in this file's own RPG IV
+// free-form port - not just the RPG III original (za0510.rpg,
+// part05-qcmdexc-runtime).
 //
 // Verified against work/design/refs/ilerpgref75.txt at these
-// citations (not previously cited by F0605A, which does not use
-// QCMDEXC):
+// citations (a DIFFERENT EXTPGM+CONST example than F0605A's own
+// citation, from the cycle-main-procedure section of the reference -
+// independently confirms the same CONST-parameter EXTPGM shape):
 //   DCL-PR / EXTPGM (call to an external        ilerpgref75.txt lines
-//     program, CONST parameters)                8730-8756 (same
-//                                                citation F0605A's own
+//     program, CONST parameters)                8730-8756
 //                                                header already gives
 //                                                for its own extpgm)
 //=======================================================================
