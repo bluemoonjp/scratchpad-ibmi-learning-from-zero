@@ -53,7 +53,7 @@ RPGには大きく分けて2つの世代があります。
 | `%EDITC` | 数値を、指定した編集コード(RPG IIIのO仕様書編集コード欄に相当するもの)で編集した文字列にする。 | `%EDITC(AMOUNT:'1')` | RPG IIIでは桁位置指定だった編集コードが、RPG IVでは関数呼び出しになる。この教材では演習として扱っていない(06-06の「読解用」区分)。 |
 | `%EDITW` | 数値を、指定した編集語で編集した文字列にする。 | `%EDITW(AMOUNT:編集語)` | 同上、編集語版。この教材では扱っていない。 |
 | `%LOOKUP` | 配列やテーブルの中から指定した値を探し、見つかった要素番号を返す(見つからなければ0)。`%LOOKUPxx`(GT/GE/LT/LE等)で条件付き検索もできる。 | `%LOOKUP(KEY:ARR)` | **[実機確認・V2]** [06-07](../part06/06-07-data-structures-arrays.md)(`F0607A`)で実機確認済み(`BONUS: LOOKUP P00002 -> INDEX  2`という出力が実際に得られた)。RPG IIIの`LOKUP`命令に相当。 |
-| `%SCAN` | ある文字列が別の文字列の中に含まれるかを検索し、見つかった位置を返す(見つからなければ0)。 | `%SCAN('AB':NAME)` | [06-06](../part06/06-06-bifs-strings-and-dates.md)の目標に含まれるが、実機メモに個別の確認記録は無い。RPG IIIの`SCAN`命令に相当。 |
+| `%SCAN` | ある文字列が別の文字列の中に含まれるかを検索し、見つかった位置を返す(見つからなければ0)。 | `%SCAN('AB':NAME)` | **[実機確認・V2]** [06-06](../part06/06-06-bifs-strings-and-dates.md)(`F0606A`)で実機確認済み(`spacePos = 5.`という出力を接続の生ログで確認)。RPG IIIの`SCAN`命令に相当。 |
 | `%REPLACE` | 文字列の指定した位置を、別の文字列で置き換える。 | `%REPLACE('XX':NAME:1)` | ― |
 | `%XLATE` | 文字列中の文字を、対応表に従って変換する(大文字/小文字変換など)。 | `%XLATE(LOWER:UPPER:NAME)` | RPG IIIの`XLATE`命令に相当。この教材ではまだ使われていない。 |
 | `%INT` | 文字列や数値を整数に変換する。 | `%INT(CHARFLD)` | ― |
@@ -63,10 +63,10 @@ RPGには大きく分けて2つの世代があります。
 | `%ERROR` | 直前の演算でエラーが起きたかどうかを返す(オペレーション拡張子`(E)`と組み合わせて使う)。 | `IF %ERROR;` | **[実機確認・V1]** [06-11b](../part06/06-11b-maintenance-screen-locking.md)で使われている。RPG IIIの`*PSSR`・結果標識によるエラー検知に相当。 |
 | `%FOUND` | 直前の`CHAIN`等が見つかったかどうかを返す(RPG IIIの結果標識と極性が逆で、見つかった側で真になる)。 | `IF %FOUND(FILE);` | **[実機確認]** [06-04](../part06/06-04-free-form-order-inquiry-screen.md)以降で広く使われている。引数は必ずファイル名(サブファイルの場合も表示装置ファイル名)で、レコード様式名を渡すと`RNF0394`になることが[06-11](../part06/06-11-subfiles-page-message.md)で実機確認された。 |
 | `%EOF` | 直前の`READ`系操作がファイル終端に達したかどうかを返す。`READ`/`READC`/`READE`/`READP`/`READPE`とサブファイルへの`WRITE`だけがONにでき、`CHAIN`/`OPEN`/`SETGT`/`SETLL`は成功時にむしろOFFへリセットする。 | `DOW NOT %EOF(FILE);` | **[実機確認]** 06-04以降で広く使われている。引数は必ずファイル名で、レコード様式名を渡すと`RNF0391`になることが[06-11](../part06/06-11-subfiles-page-message.md)で実機確認された。 |
-| `%KDS` | データ構造からキー・リストを組み立てる(複数キーの`CHAIN`等に使う)。 | `CHAIN %KDS(KEYDS) FILE;` | **[実機確認]** [06-08](../part06/06-08-file-io-dclf.md)(`F0608A`)で使われている。RPG IIIの`KLIST`/`KFLD`に相当。 |
-| `%FIELDS` | `UPDATE`で更新対象のフィールドを限定する。 | `UPDATE RECFMT %FIELDS(FLD1:FLD2);` | **[実機確認]** [06-08](../part06/06-08-file-io-dclf.md)で使われている。 |
+| `%KDS` | データ構造からキー・リストを組み立てる(複数キーの`CHAIN`等に使う)。 | `CHAIN %KDS(KEYDS) FILE;` | **[実機確認・V2]** [06-08](../part06/06-08-file-io-dclf.md)(`F0608A`)の`%kds`によるDELETEが`part06-08-writedelete`接続でエラー・メッセージ0件で完了したことを確認済み(途中経過ではなく完了のみの確認)。RPG IIIの`KLIST`/`KFLD`に相当。 |
+| `%FIELDS` | `UPDATE`で更新対象のフィールドを限定する。 | `UPDATE RECFMT %FIELDS(FLD1:FLD2);` | **[実機確認・V2]** [06-08](../part06/06-08-file-io-dclf.md)の`%fields`によるUPDATEが同じ`part06-08-writedelete`接続でエラー・メッセージ0件で完了したことを確認済み(途中経過ではなく完了のみの確認)。 |
 | `%PARMS` | プログラム/手続きに実際に渡されたパラメーターの数を返す。`OPTIONS(*NOPASS)`と組み合わせて使う。 | `IF %PARMS >= 1;` | [06-05](../part06/06-05-subprocedures-prototypes.md)(`F0605B`)で使われているが、`F0605B`自体はまだ実機コンパイルされていない(V1未検証)。 |
-| `%DATE`/`%DIFF`/`%DAYS` | 日付の取得・計算(日付BIFファミリー)。 | `%DIFF(%DATE():DUEDATE:*DAYS)` | [06-06](../part06/06-06-bifs-strings-and-dates.md)の目標に含まれる。 |
+| `%DATE`/`%DIFF`/`%DAYS` | 日付の取得・計算(日付BIFファミリー)。 | `%DIFF(%DATE():DUEDATE:*DAYS)` | **[実機確認・V2]** [06-06](../part06/06-06-bifs-strings-and-dates.md)(`F0606A`)で実機確認済み(`dueDate = 2026-10-01.`/`daysLeft = 5.`という出力を接続の生ログで確認)。 |
 
 ## RPG III と RPG IV、固定形式の桁位置の違い
 
