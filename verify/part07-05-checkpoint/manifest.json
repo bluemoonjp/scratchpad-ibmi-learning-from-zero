@@ -1,0 +1,32 @@
+{
+  "batch": "part07-05-checkpoint",
+  "description": "Builds ZAISRV (*SRVPGM: get/reserve/release, solutions/07-05/zaisrv.rpgle + zaisrv.bnd) and a new ZAISRVBD (*BNDDIR) - kept separate from JUCSRVBD per the source's own driver.rpgle design (design doc's open §9 item 10 on JUCSRVBD-vs-ZAISRVBD reuse is left unresolved by this manifest; this reflects what the committed driver.rpgle source actually references). Compiles and runs driver.rpgle ONCE - per the design's own corrected understanding (ileconcepts75.txt: a system-named ACTGRP(*NEW) activation group is deleted the instant its oldest call-stack entry returns), every one of driver.rpgle's test steps (normal reserve, a SHORT reserve exercising the lock-release fix, a same-execution double-reserve for lock-carryover, and its own independent lock-conflict diagnostic) MUST happen inside this single CALL - never split across two separate CALL steps, which would each get an unrelated fresh activation group and could never observe anything about lock persistence either way. IMPORTANT SIDE EFFECT: this mutates the shared ZAIKOM table (same table R0409A/F0608A already write to). 2026-09-26 additions (advisor-flagged gaps): (1) driver.rpgle, like F0607A/F0608A in part06-0509-procs-files, only writes to `dcl-f qsysprt printer(132)` (confirmed by grep, driver.rpgle:238) - none of its lock-test results were previously captured. Added the same VSPLPF (CHKOBJ+conditional-CRTPF) idiom plus a CPYSPLF FILE(QSYSPRT) step after RUNDRIVER, and a matching collect. (2) This manifest now runs TXRESET itself at the end (`&LIB/TXRESET LIB(&LIB)`, a library-qualified command invocation - TXRESET is a pre-existing, already hardware-confirmed *CMD, docs/probes.md:219), plus a collect reading ZAIKOM back afterward as evidence the reset took effect, replacing the previous informational-message-only reminder that whoever ran this batch had to remember to run TXRESET themselves as a separate step (04-13, 06-07's exercise, 06-11b, and 06-15's checkpoint all depend on ZAIKOM's known values).",
+  "steps": [
+    { "type": "file", "localPath": "../../solutions/07-05/zaisrv.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "ZAISRV", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "../../solutions/07-05/zaisrv.bnd", "remoteSrcFile": "QSRVSRC", "member": "ZAISRV", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "../../solutions/07-05/driver.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "DRIVER" },
+    { "type": "file", "localPath": "../../tools/qddssrc/txckm.pf", "remoteSrcFile": "QDDSSRC", "member": "TXCKM" },
+    { "type": "file", "localPath": "../../tools/qclsrc/txcheck.clp", "remoteSrcFile": "QCLSRC", "member": "TXCHECK" },
+
+    { "type": "cl", "label": "CPZAISMOD", "cmd": "CRTRPGMOD MODULE(&LIB/ZAISRV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(ZAISRV) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "CPZAISSRV", "cmd": "CRTSRVPGM SRVPGM(&LIB/ZAISRV) MODULE(&LIB/ZAISRV) EXPORT(*SRCFILE) SRCFILE(&LIB/QSRVSRC) SRCMBR(ZAISRV) ACTGRP(*CALLER) REPLACE(*YES)", "monmsg": ["CPF0000", "MCH0000"] },
+    { "type": "cl", "label": "CPZAISBD", "cmd": "CHKOBJ OBJ(&LIB/ZAISRVBD) OBJTYPE(*BNDDIR)\nMONMSG MSGID(CPF9801) EXEC(CRTBNDDIR BNDDIR(&LIB/ZAISRVBD))\nADDBNDDIRE BNDDIR(&LIB/ZAISRVBD) OBJ((*LIBL/ZAISRV *SRVPGM))", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "VSPLPF", "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 7 spooled-file text capture'))", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPDRIVER", "cmd": "CRTBNDRPG PGM(&LIB/DRIVER) SRCFILE(&LIB/QRPGLESRC) SRCMBR(DRIVER) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNDRIVER", "cmd": "CALL PGM(&LIB/DRIVER)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPDRIVER", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "VZAISPGM", "cmd": "DSPSRVPGM SRVPGM(&LIB/ZAISRV) OUTPUT(*PRINT)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "CPTXCKM", "cmd": "CHKOBJ OBJ(&LIB/TXCKM) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/TXCKM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TXCKM))", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPTXCHECK", "cmd": "CRTCLPGM PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHECK) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "SEEDTXCKM", "cmd": "RUNSQL SQL('DELETE FROM &LIB/TXCKM WHERE LESSON=''07-05''') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''07-05'', 1, ''ZAISRV'', ''*SRVPGM'', '' '', ''ZAISRV service program exists'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''07-05'', 2, ''ZAISRVBD'', ''*BNDDIR'', '' '', ''ZAISRVBD binding directory exists'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''07-05'', 3, ''DRIVER'', ''*PGM'', '' '', ''DRIVER checkpoint program exists'')') COMMIT(*NONE)", "monmsg": ["CPF0000", "SQL0000"] },
+    { "type": "cl", "label": "RUNTXCHECK", "cmd": "CALL PGM(&LIB/TXCHECK) PARM('07-05' '&LIB')", "monmsg": ["CPF0000", "MCH0000"] },
+
+    { "type": "cl", "label": "RUNTXRESET", "cmd": "&LIB/TXRESET LIB(&LIB)", "monmsg": ["CPF0000"] },
+
+    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSPL" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/ZAIKOM ORDER BY ZASHO" }
+  ]
+}

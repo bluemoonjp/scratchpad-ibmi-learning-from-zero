@@ -1,0 +1,19 @@
+{
+  "batch": "part06-0103-freeform",
+  "description": "Compiles and runs the two early, self-contained Part 6 lessons that don't depend on any other Part 6 object: V0601B (06-01b, mixed fixed-form/**FREE demo, src/qrpglesrc/v0601bs.rpgle) and F0603A (06-03, full **FREE rewrite of R0405A, src/qrpglesrc/f0603s.rpgle). Both print via QSYSPRT (non-interactive, no divide, no interactive I/O), so both are compiled AND called. QRPGLESRC does not exist yet in this library (txsetup.clp only auto-creates QDDSSRC) - the first file step uses ensureSrcFile(RCDLEN 112), matching the record length ilerpgprogguide75.txt states CVTRPGSRC's own converted-source target requires, a safe/generous choice for ordinary fixed+free-form RPG IV source too. Expected output (V2 target, not yet confirmed on hardware): V0601B prints a 15-byte line with the edited total '1,738.00' (R0402A's own already-verified 1580 x 1.10 result, see docs/part04/04-02-c-spec-arithmetic.md). F0603A prints 'A  SUM=00015 MID  00015' per its own source header (grade='A', DOW-computed sum=15, classification 'MID ', FOR-computed sum2=15 - see f0603s.rpgle's header for why this is NOT byte-comparable to R0405A's own quoted lesson-prose output, only the grade/sum VALUES are).",
+  "steps": [
+    { "type": "file", "localPath": "../../src/qrpglesrc/v0601bs.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "V0601B", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0603s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0603A" },
+
+    { "type": "cl", "label": "VSPLPF", "cmd": "CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 6 spooled-file text capture')", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "CPV0601B", "cmd": "CRTBNDRPG PGM(&LIB/V0601B) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0601B) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNV0601B", "cmd": "CALL PGM(&LIB/V0601B)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPV0601B", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPF0603A", "cmd": "CRTBNDRPG PGM(&LIB/F0603A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0603A) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
+    { "type": "cl", "label": "RUNF0603A", "cmd": "CALL PGM(&LIB/F0603A)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"] },
+    { "type": "cl", "label": "CAPF0603A", "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)", "monmsg": ["CPF0000"] },
+
+    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYSPL" }
+  ]
+}

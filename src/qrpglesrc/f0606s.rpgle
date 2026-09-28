@@ -1,0 +1,264 @@
+**FREE
+//=======================================================================
+// F0606A - Built-in functions: strings and dates (Part 6, lesson 06-06).
+//
+// What this replaces (RPG III, fixed-form):
+//   RPG III has no BIFs at all (docs/appendix/f-bif-reference.md: a full
+//   grep of the *RPG/400 Reference* text found zero `%`-prefixed BIFs).
+//   String work that RPG III did with opcodes/column positions - SUBST,
+//   SCAN, CAT, MOVE/MOVEL/Z-ADD for numeric<->character conversion, and
+//   the O-spec edit-code column - becomes an expression built from
+//   %BIFs here. R0402A (04-02, src/qrpgsrc/r0402s.rpg) is the concrete
+//   RPG III reference point: 1580 x 1.10 = 1738.00 (hardware-verified
+//   2026-09-25), reused below for the %char/%dec demonstration.
+//
+// Scope (deliberately trimmed to the design's new-syntax limit - see
+// work/design/part06-design-v1.md section 06-06): %trim/%triml/%trimr,
+// %subst, %scan, %char, %dec, and the date-BIF family %date/%diff/
+// %days. %scanrpl, TEST(DE), and %editc/%editw are READ-ONLY reference
+// material for this lesson (see the single commented-out line near the
+// bottom) and are NOT exercised as live code here.
+//
+// Why not DSPLY, and why sendMsg/QMHSNDPM instead: ilerpgref75.txt line
+// 55828 states "For a batch job, if no message-queue value is specified,
+// the default is QSYSOPR" for DSPLY. This program is meant to run
+// non-interactively (SSH/batch, same as this repo's verify/ harness),
+// so a bare DSPLY here would silently send to QSYSOPR - exactly what
+// style-guide.md's "PUB400 etiquette" section forbids (no SNDMSG to
+// QSYSOPR/other users). QMHSNDPM is used instead - see sendMsg's own
+// FIXED note below for the real-hardware finding that ruled out the
+// originally-planned QCMDEXC/SNDPGMMSG approach.
+// sendMsg is 06-05's new syntax, not 06-06's, but it is only reused
+// here (not re-taught) as this program's output/observation channel,
+// the same way any lesson reuses a tool learned in an earlier one.
+// Both files duplicate the small QMHSNDPM prototype and sendMsg
+// subprocedure locally, since this repo's part06 design explicitly
+// keeps /copy and /include out of scope for Part 6 (design section 1,
+// the "not covered" list), so nothing can be shared between
+// f0605s.rpgle and f0606s.rpgle here.
+//
+// STATUS: hardware-UNTESTED (Part 6 draft). This source has not itself
+// been compiled or run on PUB400 yet - only sendMsg's technique has
+// been fixed here, based on the real-hardware finding from a sibling
+// file (jucutl.rpgle/M0701B, part07-01-modules, 2026-09-26 - see that
+// file's own FIXED note and docs/probes.md). This file's own connection
+// is still pending (part06-0509-procs-files). Treat every other
+// runtime claim below as "should work per the ILE RPG Language
+// Reference", not as a verified fact.
+//
+// Verified against work/design/refs/ilerpgref75.txt (the real IBM i 7.5
+// ILE RPG Language Reference, 73451 lines) at approximately these line
+// numbers:
+//   %TRIM (Trim Characters at Edges)       lines 50901-51002 (Figures
+//                                           257-258)
+//   %TRIML (Trim Leading Characters)       lines 51003-51036 (Figure 259)
+//   %TRIMR (Trim Trailing Characters)      lines 51037 onward
+//   %SUBST (Get Substring)                 lines 50380-50460
+//   %SCAN (Scan for Characters)            lines 49101-49200 (example at
+//                                           49153-49190)
+//   %CHAR (Convert to Character Data),
+//     numeric form                        lines 44254-44306
+//   %DEC (Convert to Packed Decimal)       lines 44948-45000
+//   %DATE (Convert to Date), and "if the
+//     date format is not specified for
+//     character or numeric input, the
+//     default format is *ISO"             lines 44900-44935, esp. 44913
+//   DATE type, D'yyyy-mm-dd' literal form  lines 44196-44198
+//   %DAYS (Number of Days)                 lines 44936-44947
+//   %DIFF (Difference Between Two Date,
+//     Time, or Timestamp Values)           lines 45150-45234 (worked
+//                                           example with due_date/today
+//                                           at 45195-45219, same shape
+//                                           reused below)
+//   %LEN (Get or Set Length), "current
+//     length" of a BIF result used in an
+//     expression (used to explain the
+//     trim demo's shape below, even
+//     though %len is not itself called)  lines 46859-46899
+//   DFTACTGRP(*NO) required for a bound
+//     (non-EXTPGM) procedure call such
+//     as sendMsg                          lines 25072-25074
+//   DSPLY default queue for a batch job    line 55828 (why DSPLY is
+//                                           *not* used in this file)
+//   QMHSNDPM prototype shape (copied from       see verify/part06-gen-probe/
+//     T0LAD01's own, already real-hardware-      src/t0lad01.rpgle
+//     confirmed declaration)
+//=======================================================================
+
+ctl-opt dftactgrp(*no) actgrp(*new);
+
+//-----------------------------------------------------------------------
+// dcl-ds/dcl-pr for QMHSNDPM (Send Program Message API), needed only
+// internally by sendMsg's own implementation further below - the same
+// prototype as f0605s.rpgle, duplicated here (see the header note above
+// on why nothing is shared between files). See sendMsg's own FIXED note
+// for why this replaced the originally-planned QCMDEXC/SNDPGMMSG.
+//-----------------------------------------------------------------------
+dcl-ds qmhsndpmMsgFile qualified template;
+  *n char(10) inz('QCPFMSG');
+  *n char(10) inz('*LIBL');
+end-ds;
+
+dcl-ds qmhsndpmErrCode template;
+  bytesProvided int(10) inz(0);
+  bytesAvailable int(10);
+  msgId char(7);
+  *n char(1);
+end-ds;
+
+dcl-pr qmhsndpm extpgm;
+  msgId          char(7) const;
+  msgFile        likeds(qmhsndpmMsgFile) const;
+  msgData        char(1000) const;
+  dataLen        int(10) const;
+  msgType        char(10) const;
+  callStackEntry char(10) const;
+  callStackCtr   int(10) const;
+  msgKey         char(4);
+  errorCode      likeds(qmhsndpmErrCode);
+end-pr;
+
+//-----------------------------------------------------------------------
+// (a) Name formatting: combining/trimming a first + last name.
+//-----------------------------------------------------------------------
+dcl-s firstName char(10) inz('Taro');
+dcl-s lastName  char(10) inz('Yamada');
+dcl-s fullName  char(21);
+dcl-s spacePos  zoned(3:0);
+dcl-s lastPart  char(10);
+dcl-s initial   char(1);
+
+// A second, deliberately padded string to show %trim vs %triml vs
+// %trimr side by side (all three share one "new" slot in the design's
+// new-syntax count, but the three behave differently). IMPORTANT: the
+// three calls below are used directly inside the sendMsg argument
+// expression, not assigned to an intermediate fixed-length char(20)
+// variable first - per %LEN's documented rule (ilerpgref75.txt lines
+// 46896-46899), a BIF result used directly in an expression carries
+// its own *current* (trimmed) length, but assigning it into a fixed
+// non-varying variable first would immediately re-pad it back out to
+// that variable's full declared length and erase the difference
+// between %trim/%triml/%trimr.
+dcl-s padded char(20) inz('  Taro  ');
+
+//-----------------------------------------------------------------------
+// (b) Due-date calculation: %date/%diff/%days.
+// orderDate/todayDate are set below via %date() from 8-digit numeric
+// YYYYMMDD values (the same shape as RPG III's numeric date fields,
+// e.g. ZAUPD 8S0 in db/v1/zaikom.pf) rather than from D'yyyy-mm-dd'
+// literals, so %date() itself appears as live code, not just as a
+// data type. Fixed numbers (not %date() with no argument, which would
+// return today's *system* date) so the result is reproducible for
+// V1/V2 checking regardless of which day this program actually runs.
+//-----------------------------------------------------------------------
+dcl-s orderDate date;
+dcl-s dueDays   zoned(3:0) inz(30);
+dcl-s dueDate   date;
+dcl-s todayDate date;
+dcl-s daysLeft  int(10);
+
+//-----------------------------------------------------------------------
+// %char / %dec: numeric <-> character, the way MOVE/Z-ADD did it in
+// RPG III (04-02). Reuses R0402A's verified result, 1738.00.
+//-----------------------------------------------------------------------
+dcl-s totalPacked packed(9:2) inz(1738.00);
+dcl-s totalText   char(15);
+dcl-s totalBack   packed(9:2);
+
+//-----------------------------------------------------------------------
+// Mainline.
+//-----------------------------------------------------------------------
+
+// (a) Name formatting.
+fullName = %trim(firstName) + ' ' + %trim(lastName);
+sendMsg('F0606A: fullName = ' + %trim(fullName));
+
+spacePos = %scan(' ' : fullName);
+sendMsg('F0606A: spacePos = ' + %char(spacePos));
+
+lastPart = %subst(fullName : spacePos + 1);
+sendMsg('F0606A: lastPart = ' + %trim(lastPart));
+
+initial = %subst(%trim(lastName) : 1 : 1);
+sendMsg('F0606A: initial = ' + initial);
+
+// %trim strips both sides; %triml only the left; %trimr only the
+// right. '<'/'>' delimiters make the difference visible in the sent
+// message text (style-guide.md bans the CCSID 273 variable characters
+// from distributed source, which rules out the more usual vertical-bar
+// delimiter here).
+sendMsg('F0606A: trim  <' + %trim(padded)  + '>');
+sendMsg('F0606A: triml <' + %triml(padded) + '>');
+sendMsg('F0606A: trimr <' + %trimr(padded) + '>');
+// TODO: verify these three messages on real hardware once V1/V2
+// testing is possible (see STATUS above) - in particular that %trimr
+// leaves the leading blanks of 'padded' visible before the closing
+// '>', and %triml leaves the trailing ones visible before it.
+
+// (b) Due-date calculation.
+// ilerpgref75.txt line 44913: "If the date format is not specified for
+// character or numeric input, the default format is *ISO" - *iso is
+// given explicitly below for clarity, but could be omitted per that
+// rule.
+orderDate = %date(20260901 : *iso);
+todayDate = %date(20260926 : *iso);
+
+// 2026-09-01 + 30 days = 2026-10-01.
+dueDate = orderDate + %days(dueDays);
+sendMsg('F0606A: dueDate = ' + %char(dueDate));
+
+// 2026-10-01 minus 2026-09-26 = 5 days.
+daysLeft = %diff(dueDate : todayDate : *days);
+sendMsg('F0606A: daysLeft = ' + %char(daysLeft));
+// TODO: verify these two messages on real hardware once V1/V2 testing
+// is possible - the arithmetic above was checked by hand (2026 is not
+// a leap-relevant edge case for this range) but the exact %CHAR(date)
+// rendering (*ISO by default: 'yyyy-mm-dd') has not been confirmed
+// against a live IBM i 7.5 system yet.
+
+// %char / %dec: R0402A's verified total, round-tripped through
+// character form and back.
+totalText = %trim(%char(totalPacked));
+sendMsg('F0606A: totalText = ' + totalText);
+
+totalBack = %dec(totalText : 9 : 2);
+sendMsg('F0606A: totalBack = ' + %char(totalBack));
+
+// Read-only reference only (see appendix F /
+// docs/appendix/f-bif-reference.md) - %SCANRPL, TEST(DE), and
+// %EDITC/%EDITW are NOT exercised as live code in this lesson (the
+// design deliberately trims the new-syntax list to stay within the
+// 9-item limit). One commented-out line to show the shape, not to run:
+// sendMsg(%editc(totalPacked : '1'));   // NOT executed - reference only
+
+*inlr = *on;
+return;
+
+//=======================================================================
+// sendMsg: this program's only observation channel (see the "Why not
+// DSPLY" note in the header). Identical to f0605s.rpgle's sendMsg,
+// duplicated here rather than shared (no /copy in Part 6 - see the
+// header note above). FIXED (2026-09-26, real-hardware CRTBNDRPG/
+// CALL): the original body built a SNDPGMMSG command string with %TRIM
+// and string concatenation and ran it through QCMDEXC - this is
+// categorically broken from RPG (see f0605s.rpgle's identical sendMsg
+// for the full real-hardware finding and citations). Replaced with
+// QMHSNDPM, same as f0605s.rpgle.
+//=======================================================================
+dcl-proc sendMsg;
+  dcl-pi *n;
+    text char(60) const;
+  end-pi;
+
+  dcl-ds msgFile likeds(qmhsndpmMsgFile) inz(*likeds);
+  dcl-ds errCode likeds(qmhsndpmErrCode) inz(*likeds);
+  dcl-s  msgKey  char(4);
+
+  // 60, not %len(%trimr(text)): text's own full declared length - keeps
+  // this file's BIF list to exactly the design's approved scope for
+  // 06-06 (no %len), same reasoning the original cmdString version used
+  // for its own literal 200 (msgData tolerates trailing blank padding
+  // same as a CL command string did).
+  qmhsndpm('CPF9898' : msgFile : text : 60
+             : '*INFO' : '*' : 0 : msgKey : errCode);
+end-proc;

@@ -1,0 +1,117 @@
+**FREE
+//=======================================================================
+// JUCUTLP - /include copy member: prototypes for JUCUTL's exported
+// procedures (Part 7, lesson 07-01).
+//
+// JUCUTL is a business nickname only (docs/appendix/e-naming.md /
+// part07-design-v1.md section 0.2 naming table): this member is used
+// only within 07-01, so it follows style-guide.md's type+part+lesson+
+// sequence naming, not the "persistent feature name" register. The
+// object it describes lives in module M0701B (src/qrpglesrc/jucutl.rpgle),
+// a NOMAIN utility module. This copy member's own real IBM i member
+// name is JUCUTLP (10 characters or fewer; the .rpgleinc file name
+// matches the member name exactly here, unlike jucutl.rpgle, whose
+// file name differs from its real object name M0701B - see the header
+// comment in that file).
+//
+// WHY THIS FILE EXISTS (self-include pattern for a NOMAIN module):
+// ilerpgref75.txt's own /COPY-or-/INCLUDE section states this as a
+// documented Tip (lines 7818-7822): "To facilitate application
+// maintenance, you may want to place the prototypes of exported
+// procedures in a separate source member. If you do, be sure to place
+// a /COPY or /INCLUDE directive for that member in both the module
+// containing the exported procedure and any modules that contain calls
+// to the exported procedure." This file is exactly that separate
+// member, included by BOTH jucutl.rpgle (the module that implements
+// calcTaxTotal/sendMsg) and m0701s.rpgle (the module that calls them).
+//
+// IS THIS SELF-INCLUDE REQUIRED BY THE COMPILER, OR ONLY RECOMMENDED?
+// Checked against the primary source, not guessed: it is RECOMMENDED,
+// not compiler-enforced. ilerpgref75.txt line 38280-
+// 38281 states "If the prototype is not specified, the prototype is
+// implicitly defined using the information in the procedure interface"
+// - so jucutl.rpgle's own dcl-proc calcTaxTotal/sendMsg would still
+// compile and export fine even without including this file itself.
+// What the self-include buys you, and what IS compiler-enforced once
+// you choose to add it: ilerpgref75.txt lines 8388-8391 and 38289-38291
+// both state "The procedure interface must match the corresponding
+// prototype" - so once jucutl.rpgle also /includes this file, the
+// compiler cross-checks calcTaxTotal's and sendMsg's actual dcl-pi
+// against this member's dcl-pr and flags any drift at compile time,
+// instead of only the caller-side (m0701s.rpgle) ever noticing a
+// mismatch. That cross-check is the actual benefit, not a hard
+// requirement to compile a NOMAIN module at all.
+//
+// /INCLUDE syntax used by both callers (bare member name - no file or
+// library qualifier): per ilerpgref75.txt lines 7785-7793, "If a file
+// name is not specified, QRPGLESRC is assumed" and "If a library is
+// not specified, the library list is searched" - this matches style-
+// guide.md's rule of never hardcoding library names in source. Both
+// this member and jucutl.rpgle/m0701s.rpgle live in the same QRPGLESRC
+// source file (per this repo's existing convention of one member per
+// checked-in .rpgle/.rpgleinc file, see verify/lib/batch.mjs's
+// CPYFRMSTMF-to-member transfer step), so no SRCFIL qualifier is coded
+// here either:
+//   /INCLUDE jucutlp
+//
+// **FREE on this file's own first line: ilerpgref75.txt lines 23295-
+// 23298 state "Copy files are assumed to have column-limited source
+// mode unless **FREE appears in the first line of the file. When the
+// copy file ends, the source mode returns to the mode of the source
+// file containing the /COPY or /INCLUDE directive" - so this **FREE is
+// required for THIS member to itself be parsed as free-form (matching
+// every other source file in this repo), independent of whichever mode
+// the includer happens to use (both m0701s.rpgle and jucutl.rpgle are
+// **FREE too, so in practice there is no mode mismatch either way, but
+// the **FREE line here is not redundant - it is what makes this member
+// self-consistent if it were ever /included from a fixed-form source).
+//
+// STATUS: hardware-UNTESTED (Part 7 draft; Part 6, which this module's
+// logic is ported from, is itself not yet hardware-verified - SSH to
+// PUB400 is rate-limited as of 2026-09-26). Nothing here has been
+// compiled on PUB400 yet.
+//
+// Verified against work/design/refs/ilerpgref75.txt (IBM i 7.5 ILE RPG
+// Language Reference, 73451 lines):
+//   /COPY or /INCLUDE syntax, bare member name          lines 7773-7822
+//     ("membername" format, QRPGLESRC/library-list
+//     defaults), and the "separate source member for
+//     exported-procedure prototypes" Tip
+//   Copy-file source mode / **FREE interaction          lines 23282-23298
+//   DCL-PR free-form prototype syntax (no EXTPGM/        lines 29340-29368
+//     EXTPROC = prototype for a bound procedure call,
+//     not a program call)
+//   "procedure interface must match the corresponding    lines 8388-8391,
+//     prototype" (why the self-include's cross-check      38289-38291,
+//     works)                                               16927-16958
+//   Bound-call default entry point = prototype name       lines 48121-48124
+//     in upper case, when EXTPROC is not specified
+//=======================================================================
+
+//-----------------------------------------------------------------------
+// calcTaxTotal - tax-inclusive total. Faithful port of F0605A's
+// subprocedure of the same name (src/qrpglesrc/f0605s.rpgle lines 211-
+// 228), itself a port of R0402A's C-spec logic (04-02, Z-ADD1580 /
+// Z-ADD1.10 / MULT). 1580 x 1.10 = 1738.00 (04-02, hardware-verified
+// 2026-09-25). No EXTPGM/EXTPROC keyword: this is a prototype for a
+// bound call to a procedure in another module (M0701B), not a call to
+// a separate *PGM object - contrast with F0605A's own r0409a prototype,
+// which uses EXTPGM('R0409A') because R0409A really is a separate
+// external program.
+//-----------------------------------------------------------------------
+dcl-pr calcTaxTotal packed(9:2);
+  amount packed(7:2) value;
+  rate   packed(3:2) const options(*nopass);
+end-pr;
+
+//-----------------------------------------------------------------------
+// sendMsg - the QMHSNDPM-based observation channel from Part 6 (used
+// because DSPLY defaults to QSYSOPR for a batch job - see jucutl.rpgle
+// for the implementation, and its header's FIXED note for why this is
+// QMHSNDPM and not the originally-planned QCMDEXC/SNDPGMMSG). Same
+// signature as F0605A's sendMsg (src/qrpglesrc/f0605s.rpgle): one
+// CONST char(60) parameter, no return value.
+//-----------------------------------------------------------------------
+dcl-pr sendMsg;
+  text char(60) const;
+end-pr;

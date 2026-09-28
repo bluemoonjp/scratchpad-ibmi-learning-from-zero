@@ -576,6 +576,188 @@ ZA0500・ZA0510(RPG、全てHighest Severity 00)、JU0900C・MN0000C・C0511S
 実行していない(この接続はDSPDBRの列名確認が目的で、TXMIGR本体はP2/2Fの
 V2穴埋めで別途検証する)。
 
+## 第6部 P24 機能梯子の実機検証: `part06-gen-probe`(確認日 2026-09-26)
+
+RPG IV/**FREE の12段階機能梯子(T0LAD01〜T0LAD12、CRTBNDRPG)と、12段目を
+CRTSQLRPGIでも再コンパイルするT0LAD12Qの、計13オブジェクトを検証した。
+**3回の接続で3件の実バグを発見・修正、4回目の接続で自己修正1件を経て、
+5回目の接続でP24の答え(下記CONFIRMED)を確定した。**
+
+**バグ1(接続1回目で発見): 13ファイル全てに
+`ctl-opt dftactgrp(*no) actgrp(*new);`が欠落していた。** 全13ファイルが
+`dcl-proc`(`sendToJobLog`)を定義しているが、既定の活動グループ
+(`DFTACTGRP(*YES)`)ではプロシージャーを定義できない。実機のエラー・
+メッセージ自体がこれを直接裏付ける: `RNF1520`「The procedure cannot be
+defined with DFTACTGRP(*YES).」。このリポジトリー内で既に同じQMHSNDPM
+パターンを引用元としているf0609s.rpgle(t0lad01.rpgle自身のヘッダーが
+引用)には`ctl-opt dftactgrp(*no) actgrp(*new) option(*srcstmt);`が
+最初から入っており、13ファイルはこの行を写し忘れていたと判明。
+全13ファイルの同じ位置(共有のQMHSNDPMブロックの直前)に追加。
+
+**バグ2(接続2回目で発見: バグ1修正だけでは治らなかった)。**
+`RNF0256`(「Specification found between procedures」)・`RNF7023`
+(「The Compiler cannot determine how the program can end」)は、バグ1の
+連鎖ではなく**別の実バグ**だった。一次資料`ilerpgref75.txt`「RPG IV
+Concepts」章(8266行目付近)で確認: 「Main source section: ソースの
+先頭から最初のProcedure仕様書まで」「A subprocedure is a procedure
+defined AFTER the main source section」。つまり`dcl-proc`(Procedure-Begin)
+が一度出現すると、それ以降は全てプロシージャー区画として扱われ、
+`end-proc;`の後にメインラインの文を置くことはできない。13ファイル
+全てが`dcl-proc sendToJobLog; ... end-proc;`を**メインラインより前**に
+置いていた(f0609s.rpgleは逆順: メインライン→`*inlr`/`return`→
+`dcl-proc`)。全13ファイルで`sendToJobLog`のプロシージャー定義を
+ファイル末尾(`return;`の後)へ移動して修正。
+
+**バグ3(接続3回目で発見: バグ1・2修正後もT0LAD01は成功したが
+T0LAD02以降は別の失敗)。** `RNF0724`(「The statement type is out of
+sequence for the main procedure」)がT0LAD02の`dcl-s ladArr...`行で発生。
+「各段は前の段のソースを100%そのまま残し、末尾に1ブロック追加する」
+という梯子の作り方そのものが原因: 新しい段の`dcl-s`宣言が、前の段の
+実行文(`sendToJobLog(...)`呼び出し)の**後ろ**に追加されていた。
+一次証拠は実機が実際に出した`RNF0724`そのもの。裏付けとして
+`ilerpgref75.txt`23082〜23096行目、Table 99「Source Records and Their
+Order in an RPG IV Source Program」を確認:「The RPG IV source must be
+entered into the system in the order shown in Table 99」——Main Source
+Sectionの並び順はControl→File Description/Definition→Input→
+Calculation→Output。「Fully free-format specifications are allowed for
+Control, File Description, Definition, and Procedure statements」
+(23071〜23073行目付近)とあり、自由形式でもこの区分の並び順(宣言=
+Definitionが実行文=Calculationより前)は変わらない。(このメモの
+以前の版は`ilerpgprogguide75.txt`3万4326行目付近を根拠として引用して
+いたが、これはCVTRPGSRCで変換した/COPYメンバーのD仕様書がI仕様書より
+下に挿入される問題についての記述であり、この規則の根拠として誤り
+だったため訂正した。)全13ファイルを再構成し、各段までの宣言を全て
+先頭にまとめ、その後に各段までの実行文をまとめる形に直した。
+
+**影響**: 4回目の接続で決着させる。CP12Qの`monmsg`一覧(現状
+`CPF0000/RNF0000/SQL0000/MCH0000`)には接続1〜3回目で実際に出た
+`RNS9310`が含まれていなかったが、根本原因(バグ1〜3)を直せばCP12Qの
+コンパイル自体が成功するはずなので、`RNS9310`を先回りしてmonmsgに
+追加することはせず、次回接続の結果を見てから要否を判断する。
+
+**さらなる副産物: バグ2と同じ「プロシージャーがメインラインより前」の
+実バグをリポジトリー全体で検索し、実際に3ファイルで発見・修正した。**
+`src/qrpglesrc/f0611s.rpgle`(`sendInvalidOpt`)・`f0611bs.rpgle`
+(`reloadSfl2`)・`solutions/07-05/driver.rpgle`(`printLine`)。いずれも
+まだ実機接続していない(`part06-screens-compile`・`part07-05-checkpoint`
+の番はまだ来ていない)が、先回りで修正し、その番が来たときに同じ
+コンパイル失敗で1回分の接続を無駄にしないようにした。`**FREE`かつ
+`dcl-proc`を含む全`.rpgle`/`.sqlrpgle`ファイルを対象に、全ての
+`dcl-proc`が最後の`*inlr = *on;`より後にあることを機械的に確認する
+掃討を行い、他に該当ファイルが無いことを確認済み。
+
+**バグ3についても同様に、advisorの助言を受けてリポジトリー全体を
+機械的に掃討した(宣言文が同じスコープ内の最初の実行文より後に
+出現していないか、メインラインと各`dcl-proc`本体の両方を対象に確認)。
+検出ロジック自体は、修正前のT0LAD02(bug3修正前のコミット)に対して
+実際にバグを検出できることを確認したうえで、他の全ファイルには
+該当なしという結果を得た。** rung12(ASSERT-T)の`%msg('単一文字列')`
+という書き方自体は、`ilerpgref75.txt`786〜787行目付近(Free-Form Syntax
+一覧の`ASSERT-T{(A)} condition %MSG(message-text)`、および
+`ASSERT-F price = 0 OR qty = 0 %MSG('price, qty cannot be zero');`という
+一次資料の例)で正しいと確認済み。**訂正(advisor指摘): 3回目接続時点
+では「rung12のRNF5347/RNF7030(ASSERT)はバグ3の連鎖」と判断したが、
+これは誤りだった。** 他の11機能の失敗パターン(未定義オペランドの
+`RNF7030`/`RNF7503`のみ、命令自体は認識されている)と、rung12の失敗
+パターン(`RNF5347`「代入演算子が必要」+ `RNF7030`「ASSERTという名前/
+標識が未定義」)は質的に異なり、後者は「`assert-t`という命令自体が
+認識されず、`assert`が変数名であるかのように解釈された」ことを示す。
+5回目の接続(下記CONFIRMED参照)で実際に確定: バグ1〜3・自己ミストを
+全て修正した状態でも、rung1〜11は完全に成功し、rung12(T0LAD12・
+T0LAD12Qの両方)だけが、他の全てから孤立した形でこの同じ
+`RNF5347`+`RNF7030(ASSERT未定義)`のみで失敗した(宣言(`ladTotal`
+`ladMax`、enumの`RED`/`BLUE`)は全て`D`=定義済みと確認され、順序崩壊の
+再発ではないことも確認済み)。**したがって結論はPTFの壁であり、この
+教材のミスではない。**
+
+**4回目の接続: 自分自身のミスを発見・修正(実機側の新発見ではない)。**
+バグ3の修正で使ったスクリプトが、宣言と実行文を並べ直す際に
+`*inlr = *on;`/`return;`(メインラインの終端)を丸ごと落としていた。
+T0LAD01は(前段が無いため)実行文がそのまま`dcl-proc`に流れ込み、
+`RNF7023`(「Compiler cannot determine how the program can end」)が
+今度は連鎖ではなく直接の原因として発生。元コミット(初出時点)と
+現在のファイルを、コメント・空行を除いた行の多重集合として比較し、
+`ctl-opt`追加以外に内容の欠落・重複が無いことを確認したうえで、
+全13ファイルに`*inlr = *on;`/`return;`を復元した。
+
+**5回目の接続: CONFIRMED、P24の答えを確定。** rung1〜11
+(T0LAD01〜T0LAD11)は全て`Highest Severity 00`でコンパイル・実行に
+成功し、しかも各段が送るメッセージの**計算結果の値まで正しい**ことを
+確認した(バグ1〜3のせいで、1〜3回目の接続では変数が軒並み未定義
+だったため、rung2〜11の意味検査はこの5回目が初めてだった):
+`DIM(*AUTO:10)`(rung2、%elem after 2 assigns = 2)、
+`FOR-EACH/%LIST/IN`(rung3、count = 3, hit = Y)、`%SPLIT/%UPPER`
+(rung4、upper(parts(1)) = CAT, parts(2) = dog)、
+`SND-MSG/ON-EXCP/MONITOR/CALLP`(rung5、3件のメッセージとも到達)、
+`%CONCAT`(rung6、result = cat, dog, fish)、`WHEN-IS`(rung7、
+branch = owner-branch)、`DCL-ENUM`(rung8、green = 2)、`CONST`(rung9、
+LAD_MAX_RETRY = 3)、`%HIVAL`(rung10、hival(ladColors) = 3)、
+`%DATE(*YYMD)`(rung11、date = 2026-09-26)。**rung12(ASSERT-T、
+T0LAD12・T0LAD12Qの両方)だけが、他の全てから孤立した形で
+`RNF5347`(代入演算子が必要)+`RNF7030`(ASSERTという名前/標識が
+未定義)で失敗し続けた。** 宣言(`ladTotal`/`ladMax`/enumの`RED`/
+`BLUE`)は全て`D`=定義済みと確認されており、順序崩壊の再発ではない。
+
+**P24の結論: PUB400の現在のPTFレベルでは、`ASSERT-F`/`ASSERT-T`
+命令自体が認識されない(`ilerpgref75.txt`の該当節が明記する
+「2026年前半のコンパイル時PTFで追加」に、このインスタンスはまだ
+達していない)。それ以外(**FREE、DIM(*AUTO)、FOR-EACH/%LIST/IN、
+%SPLIT/%UPPER、SND-MSG/ON-EXCP、%CONCAT、WHEN-IS、DCL-ENUM、CONST、
+%HIVAL、%DATE(*YYMD))は全て実機確認済みで、第6部以降のレッスンで
+安心して使ってよい。ASSERT-T/ASSERT-Fはこの教材では使用しないこと。**
+
+## 第6部 CVTRPGSRC の実機検証: `part06-01-cvtrpgsrc`(確認日 2026-09-26)
+
+06-01レッスン用に、R0408A(RPG III、`src/qrpgsrc/r0408s.rpg`)を
+`CVTRPGSRC`でQRPGLE112へ変換し(メンバー名V0601A、訂正:
+以前ここは誤ってQRPGLESRCと記載していた)、`CRTBNDRPG`で
+コンパイル、変換結果の全文をSQLで取り出した。**接続1回で成功。**
+変換: 「0 highest severity, 1 converted, 0 converted with errors」。
+コンパイル: 「Program V0601A placed in library...00 highest severity」。
+
+**発見: CVTRPGSRCは命令コードのロジックそのものは書き換えず、
+(1) 桁位置の詰まった書式を余裕を持った書式に正規化し、(2) 一部の
+命令コードをRPG IVの正式名に置き換える。** R0408Aの`EXCPT`(RPG III/
+OPMの綴り)が、変換後は`EXCEPT`(RPG IVの正式名、`ilerpgref75.txt`
+56693行目「EXCEPT (Calculation Time Output)」で確認)になっていた。
+それ以外の命令コード(MOVEL・CHAIN・IFEQ・READ・GOTO・TAG・SETON)は
+無変更。DOW/EVAL等の自由形式・現代的な書き方への書き換えは一切
+行われない——CVTRPGSRCは「CRTBNDRPGでコンパイルできる形にする」
+ことが目的で、コードを現代化するツールではないと確認できた。
+
+**副産物(既知の無害な失敗、2件ともMONMSGで捕捉済み)**: VSPLPF
+(VFYSPL作成)は既に存在するため失敗(過去の接続の残骸、無害)。
+CPSPL(変換レポートのCPYSPLF)は、`system "CALL PGM(...)"`経由の
+ジョブが実スプール・ファイルを作らないという`part06-0103-freeform`の
+既知の発見どおり失敗(無害、想定どおり)。
+
+**影響**: 06-01レッスンの`v0601s.rpgle`(100桁)は、この変換結果を
+土台に書くこと。CVTRPGSRCが「魔法のように現代化してくれる」わけでは
+ないという事実自体が、06-01のレッスン内容として教える価値がある。
+
+## 第6部画面レッスンの実機検証: `part06-screens-compile`(確認日 2026-09-26)
+
+06-04・06-10・06-11・06-11bの4画面(D0604A/F0604A・D0610A/F0610A・
+D0611A/F0611A・D0611BA/F0611BA)をコンパイルした。**接続1回目でD0604A/
+F0604A・D0610A/F0610Aは成功(Highest Severity 00)。DDS(D0611A・
+D0611BA)は事前修正(CPD7486/CPD7812)どおり成功。RPG(F0611A・
+F0611BA)は別の実バグで失敗。接続2回目で8オブジェクト全て
+Highest Severity 00を確認(CONFIRMED SUCCESS)。**
+
+**バグ: `%EOF`/`%FOUND`にサブファイルの**レコード様式名**(`sfl1`/
+`sfl2`)を渡していた。実際は**表示装置ファイル名**(`d0611a`/
+`d0611ba`)を渡す必要がある。** `RNF0391`「Parameter SFL1/SFL2 is not
+valid for built-in function %EOF」・`RNF0394`「...%FOUND」で確認。
+一次資料`ilerpgref75.txt`45624行目「%EOF{(file_name)}」・46001行目
+「%FOUND{(file_name)}」でどちらも「ファイル名」を要求すると明記。
+`f0611s.rpgle`の`%eof(sfl1)`→`%eof(d0611a)`、`f0611bs.rpgle`の
+`%eof(sfl2)`→`%eof(d0611ba)`、`%found(sfl2)`(2箇所)→
+`%found(d0611ba)`に修正。`CHAIN rrn2/fillRrn sfl2`自体はレコード様式名
+のままで正しい(CHAINの対象はサブファイル・レコード)。リポジトリー
+全体を`%eof(`/`%found(`/`%equal(`/`%open(`で検索し、他は全てファイル名
+(実際のデータベース・ファイル名)を渡しており、該当は無いことを
+確認済み。
+
 ## 第3部 RTVJOBA 修正の実機検証: `part03-rtvjoba-fix`(確認日 2026-09-26)
 
 03-11(SETENV)・03-13(JUYAKC)の`RTVJOBA USER()`→`CURUSER()`修正を検証。
@@ -600,17 +782,98 @@ V2穴埋めで別途検証する)。
 (第7部07-04、JUYAKLのILE CL版)にも発見、まだ実機接続していないが
 先回りで同様に修正済み。**
 
+## 第7部モジュール分割の実機検証: `part07-01-modules`(確認日 2026-09-26)
+
+M0701A(メイン・モジュール)・M0701B(JUCUTL、NOMAINユーティリティー・
+モジュール)を別々にCRTRPGMODし、両方をF0701AへCRTPGM ACTGRP(*NEW)で
+結合、実行するところまでは正しく設計されていたが、**接続1回目は
+マニフェストのラッパー自体がコンパイル失敗、接続2回目はモジュール・
+結合は全て成功したものの実行時に別の実バグで失敗、接続3回目で
+2件とも修正が効いて完全成功(CONFIRMED SUCCESS)。**
+
+**バグ: `DSPPGM`は`OUTPUT(*OUTFILE)`に対応していない(DETAIL値に
+関わらず)。** `CPD0043`「Keyword OUTFILE not valid for this command」で
+確認。WebSearchでIBM公式ドキュメント・フォーラム両方から「DSPPGMは
+OUTFILEをサポートしない」ことを確認(DSPOBJD/DSPDBRは対応済み、実機
+確認済みなのでDSPPGM固有の制限)。**代替として、QSYS2の SQL サービス
+`QSYS2.BOUND_MODULE_INFO`(DSPPGM DETAIL(*MODULE)のSQL版)を直接
+collectステップでクエリーする形に変更**(CL側のVMODステップ自体を
+削除、OUTFILE経由の間接参照が不要になった)。**同じ誤りを
+`part07-0203-srvpgm`のVSRVPGMステップ(`DSPPGM...DETAIL(*SRVPGM)
+OUTPUT(*OUTFILE)`)にも発見、まだ実機接続していないが先回りで
+`QSYS2.BOUND_SRVPGM_INFO`(DSPPGM DETAIL(*SRVPGM)のSQL版)に置き換え
+済み。** 全マニフェストを`DSPPGM.*OUTFILE`で検索し、他に該当が無い
+ことを確認済み(`DSPDBR`/`DSPOBJD`は既に実機確認済みでOUTFILE対応、
+`DSPSRVPGM`は元から`OUTPUT(*PRINT)`でOUTFILEを使っていない)。
+
+**接続2回目: モジュール分割・結合(このバッチの本来の目的)は完全に
+成功した(M0701B・M0701A・F0701Aとも作成、`QSYS2.BOUND_MODULE_INFO`も
+期待どおり2行返した)。しかし実行時に別の実バグが見つかった。**
+
+**バグ: `SNDPGMMSG`は`QCMDEXC`経由では実行できない。** `CPD0031`
+「Command SNDPGMMSG not allowed in this setting」で確認。IBM公式
+Docsを2箇所直接引用で確認: QCMDEXC自体のDocs(`rbam6/execp.htm`)は
+「commands that can only be used in CL procedures or programs cannot
+be run by the QCMDEXC program」と明記し、`SNDPGMMSG`自身のDocsは
+実行を許される環境を「Compiled CL program or interpreted REXX」だけと
+定める。**実機で実際に確認できたのは「RPGモジュールが束縛したサブ
+プロシージャー(NOMAINモジュール)経由でQCMDEXCを呼ぶ」という1パターン
+のみ**(`M0701A`→`sendMsg`in`M0701B`→`QCMDEXC`)。「呼び出し元の言語
+(RPG/CL)・呼び出しの深さに関わらず一律に起きる」という一般化は、
+IBM公式ドキュメントの記述(許される実行環境を明示的に列挙しており、
+そこにRPGが無い)からの妥当な推論ではあるが、CLからの呼び出しや
+他の深さのパターンを実際に実機確認したわけではない。**`jucutl.rpgle`
+(M0701B)自身の以前のヘッダー・コメントはこれを「呼び出しの深さの
+問題」と誤って推測していたが、実際には(上記の1パターンに関する限り)
+深さは無関係だった。`f0605s.rpgle`/`f0606s.rpgle`は`sendMsg`
+サブプロシージャーを一字一句そのまま複製して持っており(grepで確認)、
+`jucutl.rpgle`と全く同じコードである以上、同じ`CPD0031`で壊れると
+強く推論できるが、この2ファイル単独でのコンパイル・実行による
+独立した再確認は行っていない。**
+
+**全リポジトリーをQCMDEXC呼び出しで検索し、影響範囲を確定した:**
+`f0605s.rpgle`・`f0606s.rpgle`・`jucutl.rpgle`(いずれもRPG IV、
+`sendMsg`サブプロシージャー)は、**T0LAD梯子で既に実機確認済みの
+QMHSNDPM(Send Program Message API)へ書き換えて修正**(呼び出し側の
+シグネチャーは一切変えていない。3ファイルの`sendMsg`本体は完全に
+同一内容に揃えた——07-01自身の「無改変で移植した」という教える要点を
+保つため)。**`src/legacy/qrpgsrc/za0510.rpg`(第5部05-04、レッスン
+本文執筆済み・P3で公開予定)と`solutions/05-13/za0500-ticket3.rpg`
+(05-13のチケット3演習)にも同じ壊れたパターンを発見した。** どちらも
+レッスンの教える要点そのものが`QCMDEXC`/`SNDPGMMSG`なので、単純な
+ソース差し替えでは済まず、カリキュラム上の再設計が必要と判断——
+その再設計の内容と根拠は、下の「第5部 QCMDEXC 教材の再設計」節を
+参照。
+
+**確認(3回目の接続)**: M0701B・M0701A・F0701Aとも
+Highest Severity 00で作成され、`RUNF0701A`も成功(3つの`sendMsg`呼び出し
+全てが正しい値で到達: `M0701A: 1580 at default rate = 1738.00.`・
+`M0701A: 1580 at rate 1.08 = 1706.40.`・
+`M0701A: calcTaxTotal/sendMsg ran via M0701B.`、モジュール境界を跨いだ
+`sendMsg`呼び出しも問題なく動作)。`QSYS2.BOUND_MODULE_INFO`も期待どおり
+M0701A/M0701Bの2行を返した。`part07-01-modules DONE`まで到達
+(FAILSAFEに落ちず)。**CONFIRMED SUCCESS。**
+
+**影響**: `f0605s.rpgle`/`f0606s.rpgle`(06-05/06-06)が06-09より前に
+`QMHSNDPM`を使うことになった点は、批評パネルの決定により解決済み
+(qualified/likedsという一般概念は06-07、`QMHSNDPM`の詳しい構文は
+06-09が担当し、06-05/06-06は前方参照のみを置く形)。06-09
+(`docs/part06/06-09-exception-handling-debugging.md`)は、この扱いに
+沿って`QMHSNDPM`の詳細な説明を実際に提供している。
+
 ## 第5部 QCMDEXC 教材の再設計: `za0510.rpg`(05-04)・`za0500-ticket3.rpg`(05-13)(確認日 2026-09-26、接続なしでの再設計)
 
 `src/legacy/qrpgsrc/za0510.rpg`(05-04)と`solutions/05-13/za0500-ticket3.rpg`
 (05-13のチケット3演習)は、どちらも`SNDPGMMSG`を`QCMDEXC`経由で実行
 しようとしていた。第7部`jucutl.rpgle`(`part07-01-modules`)の実機検証で、
-`SNDPGMMSG`は`QCMDEXC`経由では(呼び出し元がRPGでもCLでも、どんな
-深さでも)実行できないと判明した(`CPD0031`「Command SNDPGMMSG not
-allowed in this setting」。IBM公式Docsで確認: QCMDEXC自体は「commands
-that can only be used in CL procedures or programs cannot be run by
-the QCMDEXC program」、SNDPGMMSG自身は実行可能な環境を「Compiled CL
-program or interpreted REXX」のみと定める)。全リポジトリーをQCMDEXC
+`SNDPGMMSG`は`QCMDEXC`経由では実行できないと判明した(`CPD0031`
+「Command SNDPGMMSG not allowed in this setting」。IBM公式Docsで確認:
+QCMDEXC自体は「commands that can only be used in CL procedures or
+programs cannot be run by the QCMDEXC program」、SNDPGMMSG自身は
+実行可能な環境を「Compiled CL program or interpreted REXX」のみと
+定める——実機で確認できたのはRPGモジュールからの1パターンのみで、
+「呼び出し元の言語・深さに関わらず一律」という一般化はIBM公式Docs
+からの推論であり、それ自体を実機確認したわけではない)。全リポジトリーをQCMDEXC
 呼び出しで検索した結果、この2ファイルにも同じ壊れたパターンが見つかった。
 **05-04自身の教える要点は
 「QCMDEXCで任意のCLコマンドを実行できる」ことであり、`SNDPGMMSG`は
@@ -821,6 +1084,297 @@ CONFIRMED SUCCESS。**
   執筆時(P4)に「毎回確実に、1行目で」という実測どおりの表現へ書き直す
   こと。また05-11(MCH1202)のマニフェスト設計時は、この接続で確定した
   実際のメッセージID(`RPG0907`)とエスケープ経路を踏まえること。
+
+## 第7部サービス・プログラムの実機検証: `part07-0203-srvpgm`(確認日 2026-09-27)
+
+`JUCSRV`(*SRVPGM: `getCustName`/`countCustOrders`)とその結合ディレクトリー
+`JUCSRVBD`を新規作成し、2つの利用側プログラム`F0702A`/`F0703A`から呼び出す
+検証。**1回の接続でCONFIRMED SUCCESS。**
+
+- `JUCSRV`モジュールはHighest Severity 10でコンパイル(`RNF7534`:
+  「非サイクル・モジュールではファイルを明示的にクローズすべき」という
+  助言。`TOKUIM`について1件。**警告のみでコンパイル・作成自体は成功**——
+  06-09本文でJUCSRVのソースを見せる際、この助言に触れておくとよい)。
+- `JUCSRVBD`は新規作成、`JUCSRV`(`*SRVPGM`)を1件登録(0件失敗)。
+- `F0702A`: `getCustName(C00001) = ACME TRADING CO.`(正しい顧客名を
+  サービス・プログラム経由で取得)。
+- `F0703A`: `countCustOrders(C00001)`を同一プログラム内で2回呼び出し、
+  両方とも`2`で一致(`MATCH - both calls agree; JUCHUM repositioning is
+  correct.`)——サービス・プログラムのプロシージャーが共有ファイル
+  `JUCHUM`の読み取り位置を毎回正しく再配置できることを確認した。
+- `QSYS2.BOUND_SRVPGM_INFO`で確認: `F0702A`・`F0703A`とも`*LIBL/JUCSRV`
+  に正しくバインドされている(`QRNXIE`/`QRNXUTIL`/`QLEAWI`はQSYS提供の
+  ランタイム・サービス・プログラムで無関係)。
+
+これでP1の#11は完了。次は#12(`part07-04-actgrp-cl`)。
+
+## 第7部`part07-04-actgrp-cl`の実機検証(確認日 2026-09-27、1回目の接続で1件発見)
+
+`F0704A`(STATIC変数・活性化グループ)と`JUYAKL`(JUYAKCのILE CL書き直し、
+CALLPRC経由でJUCSRVをバインド)を検証。
+
+- **F0704Aは完全に成功**: `bumpCounter()`を同一呼び出し内で3回実行し、
+  カウンターが`1`→`2`→`3`と正しく増加(`STATIC`キーワードが単一呼び出し
+  内で状態を保持することを確認)。
+- **DIAGCURLIB診断で判明**: ハーネスの`ADDLIBLE`のみのジョブ設定では
+  `RTVJOBA CURLIB`は`<USER>1`のまま(設計書§0.6が事前に指摘していた
+  とおり)。この後の`CHGCURLIB1`ステップで`<USER>2`に変更、
+  以降のJUNODA/JUMSGF関連処理は正しく動作した。
+- **JUYAKLの`CALLPRC`は成功**: `getCustName(C00001) = ' ACME TRADING CO '`
+  ——DCLPRCOPT BNDSRVPGM経由のCALLPRCが実際に動くことを初めて確認した。
+- **`BACK`サブルーチンで実バグ発見(2回の接続で原因を特定)**:
+  `CPYTOIMPF FROMFILE(&LIB/JUCHUM) TOSTMF('/home/<user>/work/
+  juchum_export.csv') ...`が`CPF2845: The copy did not complete for
+  reason code 11.`/`CPF2817: Copy command ended because of error.`で
+  失敗。エラー自体はJUYAKL自身の`ERRSUBR`(`SNDPGMMSG MSGID(JUM0001)
+  ... MSGTYPE(*ESCAPE)`)で捕捉され、ラッパーの`MONMSG(CPF0000)`まで
+  正しく伝播して`RUNJUYAKL FAILED`、ハングせず`part07-04-actgrp-cl
+  DONE`まで到達(エラー処理の設計自体は正しく機能している)。
+  **1回目の接続時の仮説(`~/work/`ディレクトリー不在)は誤りだった**:
+  マニフェストに`mkdir -p $HOME/work`を追加して2回目の接続で再実行
+  したが、`mkdir`自体は無エラーで成功したにもかかわらず全く同じ
+  `CPF2845`/reason code 11が再現した。Web検索で複数の実例報告
+  (code400.comフォーラム、midrange-lメーリングリスト・アーカイブ)を
+  確認したところ、**reason code 11は「ストリーム・ファイルへの
+  エクスポート時、RCDDLMパラメーターは`*CR`でなければならない」**
+  という既知の制約で、`juyakl.clle`の`CPYTOIMPF`は`RCDDLM`を省略して
+  いた(既定値が`*CR`ではないため失敗)。`src/qclsrc/juyakl.clle`に
+  `RCDDLM(*CR)`を追加して修正済み(このリポジトリーのIBM一次資料
+  取得済みファイルには無い情報のため、ソース自身のコメントに
+  「一次資料未取得、複数の実例報告による」と明記した)。
+  **3回目の接続で解消を確認(CONFIRMED SUCCESS)**: `All records copied
+  from file JUCHUM in <USER>2.`/`JUYAKL: done. Next order number is now
+  3.`——`RCDDLM(*CR)`追加だけで完全に解消した。
+
+これでP1の#12は完了。次は#13(`part06-1314-sql`、SQL7008再現を含む)。
+
+## 第6部`part06-1314-sql`の実機検証(確認日 2026-09-27、1回目の接続で2件発見)
+
+06-13(`Q0613A`・SQL7008再現の`Q0613V`)と06-14(`Q0614A`)を検証。
+
+- **`Q0613A`・`Q0613V`とも`SQL0104`でコンパイル失敗**(1回目の接続で
+  発見・修正済み): `GET DIAGNOSTICS`の項目名`DB2_MESSAGE_TEXT`が
+  この実機(V7R5M0)では無効なトークンだった。実際のコンパイラー診断
+  メッセージ自身が有効トークン一覧を出力しており(`DB2_MESSAGE_ID`は
+  有効、`MESSAGE_TEXT`(接頭辞なし)も有効、`DB2_MESSAGE_TEXT`は
+  一覧に無い)、引用元の`rzajp75.txt`の実例(`DB2_MESSAGE_ID`と
+  `DB2_MESSAGE_TEXT`を並べて使う例)とは食い違う——**実機の診断
+  メッセージ自身が示す事実を優先し**、`src/qrpglesrc/q0613s.sqlrpgle`・
+  `verify/part06-1314-sql/src/q0613v.sqlrpgle`とも`MESSAGE_TEXT`に
+  修正した。`Q0614A`はHighest Severity 00でコンパイル・実行成功
+  (ただし`Q0613A`同様、印字出力はqshの`CALL`ジョブではCPYSPLFで
+  回収できない——#2で確認済みの既知の制約どおり、`VFYSPL`は0件)。
+- **`QSYS2.SYSTABLES`に`JOURNALED`列は存在しない**(`SQL42703`)。
+  P12(TOKUIMが journaled かどうか)を確認する当初の仕組みが誤り
+  だったと判明——正しい列名を推測で置き換えるのではなく、
+  `QSYS2.SYSCOLUMNS`で`SYSTABLES`の実列名を検索するステップに
+  差し替えた(次回接続で判明する)。
+- 両方ともマニフェストの静的な仕組み(コンパイル前提・列名)の欠陥で、
+  ハーネス自体やSQL7008の実際の再現ロジックはまだ未検証。次回接続で
+  再挑戦する。
+
+**2回目の接続でCONFIRMED SUCCESS(P12も解決)。**
+
+- `Q0613A`: `Found C00001: ACME TRADING CO` / `Zip=1000001 Rep=T00001
+  Updated=20260901` / `UPDATE OK`——SELECT INTO・UPDATE(COMMIT(*NONE)
+  なので無条件に成功)とも期待どおり。
+- **`Q0613V`でSQL7008を実際に再現(06-13の核心の主張を初めて実証)**:
+  `Found C00001: ACME TRADING CO` → `UPDATE failed, SQLSTATE=55019` →
+  `SQL7008` → `TOKUIM in <USER>2 not valid for operation.`。ジョブ・ログ
+  側では`CPF4328: Member TOKUIM not journaled to journal *N.`が直接の
+  原因として記録されている——**これでP12も解決: TOKUIMはjournaled
+  されていない。** `GET DIAGNOSTICS`の`wMsgId`/`wMsgText`もそれぞれ
+  `SQL7008`/`TOKUIM in <USER>2 not valid for operation.`と正しく
+  取得できており、前段のMESSAGE_TEXT修正が正しかったことも実証された。
+  (`QSYS2.SYSCOLUMNS`によるJOURNALED列探索は0件——`SYSTABLES`に
+  journal関連列自体が無いと判明したが、CPF4328で直接確認できたため
+  実害なし。)
+- `Q0614A`もHighest Severity 00でコンパイル・実行成功:
+  `Customer C00001: ACME TRADING CO` / `Order J00001 dated 20260901` /
+  `Order J00003 dated 20260905`(06-01で確認済みのJ00001/J00003と
+  整合)。
+- 影響: 06-13本文執筆時、SQL7008の実測値(SQLSTATE=55019、
+  `CPF4328`+`SQL7008`のメッセージ順)をそのまま使える。
+
+これでP1の#13は完了。次は#14(`part06-14b-null`)。
+
+## 第6部`part06-14b-null`の実機検証(確認日 2026-09-27)
+
+`Q0614BA`(06-14b: DATE/NULL・`ALWNULL(*USRCTL)`・`%nullind`)を検証。
+
+**【訂正、Wave 2執筆時に発見】1回目(priming無し)の接続を「実行時に
+致命的に失敗した」と記録していたが、これは誤りだった。** 該当接続
+(`part06-14b-null`、1回目)の生の結果JSONを直接読み直したところ:
+
+- コンパイルは`SQL1103`(severity 10、`W0614BA`の列定義をカタログでは
+  なく文中の記述から推測、3箇所で発生)を伴いつつ成功し(RPGコンパイル
+  自身の`Final Summary`はWarning 0・Error 0・Severe Error 0、
+  「00 highest severity」)、`run`セクションの末尾には**期待どおりの
+  2行が実際に印字されていた**: `C00001 ACME TRADING CO: last order
+  2026-09-05` / `C00099 NEW PROSPECT CO: last order date is NULL
+  (unknown)`。
+- `SQL0204: W0614BA in QTEMP type *FILE not found.`はこの接続で
+  **1回だけ**発生しており、これはプログラム冒頭の`DROP TABLE`
+  (テーブルがまだ存在しない、想定内・無害)に対応するもので、
+  実行時のクラッシュではない。「印字出力が一切無いまま静かに終了した」
+  という当初の記述は、`run`セクション全体を十分に走査せずに書かれた
+  誤読だった。
+- したがって、この接続単独では「`SQL1103`だけでは実行時失敗を
+  起こさない」ことが示されており、「静的SQLがコンパイル時に存在しない
+  QTEMPテーブルへの静的アクセス・プランを作ると実行時に失敗する」
+  という設計上の問題自体は、この接続では実証されていない。
+
+**2回目の接続(priming有り)**: `CPQ0614BA`の前に`PRIMEW0614`ステップ
+(`RUNSQL`で`W0614BA`と同一構造のテーブルをコンパイル前に作成)を
+追加して再実行。ジョブ・ログの`SQL0204`は0件になったが、これは
+「冒頭の`DROP TABLE`が今度は実在するテーブルを見つけられた」という
+違いによるものであり、1回目の接続で起きていなかった実行時失敗を
+priming が「修正した」わけではない。印字結果(2行)は1回目と同一。
+
+**その後、`part06-decisions-1`/`part06-decisions-2`で判明した本当の
+原因**: 動的SQLへの再設計を試みた`part06-decisions-1`の接続で、当時の
+`CPQ0614BA`(静的SQLのまま)は実際には`SQL9001`(SQL precompile
+failed)で**コンパイル自体が失敗**しており、原因は2件の静的`INSERT`
+文の`TIMESTAMP`リテラルが当時RPGネイティブの`Z`形式のままだったこと
+による`SQL0180`(severity 30、日時リテラルの構文誤り、INSERT文2箇所)
+だった(`part06-decisions-1`接続の生の結果JSON、Q0614BAコンパイル・
+リストで直接確認)。`part06-decisions-2`の記録が
+当時「INSERTにもSELECTと同じ列レベルのアクセス・プランが必要」と
+書いていたのも同じ理由で不正確——実際の診断は`SQL1103`ではなく
+`SQL0180`だった。TIMESTAMPリテラルをANSI/ISO形式に直したうえで
+カーソル・INSERTとも動的SQL化したことで`part06-decisions-3`にて
+最終的にCONFIRMED SUCCESSとなった(下記参照)。**結論として、静的SQL
+がQTEMPの未実在テーブルに対して実行時に失敗するという仮説自体は、
+この教材のどの接続でも直接実証されていない**——動的SQL化が必要
+だった実際の理由は、TIMESTAMPリテラルの構文誤りによるコンパイル
+失敗(`SQL0180`)を、後から動的SQL化のついでに一緒に修正したため
+判別しにくくなっていた。`%nullind`によるSQLインジケーター⇔RPGネイティブ
+null指標の橋渡し、`ALWNULL(*USRCTL)`/`NULLIND`キーワードは、
+最初のpriming無し接続の時点で既にロジックとして正しく動作していた。
+
+## 第6部`part06-12-prtf-cpp-swap`の実機検証(確認日 2026-09-27、1回目の接続で1件発見)
+
+`JUCINQC`(03-09の既存CPP)を初めて`<USER>2`でコンパイルし、`JUCINQ`
+コマンド(03-11)を新設してCPP=`JUCINQC`へ切り替え・実行するベースライン
+確認と、新CPP`F0612A`(PRTF)への切り替えを検証。
+
+- **ベースラインは完全に成功**: `JUCINQ TOKCD('C00001')`(CPP=JUCINQC)
+  実行結果は`J00001 20260901`/`J00003 20260905`——06-01で確認済みの
+  R0408A・Q0614Aの結果と一致。CPP切り替えの土台(`CRTCMD`・`CHGCMD`・
+  `CALL PGM(QCMDEXC) PARM('JUCINQ ...' 22)`経由の呼び出し)が正しく
+  動くことを確認した。
+- **`F0612A`のコンパイルが実バグでSeverity 30失敗**: `dcl-ind ovf;`は
+  実在しないRPG IVキーワードだった(`work/design/refs/ilerpgref75.txt`
+  に`dcl-ind`の記載は一件も無い)。コンパイラーは`dcl`を暗黙のEVAL文の
+  未定義名として解釈し(`RNF5347`/`RNF7030`)、以降の宣言・
+  `dcl-f p0612a printer oflind(ovf)...`・全レコード様式名(`RPTHDR`/
+  `RPTCUST`/`RPTNM`/`RPTDTL`/`RPTJUNO`/`RPTJUDT`/`RPTTOT`/`RPTCNT`/
+  `ORDERCNT`/`OVF`)が軒並み「未定義」で連鎖的に失敗した。正しい構文は
+  `dcl-s ovf ind;`(`ilerpgref75.txt`61218行目の実例`dcl-s
+  isAbnormalReturn ind;`で確認)。`src/qrpglesrc/f0612s.rpgle`を修正
+  済み、次回接続で再挑戦する。
+
+**2回目の接続で2件目のバグ発見・修正**: `dcl-ind`修正でSeverity 30は
+解消したが、`RNF2037`(「Overflow Indicatorは既に定義されている、
+キーワードは無視される」)がSeverity 20で新たに露出し、コンパイルが
+やはり止まった(既定`GENLVL(10)`超過)。外部記述PRTFに対する
+`OFLIND`キーワードがなぜ競合するのか、`ilerpgref75.txt`や本リポジト
+リーのDDS一次資料では確定できなかった——推測を重ねるより、この
+オーバーフロー再印字機能自体を削除した(06-12の新出リストに
+`OFLIND`/オーバーフロー標識は含まれておらず、2行のテスト・データでは
+実際にページ・オーバーフローが起きることも無いため、教える要点への
+影響は無い)。次回接続で再挑戦する。
+
+これでP1の#15は継続中(2件目の修正の再検証待ち)。
+
+**3回目の接続でCONFIRMED SUCCESS。** `F0612A`はHighest Severity 00で
+コンパイル成功。直接`CALL`・`JUCINQ`コマンド経由(CPP切り替え後)とも
+同一の正しいレポートを出力:
+
+```text
+JUCINQ4 - ORDER INQUIRY REPORT        CUSTOMER: C00001
+ACME TRADING CO                 J00001  20260901
+ACME TRADING CO                 J00003  20260905
+    2   ORDER(S) FOR THIS CUSTOMER
+```
+
+06-01・06-14で確認済みのJ00001/J00003データと完全一致。**JUCINQコマンド
+のCPP切り替え機構(`CHGCMD CMD(...) PGM(...)`)がこのリポジトリーで
+初めて実機確認できた**——`CHGCMD`後も`JUCINQ`コマンド自身の構文検証は
+変わらず、`TOKCD('C00001')`が正しく新CPP(`F0612A`)へ渡ることを確認した。
+`EDTCDE`(日付の`20260901`形式表示)も正しく機能している。
+
+## 第6部`part06-0509-procs-files`の実機検証(確認日 2026-09-27、1回の接続でCONFIRMED SUCCESS)
+
+06-05〜06-09(`F0605A`〜`F0609A`)をまとめて検証。**5本全てHighest
+Severity 00でコンパイル・実行成功。**
+
+- `F0605A`(プロシージャー・`CALLP`): `1580 at default rate = 1738.00.`/
+  `1580 at rate 1.08 = 1706.40.`/`R0409A (ZAHIK3) called via CALLP.`——
+  デフォルト引数・`CALLP`とも正しく動作。自身の印字(`P00001
+  0000043  OK`)も確認。
+- `F0606A`(文字列・日付・パック10進変換BIF群): `fullName = Taro
+  Yamada.`/`spacePos = 5.`/`lastPart = Yamada.`/`initial = Y.`/
+  `trim <Taro>.`/`triml <Taro              >.`/`trimr <  Taro>.`/
+  `dueDate = 2026-10-01.`/`daysLeft = 5.`/`totalText = 1738.00.`/
+  `totalBack = 1738.00.`——`%scan`/`%subst`/`%trim`系・日付演算・
+  パック10進数の往復変換、全て期待どおり。
+- `F0607A`: 04-13チェックポイントと同一の低在庫判定を再現し完全一致:
+  `P00002 OFFICE CHAIR ... LOWSTOCK`・`P00005 USB CABLE ...
+  LOWSTOCK`の2件のみ(他4件は印字されるがLOWSTOCKなし)、`BONUS:
+  LOOKUP P00002 -> INDEX 2`(配列探索BIFも正しく動作)。
+- `F0608A`: `P00001  0000041  OK`——正しく動作。
+- `F0609A`(`MONITOR`/`ON-ERROR`によるエラー処理): `Attempt made to
+  divide by zero for fixed point operation.`→`F0609A: caught status
+  102 in F0609A at line/stmt 00023600 - division by zero was caught,
+  not pre-checked.`→`F0609A: runDivideDemo ended normally
+  (MONITOR/ON-ERROR already handled any error).`——ゼロ除算を
+  `MONITOR`が正しく捕捉し、プログラムが異常終了せず正常終了した
+  ことを実機で確認。
+- `RUNTXRESET`: `TXRESET: data restored to the initial state.`——
+  片付けも正常終了。
+
+これでP1の#16は完了。次は#17(`part07-05-checkpoint`、TXCHECK込み)。
+
+## 第7部`part07-05-checkpoint`の実機検証(確認日 2026-09-27、1回の接続でCONFIRMED SUCCESS)
+
+`ZAISRV`(*SRVPGM: get/reserve/release)・`ZAISRVBD`(*BNDDIR)・`DRIVER`
+(ロック・テスト一式)・`TXCHECK`(このセッション中に追加した完了条件C5)
+をまとめて検証。**全てCONFIRMED SUCCESS。**
+
+- `ZAISRV`はSeverity 10(`RNF7534`、TOKUIM同様の「非サイクル・モジュール
+  は明示クローズ推奨」助言、無害)、`ZAISRVBD`新規作成・1件登録、
+  `DRIVER`はHighest Severity 00でコンパイル成功。
+- **`DRIVER`の10件のロック・テストが全て期待どおりの結果**(単一の
+  `CALL`内・同一活性化グループでの一連の呼び出し、という設計どおり):
+
+  ```text
+  0-BASELINE       P00001 QTY=0        OK= Y ZASU=45       get() peek
+  1-RESERVE-OK     P00001 QTY=2        OK= Y ZASU=43       expect ON, -qty
+  2-RESERVE-SHORT  P00001 QTY=9999999  OK= N ZASU=43       expect OFF, same
+  2B-DIAG-CHAIN    P00001 QTY=0        OK= Y ZASU=0        NO CONFLICT SEEN
+  3-RELEASE        P00001 QTY=2        OK= Y ZASU=45       expect ON, =start
+  4-TWICE-A        P00001 QTY=2        OK= Y ZASU=41       expect ON
+  4-TWICE-B        P00001 QTY=2        OK= Y ZASU=41       expect ON, -2*qty
+  5-RESTORE        P00001 QTY=2        OK= Y ZASU=45       expect =start
+  6-NOTFOUND-GET   P99999 QTY=0        OK= Y ZASU=-1       expect -1
+  7-NOTFOUND-RSV   P99999 QTY=2        OK= N ZASU=0        expect OFF
+  ```
+
+  在庫の増減(45→43→45→41→45)・在庫超過reserve拒否・存在しない商品
+  コードの扱い・**同一実行内での2回連続reserve(4-TWICE-A/B、ロック
+  持ち越しの本題)**、すべて注釈どおりの結果になった。
+- **TXCHECK(このセッション中に追加、完了条件C5)が正しく機能した**:
+  `TXCHECK PASS: ZAISRV service program exists` /
+  `TXCHECK PASS: ZAISRVBD binding directory exists` /
+  `TXCHECK PASS: DRIVER checkpoint program exists` /
+  `TXCHECK: lesson 07-05 - 3 passed, 0 failed.`
+- `RUNTXRESET`: `TXRESET: data restored to the initial state.`——
+  後片付けも正常終了。
+
+これでP1キュー(#10.5〜#17、jiggly-greeting-crystal.mdのStep 1で
+指定された全項目)が完了。全てCONFIRMED SUCCESS。次はStep 2(第5部の
+公開)またはStep 1の残り(2F・第6/7部残り・第8〜10部)。
 
 ## 第5部`part05-txmigr-to2`(接続A)の実機検証: CPF4131を初めて再現(確認日2026-09-27)
 
@@ -1472,9 +2026,458 @@ TXLEGACY・C0511S)は「今回初めてコンパイルする」段になるた�
 ファイルを作らないという既知の挙動(`part06-0103-freeform`参照)により、
 構造的にV3(対話操作)専用のまま。
 
+## 第6部`part06-decisions-1`の実機検証: 06-11b/06-11/06-04の修正確認、06-12 OFLIND再挑戦、06-14b再設計の2候補(確認日2026-09-27)
+
+`jiggly-greeting-crystal.md`のA節(ソース修正)・B節(追加検証)を受けた、
+決定を左右する項目をまとめた1回の接続。
+
+**06-11b/06-11/06-04の修正確認(V1、コンパイルのみ)**: `D0611BA`
+(`SHOTNK`を`7S 2O`へ変更、決定P6-8どおり出力専用化)・`F0611BA`
+(`chain(e)`+`%error`/`%status(1218)`によるレコード・ロック競合の
+エラー処理を追加)・`F0611A`(オプション5で`F0604A`へ`JUTOK`を渡す
+よう修正)・`F0604A`(`custCode char(6) const options(*nopass)`を
+追加、渡されればEXFMT前に`TOKCD`へ代入)——**全4件ともHighest
+Severity 00でコンパイル成功。** いずれもWORKSTN/EXFMTのためCALLは
+実施せず(既存の確立済み制約どおりV1止まり)。
+
+**06-12 OFLINDの3候補、1回の接続で決着**: `docs/probes.md`上の
+`part06-12-prtf-cpp-swap`節が記録した`RNF2037`(「Overflow Indicator
+は既に定義されている」)を受け、3つの独立した候補をTHROWAWAYメンバー
+(`verify/part06-12-prtf-cpp-swap/src/t612of{a,b,c}.rpgle`、
+出荷ソースではない)として同一接続で試した:
+
+- **候補A**(`oflind(*inoa)`を`dcl-f p0612a`に直接指定、独立した
+  `dcl-s ovf`宣言なし): **失敗**。実際の原因は`RNF2014`
+  (「The parameter for keyword OFLIND is not valid; keyword is
+  ignored.」、severity 20)——保存済みコンパイル・リストで確認
+  済み。以前の`dcl-s ovf ind;`+`oflind(ovf)`が起こした`RNF2037`
+  (「Overflow Indicator is already defined」)とは**別のメッセージ**
+  だが、結果(この外部記述PRTFで`*INOA`が拒否される)は同じ。この
+  失敗が`CPF9999`(「Function
+  check. RNS9310 unmonitored by TPART06DEC」)としてラッパーCL
+  プログラム自身に一瞬エスケープした(monmsgに`RNS0000`を含めて
+  いなかったため)が、包括的な`CPF0000`監視で最終的に捕捉され、
+  後続ステップは全て正常に続行した。
+- **候補B**(`oflind(*in01)`、番号標識版): **コンパイル成功
+  (Highest Severity 00)。** `ilerpgref75.txt`(27970-27988行目)は
+  `*INOA`-`*INOG`/`*INOV`(名前付き)と`*IN01`-`*IN99`(番号)の
+  両方をOFLINDの有効なパラメーターとして挙げているが、この
+  PUB400のPTFレベルでは外部記述PRTFに対して番号標識版だけが実際に
+  コンパイルを通ることが確定した。
+- **候補C**(内部記述PRTF、`oflind(*inoa)`): このマニフェスト上の
+  記述ミス(印刷装置ファイル名を`t612ofc`という独自名にしていた)
+  により`CPF4101`(オブジェクトが見つからない)で実行時に失敗——
+  **OFLINDそのものの検証にはならなかった**(内部記述の印刷装置
+  ファイルは`QSYSPRT`のように既存のシステム・オブジェクトに
+  対してのみ暗黙オープンできる。任意の名前では`CRTPRTF`等で
+  事前にオブジェクトを作らない限りOPENが`CPF4101`で失敗する
+  ——`f0607s.rpgle`/`f0608s.rpgle`が`QSYSPRT`しか使っていない
+  理由そのもの)。`QSYSPRT`へ差し替えて`part06-decisions-2`で
+  再接続する。
+- **候補B/Cの実際のスプール出力captureは同一接続内で失敗**
+  (`CPYSPLF`が`CPF3303`「File ... not found」)——ただし対応する
+  `CALL`ステップ自体はエラー・メッセージを一切出していない
+  (プログラムは正常終了したと推測される)。候補Aの`RNS9310`
+  Function Checkが同一ジョブの以降のスプール処理を乱した可能性が
+  高いという仮説のもと、`part06-decisions-2`で候補Aを含めずに
+  候補B単体・候補C(修正版)を再接続して切り分ける。
+- **`f0612s.rpgle`は候補B(`oflind(*in01)`)を採用して更新済み**
+  (このコンパイル成功のみをもって採用——実際のオーバーフロー
+  発火・再印字の実演はまだ未確認、`part06-decisions-2`または
+  06-12本文執筆時の別接続で確認する)。
+
+**06-14b再設計の2候補、primingなしで比較**:
+
+- **候補1(動的SQL、`src/qrpglesrc/q0614bs.sqlrpgle`採用)**:
+  カーソルを`PREPARE S1 FROM :cursorSql; DECLARE C2 CURSOR FOR S1;`
+  へ変更(06-14の`PREPARE`技法の自然な延長)。`TIMESTAMP`型
+  (`TOKLTS`列、NOT NULL)・`VARCHAR`型(`TOKNM`列)を追加、
+  design:321の新出3型(DATE/TIMESTAMP/VARCHAR)を初めて全て使用。
+  **コンパイルはHighest Severity 00で成功、`CALL`もエラー・
+  メッセージ無し(正常終了と推測)——ただし`CPYSPLF FILE(QSYSPRT)`
+  が候補Bと同じ理由(前段の候補A `RNS9310`)で失敗し、実際の
+  印字内容(NULL/非NULL・TIMESTAMPの表示)はまだ確認できていない。**
+- **候補2(永続ライブラリー、`verify/part06-14b-null/src/
+  q0614bb-persistent.sqlrpgle`、THROWAWAY)**: `&LIB`直下に
+  `W0614BP`をコンパイル前に`RUNSQL`で作成(`PERSISTPRIME`
+  ステップ)、静的カーソルのまま(`PREPARE`不要)。**コンパイルは
+  Highest Severity 00で成功、`CALL`もエラー無し——同じ理由で
+  `CPYSPLF`のみ失敗、実際の印字内容は未確認。**
+- 両候補ともコンパイル・呼び出し自体は成功しており、
+  `SQL0204`(旧設計の既知の欠陥)は候補1・候補2のどちらでも
+  再発しなかった。**「動的SQL化」「QTEMPをやめて永続ライブラリー」
+  のどちらの再設計も、少なくともコンパイル・実行の入口までは
+  正しく機能することが確認できた。** 実際の印字結果(NULL行・
+  非NULL行の判別、TIMESTAMPの表示)の確認と、最終的にどちらを
+  採用するかの決定は`part06-decisions-2`に持ち越す(現時点では
+  design:321の狙い(06-14の直後という並びに自然に合う)に沿って
+  候補1を暫定採用、`src/qrpglesrc/q0614bs.sqlrpgle`はすでに候補1へ
+  更新済み)。
+
+**教訓(次回以降のマニフェスト設計に反映)**: RPGコンパイラーの
+severity 20エラーは`RNFnnnn`だけでなく`RNS93xx`(コンパイル・
+ステータス通知)としても現れ、後者は`monmsg`リストへ`RNF0000`を
+入れていても捕捉されない。CL文の`CALL`が実行時例外で失敗する
+場合も`RNX`/`RNQ`プレフィックスがあり得る——`part06-decisions-2`
+以降のCRTBNDRPG/CRTSQLRPGIステップの`monmsg`には`RNS0000`、
+CALLステップには`RNX0000`も追加した。
+
+## 第6部`part06-decisions-2`の実機検証: 「スプール捕捉失敗」の真因確定、06-14bにもう1件の設計欠陥を発見(確認日2026-09-27)
+
+`part06-decisions-1`で「候補B/Cはコンパイル・実行とも成功したはずなのに
+`CPYSPLF`が`CPF3303`で失敗する」現象を、候補Aの`RNS9310` Function Check
+による同一ジョブの乱れが原因、という仮説のもとで切り分けるための接続。
+**仮説は誤りだった。**
+
+- **候補A抜きでも候補B(`T612OFB`、`oflind(*in01)`)は同じく
+  `CPYSPLF FILE(P0612A)`が`CPF3303`で失敗した。** ジョブの乱れは
+  無関係——**この環境固有の既知の制約(2026-09-26、
+  `part06-0103-freeform`が発見した「qshジョブのQSYSPRT出力は実スプール
+  にならず`run`セクションへ直接流れ込む」という現象)が、QSYSPRT
+  だけでなく外部記述の`P0612A`のような別名の印刷装置ファイルにも
+  同様に当てはまる**ことが確定した。**結果JSONの`run`セクションを
+  直接検索したところ、`T612OFB`が実際に印字した100行
+  (`OFLIND PROBE B LINE 1`〜`100`)がそこに存在した。** `oflind(*in01)`は
+  **コンパイル・100行印字とも実機確認済み(CONFIRMED)。**
+
+  **【訂正、2026-09-27後日】「`*IN01`は一度もONにならなかった」という
+  記述は誤りだった(advisorレビューで発見)。** 各行に印字していた
+  末尾の`0`は`*IN01`ではなく`RPTJUDT`(`EDTCDE(3)`、常に0を代入して
+  いた無関係のフィールド)——このプローブ自身が`*IN01`の値を
+  どの行にも一切印字していなかった。実際の証拠はループ終了後の
+  `RPTTOT`行(`RPTCNT`、`EDTCDE(4)`)にあり、そこには
+  `1   ORDER(S) FOR THIS CUSTOMER`と印字されていた——**`overflowSeen`
+  が実際に`*on`になっていた(=`*IN01`は100行のどこかで確実に発火
+  していた)ことを見落としていた。** 後日の`part06-b6-batch`
+  (下記参照)で、より正確なプローブにより「9行目で発火」という
+  具体的な証拠も得られた。`oflind(*in01)`によるオーバーフロー検知
+  はこのハーネスで正しく機能する。
+- **候補C(修正版、`QSYSPRT`を使う内部記述PRTF、`oflind(*inoa)`)も
+  同じ理由で`CPYSPLF`は失敗したが、`run`セクションに実際の100行+
+  `OVERFLOW-SEEN=0`が見つかった。** これで**候補Cも実機確認済み**
+  ——重要な副産物: `oflind(*inoa)`は**内部記述PRTFでは問題なく
+  コンパイル・実行できる**(`RNF2037`/`RNS9308`は外部記述PRTFに
+  対してのみ起きる、という当初の仮説がこれで裏付けられた)。
+- **06-14bにもう1件の設計欠陥を発見**: `Q0614BA`(動的SQLカーソル
+  化済み)は今回も`SQL precompile failed`(`SQL9001`)で失敗した。
+  **【訂正、Wave 2執筆時に発見】当初「2件の`INSERT INTO
+  QTEMP/W0614BA`が依然として静的SQLのままで、INSERTにもSELECTと
+  同じ列レベルのアクセス・プランが必要」と記録していたが、実際の
+  コンパイル・リストを読み直すと診断は`SQL1103`ではなく`SQL0180`
+  (「Syntax of date, time, or timestamp value not valid」、
+  severity 30、ソース213行目・218行目=2件の静的INSERTの
+  `TIMESTAMP`リテラル部分)だった。** 原因はアクセス・プランの
+  問題ではなく、当時まだRPGネイティブの`Z`形式(ダッシュ+ピリオド
+  区切り)のままだった`TIMESTAMP`リテラルの構文誤り。`RUNQ0614BA`
+  (CALL)自体はメッセージ0件で完了していたため、実は**旧セッション
+  から残っていた(古い設計の)`Q0614BA`オブジェクトがそのまま
+  CALLされ**(`REPLACE(*YES)`はプリコンパイル失敗時には効かないため)、
+  `run`セクションに旧形式の出力(`C00001 ACME TRADING CO: last order
+  2026-09-05`等、`TOKLTS`表示なし)が見つかった——**これは新設計の
+  確認ではなく、古いオブジェクトの残存確認に過ぎない**。
+- **候補2(永続ライブラリー版、`Q0614BB`)の`PERSISTPRIME`ステップも
+  失敗**: `VALUES (''C00001'', ''ACME TRADING CO'', DATE
+  ''2026-09-05'', TIMESTAMP ''2026-09-05-08.30.00.000000'')`という
+  `INSERT`文全体が`Syntax of date, time, or timestamp value not
+  valid`で拒否された。**このRUNSQL呼び出しはDATEリテラルと
+  TIMESTAMPリテラルの両方を含んでおり、どちらが原因かは切り分けて
+  いない**(ドイツ語圏ホストという、この環境固有のロケール要因の
+  可能性も排除できていない)。確定しているのは「ANSI/ISO標準形式
+  (`rbafy75.txt`、スペース+コロン区切り`'yyyy-mm-dd hh:mm:ss'`)は
+  埋め込みSQL(`q0614bs.sqlrpgle`)経由で実際に動作した」という事実
+  のみ——RPGネイティブの`Z`リテラル形式(ダッシュ+ピリオド区切り)を
+  埋め込みSQLで試したことは一度も無いため、「その形式が誤りだった」
+  とは言い切れない。`Q0614BB`自体はHighest Severity 00で
+  コンパイル・実行成功していたが、`PERSISTPRIME`のINSERTが失敗して
+  `W0614BP`が0行のままだったため、カーソルは正しく「該当行なし」で
+  0回のFETCHループを回り、何も印字せず正常終了していた(バグでは
+  なく空データの正しい挙動)。
+- **`src/qrpglesrc/q0614bs.sqlrpgle`をさらに修正**: 2件の`INSERT`を
+  `EXECUTE IMMEDIATE`(ホスト変数経由)による動的SQLへ変更、
+  `TIMESTAMP`リテラルもANSI/ISO形式(`'2026-09-05 08:30:00'`)へ
+  修正。**この修正版はまだ実機未確認**(`part06-decisions-3`で
+  確認予定)。候補2(`Q0614BB`)はこの時点で候補1に対する優位が
+  無く(design:321の狙いにも候補1の方が合う)、これ以上の追試は
+  行わない方針とする。
+
+**教訓(さらに追加)**: `CPYSPLF FILE(QSYSPRT)`が失敗するという
+既存の知見(`part06-0103-freeform`)は、QSYSPRT固有ではなく
+**この検証ハーネスのジョブ環境で開かれる印刷装置ファイル全般**
+(少なくとも外部記述PRTFの`P0612A`でも再現)に当てはまる可能性が
+高い。**今後、印刷出力の確認は`CPYSPLF`+`collect`ではなく、
+結果JSONの`run`セクションを直接読むことを既定の方法とする。**
+`CPYSPLF`ステップ自体は無害に失敗する(`MONMSG`で捕捉済み)ため
+残してもよいが、それに依存した`collect`は当てにしないこと。
+
+## 第6部`part06-decisions-3`の実機検証: 06-14b再設計、最終CONFIRMED SUCCESS(確認日2026-09-27)
+
+`part06-decisions-2`で修正した`q0614bs.sqlrpgle`(カーソルに加え2件の
+`INSERT`も動的SQL化、`TIMESTAMP`リテラルをANSI/ISO形式へ訂正)を、
+primingなしで単独確認。
+
+**CRTSQLRPGI Highest Severity 00でコンパイル成功。`CALL`は期待どおりの
+2行を印字した**(結果JSONの`run`セクションで直接確認、`CPYSPLF`は
+使わず——上記の教訓どおり):
+
+```text
+C00001 ACME TRADING CO: last order 2026-09-05, last touched 2026-09-05-08.30.00.000000
+C00099 NEW PROSPECT CO: last order date is NULL (unknown), last touched 2026-09-20-14.15.00.000000
+```
+
+`DATE`・`%nullind`によるNULL判別・`VARCHAR`(`TOKNM`)・`TIMESTAMP`
+(`TOKLTS`)の4つが揃って正しく動作することを確認した。ジョブ・ログに
+毎回現れる`SQL0204`(`W0614BA in QTEMP type *FILE not found`)は、
+一番最初の`DROP TABLE`(まだ一度も作られていない表を消そうとする、
+設計上想定済みの動作)によるもので、後続の`SQLCODE`チェックの対象外
+なので無害。**06-14bの再設計はこれで完全にCONFIRMED SUCCESS
+——候補1(動的SQL)を採用、候補2(永続ライブラリー)はこれ以上
+追試しない。**
+
+## 第6部`part06-08-writedelete`の実機検証: OK/SHORT/NOTFOUND全経路+WRITE/DELETE/%kds/%fields、CONFIRMED SUCCESS(確認日2026-09-27)
+
+`F0608A`(06-08、`ZAHIK4`)を、R0409A(04-09)自身の確立された演習方式
+(リテラルを書き換えて再コンパイル・再実行)にならい、3つの経路すべてで
+確認。**接続1回でCONFIRMED SUCCESS。**
+
+- 3オブジェクトともHighest Severity 00でコンパイル成功。
+- 結果JSONの`run`セクションを直接読んで確認(`part06-decisions-2`の
+  教訓どおり、`CPYSPLF`は使わない):
+  - `qty=999`版: `P00001  0000045  SHORT`(45 < 999、正しくSHORT判定)。
+  - `prod='P99999'`版: `P99999  0000000  NOTFOUND`(該当なし、
+    `CLEAR`によりZASUは0000000)。
+  - 実際に配布する既定版(`qty=2`、`P00001`): `P00001  0000043  OK`
+    (45→43に正しく更新)。
+- `runWriteDeleteDemo`(既定`*on`)による`ZTEST1`へのWRITE・
+  `%fields`限定UPDATE・`%kds`によるDELETEの一連は、エラー・メッセージ
+  0件で完了(正常終了)。
+- `RUNTXRESET`実行後、`SELECT * FROM ZAIKOM`で全6行が初期値
+  (`P00001`=45・`P00002`=3・`P00003`=250・`P00004`=60・`P00005`=12・
+  `P00006`=22)に戻っていることを確認済み。
+
+これでB-4は完了。SHORT/NOTFOUND確認用の使い捨てソース2本
+(`f0608t-short.rpgle`・`f0608t-notfound.rpgle`)は確認後に削除済み
+(マニフェスト自体は履歴として残すが再実行はできない)。
+
+## 検証ハーネスの既知の危険: ラッパーCLプログラム名の衝突(発見日2026-09-27、`part07-04-actgrp-ext`の失敗接続で判明)
+
+`verify/lib/clgen.mjs`の`sanitizePgmName`は、バッチ名を大文字英数字のみに
+正規化し先頭に`T`を付けたうえで**先頭10文字だけ**を取ってラッパーCL
+プログラム名にする。このため、**先頭10文字が同じバッチ名同士は同じ
+ラッパー・プログラム名になる**——実際に確認済みの衝突組:
+`part05-txmigr-compile-check`/`-to2`/`-to2b`(いずれも`TPART05TXM`)、
+`part06-decisions-1`/`-2`/`-3`(いずれも`TPART06DEC`)。
+
+**これが実害になるのは、新しいマニフェストのラッパーCL自体のコンパイルが
+severity 30以上のエラーで失敗した場合だけ**(`REPLACE(*YES)`が働かず、
+同名の別バッチが以前に正常コンパイルした**古いオブジェクトがそのまま
+呼ばれてしまう**)。`part06-decisions-1/2/3`はいずれもラッパー自体の
+コンパイルに成功していたため実害は無かったが、`part07-04-actgrp-ext`
+(→`part07-04b-actgrp`に改名)では、11文字のCLラベル
+(`RUNF0704AC1`/`RUNF0704AC2`)が両方とも10文字目で`RUNF0704AC`に切り
+詰められ`CPD0717`(severity 30、ラベル重複)でラッパー自体のコンパイルが
+失敗、**`TPART0704A`という名前を共有する古い`part07-04-actgrp-cl`の
+ラッパー・オブジェクトがそのまま呼ばれ、`vfylog`にはJUYAKL等の無関係な
+古いバッチの出力が(あたかも今回の接続が実行されたかのように)そのまま
+記録される**という紛らわしい失敗を実際に踏んだ。
+
+**今後のマニフェスト作成での対策**:
+
+1. CLラベルは全て10文字以内にする(超過分は`.slice(0,10)`で切り詰められ、
+   異なるラベル同士が衝突しうる)。
+2. 接続後は必ず`compile`セクションを読み、severity 30以上のメッセージ
+   (`CPD0717`等)が無いことを確認してから`vfylog`/`run`の内容を信用する
+   ——「それらしい出力が出ている」だけでは、実は無関係な古いバッチが
+   実行されただけという可能性を排除できない。
+3. バッチ・ディレクトリー名は先頭10文字(英数字のみ、大文字化後)が
+   他のバッチ名と重複しないようにする(例: `part07-04-actgrp-ext`は
+   `part07-04b-actgrp`に改名して回避した)。
+
+## 第7部`part07-04b-actgrp`の実機検証: 活性化グループの継続/リセットを完全確認、`*CALLER`比較は別の理由でブロック(確認日2026-09-27)
+
+B-8。1回目の接続はCLラベルの10文字切り詰め衝突(前節参照)で失敗した
+ため、ラベルを`RUNAC1`/`RUNAC2`に短縮・バッチ名を`part07-04b-actgrp`
+に改名して再接続。**ラッパーCL自体がHighest Severity 00でコンパイル
+成功したことを`compile`セクションで確認したうえで、CONFIRMED SUCCESS。**
+
+`F0704A`(`ACTGRP('F0704AG')`という名前付き活性化グループ)への
+4段階シーケンスを同一ジョブ内で実行:
+
+1. `RCLACTGRP ACTGRP(F0704AG)`(冒頭、念のため): `Activation group
+   F0704AG not found.`——新しいジョブでは名前付き活性化グループも
+   まだ存在せず、ジョブをまたいで残らないことを確認。
+2. `CALL PGM(F0704A)`(1回目): `bumpCounter()`が1・2・3を返す。
+3. `CALL PGM(F0704A)`(2回目、同一ジョブ、`RCLACTGRP`なし): **4・5・6
+   を返す——名前付き活性化グループがプログラム終了後も破棄されず、
+   静的変数が継続することを実機確認。**
+4. `RCLACTGRP ACTGRP(F0704AG)`: `Activation group F0704AG deleted.`
+5. `CALL PGM(F0704A)`(3回目、`RCLACTGRP`後): **1・2・3に戻る——
+   `RCLACTGRP`が静的記憶域をリセットすることを実機確認。**
+
+`f0704s.rpgle`自身のヘッダーが予告していた挙動が、全段階
+CONFIRMED SUCCESSとなった。
+
+**`*CALLER`比較版(`F0704AC`)は別の理由で失敗**: 同一ソースから
+`CRTRPGMOD`(モジュールのみ)→`CRTPGM ACTGRP(*CALLER)`という2段構成
+を試みたが、`CRTRPGMOD`自体が`RNF1324`(「Keywords DFTACTGRP, ACTGRP,
+or USRPRF are not allowed.」)で`Compilation stopped. Severity 20
+errors found in program.`となり失敗した。原因は`f0704s.rpgle`自身の
+`ctl-opt`が`actgrp('F0704AG')`を含んでおり、これは同ファイルの
+ヘッダーが既に引用済みのとおり「`CRTBNDRPG`でのみ有効」——
+`CRTRPGMOD`はこのキーワード自体を受け付けない。`*CALLER`比較を
+行うには、`ctl-opt`から`actgrp(...)`を除いた(`dftactgrp(*no)`のみの)
+別コピーが必要——未着手のまま、06-12本文には含めない前提で進める。
+
+## 第6部`part06-15-checkpoint`の実機検証: D0615A/F0615A/Q0615A CONFIRMED SUCCESS、TXCHECK呼び出しの実装を修正して再接続へ(確認日2026-09-27)
+
+B-5、1回目の接続。
+
+- `D0615A`(DSPF)・`F0615A`(RPG、サブフィル半分)・`Q0615A`(SQLRPGLE、
+  SQL半分)は全てHighest Severity 00でコンパイル成功(`compile`
+  セクションでラッパー自体もseverity 00を確認済み)。
+- `Q0615A`の実際の印字内容(結果JSONの`run`セクション、`CPYSPLF`は
+  期待どおり失敗——QSYSPRTの既知の制約)を確認したところ、**採点表と
+  完全一致**:
+
+  ```text
+  P00001    DESK LAMP                           0000045
+  P00002    OFFICE CHAIR                        0000003       LOWSTOCK
+  P00003    NOTEBOOK PACK                       0000250
+  P00004    STAPLER                             0000060
+  P00005    USB CABLE                           0000012       LOWSTOCK
+  P00006    MONITOR STAND                       0000022
+  ```
+
+- **`RUNTXCHECK`(`CALL PGM(QCMDEXC) PARM('TXCHECK LESSON(''06-15'')
+  LIB(&LIB)' 39)`という、マニフェストの`cl`ステップに直接埋め込んだ
+  形)が実行時に失敗**: `String '          ' contains a character
+  that is not valid.`——`LIB`キーワードの値が空白10文字として解釈
+  された(原因未特定)。**`verify/part05-txlegacy-exec/src/
+  txlegrun.clp`と同じ、実績のある形(専用CLヘルパーが`CHGVAR`+
+  `*TCAT`/`%TRIM`で実行時に文字列を組み立ててから`QCMDEXC`を呼ぶ)
+  へ書き換えた**(`verify/part06-15-checkpoint/src/txchkrun.clp`
+  新設)。
+
+**再接続でCONFIRMED SUCCESS。** `txchkrun.clp`経由で実際の`*CMD`形
+(`TXCHECK LESSON('06-15') LIB(<lib>)`)を実行し、`TXCHECK: lesson
+06-15 - 0000000003 passed, 0000000000 failed.`——完了条件C5達成。
+これでB-5は完全にCONFIRMED SUCCESS(D0615A/F0615A/Q0615A全て
+Highest Severity 00、Q0615Aの印字内容が採点表と完全一致、TXCHECK
+3 passed/0 failed)。
+
+## 第7部`part07-03-signature`の実機検証: 1回目は自分のバグでシナリオが崩れたが、`Program signature violation`のメッセージを実機確認(確認日2026-09-28)
+
+B-7、1回目の接続。**候補として用意した2手続き版のスループアウェイ・
+ベースライン(`jucsrvb1.rpgle`)が実バグでコンパイル失敗**
+(`RNF7062`、severity 30: 「JUCHUM用のuser-controlled OPENが無い」
+——`countCustOrders`だけが持っていた`open juchum;`を含む手続きを
+丸ごと削って作った2手続き版に、`dcl-f juchum ... usropn;`宣言だけ
+削除し忘れて残していたのが原因)。この結果、意図した「2手続き
+ベースライン」ではなく**既存の3手続きモジュールがそのまま
+`EXPORT(*ALL)`でベースラインになってしまい**、想定していた手順どおり
+にはシナリオが進まなかった。
+
+**ただし、意図と違う段階で、想定していたメッセージ自体は実機確認できた**:
+`EXPORT(*ALL)`から`EXPORT(*SRCFILE)`(実物の`jucsrv.bnd`、バインダー
+言語)へ切り替えた直後の`F0702A`呼び出しで
+**`MCH4431: Program signature violation.`** が実際に発生した
+(`Error found on CALL command.`を伴う)。`UPDSRVPGM`も構文どおり
+成功(`Service program JUCSRV in <lib> updated.`)。`F0703A`
+(`countCustOrders`、新しい`PGMLVL(*CURRENT)`の3シンボル署名)は
+問題なく成功。使い捨ての`*BNDDIR`(`TOSSBD`)作成→`DLTOBJ
+OBJTYPE(*BNDDIR)`も成功。
+
+**この「意図と違う段階」自体が、ILE Conceptsの記述を裏付ける追加の
+証拠になっている**: throwawayベースラインのコンパイル失敗により、
+`JUCSRV`は(2手続きではなく)既存の3手続きモジュールからそのまま
+`EXPORT(*ALL)`で再構築され、`F0702A`はその3シンボル・
+`EXPORT(*ALL)`(アルファベット順)署名に束縛された。その状態でも
+プレーンな`EXPORT(*ALL)`再構築(同じ3手続き)には耐えたが、
+`jucsrv.bnd`の**宣言順**(`getCustName`・`pingJucsrv`・
+`countCustOrders`——アルファベット順なら`countCustOrders`・
+`getCustName`・`pingJucsrv`の順になるはず)による
+`PGMLVL(*CURRENT)`ブロックへ切り替えた途端に`MCH4431`で壊れた。
+これは「`EXPORT(*ALL)`は手続き数+アルファベット順で署名を計算し、
+バインダー言語はソースに書いた順序を使う」というILE Conceptsの
+記述どおりの挙動が、意図しない形ながら実機で裏付けられたことを
+意味する。
+
+`jucsrvb1.rpgle`の`dcl-f juchum ... usropn;`行を削除して修正済み
+(`countCustOrders`を持たない2手続き版なので不要)。
+
+**再接続で完全なシナリオがCONFIRMED SUCCESS(2026-09-28)**:
+
+1. 2手続き版(`getCustName`・`pingJucsrv`のみ)を`EXPORT(*ALL)`で
+   ベースライン化(モジュールSeverity 10=警告のみで成功)。
+2. `F0702A`を新規コンパイルしこのベースラインに束縛
+   → `CALL`成功(`getCustName(C00001) = ACME TRADING CO`)。
+3. 実物の3手続き版(`countCustOrders`込み)を、依然`EXPORT(*ALL)`
+   のまま再構築(モジュール/サービス・プログラムとも再作成)。
+4. `F0702A`を**再コンパイルせずに**再度`CALL`
+   → **`Program signature violation.`(実機確認、メッセージ本文
+   「Program signature violation.」)で失敗。** これが本来確認
+   したかった「`EXPORT(*ALL)`のままエクスポートを追加すると
+   既存の束縛済みクライアントが壊れる」という核心の実演。
+5. `EXPORT(*SRCFILE)`(実物の`jucsrv.bnd`、`PGMLVL(*CURRENT)`=3
+   シンボル・`PGMLVL(*PRV)`=元の2シンボルと同じ順序)へ切り替え
+   (`CRTSRVPGM`)。
+6. 同じ設定で`UPDSRVPGM`も実行——`Service program JUCSRV in <lib>
+   updated.`で構文・動作とも成功確認。
+7. `F0702A`を**依然再コンパイルせずに**もう一度`CALL`
+   → **成功(`getCustName(C00001) = ACME TRADING CO`)。** これで
+   `PGMLVL(*PRV)`の明示的な2シンボル署名(`getCustName`・
+   `pingJucsrv`)が、`EXPORT(*ALL)`が同じ2手続きに対して計算した
+   署名と実際に一致することを実機で確認した——07-03(バインダー
+   言語)の核心の主張(「バインダー言語へ切り替えれば、既存
+   クライアントの互換性を保ったまま新しいエクスポートを追加できる」)
+   がPUB400で成立することを実証済み。**ただしこれはこの2シンボルの
+   ケースに限った実証である**: 上記「意図と違う段階」の3シンボルの
+   ケースが示すとおり、`PGMLVL(*PRV)`/`(*CURRENT)`が`EXPORT(*ALL)`の
+   署名を再現するのは、バインダー・ソースに書く順序が`EXPORT(*ALL)`
+   自身のアルファベット順と一致する場合に限られる。
+8. `F0703A`(新規コンパイル、`countCustOrders`使用)も成功、
+   2回連続呼び出しの値も一致(`JUCHUM`再配置ロジックの正しさを
+   確認)。
+9. 使い捨ての`*BNDDIR`作成→`DLTOBJ OBJTYPE(*BNDDIR)`も成功。
+
+これでB-7は完全にCONFIRMED SUCCESS。
+
+## 第6部`part06-b6-batch`の実機検証: 06-11ページ単位版CONFIRMED SUCCESS、OVRPRTFオーバーフロー・プローブで結論確定(確認日2026-09-27)
+
+B-6。1回の接続でCONFIRMED SUCCESS。
+
+- **06-11ページ単位版(`D0611AP`/`F0611AP`、新規)**: Highest Severity
+  00でコンパイル成功(V1)。`SFLPAG(3)`(JUCHUM全8行を3+3+2の3ページに
+  分割、実際にPAGEDOWNを試せるようあえて小さくした値)、`loadNextPage`
+  手続きでRRNを継続しながら1ページずつ読み込む方式。load-all版
+  (`D0611A`/`F0611A`)はそのまま維持、両方とも本文の対象。
+- **OVRPRTFオーバーフロー・プローブ(`T612OFRF`、使い捨て)**:
+  `OVRPRTF FILE(P0612A) PAGESIZE(12 132) OVRFLW(10)`で強制的に
+  ページ長12・オーバーフロー行10に設定したうえで30行`WRITE`した。
+
+  **【訂正、2026-09-27後日、advisorレビューで発見】当初「`*IN01`は
+  一度もONにならなかった」と記録したのは誤りだった。** 各行末尾の
+  `0`は`*IN01`ではなく`RPTJUDT`(`EDTCDE(3)`、常に0を代入していた
+  無関係のフィールド)を見ていただけで、このプローブ自体は`*IN01`の
+  値をどの行にも印字していなかった。実際の証拠はループ後の
+  `RPTTOT`行(`RPTCNT`、`EDTCDE(4)`)にあり、**`9   ORDER(S) FOR
+  THIS CUSTOMER`と印字されていた**——プローブのロジック
+  (`if not overflowSeen; overflowLine = i; endif;`)どおり、
+  **9行目で`*IN01`が実際にONになったことを示す確実な証拠**だった
+  (`OVRFLW(10)`+`SPACEB(1)`により、10行目に達する前の時点で
+  発火したものと考えられる)。**結論: `oflind(*in01)`によるオーバー
+  フロー検知はこのハーネスで正しく機能する。06-12の「改ページ」
+  演習はV2(実機確認済み)として本文に書いてよい。** 上記の
+  `part06-decisions-2`(候補B、100行版)の記述も同じ見落としが
+  あり、あわせて訂正済み(そちらも`RPTCNT=1`で発火を示していた)。
+
+使い捨てソース(`t612ofrf.rpgle`)は確認後に削除済み——次回接続で
+より明確な確認(`*IN01`がONになったらRPTHDRを書き直し標識をOFFに
+戻す、`run`セクションでヘッダーの繰り返しを直接視認する)を追加で
+行うと、06-12本文により具体的な実演例を残せる。
+
 ## 訂正: 04-08の編集コード・ゼロ時表示は逆だった(確認日 2026-09-28)
 
-第6部06-12(別レッスン、まだ未公開)のOFLIND検証中、ゼロ値を渡した
+第6部06-12(別レッスン)のOFLIND検証中、ゼロ値を渡した
 フィールド(`EDTCDE(3)`)が実機で可視の`0`を印字していたことに気づいた。
 **これは「編集コード3はゼロを空白にする」という当時の理解と矛盾する。**
 一次資料(ILE RPG言語リファレンス・RPG/400リファレンスの編集コード
@@ -1508,9 +2511,9 @@ JSONは既に残っておらず、当時どういう手順で確認したか再�
 %editc`で検索し、04-02・付録F(BIF早見表)・付録A(用語集)には
 非ゼロ値(`1738.00`、桁区切りのみ)の記述しかなく、ゼロ時表示や
 J〜M・通貨記号への言及が無いことを確認した——訂正が必要なのは04-08
-のみ。ドラフト側の06-12レッスンにも同種の逆転した記述があり、
-そちらでも合わせて訂正する予定(ゼロ件数を表示するという設計意図に
-合わせるには、偶数ではなく奇数の編集コードが正しかった)。
+のみ。ドラフト側の06-12レッスンにも同種の逆転した記述があったため
+合わせて訂正済み(ゼロ件数を表示するという設計意図に合わせるには、
+偶数ではなく奇数の編集コードが正しかった)。
 
 **未確認のまま残っている点**: ゼロ残高を表示する側(1・3)が小数位置
 ありのフィールドで実際に`.00`(先頭`0`なし)と印字するかどうかは、
@@ -1549,6 +2552,89 @@ J〜M・通貨記号への言及が無いことを確認した——訂正が必
   ただし「編集コード1は何かを印字し、編集コード2は何も印字しない」
   という方向性自体(奇数=表示・偶数=空白)は、この重なりがあっても
   観察できており(04-08の訂正の核心はここ)、揺らいでいない。
+
+## `part06-b7-bundle`: advisor項目3・4・5を1接続で決着(確認日 2026-09-28)
+
+`jiggly-greeting-crystal.md`のadvisorレビュー3回目で残っていた3項目
+(JUTOK修正の置き場所・RPG III編集コードのゼロ印字・07-05のTXCHECK
+`*CMD`形)を1回の接続にまとめて実施した。全ステップ`compile`セクション
+でセベリティ30以上・CPD無しを確認済み。
+
+- **項目3(F0612B/F0612C)完了・CONFIRMED SUCCESS**: `F0612B`(`F0604A`
+  の`custCode`パラメーター付きコピー)・`F0612C`(`F0611A`のオプション5
+  修正版コピー、`callp f0612b(jutok)`)とも`CRTBNDRPG`でHighest
+  Severity 00。`D0604A`・`D0611A`(既存DDS、変更なし)も同じ接続で
+  再作成し存在を確認した。06-04・06-11自身のソース(`f0604s.rpgle`・
+  `f0611s.rpgle`)は変更していない。
+- **項目5a(OFLINDヘッダー再印字)完了・CONFIRMED SUCCESS**: 新規
+  使い捨てプローブ`T612OFHR`が、`OVRPRTF FILE(P0612A) PAGESIZE(12 132)
+  OVRFLW(10)`のもとで20行の`WRITE RPTDTL`ループを回し、`*IN01`が
+  発火するたびに`RPTHDR`を書き直して標識を`*off`に戻す、という
+  実演を行った。**`run`セクションに`JUCINQ4 - ORDER INQUIRY REPORT`
+  のバナーが3回(`CUSTOMER: HDR001`→`HDR002`→`HDR003`)印字されている
+  ことを確認した**——06-12の改ページ演習に使える、具体的な「オーバー
+  フロー時にヘッダーが再印字される」実演がこれで手に入った。
+- **項目5b(ゼロ件数のF0612A実行)完了・CONFIRMED SUCCESS**: `F0612A`
+  を`CRTBNDRPG`(Highest Severity 00)し、存在しない得意先
+  コード(`'C99999'`、04-08の演習3と同じ流儀)で`CALL`した。`run`
+  セクションに`JUCINQ4 - ORDER INQUIRY REPORT        CUSTOMER: C99999`
+  に続けて`0   ORDER(S) FOR THIS CUSTOMER`と印字されており、`RPTCNT`
+  (`EDTCDE(3)`)がゼロ件数でも可視の`0`を印字することを、スロー
+  アウェイ・プローブ経由ではなく出荷版`F0612A`自身で確認できた。
+  **【訂正、Wave 2執筆時に発見】「F0612A自体を初めてCRTBNDRPGした」
+  という記述は誤り——`part06-12-prtf-cpp-swap`の3回目の接続
+  (2026-09-27、上記より前)が実際には最初で、そちらでは`'C00001'`
+  (存在する得意先)で`CALL`し、続けて同じ接続内で`CHGCMD`により
+  JUCINQコマンドのCPPを`F0612A`へ実際に差し替え、`JUCINQコマンド
+  自体を経由した呼び出し`でも同じ正しい出力(`RPTHDR`のバナー含む)
+  を確認済みだった。今回(`part06-b7-bundle`)の新しい情報は「ゼロ
+  件数の入力」という新しいテストケースを追加できたことであり、
+  「F0612Aが初めてコンパイル・実行された」ことではない。**
+- **項目4(RPG III編集コードのゼロ印字)完了(詳細は上記04-08続報の
+  節を参照)**: 編集コード3/4は明確にCONFIRMED、編集コード1/2は
+  プローブ自身の桁重なりで文字までは未確認(方向性は確認済み)。
+- **項目5c(07-05のTXCHECK `*CMD`形)完了・CONFIRMED SUCCESS**:
+  `tools/qcmdsrc/txcheck.cmd`の`*CMD`ラッパーと、`part06-15-checkpoint`
+  で確立済みの`TXCHKRUN`ヘルパー(`CHGVAR`/`*TCAT`/`%TRIM`で実行時に
+  コマンド文字列を組み立ててから`QCMDEXC`)を、レッスン`'07-05'`向けに
+  再利用した。`run`セクションに`TXCHECK: lesson 07-05 - 0000000003
+  passed, 0000000000 failed`と印字され、`*CMD`経由の呼び出しが問題なく
+  動くことを確認した(`TXCKM`の07-05向け行は`part07-05-checkpoint`が
+  既に投入済みのため、再投入はしていない)。07-05本文執筆時にこの形を
+  採用するかどうかは、まだ書かれていない07-05本文自身の執筆時に決める。
+
+ZAIKOM/SHOHIMへの書き込みは一切無いため、TXRESETは実施していない。
+
+## `part06-b8-compile`: F0605B/D0702A/F0702Bのコンパイル確認(確認日 2026-09-28)
+
+`JUCSRV`(*MODULE→*SRVPGM再作成、`JUCSRVBD`は登録済みのため変更なし)
+を前提に、3件の未検証オブジェクトをまとめて確認した。全ステップ
+`compile`セクションでセベリティ30以上・CPD無しを確認済み。
+
+- **`F0605B`(06-05、`**FREE`からの`QCMDEXC`)完了・CONFIRMED
+  SUCCESS**: `CRTBNDRPG`でHighest Severity 00、`CALL`も成功。直後の
+  `DSPDTAARA DTAARA(*LDA)`(`run`セクションのテキストで確認——この
+  ハーネスの非対話SSHジョブでは印字出力が実際のスプール・ファイルに
+  ならないため、`WRKSPLF`ではなくこの経路で確認している)は、
+  「Offset 0」行の内容が20文字の空白に続けて`F0605B OK`——つまり
+  21バイト目から`F0605B OK`(9文字)——であることを示した。
+  `CHGDTAARA DTAARA(*LDA (21 20)) VALUE('F0605B OK')`の設計どおり。
+  05-04のRPG III版(`za0510.rpg`、`part05-qcmdexc-runtime`、`*LDA`の
+  1〜20バイト目)とは別のバイト範囲であり、両方の実演を同じジョブで
+  続けて試しても干渉しないことも合わせて確認できた。
+- **`D0702A`(07-02、発展・任意演習のDSPF)完了・CONFIRMED SUCCESS
+  (V1のみ)**: `CRTDSPF`で`CPC7301`(ファイル作成)、診断メッセージ
+  無し。WORKSTN/`EXFMT`を伴う対話実行は、このハーネスの非対話SSH
+  ジョブでは検証できない(ハングの恐れ)ため、意図的にCALLしていない
+  ——V1(コンパイル確認)止まり。
+- **`F0702B`(07-02、発展・任意演習のRPG、`JUCSRV`の`getCustName`を
+  ロード・ループ内で呼ぶ)完了・CONFIRMED SUCCESS(V1のみ)**:
+  `CRTBNDRPG`で`RNS9304`・Highest Severity 00。`JUCSRVBD`経由の
+  `getCustName`呼び出しがバインド時点で解決することを確認した。
+  `D0702A`と同じ理由でCALLはしていない——実際のREAD/WRITE/
+  `getCustName`呼び出しの実行時経路(V2以上)は未検証のまま。
+
+ZAIKOM/SHOHIMへの書き込みは一切無いため、TXRESETは実施していない。
 
 ## 未実施のプローブ
 

@@ -1,0 +1,437 @@
+     A*                                     D0611A - JUCLST4: order list
+     A*                                     (JUCHUM), load-all
+     A*                                     subfile with a row-selection option
+     A*                                     (5 = call
+     A*                                     F0604A, order inquiry - see
+     A*                                     "DISCOVERED DEPENDENCY
+     A*                                     MISMATCH" below: F0604A takes no
+     A*                                     parameters, so no
+     A*                                     customer code is actually passed).
+     A*                                     Lesson 06-11.
+     A*
+     A*                                     CONFIRMED V1 (compile-check,
+     A*                                     part06-screens-compile,
+     A*                                     2026-09-26): CRTDSPF
+     A*                                     Highest Severity 00.
+     A*                                     Interactive subfile/EXFMT
+     A*                                     execution (V3) is still
+     A*                                     untested - SSH
+     A*                                     non-interactive batches
+     A*                                     cannot drive a real
+     A*                                     5250 device (same
+     A*                                     WORKSTN/EXFMT limitation
+     A*                                     as 04-11 and
+     A*                                     tk0100d.dspf; see
+     A*                                     docs/probes.md).
+     A*                                     Verify with a real 5250
+     A*                                     session before relying
+     A*                                     on this file's
+     A*                                     interactive behavior.
+     A*
+     A*                                     COLUMN POSITIONS: base columns (6=A
+     A*                                     literal,
+     A*                                     17=name type, 19-28=name,
+     A*                                     30-34=length, 35=type,
+     A*                                     36-37=decimals, 38=usage, 39-41=row,
+     A*                                     42-44=col,
+     A*                                     45-=keyword) confirmed by CRTDSPF in
+     A*                                     probe 04-11
+     A*                                     (docs/probes.md).
+     A*                                     SFL/SFLCTL/message-subfile
+     A*                                     keyword usage below follows the
+     A*                                     house pattern
+     A*                                     already established in
+     A*                                     src/legacy/qddssrc/tk0100d.dspf
+     A*                                     (Part 5) and
+     A*                                     tools/gen/dspf.mjs's SFL helper
+     A*                                     functions - see
+     A*                                     that file's own header for 4
+     A*                                     documented gaps in
+     A*                                     the original helper implementations
+     A*                                     (sflRecordFormat
+     A*                                     missing the mandatory record-level
+     A*                                     SFL keyword,
+     A*                                     sflPgmQ/errMsgId/sflRcdNbr wrong
+     A*                                     argument shapes).
+     A*                                     Worked around the same way
+     A*                                     tk0100d.dspf works
+     A*                                     around them: plain
+     A*                                     recordFormat(name,'SFL') instead
+     A*                                     of sflRecordFormat();
+     A*                                     SFLPGMQ/SFLMSGKEY as bare
+     A*                                     field-level keyword text via
+     A*                                     field()'s kw param;
+     A*                                     no ERRMSGID (not needed - see
+     A*                                     message-subfile note
+     A*                                     below). These SFL-specific
+     A*                                     column positions are now
+     A*                                     CONFIRMED - this file's own
+     A*                                     CRTDSPF (see STATUS above,
+     A*                                     part06-screens-compile,
+     A*                                     2026-09-26) succeeded at
+     A*                                     Highest Severity 00, which
+     A*                                     directly confirms them
+     A*                                     (independent of
+     A*                                     verify/part05-gen-probe/src/t0sfl.ds
+     A*                                     pf's own, separate T0SFL
+     A*                                     check).
+     A*
+     A*                                     NO DDS CONDITIONING INDICATORS (cols
+     A*                                     7-16) are
+     A*                                     used anywhere in this file, by the
+     A*                                     same policy as
+     A*                                     tk0100d.dspf: 04-11 tried
+     A*                                     indicator-conditioned
+     A*                                     output fields and failed to compile
+     A*                                     (CPD7410/
+     A*                                     CPD7606/CPD5238, docs/probes.md);
+     A*                                     this file avoids
+     A*                                     stacking that unresolved risk onto
+     A*                                     the separately-
+     A*                                     unverified SFL columns above.
+     A*                                     SFLDSP/SFLDSPCTL on
+     A*                                     SFL1CTL and MSGCTL below are
+     A*                                     therefore always-on
+     A*                                     (unconditioned), same tradeoff
+     A*                                     tk0100d.dspf
+     A*                                     documents: safe here because
+     A*                                     f0611s.rpgle always
+     A*                                     WRITEs at least one SFL1 record
+     A*                                     before EXFMT (even
+     A*                                     zero JUCHUM rows still goes through
+     A*                                     a header-only
+     A*                                     WRITE - see f0611s.rpgle's header
+     A*                                     for how it avoids
+     A*                                     the empty-subfile case IBM's SFLDSP
+     A*                                     reference
+     A*                                     warns about).
+     A*
+     A*                                     LOAD-ALL (this file's
+     A*                                     primary/documented form, per
+     A*                                     work/design/part06-design-v1.md's
+     A*                                     B1-16
+     A*                                     disposition: load-all is taught
+     A*                                     first as the basic
+     A*                                     form, page-at-a-time second as an
+     A*                                     optimization).
+     A*                                     SFLSIZ(9999) is a large fixed max so
+     A*                                     f0611s.rpgle
+     A*                                     can WRITE every JUCHUM row before
+     A*                                     the first EXFMT
+     A*                                     of SFL1CTL; SFLPAG(14) is only the
+     A*                                     VISIBLE page
+     A*                                     size (rows 5-18). Once all rows are
+     A*                                     loaded,
+     A*                                     ROLLUP(25)/ROLLDOWN(26) scrolling
+     A*                                     within the
+     A*                                     loaded subfile is handled entirely
+     A*                                     by the system -
+     A*                                     no RPG-side "more records" handling
+     A*                                     is needed for
+     A*                                     load-all (contrast with
+     A*                                     page-at-a-time below).
+     A*
+     A*                                     PAGE-AT-A-TIME: implemented
+     A*                                     as a separate object pair,
+     A*                                     D0611AP/F0611AP
+     A*                                     (d0611ps.dspf/f0611ps.rpgle)
+     A*                                     - CONFIRMED V1 (compile-
+     A*                                     check, part06-b6-batch,
+     A*                                     2026-09-27). See that DDS's
+     A*                                     own header for its actual
+     A*                                     SFLSIZ(4)/SFLPAG(3) design
+     A*                                     (deliberately small, not
+     A*                                     SFLSIZ(15)/SFLPAG(14) as an
+     A*                                     earlier draft of this note
+     A*                                     sketched) and f0611ps.rpgle's
+     A*                                     header for the RPG-side
+     A*                                     load-more-on-ROLLUP logic.
+     A*
+     A*                                     MESSAGE SUBFILE (MSGSFL/MSGCTL
+     A*                                     below): shows an
+     A*                                     "invalid option" diagnostic when OPT
+     A*                                     is neither
+     A*                                     blank nor 5. Modeled on
+     A*                                     tk0100d.dspf's MSGSFL/
+     A*                                     MSGCTL pattern
+     A*                                     (SFLMSGRCD/MSGKEY+SFLMSGKEY/PGMQ+
+     A*                                     SFLPGMQ/SFLINZ/OVERLAY, no
+     A*                                     SFLCLR/SFLEND - see
+     A*                                     that file's header for the IBM
+     A*                                     SFLINZ/SFLPGMQ
+     A*                                     pairing requirement this reuses).
+     A*                                     tk0100.rpg's own
+     A*                                     header states it never actually
+     A*                                     drives TK0100D's
+     A*                                     SFL1/MSGSFL; f0611s.rpgle is this
+     A*                                     repo's first RPG
+     A*                                     program to actually drive a message
+     A*                                     subfile, via
+     A*                                     the free-form SND-MSG operation with
+     A*                                     %TARGET(*SELF) (ilerpgref75.txt,
+     A*                                     "SND-MSG (Send a
+     A*                                     Message to the Joblog)") - see its
+     A*                                     header for the
+     A*                                     PGMQ='*' contract this DDS requires
+     A*                                     of it.
+     A*
+     A*                                     CONTRACT with f0611s.rpgle: SFL1
+     A*                                     fields (OPT/JUNO/
+     A*                                     JUTOK/JUDATE/JUTAN) match JUCHUM's
+     A*                                     own field names
+     A*                                     (db/v1/juchum.pf) so WORKSTN/DB
+     A*                                     field auto-match
+     A*                                     fills JUNO/JUTOK/JUDATE/JUTAN
+     A*                                     straight from a plain
+     A*                                     assignment in the load loop; OPT is
+     A*                                     this screen's
+     A*                                     own selection field (usage B, not in
+     A*                                     JUCHUM). RRN
+     A*                                     for SFILE(SFL1:*) is an RPG-only
+     A*                                     variable (no DDS
+     A*                                     field needed - SFLRCDNBR is not used
+     A*                                     here, same
+     A*                                     "not in rpgConstructsUsed, omitted"
+     A*                                     reasoning as
+     A*                                     tk0100d.dspf). Option 5 -> CALL
+     A*                                     F0604A.
+     A*
+     A*                                     DISCOVERED DEPENDENCY MISMATCH
+     A*                                     (important - flagged
+     A*                                     for the 06-04/06-11 lesson authors):
+     A*                                     D0604A/F0604A
+     A*                                     did NOT exist yet under src/qddssrc/
+     A*                                     or
+     A*                                     src/qrpglesrc/ when this file was
+     A*                                     FIRST drafted;
+     A*                                     they appeared mid-session (written
+     A*                                     by a concurrent
+     A*                                     sibling agent for lesson 06-04)
+     A*                                     before this file was
+     A*                                     committed, so f0611s.rpgle was
+     A*                                     checked against the
+     A*                                     REAL f0604s.rpgle instead of an
+     A*                                     assumed interface.
+     A*                                     That real program has NO *ENTRY
+     A*                                     PLIST/dcl-pi at all
+     A*                                     (dcl-f d0604a workstn; with no
+     A*                                     parameters) - it is a
+     A*                                     fully self-contained interactive
+     A*                                     screen that prompts
+     A*                                     for its OWN customer code via TOKCD
+     A*                                     input on JUCFMT,
+     A*                                     exactly like R0411A. It therefore
+     A*                                     cannot actually
+     A*                                     receive a passed customer code from
+     A*                                     this list - the
+     A*                                     original task brief's "call F0604A
+     A*                                     passing that
+     A*                                     row's customer code" is NOT
+     A*                                     achievable against the
+     A*                                     F0604A as actually written.
+     A*                                     f0611s.rpgle calls it
+     A*                                     with a zero-parameter dcl-pr
+     A*                                     extpgm('F0604A')
+     A*                                     prototype (same shape F0605A already
+     A*                                     uses for
+     A*                                     R0409A, which also has no *ENTRY
+     A*                                     PLIST) and a plain
+     A*                                     parameterless callp; the learner
+     A*                                     will retype the
+     A*                                     customer code on F0604A's own
+     A*                                     screen. Giving F0604A
+     A*                                     a real entry parameter would need a
+     A*                                     dcl-pi *entry -
+     A*                                     deliberately deferred to 06-12 by
+     A*                                     this design's own
+     A*                                     B1-16 disposition. RESOLVED
+     A*                                     (2026-09-28 design
+     A*                                     correction): the fix does
+     A*                                     NOT edit D0604A/F0604A or
+     A*                                     D0611A/F0611A - it lives in
+     A*                                     new 06-12-owned objects,
+     A*                                     F0612B/F0612C
+     A*                                     (src/qrpglesrc/f0612bs.rpgle/
+     A*                                     f0612cs.rpgle), CONFIRMED
+     A*                                     (part06-b7-bundle,
+     A*                                     2026-09-28). This file and
+     A*                                     f0611s.rpgle stay exactly as
+     A*                                     written here.
+     A*
+     A*                                     NAMING NOTE: this repo's general S/A
+     A*                                     object-suffix
+     A*                                     convention (docs/style-guide.md,
+     A*                                     "A-R = learner-
+     A*                                     written, S-Z = distributed sample")
+     A*                                     would suggest a
+     A*                                     git file named d0611s.dspf compiles
+     A*                                     to a sample
+     A*                                     object ending in S (compare
+     A*                                     c0511s.clp -> C0511S,
+     A*                                     Part 5). However, the verify/
+     A*                                     manifest format keeps
+     A*                                     the git file name and the remote
+     A*                                     member/object name
+     A*                                     independent (each "file" step has
+     A*                                     its own "member"
+     A*                                     field, e.g.
+     A*                                     verify/part05-legacy-probe/manifest.
+     A*                                     json
+     A*                                     compiles localPath tk0100d.dspf to
+     A*                                     member TK0100D,
+     A*                                     a different spelling) - and
+     A*                                     f0604s.rpgle (the real,
+     A*                                     already-written sibling file for
+     A*                                     06-04) confirms the
+     A*                                     object-name convention actually used
+     A*                                     for Part 6's
+     A*                                     WORKSTN files: its own "dcl-f d0604a
+     A*                                     workstn;" line
+     A*                                     names the file after the OBJECT
+     A*                                     D0604A, not the git
+     A*                                     filename d0604s.dspf. f0611s.rpgle
+     A*                                     below follows the
+     A*                                     same pattern ("dcl-f d0611a workstn
+     A*                                     ...") - so this
+     A*                                     repo's S/A-suffix rule already
+     A*                                     applies exactly as
+     A*                                     the task instructed (object
+     A*                                     D0611A/F0611A), and no
+     A*                                     naming conflict actually exists;
+     A*                                     superseded by the
+     A*                                     discovery above, kept here only as a
+     A*                                     record of the
+     A*                                     reasoning.
+     A*
+     A*                                     References checked this session:
+     A*                                     ilerpgref75.txt -
+     A*                                     SFILE(recformat:rrnfield) keyword
+     A*                                     (~line 28400),
+     A*                                     READC (~line 62000), CHAIN
+     A*                                     search-argument forms
+     A*                                     (~line 53190), SND-MSG (~line
+     A*                                     64132); tools/gen/
+     A*                                     dspf.mjs (SFL/SFLCTL helper
+     A*                                     functions + header);
+     A*                                     src/legacy/qddssrc/tk0100d.dspf
+     A*                                     (house SFL/message-
+     A*                                     subfile pattern); db/v1/juchum.pf
+     A*                                     (field names/
+     A*                                     lengths).
+     A*
+     A                                      DSPSIZ(24 80 *DS3)
+     A          R SFL1                      SFL
+     A            OPT            1A  B  4  2
+     A            JUNO           6A  O  4  5
+     A            JUTOK          6A  O  4 13
+     A            JUDATE         8S 0O  4 21
+     A            JUTAN          6A  O  4 31
+     A          R SFL1CTL                   SFLCTL(SFL1)
+     A                                      SFLSIZ(9999)
+     A                                      SFLPAG(14)
+     A                                      SFLDSP
+     A                                      SFLDSPCTL
+     A                                      ROLLUP(25)
+     A                                      ROLLDOWN(26)
+     A                                      CF03(03)
+     A*                                     FIXED (part06-screens-compile
+     A*                                     prep, 2026-09-26, based on the
+     A*                                     confirmed real-hardware fix in
+     A*                                     src/legacy/qddssrc/tk0100d.dspf
+     A*                                     - docs/probes.md's part05-
+     A*                                     legacy-probe section): a SFLCTL
+     A*                                     record cannot carry positioned
+     A*                                     output both above (title/column
+     A*                                     headers) AND below (MORE/F3=
+     A*                                     Exit) its own subfile - CPD7812
+     A*                                     ("Subfile control record
+     A*                                     overlaps subfile record"). Split
+     A*                                     the footer into R SFL1FTR below;
+     A*                                     added OVERLAY here so SFL1FTR's
+     A*                                     own output survives once
+     A*                                     SFL1CTL is (re)written on top of
+     A*                                     it. f0611s.rpgle WRITEs SFL1FTR
+     A*                                     immediately before each EXFMT
+     A*                                     SFL1CTL.
+     A                                      OVERLAY
+     A                                  1  2'JUCLST4 - Order list (JUCHUM)'
+     A                                  3  2'Op'
+     A                                  3  5'Order#'
+     A                                  3 13'Cust'
+     A                                  3 21'Date'
+     A                                  3 31'Rep'
+     A*                                     SFL1FTR: split out of SFL1CTL
+     A*                                     above (CPD7812 fix, see its
+     A*                                     comment). MORE: F0611A MOVELs
+     A*                                     'MORE...'/'BOTTOM' here,
+     A*                                     same plain-output-field technique as
+     A*                                     tk0100d.dspf
+     A*                                     (stands in for SFLEND).
+     A          R SFL1FTR
+     A*                                     FIXED (Wave 2 review): OVERLAY was
+     A*                                     missing here despite the header
+     A*                                     comment above claiming it was
+     A*                                     added - without it, WRITE SFL1FTR
+     A*                                     (re-run at the top of every outer
+     A*                                     loop pass) would clear whatever
+     A*                                     MSGCTL/sendInvalidOpt() just wrote,
+     A*                                     before the next EXFMT ever shows
+     A*                                     it. Needs a fresh V1 recompile
+     A*                                     check (not yet re-run).
+     A                                      OVERLAY
+     A            MORE          10A  O 20  2
+     A                                 23  2'F3=Exit  Roll=Page'
+     A*                                     MSGSFL: message subfile detail line.
+     A*                                     Same
+     A*                                     recordFormat(name,'SFL') workaround
+     A*                                     as SFL1 above
+     A*                                     (dspf.mjs sflRecordFormat() gap).
+     A          R MSGSFL                    SFL
+     A*                                     SFLMSGRCD(24): messages grow upward
+     A*                                     from line 24
+     A*                                     (bottom of a 24-line screen), same
+     A*                                     as tk0100d.dspf.
+     A                                      SFLMSGRCD(24)
+     A*                                     MSGKEY/PGMQ: field-level bare
+     A*                                     keywords, not
+     A*                                     sflPgmQ(name) - dspf.mjs gap #2,
+     A*                                     same workaround
+     A*                                     as tk0100d.dspf.
+     A            MSGKEY                    SFLMSGKEY
+     A            PGMQ                      SFLPGMQ
+     A          R MSGCTL                    SFLCTL(MSGSFL)
+     A                                      SFLSIZ(2)
+     A                                      SFLPAG(1)
+     A*                                     Unconditioned SFLDSP/SFLDSPCTL +
+     A*                                     SFLINZ: same
+     A*                                     MSGSFL-is-usually-empty reasoning as
+     A*                                     tk0100d.dspf
+     A*                                     (IBM SFLDSP reference: an output op
+     A*                                     to an inactive
+     A*                                     subfile errors; SFLINZ + field-level
+     A*                                     SFLPGMQ below
+     A*                                     keep MSGCTL active and rebuild
+     A*                                     MSGSFL from PGMQ on
+     A*                                     every write).
+     A                                      SFLDSP
+     A                                      SFLDSPCTL
+     A                                      SFLINZ
+     A*                                     OVERLAY: MSGCTL is written on top of
+     A*                                     SFL1CTL without erasing it. FIXED
+     A*                                     (part06-screens-compile prep,
+     A*                                     2026-09-26): this keyword used to
+     A*                                     sit after the PGMQ field line
+     A*                                     below - CPD7486 ("Keyword
+     A*                                     specified at incorrect level"),
+     A*                                     same root cause and fix as
+     A*                                     tk0100d.dspf's MSGCTL (see
+     A*                                     docs/probes.md's part05-legacy-
+     A*                                     probe section). Moved back above
+     A*                                     PGMQ so it stays record-level.
+     A                                      OVERLAY
+     A            PGMQ                      SFLPGMQ
+     A*                                     SFLCLR intentionally omitted:
+     A*                                     f0611s.rpgle clears
+     A*                                     old messages by not re-sending them,
+     A*                                     not by
+     A*                                     SFLCLR - same as tk0100d.dspf.
