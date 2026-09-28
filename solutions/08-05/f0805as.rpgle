@@ -13,19 +13,20 @@
 // K JUTOK then K JUDATE) and its XFOOT/UDS-FTOK-filter mechanics,
 // which this file ports rather than re-derives.
 //
-// STATUS: baseline captured, this file not yet compiled/run -
-// blocked-pending-Part-8-own-verification (part08-design-v1.md section
-// 0.1) resolved for JU0300 itself by verify/part08-05-legacy-baseline
-// (CONFIRMED SUCCESS, docs/probes.md, 2026-09-28): JU0300 executed for
-// the first time ever and its real printed output is recorded verbatim
-// in verify/part08-05-legacy-baseline/expected/golden-master.md. THIS
-// file (F0805A) is the new version to diff against that golden master
-// - the diff itself has not run yet. Column positions below were
-// derived by counting characters directly in that captured output
-// (not from ju0300.rpg's own O-spec end-column numbers, which are
-// consistently off by exactly 1 from the real printed positions - see
-// golden-master.md's own note and the column derivation in this
-// session's own work).
+// STATUS: JU0300's own golden master is CONFIRMED (verify/part08-05-
+// legacy-baseline, docs/probes.md, 2026-09-28 - see
+// golden-master.md). THIS file's 1st compile attempt
+// (part08-05-f0805a, 2026-09-28) failed: RNF7064 severity 30, "The
+// Factor 2 operand LDADS of IN or OUT is not a data area" - the
+// original draft wrote DTAARA('*LDA') (a quoted string literal), which
+// the compiler treats as a data area LITERALLY NAMED "*LDA" (not a
+// valid object name), not as the reserved *LDA keyword. FIXED (same
+// connection's own real error, verified against ilerpgref75.txt's own
+// worked example, lines 16345-16349: "DCL-DS LDA_DS DTAARA(*LDA);
+// SUBFLD CHAR(600); END-DS; IN LDA_DS;" - an UNQUOTED *lda is the
+// correct form; column positions/print logic were not implicated by
+// this error and remain unverified against the golden master until the
+// next connection recompiles with this fix.
 //
 // CONTROL-BREAK MODEL (the "characteristics testing" itself - same
 // business logic, explicit procedural form instead of the RPG cycle's
@@ -71,15 +72,20 @@
 //
 // *LDA FTOK FILTER: RPG IV free-form has no UDS auto-load (the
 // mechanism ju0300.rpg's own I-spec "U" option used). Ported instead
-// via the DTAARA keyword on an unnamed data structure with an explicit
-// IN operation - ilerpgref75.txt's own worked example ("Free-form
-// DTAARA keyword for a data structure", the DCL-DS *N DTAARA('...')
-// + IN *DTAARA example) is the basis for the shape used below. A
-// filler subfield covers *LDA bytes 1-10 (the menu-digit byte MN0000C
-// writes, per ju0300.rpg's own header) so FTOK lands at the same bytes
-// 11-16 the original UDS used. Only IN is needed (this program only
-// READS the filter, never writes it) - the *USRCTL default (implied
-// when *AUTO is not specified) is what makes IN/OUT usable at all.
+// via the DTAARA keyword on a NAMED data structure with an explicit IN
+// operation - ilerpgref75.txt lines 16345-16349 ("DCL-DS LDA_DS
+// DTAARA(*LDA); SUBFLD CHAR(600); END-DS; IN LDA_DS; OUT LDA_DS;",
+// prose: "explicitly based on the *LDA... it must be handled using IN
+// and OUT operations") is the exact shape used below - note *LDA is
+// the UNQUOTED reserved keyword, not the quoted string literal
+// '*LDA' (which the compiler instead treats as a data area literally
+// named "*LDA" and rejects - RNF7064, confirmed the hard way on this
+// file's own 1st compile attempt, see STATUS above). A filler subfield
+// covers *LDA bytes 1-10 (the menu-digit byte MN0000C writes, per
+// ju0300.rpg's own header) so FTOK lands at the same bytes 11-16 the
+// original UDS used. Only IN is needed (this program only READS the
+// filter, never writes it) - the *USRCTL default (implied when *AUTO
+// is not specified) is what makes IN/OUT usable at all.
 //
 // PUB400 placeholders: <lib> stands for the learner's own library; no
 // real PUB400 user or library name appears in this file.
@@ -93,7 +99,7 @@ dcl-f qsysprt printer(132) usage(*output);
 // *LDA FTOK filter - see header. Bytes 1-10 are filler (MN0000C's own
 // menu-digit byte plus padding), bytes 11-16 are FTOK, matching
 // ju0300.rpg's own "*LDA (11 6)" position exactly.
-dcl-ds ldaDs dtaara('*LDA');
+dcl-ds ldaDs dtaara(*lda);
   filler char(10) pos(1);
   ftok   char(6)  pos(11);
 end-ds;
