@@ -10,10 +10,11 @@
      A*                                     restates the concrete DDS
      A*                                     changes, not the reasoning).
      A*
-     A*                                     HARDWARE STATUS: not yet
-     A*                                     compiled (this is a fresh
-     A*                                     object, not the already-
-     A*                                     confirmed D0611A). V1 only
+     A*                                     HARDWARE STATUS: CONFIRMED
+     A*                                     V1 (compile-check,
+     A*                                     part06-b6-batch,
+     A*                                     2026-09-27): CRTDSPF
+     A*                                     Highest Severity 00. V1 only
      A*                                     (compile-check) is realistic -
      A*                                     same WORKSTN/EXFMT limitation
      A*                                     as every other Part 6 screen.
