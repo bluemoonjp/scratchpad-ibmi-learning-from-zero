@@ -2677,6 +2677,15 @@ Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・�
 
 **結論**: `TESTKIT`・`TSTJUCSRV`・`TSTZAISRV`はCONFIRMED SUCCESS。08-04レッスン本文執筆時にそのまま使える実測値が揃った。
 
+## 第8部`part08-05-legacy-baseline`: JU0300を初めて実行、ZA0500/JU0900Cの印字内容も初めて記録、CONFIRMED SUCCESS(確認日2026-09-28)
+
+08-05(`F0805A`、`JU0300`の制御レベル処理の書き直し)・08-05b(`F0805B`/`Q0805B`、`ZA0500`のM1/MR処理のSQL書き換え)の前提となる、ゴールデン・マスター(基準出力)を確認する接続。`JU0300`はPart 5以来コンパイルのみ(`part05-legacy-probe`・`part05-txmigr-to2b`)で一度も**実行**されたことが無かった。`ZA0500`/`JU0900C`は05-13のticket 1修正版(`solutions/05-13/ju0900c-ticket1.clp`・`za0500-ticket3.rpg`、`part05-13-tickets`でCONFIRMED SUCCESS済みの組み合わせ)を採用し、Part 8設計(`work/design/part08-design-v1.md`§0.1・§2)が要求する「05-13完了後の状態」を満たした。
+
+- `TXRESET`実行後、`JU0300`・`ZA0500`・`JU0900C`ともHighest Severity 00でコンパイル成功。
+- `JU0300`(パラメーター無し、実行前に`*LDA`バイト11-16のFTOKフィルターを空白クリア)を実行し、8件の注文・6名の得意先の一覧・L1(日付)/L2(得意先)小計・グランド・トータル・XFOOT検算(`OK`)を印字内容として確認した。
+- `JU0900C`を`RUNMODE='*TEST'`で実行(`ZAIKOM`は一切書き換えない設計、実行前後の`SELECT`で6件とも完全同一であることを確認済み——`TXRESET`は不要)。`ZA0500`の印字が12行(OK10・SHORT2・NOTFOUND0)出力され、`part05-13-tickets`が手計算で予測していた内訳と完全に一致した(あちらは予測、これは初めての実機確認)。
+- 両方の実際の印字内容(生テキスト)は`verify/part08-05-legacy-baseline/expected/golden-master.md`に転記済み。`JU0300`・`ZA0500`はどちらもQSYSPRT印字のみでSQL `EXCEPT`できる表を持たず、`TXSNAP`はV3専用(`part05-ju0900c-baseline`で既に確認済み)のため、08-05/08-05bの「差分0」確認は、新しい版を同じ接続内で実行しこの生テキストとハーネスの外で突き合わせる方法を取る。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
