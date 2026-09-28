@@ -30,11 +30,20 @@
 // section 1, the list of things this part deliberately does not
 // cover).
 //
-// HARDWARE STATUS: UNTESTED as of 2026-09-26 (Part 6 is a draft
-// branch; no probe or verify/ run has compiled this member yet).
-// Nothing below has been confirmed to compile or run on PUB400.
-// Treat every runtime claim in this file as "expected", not
-// "confirmed". Compile with CRTSQLRPGI.
+// HARDWARE STATUS: CONFIRMED (part06-1314-sql, 2026-09-27, 2nd
+// connection): CRTSQLRPGI succeeded and CALL produced "Found C00001:
+// ACME TRADING CO" / "Zip=1000001 Rep=T00001 Updated=20260901" /
+// "UPDATE OK" - SELECT INTO and UPDATE both work as designed (V2,
+// confirmed by reading the connection's raw run-section text). The
+// 1st connection hit an unrelated compile bug first (SQL0104:
+// DB2_MESSAGE_TEXT is not a valid GET DIAGNOSTICS item name on this
+// PTF level - MESSAGE_TEXT, no DB2_ prefix, is; fixed below). See
+// docs/probes.md's part06-1314-sql section. This program's own SET
+// OPTION line hardcodes COMMIT(*NONE), so it never reaches SQL7008 -
+// that reproduction is verify/part06-1314-sql/src/q0613v.sqlrpgle
+// (Q0613V), a verify-only variant with exactly one line different
+// (see that file's own header) - the lesson text teaches that same
+// one-line edit as an exercise, not the whole SET OPTION line removed.
 //
 // Primary-source citations (see work/design/refs/):
 //  - CLOSQLCSR's two allowed values for CRTSQLRPGI, *ENDACTGRP and

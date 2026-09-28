@@ -55,7 +55,18 @@
 // f0702s.rpgle also does - see that file's header comment for why this
 // is duplicated rather than shared.
 //
-// STATUS: hardware-UNTESTED (Part 7 draft, draft/part07 branch).
+// STATUS: CONFIRMED on real hardware, in two separate connections.
+// part07-0203-srvpgm (2026-09-27): CRTBNDRPG Highest Severity 00,
+// countCustOrders(C00001) called twice within the same CALL of F0703A
+// returned 2 both times ("MATCH - both calls agree; JUCHUM
+// repositioning is correct.") - confirming the JUCHUM re-position
+// logic this file's own header discusses. part07-03-signature
+// (2026-09-28, 2nd connection): CRTBNDRPG Highest Severity 00 against
+// JUCSRV's real EXPORT(*SRCFILE) binder-source form (jucsrv.bnd),
+// added without recompiling F0702A - and F0702A itself kept working,
+// also without recompiling. See docs/probes.md's part07-0203-srvpgm
+// and part07-03-signature sections, and src/qsrvsrc/jucsrv.bnd's own
+// header for the full sequence.
 //=======================================================================
 
 ctl-opt dftactgrp(*no) actgrp(*new) bnddir('JUCSRVBD');

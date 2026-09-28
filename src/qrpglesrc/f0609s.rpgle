@@ -78,10 +78,19 @@
 // a program and not a procedure". Matches 06-05's f0605s.rpgle, which
 // needed the same option for the same reason.
 //
-// STATUS: hardware-UNTESTED (Part 6 draft, draft/part06 branch). This
-// source has not been compiled or run on PUB400 yet. Treat every
-// runtime claim below as "should work per the ILE RPG Language
-// Reference", not as a verified fact.
+// STATUS: CONFIRMED (part06-0509-procs-files, 2026-09-27): CRTBNDRPG
+// Highest Severity 00, CALL produced the expected sequence -
+// "Attempt made to divide by zero for fixed point operation." (the
+// underlying MCH1211-class exception text) -> "F0609A: caught status
+// 102 in F0609A at line/stmt 00023600 - division by zero was caught,
+// not pre-checked." -> "F0609A: runDivideDemo ended normally
+// (MONITOR/ON-ERROR already handled any error)." - MONITOR/ON-ERROR
+// correctly caught the zero-divide and let the program end normally
+// (V2, confirmed by reading the connection's raw run-section text).
+// See docs/probes.md's part06-0509-procs-files section. This confirms
+// only the MONITOR/ON-ERROR path (the lesson's primary exercise) - the
+// STRDBG/STRSRVJOB and 2-session lock-competition material described
+// below remains V3 (interactive-only), per this lesson's own design.
 //
 // Verified against work/design/refs/ilerpgref75.txt (IBM i 7.5 ILE RPG
 // Language Reference, 73451 lines) at approximately these line numbers:

@@ -33,9 +33,14 @@
 // verify/ harness in work/design/part06-design-v1.md section 5.1
 // batch "part06-1314-sql" calls it over SSH).
 //
-// HARDWARE STATUS: UNTESTED as of 2026-09-26 (Part 6 is a draft
-// branch; no probe or verify/ run has compiled this member yet).
-// Compile with CRTSQLRPGI.
+// HARDWARE STATUS: CONFIRMED (part06-1314-sql, 2026-09-27, 2nd
+// connection): CRTSQLRPGI Highest Severity 00, CALL produced
+// "Customer C00001: ACME TRADING CO" / "Order J00001 dated 20260901" /
+// "Order J00003 dated 20260905" - matching R0408A's/V0601A's own
+// confirmed J00001/J00003 values (V2, confirmed by reading the
+// connection's raw run-section text, not WRKSPLF - this harness's
+// non-interactive SSH jobs never create a real spooled file for
+// printer output). Compile with CRTSQLRPGI.
 //
 // Primary-source citations (see work/design/refs/):
 //  - DECLARE CURSOR FOR a prepared statement, OPEN ... USING

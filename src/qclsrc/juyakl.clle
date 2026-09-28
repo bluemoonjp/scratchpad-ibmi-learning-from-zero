@@ -1,12 +1,19 @@
 /* JUYAKL - ILE CL (CRTBNDCL) rewrite of JUYAKC (03-13, published on     */
 /* main/Part 3: src/qclsrc/juyakc.clp). Part 7, lesson 07-04.            */
 /*                                                                       */
-/* STATUS: hardware-UNTESTED (Part 7 draft, draft/part06 branch). This   */
-/* file has not been compiled or run on PUB400 yet, and neither has      */
-/* Part 6, which this Part 7 draft otherwise depends on (see             */
-/* part07-design-v1.md section 0). Treat every runtime claim below as    */
-/* "should work per the cited IBM i 7.5 references / in-repo evidence",  */
-/* not as a verified fact.                                               */
+/* STATUS: CONFIRMED (part07-04-actgrp-cl, 2026-09-27, 3rd connection): */
+/* CRTBNDCL succeeded, CALLPRC via DCLPRCOPT BNDSRVPGM worked           */
+/* (getCustName(C00001) = ' ACME TRADING CO '), and the full BACK       */
+/* subroutine (CPYTOIMPF export) completed: "All records copied from   */
+/* file JUCHUM in <lib>." / "JUYAKL: done. Next order number is now    */
+/* 3." A real bug was found and fixed along the way: CPYTOIMPF needs   */
+/* RCDDLM(*CR) for a stream-file export, or it fails with CPF2845      */
+/* reason code 11 - added below (no primary source for this in         */
+/* work/design/refs/; confirmed via multiple third-party reports, see  */
+/* docs/probes.md's part07-04-actgrp-cl section). The ERRSUBR/         */
+/* MONMSG(CPF0000) error-handling path was also exercised for real     */
+/* (the 1st/2nd connections' CPF2845 failures propagated correctly     */
+/* before the fix was found), confirming that path works too.          */
 /*                                                                       */
 /* WHAT THIS CHANGES FROM JUYAKC (juyakc.clp), and why:                  */
 /*  1. GOTO+label front/main/back/error flow -> SUBR/ENDSUBR/CALLSUBR,   */

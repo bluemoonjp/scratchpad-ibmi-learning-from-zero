@@ -10,8 +10,19 @@
 // "ACTIVATION GROUP DESIGN" below for exactly what this can and cannot
 // prove).
 //
-// STATUS: hardware-UNTESTED as of 2026-09-26 (docs/style-guide.md
-// V1/V2/V3 scale). Nothing in this file has been compiled or run.
+// STATUS: CONFIRMED (part07-05-checkpoint, 2026-09-27): CRTBNDRPG
+// Highest Severity 00, and all 10 rows of the test sequence printed
+// exactly as designed (see docs/probes.md's part07-05-checkpoint
+// section for the full annotated table: 0-BASELINE through
+// 7-NOTFOUND-RSV, covering the qty progression 45->43->45->41->45,
+// the over-quantity rejection, both NOTFOUND cases, and the two
+// same-activation-group reserves with no carried-over lock).
+// CAVEAT the lesson text must repeat honestly: the 2B-DIAG-CHAIN step
+// ("NO CONFLICT SEEN") has no control experiment (a version WITHOUT
+// the UNLOCK fix, run the same way, to show a conflict WOULD have
+// appeared) - so it demonstrates the fix runs without error, not that
+// it prevents a lock that would otherwise be there. Do not overstate
+// this as a proven before/after comparison.
 //
 // ====================================================================
 // WARNING: THIS PROGRAM (VIA ZAISRV) MUTATES THE SHARED ZAIKOM TABLE.

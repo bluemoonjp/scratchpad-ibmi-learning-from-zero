@@ -7,11 +7,15 @@
 // source and build recipe, and solutions/07-05/driver.rpgle for the
 // test driver that exercises all three.
 //
-// STATUS: hardware-UNTESTED as of 2026-09-26 (docs/style-guide.md
-// V1/V2/V3 scale - nothing in this file has been compiled or run).
-// Nothing in Part 6 or Part 7 is hardware-tested yet at this point in
-// the repo's history. Treat every behavior below as unverified until a
-// real CRTRPGMOD + CRTSRVPGM + CALL session updates this header.
+// STATUS: CONFIRMED (part07-05-checkpoint, 2026-09-27): CRTRPGMOD
+// (Severity 10 only - RNF7534, the same "close non-cycle modules
+// explicitly" advisory TOKUIM's own header already documents, harmless)
+// + CRTSRVPGM + ZAISRVBD all succeeded, and DRIVER's full 10-step lock
+// test sequence (baseline peek, reserve, over-quantity reserve
+// rejection, release, two consecutive same-activation-group reserves
+// with no lock carried over, restore, and both NOTFOUND cases) matched
+// every expected result - see docs/probes.md's part07-05-checkpoint
+// section and driver.rpgle's own header for the full annotated output.
 //
 // ====================================================================
 // WARNING: THIS SERVICE PROGRAM MUTATES THE SHARED ZAIKOM TABLE.
