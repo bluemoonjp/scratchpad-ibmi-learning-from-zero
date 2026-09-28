@@ -179,10 +179,28 @@ exec sql SET OPTION commit = *none, naming = *sys, closqlcsr = *endmod;
 //=======================================================================
 // testInit - ensure TESTRES exists (idempotent: a real CREATE TABLE is
 // attempted every call, and SQLSTATE 42710 "object already exists" is
-// the one error this procedure tolerates - see below), then DELETE all
-// existing rows so each test run starts from an empty table. Call this
-// ONCE at the start of a test-case program's mainline, before any
+// the one error this procedure tolerates - see below). Call this at the
+// start of a test-case program's mainline, before any
 // assertEquals*/assertTrue call.
+//
+// DOES NOT CLEAR TESTRES (fixed after part08-04-testkit's first real
+// connection, 2026-09-28): an earlier version of this procedure also
+// did DELETE FROM TESTRES, on the assumption that ONE test-case program
+// calls testInit() ONCE per connection. That assumption broke the first
+// time two test-case programs (TSTJUCSRV, then TSTZAISRV) ran in the
+// SAME connection, each calling testInit() in its own mainline -
+// TSTZAISRV's own testInit() call silently wiped every row TSTJUCSRV
+// had just logged, before any collect step could read them (confirmed
+// real-hardware finding: TSTJUCSRV's part08-04-testkit connection log
+// shows "Table TESTRES in <USER>2 created but was not journaled." from
+// its OWN testInit() call, immediately followed later by "TESTRES in
+// <USER>2 type *FILE already exists." from TSTZAISRV's - the collect
+// step afterward only ever saw TSTZAISRV's 11 rows). testInit() now
+// only ensures the table exists; it never deletes anything. A verify
+// manifest that wants a genuinely fresh TESTRES before a specific run
+// should issue its own explicit DELETE FROM &LIB/TESTRES as a separate
+// cl step (same pattern the CL wrapper itself already uses for VFYLOG),
+// not rely on testInit() for that.
 //
 // CALLER MUST CHGCURLIB FIRST: this CREATE TABLE is unqualified, and
 // under naming = *sys an unqualified CREATE/DDL statement resolves
@@ -228,8 +246,6 @@ dcl-proc testInit export;
   // further - a caller whose testInit() silently did nothing useful
   // will find out from the very next assertEquals*/assertTrue call,
   // whose own INSERT would then fail loudly instead.
-
-  exec sql DELETE FROM TESTRES;
 
   return;
 end-proc;
