@@ -1,6 +1,6 @@
 {
   "batch": "part08-01-git-srcstmf",
-  "description": "2nd connection - URGENT PRIORITY: restore &LIB/JUCSRV, which the 1st connection left MISSING. The 1st connection's git/clone mechanics (SETUP/BARE/PCREPO/PUSH/CLONE/ROUNDTRIP-EDIT/ROUNDTRIP-PULL) all CONFIRMED SUCCESS - unchanged here. But CRTRPGMOD ... SRCSTMF(...) failed both times with RNS9380 'The source file CCSID 1208 is a Unicode CCSID which cannot be used with TGTCCSID(*SRC)' - `git clone` checks out files tagged CCSID 1208 (confirmed via `ls -S`, batch.mjs's own documented convention: CCSID is `ls -S`'s first column), and CRTRPGMOD's default TGTCCSID(*SRC) explicitly refuses ANY Unicode-tagged source file (cl_commands_75.txt's own TGTCCSID doc: '*SRC: the source is read in the CCSID of the primary source file... 1-65534: the CCSID must be a single-byte or mixed-byte EBCDIC CCSID' - 1208 is neither *SRC-compatible nor a listed EBCDIC value). FIXED here by adding TGTCCSID(*JOB) to both CRTRPGMOD calls (SRCSTMF steps only - CRTSRVPGM's own binder-source SRCSTMF parameter has no documented TGTCCSID equivalent in cl_commands_75.txt, so BUILDSRV is unchanged and this connection is this parameter's first real test). WORSE: because DLTMOD (this manifest's own stale-object guard) ran first and then BUILDMOD failed, and BUILDSRV's CRTSRVPGM REPLACE(*YES) apparently deletes the OLD service program object even when its own MODULE lookup then fails (CPF5D02) and it aborts without creating a replacement - the 1st connection left &LIB/JUCSRV (the *SRVPGM) genuinely MISSING (CLIENTCHECK: CPD0192 'Service program JUCSRV not found' for both F0702A and F0703A). This is a real, repo-wide-impact regression (TSTJUCSRV/08-04, and Part 9's planned 09-04, both depend on this exact object) that this connection's own first priority is to repair, by successfully completing BUILDMOD+BUILDSRV with the TGTCCSID fix. Steps are reordered so the repair (DLTMOD/BUILDMOD/BUILDSRV/CLIENTCHECK) runs BEFORE the round-trip rehearsal and makei probes, in case anything else goes wrong mid-connection. Also fixed: makei --version/--help/build --help ALL failed in the 1st connection, even via full path, because makei is a wrapper script that checks its OWN directory is on PATH regardless of how it was invoked, and additionally requires python3.9 specifically to be resolvable on PATH (not just any python3) - both diagnosed from the exact real error text captured. Fixed by prefixing MAKEIPROBE with `export PATH=/QOpenSys/pkgs/bin:$PATH` and adding a `command -v python3.9` check.",
+  "description": "3rd connection. NOTE ON EXECUTION ORDER (verify/lib/batch.mjs's own fixed step-type ordering, confirmed by reading that file): regardless of this array's order, the generated script always runs file-steps, then sh-steps, then cl-steps, then collect-steps. So the true order this connection actually runs in is: (1) both `file` steps (seed the git IFS tree AND, separately, populate real QRPGLESRC/QSRVSRC members - harmless data prep, touches no *MODULE/*SRVPGM object); (2) all `sh` steps - the full git bare/push/clone rehearsal (already CONFIRMED SUCCESS, 1st/2nd connections, unchanged here) plus BUILDMODX, which retargets the still-unresolved SRCSTMF/CCSID experiment at a THROWAWAY module name JUCSRVX (never referenced by any other lesson/manifest) instead of the real, shared JUCSRV, so continued CCSID debugging cannot put that shared dependency at risk again, plus a fresh `od -x` byte dump of both the git-cloned file AND the original seed file for direct comparison; (3) RESTOREMEMBER, a `cl` step using the exact SRCFILE/SRCMBR-based CRTRPGMOD/CRTSRVPGM commands already CONFIRMED SUCCESS in part07-0203-srvpgm, unconditionally rebuilding the real &LIB/JUCSRV via the proven member-based path regardless of whatever BUILDMODX found; (4) CLIENTCHECKCL, a `cl` step (compiled CL wrapper, ADDLIBLE + CALL in the SAME job) testing whether F0702A/F0703A can actually resolve JUCSRV afterward; (5) both `collect` steps.\n\nWHY THIS MATTERS: the 2nd connection's CLIENTCHECK/CLIENTCHECK2 (`sh`-type steps doing `system \"CALL PGM(&LIB/F0702A) ...\"` with no preceding ADDLIBLE) both got CPD0192 'Service program JUCSRV not found', which the 2nd connection's own manifest description read as proof that CRTSRVPGM's REPLACE(*YES) had deleted the real JUCSRV object before its own compile failed. Re-reading the 1st connection's own collect output, F0702A/F0703A's BOUND_SRVPGM_INFO row for JUCSRV says BOUND_SERVICE_PROGRAM_LIBRARY = '*LIBL' (not a hardcoded library) - meaning F0702A/F0703A resolve JUCSRV via the CALLING JOB's OWN library list at run time, exactly the pattern solutions/05-13/ju0900c-ticket1.clp's own ADDLIBLE and verify/part05-13-tickets/src/za0500h.clp's own ADDLIBLE both exist to satisfy for other programs. A `sh`-step's raw `system(...)` call cannot add &LIB to a later, separate `system(...)` call's library list (each `system()` call is its own separate job, docs/probes.md's own confirmed finding) - so CPD0192 may have been a SCOPING ARTIFACT of the CLIENTCHECK steps themselves, not proof the object was actually deleted. This connection settles the question two ways at once regardless of which explanation is correct: CLIENTCHECKCL tests real resolvability the correct way (ADDLIBLE + CALL, same compiled CL job), and RESTOREMEMBER unconditionally rebuilds JUCSRV via a path with no CCSID/stale-object risk either way, so the shared object ends this connection in a known-good state either way.\n\nDiagnostic added for the still-open SRCSTMF/CCSID question (not urgent anymore, decoupled from the shared object): the 2nd connection's CRTRPGMOD attempt (targeting the real JUCSRV, with TGTCCSID(*JOB) added) got CPE3490 'Conversion error', a DIFFERENT error than the 1st connection's RNS9380 'Unicode CCSID... cannot be used with TGTCCSID(*SRC)' - this progression (rejected-outright -> conversion attempted but failed) is consistent with the git-cloned file being TAGGED CCSID 1208 (confirmed via `ls -S`, both connections) while its ACTUAL BYTES may still be the original EBCDIC bytes the heredoc-write produced for the seed file (docs/probes.md's own established CCSID findings for heredoc-written files) - i.e. a tag/content mismatch introduced somewhere between the heredoc-written seed and the git-checked-out copy. `od -x` on both files settles this directly.\n\nmakei's own PATH self-check still failed in the 2nd connection even after `export PATH=/QOpenSys/pkgs/bin:$PATH` was confirmed in effect for that same shell (a `command -v python3.9` on the very next line succeeded) - left unresolved and de-prioritized per advisor's own guidance (no primary source exists for makei at all; that its own troubleshooting message does not accurately diagnose this exact situation is itself a usable, honest finding for 08-02's design - 'general knowledge, unconfirmed exact cause'). Only a minimal re-probe (`--version`) is kept here to see if it behaves any differently after RESTOREMEMBER/CLIENTCHECKCL run in the same connection; --help/build --help are dropped to shorten this already-long connection.",
   "steps": [
     {
       "type": "file",
@@ -11,6 +11,20 @@
       "type": "file",
       "localPath": "../../src/qsrvsrc/jucsrv.bnd",
       "remotePath": "vfy/part08-01-git-srcstmf/seed/src/qsrvsrc/jucsrv.bnd"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/jucsrv.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "JUCSRV",
+      "ensureSrcFile": { "recordLength": 112 }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qsrvsrc/jucsrv.bnd",
+      "remoteSrcFile": "QSRVSRC",
+      "member": "JUCSRV",
+      "ensureSrcFile": { "recordLength": 112 }
     },
     {
       "type": "sh",
@@ -25,7 +39,7 @@
     {
       "type": "sh",
       "label": "PCREPO",
-      "cmd": "cd \"$HOME/vfy/part08-01-git-srcstmf/rehearsal\" && mkdir -p pc-side && cd pc-side && /QOpenSys/pkgs/bin/git init -b main 2>&1 && /QOpenSys/pkgs/bin/git config user.name 'Learner (verify harness rehearsal)' 2>&1 && /QOpenSys/pkgs/bin/git config user.email 'learner@example.invalid' 2>&1 && mkdir -p src/qrpglesrc src/qsrvsrc && cp \"$HOME/vfy/part08-01-git-srcstmf/seed/src/qrpglesrc/jucsrv.rpgle\" src/qrpglesrc/jucsrv.rpgle && cp \"$HOME/vfy/part08-01-git-srcstmf/seed/src/qsrvsrc/jucsrv.bnd\" src/qsrvsrc/jucsrv.bnd && /QOpenSys/pkgs/bin/git add -A 2>&1 && /QOpenSys/pkgs/bin/git commit -m 'initial import: JUCSRV source' 2>&1"
+      "cmd": "cd \"$HOME/vfy/part08-01-git-srcstmf/rehearsal\" && mkdir -p pc-side && cd pc-side && /QOpenSys/pkgs/bin/git init -b main 2>&1 && /QOpenSys/pkgs/bin/git config user.name 'Learner (verify harness rehearsal)' 2>&1 && /QOpenSys/pkgs/bin/git config user.email 'learner-rehearsal-no-email' 2>&1 && mkdir -p src/qrpglesrc src/qsrvsrc && cp \"$HOME/vfy/part08-01-git-srcstmf/seed/src/qrpglesrc/jucsrv.rpgle\" src/qrpglesrc/jucsrv.rpgle 2>&1 && cp \"$HOME/vfy/part08-01-git-srcstmf/seed/src/qsrvsrc/jucsrv.bnd\" src/qsrvsrc/jucsrv.bnd 2>&1 && /QOpenSys/pkgs/bin/git add -A 2>&1 && /QOpenSys/pkgs/bin/git commit -m 'initial import: JUCSRV source' 2>&1"
     },
     {
       "type": "sh",
@@ -35,52 +49,34 @@
     {
       "type": "sh",
       "label": "CLONE",
-      "cmd": "cd \"$HOME/vfy/part08-01-git-srcstmf/rehearsal\" && /QOpenSys/pkgs/bin/git clone pub400-bare.git pub400-clone 2>&1 && ls -S \"$HOME/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone/src/qrpglesrc/jucsrv.rpgle\" 2>&1 && ls -S \"$HOME/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone/src/qsrvsrc/jucsrv.bnd\" 2>&1"
+      "cmd": "cd \"$HOME/vfy/part08-01-git-srcstmf/rehearsal\" && /QOpenSys/pkgs/bin/git clone pub400-bare.git pub400-clone 2>&1 && ls -S \"$HOME/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone/src/qrpglesrc/jucsrv.rpgle\" 2>&1 && echo ---CLONED-BYTES--- && od -x \"$HOME/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone/src/qrpglesrc/jucsrv.rpgle\" 2>&1 | head -2 && echo ---SEED-BYTES--- && od -x \"$HOME/vfy/part08-01-git-srcstmf/seed/src/qrpglesrc/jucsrv.rpgle\" 2>&1 | head -2"
     },
     {
       "type": "sh",
-      "label": "DLTMOD",
-      "cmd": "system \"DLTMOD MODULE(&LIB/JUCSRV)\" 2>&1"
-    },
-    {
-      "type": "sh",
-      "label": "BUILDMOD",
-      "cmd": "system \"CRTRPGMOD MODULE(&LIB/JUCSRV) SRCSTMF('$HOME/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone/src/qrpglesrc/jucsrv.rpgle') TGTCCSID(*JOB) REPLACE(*YES)\" 2>&1"
-    },
-    {
-      "type": "sh",
-      "label": "BUILDSRV",
-      "cmd": "system \"CRTSRVPGM SRVPGM(&LIB/JUCSRV) MODULE(&LIB/JUCSRV) EXPORT(*SRCFILE) SRCSTMF('$HOME/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone/src/qsrvsrc/jucsrv.bnd') ACTGRP(*CALLER) REPLACE(*YES)\" 2>&1"
-    },
-    {
-      "type": "sh",
-      "label": "CLIENTCHECK",
-      "cmd": "system \"CALL PGM(&LIB/F0702A) PARM('C00001')\" 2>&1\nsystem \"CALL PGM(&LIB/F0703A) PARM('C00001')\" 2>&1"
-    },
-    {
-      "type": "sh",
-      "label": "ROUNDTRIP-EDIT",
-      "cmd": "cd \"$HOME/vfy/part08-01-git-srcstmf/rehearsal/pc-side\" && { head -1 src/qrpglesrc/jucsrv.rpgle; echo '// verify-rehearsal round-trip edit: this comment line only.'; tail -n +2 src/qrpglesrc/jucsrv.rpgle; } > src/qrpglesrc/jucsrv.rpgle.tmp && mv src/qrpglesrc/jucsrv.rpgle.tmp src/qrpglesrc/jucsrv.rpgle && /QOpenSys/pkgs/bin/git add -A 2>&1 && /QOpenSys/pkgs/bin/git commit -m 'round-trip rehearsal: add a comment line' 2>&1 && /QOpenSys/pkgs/bin/git --no-pager push origin main 2>&1"
-    },
-    {
-      "type": "sh",
-      "label": "ROUNDTRIP-PULL",
-      "cmd": "cd \"$HOME/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone\" && /QOpenSys/pkgs/bin/git --no-pager pull 2>&1 && head -3 src/qrpglesrc/jucsrv.rpgle 2>&1"
-    },
-    {
-      "type": "sh",
-      "label": "ROUNDTRIP-REBUILD",
-      "cmd": "system \"DLTMOD MODULE(&LIB/JUCSRV)\" 2>&1\nsystem \"CRTRPGMOD MODULE(&LIB/JUCSRV) SRCSTMF('$HOME/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone/src/qrpglesrc/jucsrv.rpgle') TGTCCSID(*JOB) REPLACE(*YES)\" 2>&1\nsystem \"CRTSRVPGM SRVPGM(&LIB/JUCSRV) MODULE(&LIB/JUCSRV) EXPORT(*SRCFILE) SRCSTMF('$HOME/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone/src/qsrvsrc/jucsrv.bnd') ACTGRP(*CALLER) REPLACE(*YES)\" 2>&1"
-    },
-    {
-      "type": "sh",
-      "label": "CLIENTCHECK2",
-      "cmd": "system \"CALL PGM(&LIB/F0702A) PARM('C00001')\" 2>&1\nsystem \"CALL PGM(&LIB/F0703A) PARM('C00001')\" 2>&1"
+      "label": "BUILDMODX",
+      "cmd": "system \"DLTMOD MODULE(&LIB/JUCSRVX)\" 2>&1\nsystem \"CRTRPGMOD MODULE(&LIB/JUCSRVX) SRCSTMF('$HOME/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone/src/qrpglesrc/jucsrv.rpgle') TGTCCSID(*JOB) REPLACE(*YES)\" 2>&1"
     },
     {
       "type": "sh",
       "label": "MAKEIPROBE",
-      "cmd": "export PATH=/QOpenSys/pkgs/bin:$PATH\necho ---PYTHON3.9-CHECK---\ncommand -v python3.9 2>&1\ncommand -v python3 2>&1\necho ---MAKEI-VERSION---\nmakei --version 2>&1\necho ---MAKEI-HELP---\nmakei --help 2>&1\necho ---MAKEI-BUILD-HELP---\nmakei build --help 2>&1"
+      "cmd": "export PATH=/QOpenSys/pkgs/bin:$PATH\necho ---PYTHON3.9-CHECK---\ncommand -v python3.9 2>&1\necho ---MAKEI-VERSION---\nmakei --version 2>&1"
+    },
+    {
+      "type": "cl",
+      "label": "RESTOREMEMBER",
+      "cmd": "CRTRPGMOD MODULE(&LIB/JUCSRV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(JUCSRV) REPLACE(*YES)\nCRTSRVPGM SRVPGM(&LIB/JUCSRV) MODULE(&LIB/JUCSRV) EXPORT(*SRCFILE) SRCFILE(&LIB/QSRVSRC) SRCMBR(JUCSRV) ACTGRP(*CALLER) REPLACE(*YES)",
+      "monmsg": ["CPF0000", "RNF0000", "MCH0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CLIENTCHECKCL",
+      "cmd": "ADDLIBLE LIB(&LIB) POSITION(*FIRST)\nCALL PGM(F0702A) PARM('C00001')\nCALL PGM(F0703A) PARM('C00001')",
+      "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJLIB FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', 'ALL')) X WHERE OBJNAME = 'JUCSRV' ORDER BY OBJTYPE"
     },
     {
       "type": "collect",
