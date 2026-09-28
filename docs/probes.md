@@ -2324,7 +2324,14 @@ B-5、1回目の接続。
   txlegrun.clp`と同じ、実績のある形(専用CLヘルパーが`CHGVAR`+
   `*TCAT`/`%TRIM`で実行時に文字列を組み立ててから`QCMDEXC`を呼ぶ)
   へ書き換えた**(`verify/part06-15-checkpoint/src/txchkrun.clp`
-  新設)。次回接続で再確認する。
+  新設)。
+
+**再接続でCONFIRMED SUCCESS。** `txchkrun.clp`経由で実際の`*CMD`形
+(`TXCHECK LESSON('06-15') LIB(<lib>)`)を実行し、`TXCHECK: lesson
+06-15 - 0000000003 passed, 0000000000 failed.`——完了条件C5達成。
+これでB-5は完全にCONFIRMED SUCCESS(D0615A/F0615A/Q0615A全て
+Highest Severity 00、Q0615Aの印字内容が採点表と完全一致、TXCHECK
+3 passed/0 failed)。
 
 ## 未実施のプローブ
 
