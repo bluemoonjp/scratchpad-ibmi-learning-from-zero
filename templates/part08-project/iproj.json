@@ -1,0 +1,9 @@
+{
+  "version": "0.0.1",
+  "description": "ZAISRV (Part 8 makei rebuild) - one-shot object library, no CURLIB assumed",
+  "objlib": "YOURUSER2",
+  "curlib": "YOURUSER2",
+  "includePath": [],
+  "preUsrlibl": [],
+  "postUsrlibl": []
+}

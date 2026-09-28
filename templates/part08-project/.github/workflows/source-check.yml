@@ -1,0 +1,25 @@
+name: source-check
+
+# PUB400には一切接続しない、ローカルの構文・リント検査のみのワークフロー
+# (08-01の演習で使うPCからのgit pushとは別の、PC/CI側だけで完結する確認)。
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # rpglint(vscode-rpgleのリンター)の単体CLI呼び出し方は、この教材の
+      # 一次資料には無く未確認(08-03レッスン本文参照)。ここでは呼び出しの
+      # 位置だけを示す。
+      - name: Run rpglint
+        run: |
+          echo "rpglint --config rpglint.json src/qrpgsrc/*.rpgle (要確認、08-03参照)"
+      - name: ASCII / LF / column checks
+        run: node scripts/check.mjs
