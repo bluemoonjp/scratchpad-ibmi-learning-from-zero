@@ -14,7 +14,12 @@
 // ' ', outsumlabel='MID ' (sum=15 falls in "when sum <= 20"),
 // outsep=' ', outsum2=00015 (from FOR, computed independently)).
 //
-// UNTESTED on real hardware (PUB400 SSH access is rate-limited).
+// CONFIRMED on real hardware (part06-0103-freeform, 2026-09-26): CRTBNDRPG
+// Highest Severity 00, CALL printed the expected 23-byte line (read
+// directly from the connection's raw run section text, not from
+// WRKSPLF/DSPSPLF -- this harness's non-interactive SSH jobs don't create
+// a real spool file for QSYSPRT output). See
+// docs/part06/06-03-free-form-basics.md and docs/probes.md.
 //
 // Verified vs work/design/refs/ilerpgref75.txt (approx line refs):
 // - **FREE must be alone in column 1 of line 1: near line 23295.
@@ -30,8 +35,11 @@
 //   expression instead of a comparand pair.
 // - SELECT/WHEN/OTHER/ENDSL: near line 63492-63567.
 // - FOR/ENDFOR: near line 57095-57170.
-// - EXSR/BEGSR/ENDSR are unchanged from RPG III, still valid as
-//   free-form statements: near line 42352-42420.
+// - EXSR/ENDSR are unchanged from RPG III, still valid as free-form
+//   statements: near line 42352-42420. BEGSR's opcode-then-name order
+//   ("begsr prtout;") is the reverse of RPG III's name-then-opcode
+//   Factor-1 form ("PRTOUT BEGSR" in R0405A) -- same spot in the file,
+//   just read the operand order off the actual syntax there.
 // - *INLR is a named indicator, assignable directly: near line
 //   16424, 16494, 16583 (*INLR = *ON;).
 // - += compound assignment (replaces ADD, "not allowed" in free
@@ -45,15 +53,19 @@
 // dcl-ds are not among 06-03's own nine new-concept items; they are
 // formally introduced in 06-04 and 06-07 respectively.
 //
-// TODO: verify - hand-written, not yet compiled on PUB400. The last
-// byte of a raw (unedited) zoned field can print as a non-digit
-// letter for NEGATIVE values; SUM/SUM2 here are always zero or
-// positive. The reference's own text on the X edit code (near line
-// 22350: "the X edit code ensures a hexadecimal F sign for positive
-// fields... because the system does this, you normally do not have
-// to specify this code") indicates positive zoned values already
-// carry an F-zone sign nibble, which prints as a plain digit -- but
-// this has not been confirmed against a real compile/run.
+// (Earlier drafts of this comment said this file was untested and had
+// not been compiled -- that was already stale by the time 06-03 was
+// written: part06-0103-freeform had settled the compile/run result
+// above.) One remaining unconfirmed detail: the last byte of a raw
+// (unedited) zoned field can print as a non-digit letter for NEGATIVE
+// values; SUM/SUM2 here are always zero or positive, so this file's
+// own run does not exercise that case. The reference's own text on
+// the X edit code (near line 22350: "the X edit code ensures a
+// hexadecimal F sign for positive fields... because the system does
+// this, you normally do not have to specify this code") indicates
+// positive zoned values already carry an F-zone sign nibble, which
+// prints as a plain digit -- consistent with what this run actually
+// printed, though the negative case itself remains untested here.
 
 ctl-opt option(*nodebugio);
 
