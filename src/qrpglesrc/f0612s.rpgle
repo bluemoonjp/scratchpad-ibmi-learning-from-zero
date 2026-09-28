@@ -196,23 +196,27 @@ dcl-f juchum usage(*input);
 // externally described printer files, not to *INOA in general. *IN01's
 // compile AND run-time behavior were BOTH confirmed with a throwaway
 // 100-line WRITE loop probe (verify/part06-12-prtf-cpp-swap/src/
-// t612ofb.rpgle, NOT shipped) - CONFIRMED: it COMPILES, and all 100
-// lines actually PRINT (found in the connection result's own "run"
-// section text - CPYSPLF cannot capture this file's spooled output in
-// this harness's job environment, a separate, unrelated limitation
-// also confirmed for QSYSPRT itself, part06-0103-freeform). *IN01
-// never turned on across those 100 lines. The follow-up OVRPRTF probe
-// (part06-b6-batch, 2026-09-27) SETTLES why: forcing a small page size
-// (OVRPRTF FILE(P0612A) PAGESIZE(12 132) OVRFLW(10)) before a 30-line
-// WRITE loop STILL never turned *IN01 on, even though overflow should
-// have fired well before line 30 with an overflow line of 10. This
-// CONFIRMS overflow detection cannot work at all in this harness's job
-// (no real spooled file exists to have real page geometry against -
-// the same missing-real-spool-file condition that breaks CPYSPLF).
-// CONCLUSION: the page-break exercise (06-12 lesson text) MUST be
-// documented as V3-only (a learner's own real 5250 session) - this
-// harness cannot verify overflow firing, only that OFLIND compiles and
-// that WRITE keeps working normally regardless of its state.
+// t612ofb.rpgle, NOT shipped) - CONFIRMED: it COMPILES, all 100 lines
+// actually PRINT, AND overflow actually FIRES (RPTTOT's own RPTCNT
+// printed 1, meaning overflowSeen went *on at some point in the 100
+// lines - found in the connection result's own "run" section text;
+// CPYSPLF cannot capture this file's spooled output in this harness's
+// job environment, a separate, unrelated limitation also confirmed for
+// QSYSPRT itself, part06-0103-freeform). CORRECTION (2026-09-27,
+// advisor review): an earlier version of this header claimed *IN01
+// "never turned on" - that was a misreading of this probe's own
+// output. The probe printed a CONSTANT rptjudt=0 on every detail line
+// (an unrelated field, EDTCDE(3), not the overflow indicator at all -
+// this probe never actually wrote *IN01's value onto any line), so its
+// trailing "0" was mistaken for "*IN01 stayed off". The real evidence
+// was always in the RPTTOT summary line after the loop, which was
+// overlooked. A follow-up OVRPRTF probe (part06-b6-batch,
+// OVRPRTF FILE(P0612A) PAGESIZE(12 132) OVRFLW(10), 30-line loop)
+// CONFIRMS this cleanly and precisely: overflow fired at line 9 (its
+// own RPTTOT printed RPTCNT=9, the first iteration where *IN01 read
+// *ON). CONCLUSION: *IN01 overflow detection WORKS correctly in this
+// harness - the page-break exercise (06-12 lesson text) CAN be
+// documented as V2 (real-hardware confirmed), not V3-only.
 //-----------------------------------------------------------------------
 dcl-f p0612a printer usage(*output) oflind(*in01);
 
