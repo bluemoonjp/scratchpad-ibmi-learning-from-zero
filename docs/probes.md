@@ -2715,6 +2715,18 @@ Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・�
 
 08-05(`F0805A`)・08-05b(`Q0805B`)ともに「特性検定」(元の`JU0300`/`ZA0500`と出力が完全に一致する書き直し)が実機で確定した。`solutions/08-05/f0805as.rpgle`・`solutions/08-05/q0805bs.sqlrpgle`のヘッダーをCONFIRMEDに更新済み。**残る技術的原因の1点(golden-master.mdの「+1のずれ」自体の根本原因)は、advisorも「仕組みは未解明」としたとおり依然として未解明のままである**——実務上の対処(観測値から-1で調整する)は確定したが、レッスン本文でこの現象を扱う場合は「原因は未解明、経験的に-1で一致することを実機で確認済み」という誠実な書き方にすること。
 
+## 第8部`part08-01-git-srcstmf`: git bare/cloneリハーサル+SRCSTMFビルド、1回目の接続でCCSIDエラーを発見・JUCSRVが一時的に消失(確認日2026-09-28)
+
+08-01(gitプロジェクトとSRCSTMFビルド)の実機確認。qshの1セッション内でIFS上に擬似「PC側」(`pc-side`、通常の作業コピー)・「PUB400側」(`pub400-bare.git`、ベア・リポジトリ)・「ビルド用クローン」(`pub400-clone`)の3ディレクトリーを作り、`git init --bare`→`git push`→`git clone`という経路(P8-4決定どおり、`denyCurrentBranch=updateInstead`は使わない)をリハーサルしたうえで、`JUCSRV`(Part 7で確立済み、`part07-0203-srvpgm`でCONFIRMED SUCCESS)を、メンバー経由ではなく`git clone`したIFS上のソースから`CRTRPGMOD`/`CRTSRVPGM`の`SRCSTMF`パラメーターで作り直す。
+
+**1回目の接続**: git本体の操作(`git --version`・`git init -b main --bare`・`git init -b main`+`git config`+`git commit`・`git remote add`+`git push`・`git clone`・1行編集→`push`→`pull`のラウンドトリップ)は**すべて成功した**(`sh`型ステップとして実行——`cl`型ステップの`system(...)`呼び出しは1回ごとに別ジョブになる既知の制約があるため、git操作はこの制約を受けない生のシェル・コマンドとして実行する設計にした)。
+
+- **実バグ発見: `CRTRPGMOD ... SRCSTMF(...)`が`RNS9380`で失敗**(「The source file CCSID 1208 is a Unicode CCSID which cannot be used with TGTCCSID(*SRC).」)。原因: `git clone`でチェックアウトされたファイルは`ls -S`(先頭列がCCSID、`verify/lib/batch.mjs`のコメントで確立済みの確認方法)でCCSID 1208(UTF-8)とタグ付けされていたが、`CRTRPGMOD`の既定`TGTCCSID(*SRC)`は`cl_commands_75.txt`自身の記載どおり、Unicode系CCSIDを一切受け付けない(許容されるのは*SRC自身が単純なASCII CCSIDを想定した変換をする場合、または1〜65534の単バイト/混合バイトEBCDIC CCSIDのみ)。**未修正(次回接続で検証予定)の対処**: `TGTCCSID(*JOB)`を明示的に指定する。
+- **副作用として発見した、より重大な実バグ: `&LIB/JUCSRV`(`*SRVPGM`)が接続終了時点で完全に消失していた。** このマニフェスト自身の「陳腐化オブジェクト防止」設計(`Q0805B`の教訓と同種——`CRTRPGMOD`失敗時にモジュールが存在しない状態にしておき、`CRTSRVPGM`が古いモジュールへ静かに束縛してしまう事態を避ける目的で`DLTMOD`を先に実行)が、意図しない形で悪い方向に作用した: `DLTMOD`でモジュールを削除→`CRTRPGMOD`が上のCCSIDエラーで失敗(モジュール未作成)→`CRTSRVPGM`が`CPF5D02`(「No modules found...」)で失敗——ここまでは想定どおりだったが、**`CRTSRVPGM`の`REPLACE(*YES)`は、この失敗の際に既存の`JUCSRV`(*SRVPGM)自体を先に削除してから作成に失敗していたらしく**、直後の`CLIENTCHECK`ステップで`F0702A`・`F0703A`とも`CPD0192`(「Service program JUCSRV not found.」)を返した。`07-05`・`08-04`(`TSTJUCSRV`)・将来の第9部`09-04`が依存するこの共有オブジェクトが実際に壊れた状態のまま接続が終わっている。**次回接続の最優先事項として、`TGTCCSID(*JOB)`修正を適用した`CRTRPGMOD`→`CRTSRVPGM`を再実行し、`JUCSRV`を復旧させることを他の何より先に行う**(マニフェストの手順順序もこれに合わせて並び替え済み)。
+- **`makei`の3つの読み取り専用プローブ(`--version`/`--help`/`build --help`)がすべて失敗**: フル・パス(`/QOpenSys/pkgs/bin/makei`)で呼んでも、`makei`自身が「`/QOpenSys/pkgs/bin/`がPATHに入っていない」という警告を出し(呼び出し方法に関係なく、`makei`自身がラッパー・スクリプトとして自分のディレクトリーがPATH上にあるかどうかを確認しているとみられる)、さらに「`python3.9 is not installed or not in your system PATH.`」という、P08で確認済みの`python3`(バージョン不問)とは異なる、**`python3.9`という特定のマイナー・バージョンが必要**という新規の実機事実が判明した。**未修正(次回接続で検証予定)の対処**: `export PATH=/QOpenSys/pkgs/bin:$PATH`を先に実行してから`makei`を(フル・パス無しで)呼び、`command -v python3.9`で実在を確認する。
+
+次回接続(2回目)でJUCSRV復旧・CCSID修正・makei PATH修正の3点をまとめて検証する。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
