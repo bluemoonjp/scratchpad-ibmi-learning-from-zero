@@ -101,20 +101,28 @@
 // manifest's very first cases should include one deliberately-failing
 // assertion, wrapped in MONITOR, specifically to observe this.
 //
-// callStackCtr 1 (not 0): ilerpgref75.txt's own sendException() example
-// takes this as a caller-supplied parameter (stackOffsetToRpg) rather
-// than hardcoding it, because the right value depends on how many
-// procedure calls sit between the QMHSNDPM call itself and the call
-// level that should receive the escape. Every assert procedure below
-// calls QMHSNDPM directly (no extra local helper in between), so
-// offset 0 would target the assert procedure's OWN call level (compare
+// callStackCtr 2 (not 0 or 1): ilerpgref75.txt's own sendException()
+// example takes this as a caller-supplied parameter (stackOffsetToRpg)
+// rather than hardcoding it, because the right value depends on how
+// many procedure calls sit between the QMHSNDPM call itself and the
+// call level that should receive the escape. Below, QMHSNDPM is called
+// from inside the LOCAL helper raiseFail(), not directly from an
+// assertEquals*/assertTrue procedure - so counting from raiseFail's own
+// call to QMHSNDPM: offset 0 targets raiseFail itself (compare
 // src/qrpglesrc/f0609s.rpgle's sendToJobLog, which uses '*' : 0 for
-// exactly that reason - it wants the message to land on ITSELF, since
-// it sends *INFO, not *ESCAPE) and offset 1 targets whatever called
-// THIS procedure - the test-case code in TSTJUCSRV/TSTZAISRV, which is
-// what should receive the exception. Confirmed by inspection only (this
-// file has not yet been compiled or run) - flagged alongside the WHY
-// VOID note above as something the first 08-04 connection must settle.
+// exactly this reason - it wants an *INFO message to land on ITSELF),
+// offset 1 targets raiseFail's caller (assertEqualsChar/assertEqualsNum/
+// assertTrue), and offset 2 targets THAT procedure's own caller - the
+// test-case code in TSTJUCSRV/TSTZAISRV, which is what should actually
+// receive the exception. (An earlier draft of this file used offset 1
+// here, which would target the assert procedure's own call level
+// instead - probably harmless in practice, since an unhandled *ESCAPE
+// at one level ordinarily percolates up to the next level's own
+// handler, but offset 2 is used instead so this comment does not have
+// to rely on that percolation behavior being correct.) Confirmed by
+// inspection only (this file has not yet been compiled or run) -
+// flagged alongside the WHY VOID note above as something the first
+// 08-04 connection must settle.
 //
 // PUB400 placeholders: <lib> stands for the learner's own library; no
 // real PUB400 user or library name appears in this file.
@@ -175,6 +183,28 @@ exec sql SET OPTION commit = *none, naming = *sys, closqlcsr = *endmod;
 // existing rows so each test run starts from an empty table. Call this
 // ONCE at the start of a test-case program's mainline, before any
 // assertEquals*/assertTrue call.
+//
+// CALLER MUST CHGCURLIB FIRST: this CREATE TABLE is unqualified, and
+// under naming = *sys an unqualified CREATE/DDL statement resolves
+// against *CURLIB, NOT the job's *LIBL (contrast an unqualified DML
+// statement like this same file's INSERT/DELETE, which DOES follow
+// *LIBL - confirmed by src/qrpglesrc/q0613s.sqlrpgle's own bare TOKUIM
+// references). The verify harness's own cl wrapper only ever does
+// ADDLIBLE, never CHGCURLIB (docs/probes.md's part07-04-actgrp-cl
+// section: "the harness's ADDLIBLE-only job setup leaves RTVJOBA CURLIB
+// at <USER>1" - the AUTHOR'S OWN private library, which
+// docs/probes.md's own policy says author-side verification must never
+// touch). Any 08-04 verify manifest MUST add a CHGCURLIB CURLIB(&LIB)
+// cl step (same pattern as verify/part07-04-actgrp-cl/manifest.json's
+// own CHGCURLIB1 step) before the first CALL that reaches testInit() -
+// otherwise TESTRES is created in <USER>1, and this is NOT a loud
+// failure: *CURLIB is always part of the effective unqualified-name
+// search path regardless of ADDLIBLE, so every later
+// assertEquals*/assertTrue call's own unqualified INSERT would still
+// find and silently write into that <USER>1 copy of TESTRES. The
+// visible symptom, if any, would only be TESTRES rows unexpectedly
+// missing from <USER>2 when a verify-manifest collect step reads
+// them - not an error anywhere in the job log.
 //=======================================================================
 dcl-proc testInit export;
   dcl-pi *n extproc(*dclcase);
@@ -254,7 +284,7 @@ dcl-proc raiseFail;
   msgText = 'TESTKIT: assertion failed - ' + %trimr(testName);
 
   qmhsndpm('CPF9898' : msgFile : msgText : %len(%trimr(msgText))
-             : '*ESCAPE' : '*' : 1 : msgKey : errCode);
+             : '*ESCAPE' : '*' : 2 : msgKey : errCode);
 
   return;
 end-proc;
