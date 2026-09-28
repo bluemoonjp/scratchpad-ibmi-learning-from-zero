@@ -9,9 +9,10 @@
 // SFLSIZ(4)/SFLPAG(3) - see that file's own header for why SFLPAG is
 // deliberately small).
 //
-// HARDWARE STATUS: not yet compiled (fresh object, not the already-
-// confirmed F0611A). V1 (compile-check) is the realistic ceiling - same
-// WORKSTN/EXFMT limitation as every other Part 6 screen.
+// HARDWARE STATUS: CONFIRMED V1 (compile-check, part06-b6-batch,
+// 2026-09-27): CRTBNDRPG Highest Severity 00. V1 (compile-check) is
+// the realistic ceiling - same WORKSTN/EXFMT limitation as every other
+// Part 6 screen.
 //
 // WHAT'S DIFFERENT FROM F0611A (see that file for everything else -
 // message subfile, option 5, %EOF/%FOUND-takes-the-file-name fix, etc.

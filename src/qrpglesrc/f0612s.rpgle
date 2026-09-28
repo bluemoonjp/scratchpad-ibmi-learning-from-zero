@@ -201,18 +201,18 @@ dcl-f juchum usage(*input);
 // section text - CPYSPLF cannot capture this file's spooled output in
 // this harness's job environment, a separate, unrelated limitation
 // also confirmed for QSYSPRT itself, part06-0103-freeform). *IN01
-// never turned on across those 100 lines - UNCONFIRMED whether this
-// means the default form length is simply longer than 100 lines, or
-// whether overflow detection cannot work at all in a job with no real
-// spooled file (the same missing-real-spool-file condition that
-// breaks CPYSPLF might also mean there is no real page geometry to
-// overflow against) - not yet distinguished. This lesson's own normal
-// 2-row run below never overflows a page either, so *IN01 stays *OFF
-// for every real run of F0612A itself - the page-break exercise
-// (06-12 lesson text, not yet written) needs a follow-up probe (e.g.
-// OVRPRTF FILE(QSYSPRT) PAGESIZE(12 132) OVRFLW(10) before a ~30-line
-// WRITE loop) to settle whether overflow can be observed at all in
-// this harness before deciding whether that exercise is V2 or V3-only.
+// never turned on across those 100 lines. The follow-up OVRPRTF probe
+// (part06-b6-batch, 2026-09-27) SETTLES why: forcing a small page size
+// (OVRPRTF FILE(P0612A) PAGESIZE(12 132) OVRFLW(10)) before a 30-line
+// WRITE loop STILL never turned *IN01 on, even though overflow should
+// have fired well before line 30 with an overflow line of 10. This
+// CONFIRMS overflow detection cannot work at all in this harness's job
+// (no real spooled file exists to have real page geometry against -
+// the same missing-real-spool-file condition that breaks CPYSPLF).
+// CONCLUSION: the page-break exercise (06-12 lesson text) MUST be
+// documented as V3-only (a learner's own real 5250 session) - this
+// harness cannot verify overflow firing, only that OFLIND compiles and
+// that WRITE keeps working normally regardless of its state.
 //-----------------------------------------------------------------------
 dcl-f p0612a printer usage(*output) oflind(*in01);
 
