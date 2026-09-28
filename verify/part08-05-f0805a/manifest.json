@@ -1,6 +1,6 @@
 {
   "batch": "part08-05-f0805a",
-  "description": "3rd connection. 2nd connection (2026-09-28T22:17:58Z) never actually ran any of its own steps: the WRAPPER CL PROGRAM ITSELF failed to compile (CPD0043, DFTACTGRP/ACTGRP are not valid CRTSQLRPGI parameters - unlike CRTBNDRPG, CRTSQLRPGI takes its activation-group settings from the SOURCE MEMBER'S OWN ctl-opt line, per src/qrpglesrc/q0613s.sqlrpgle's own established precedent, which this manifest's CPQ0805B step had incorrectly copied the CRTBNDRPG-style keywords into). Because the wrapper never compiled, its own VFYLOG DELETE/INSERT logic never ran either, so that connection's own vfylog/run sections were silently reading STALE data left over from the 1st connection - NOT a fresh run, despite looking superficially identical (same job number, same timestamp as the 1st connection's own residue). CPQ0805B is fixed here (DFTACTGRP/ACTGRP removed from the CRTSQLRPGI command; Q0805B's own ctl-opt dftactgrp(*no) actgrp(*new) line, already in its source, governs this instead). Everything else in this manifest is unchanged from the 2nd connection's own intent - see this file's git history for the full original description (F0805A retest + first Q0805B attempt, self-contained JU0300/ZA0500/JU0900C recompiles for a same-connection diff against verify/part08-05-legacy-baseline/expected/golden-master.md).",
+  "description": "4th connection. 3rd connection (2026-09-28T22:33:08Z) compiled both F0805A and Q0805B cleanly (00 highest severity) for the first time. Two findings from that connection's run section, both fixed here, neither yet verified on real hardware: (1) F0805A's printed output was JU0300's own real printed output shifted exactly 1 column right on every line (byte-for-byte diff confirmed locally against work/verify/f0805a-run2.txt) - f0805as.rpgle's printDetail/l1Break/l2Break/grandTotal column positions are fixed (-1 each) and q0805bs.sqlrpgle's printLine positions are fixed pre-emptively the same way, since both files derived their %subst positions from golden-master.md's own OBSERVED columns, which already had that same +1 baked in once (see golden-master.md's own note) - applying a rewrite's own %subst positions from those observed columns re-applies the +1 a second time. (2) RUNQ0805B failed at runtime: MCH1202 Decimal data error at statement 440 (`if avail < minqty;`), caused by CALL PGM(&LIB/Q0805B) PARM('*TEST' 5) passing a bare CL numeric literal (*DEC(15 5)) where Q0805B's dcl-pi declares packed(5:0) - the same class of parameter-type mismatch JU0900C itself was fixed for (05-13 ticket 1). Fixed by a new helper, verify/part08-05-f0805a/src/q0805bh.clp (Q0805BH), which DCLs &MINQTY as a real *DEC LEN(5 0) CL variable (VALUE(5), confirmed from ju0900c-ticket1.clp's own CHGVAR) before calling Q0805B, matching za0500h.clp's own established precedent. RUNQ0805B below now calls Q0805BH instead of Q0805B directly. Everything else in this manifest (JU0300/F0805A/ZA0500/JU0900C compile+run steps) is unchanged from the 3rd connection - see git history for the fuller original description.",
   "steps": [
     {
       "type": "file",
@@ -37,6 +37,12 @@
       "ensureSrcFile": {
         "recordLength": 112
       }
+    },
+    {
+      "type": "file",
+      "localPath": "src/q0805bh.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "Q0805BH"
     },
     {
       "type": "cl",
@@ -93,6 +99,14 @@
     },
     {
       "type": "cl",
+      "label": "CPQ0805BH",
+      "cmd": "DLTPGM PGM(&LIB/Q0805BH)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/Q0805BH) SRCFILE(&LIB/QCLSRC) SRCMBR(Q0805BH) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
       "label": "CLRFTOK",
       "cmd": "CHGDTAARA DTAARA(*LDA (11 6)) VALUE('      ')",
       "monmsg": [
@@ -134,7 +148,7 @@
     {
       "type": "cl",
       "label": "RUNQ0805B",
-      "cmd": "CALL PGM(&LIB/Q0805B) PARM('*TEST' 5)",
+      "cmd": "CALL PGM(&LIB/Q0805BH) PARM('&LIB')",
       "monmsg": [
         "CPF0000",
         "MCH0000",

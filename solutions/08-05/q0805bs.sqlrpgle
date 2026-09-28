@@ -14,16 +14,35 @@
 // za0500.rpg - see that file's own header for its full bug/fix
 // history, which this rewrite inherits rather than re-derives.
 //
-// STATUS: this file has never been compiled or run. JU0900C/ZA0500's
-// own golden-master output (12 lines: 10 OK, 2 SHORT, 0 NOTFOUND in
-// this repo's real data) is CONFIRMED and recorded verbatim in
-// verify/part08-05-legacy-baseline/expected/golden-master.md
-// (2026-09-28). This file is the new version to diff against it - not
-// yet attempted. F0805A (JU0300's own rewrite, solutions/08-05/
-// f0805as.rpgle) hit a real DTAARA(*LDA) syntax error on its own first
-// compile attempt (docs/probes.md, part08-05-f0805a) - this file has
-// not had the benefit of a real compile yet, so treat every syntax
-// choice below as similarly unconfirmed until its own first connection.
+// STATUS: CONFIRMED (part08-05-f0805a, 4th connection, 2026-09-28).
+// JU0900C/ZA0500's own golden-master output (12 lines: 10 OK, 2 SHORT,
+// 0 NOTFOUND in this repo's real data) is CONFIRMED and recorded
+// verbatim in verify/part08-05-legacy-baseline/expected/golden-master.md.
+// This file's 3rd connection attempt compiled this file cleanly (00
+// highest severity) for the first time, after fixing two earlier real
+// errors: CRTSQLRPGI does not accept DFTACTGRP/ACTGRP (CPD0043, this
+// program's own ctl-opt line governs its activation group instead -
+// fixed in the verify manifest, not this file), and this file's own
+// SET OPTION had originally been placed before several D-specs (fixed
+// pre-emptively, see below). It then FAILED AT RUNTIME: MCH1202
+// "Decimal data error" at statement 440 (`if avail < minqty;`, inside
+// processLine), called via a bare CL literal PARM('*TEST' 5) - a bare
+// numeric literal is passed as *DEC(15 5), not the packed(5:0) this
+// file's dcl-pi declares, so minqty read invalid bytes (docs/probes.md,
+// part08-05-f0805a). FIXED by verify/part08-05-f0805a/src/q0805bh.clp,
+// a helper CL program that DCLs &MINQTY as a real *DEC LEN(5 0)
+// variable before calling this program, matching JU0900C's own already-
+// proven-working pattern exactly (solutions/05-13/ju0900c-ticket1.clp).
+// That same connection also found printLine's column positions needed
+// the same -1 fix f0805as.rpgle's printDetail needed (see that fix's
+// own note there); applied here pre-emptively. The 4th connection
+// confirmed both fixes at once: Q0805BH successfully called this
+// program (no MCH1202), and a strict byte-for-byte diff (no transform)
+// of the same connection's own captured output confirmed this file's
+// printed output is IDENTICAL to ZA0500's own printed output (via
+// JU0900C), which is itself IDENTICAL to golden-master.md's own
+// recorded text - "characteristics testing" fully confirmed for this
+// file, including its two-cursor merge-join replacement of M1/MR.
 //
 // TWO-CURSOR MERGE (the M1/MR replacement itself):
 // JUCHUD is keyed JUNO(major)/JULINE(minor) - db/v1/juchud.pf - and
@@ -212,14 +231,23 @@ dcl-proc processLine;
 end-proc;
 
 //=======================================================================
-// printLine - one DTL line. Column positions (empirically derived from
-// verify/part08-05-legacy-baseline/expected/golden-master.md, see that
-// file's own note on the +1 offset from za0500.rpg's own O-spec end
-// columns): JUNO@2(6) JUSHO@10(6) JUSU@18(5, UNEDITED - zero-padded,
-// NOT zero-suppressed, matching za0500.rpg's own O-spec, which applies
-// no edit code to JUSU at all) statusText right-justified ending at
-// column 31 (its own length varies: NOTFOUND=8 chars @24, SHORT=5
-// chars @27, OK=2 chars @30 - za0500.rpg's own three O-spec constants
+// printLine - one DTL line. Column positions FIXED (part08-05-f0805a
+// 3rd connection, 2026-09-28 - see docs/probes.md and f0805as.rpgle's
+// own printDetail header note, same finding and same fix applied here
+// pre-emptively, before this file's own first run): golden-master.md's
+// "+1 offset from the O-spec's stated end columns" note was already
+// baked into these OBSERVED positions once; F0805A's own real output
+// showed that same +1 reappears a SECOND time between the golden
+// master's observed columns and a %subst-based rewrite's own real
+// printed output. Corrected here by subtracting 1 from every start
+// column below, matching f0805as.rpgle's own fix exactly, so this
+// file's real printed output (once run) should line up with ZA0500's
+// own real printed output, not with golden-master.md's literal numbers.
+// JUNO@1(6) JUSHO@9(6) JUSU@17(5, UNEDITED - zero-padded, NOT
+// zero-suppressed, matching za0500.rpg's own O-spec, which applies no
+// edit code to JUSU at all) statusText right-justified ending at
+// column 30 (its own length varies: NOTFOUND=8 chars @23, SHORT=5
+// chars @26, OK=2 chars @29 - za0500.rpg's own three O-spec constants
 // share the same END column but each has its own length, not one
 // fixed-width field).
 //=======================================================================
@@ -228,10 +256,10 @@ dcl-proc printLine;
   end-pi;
 
   clear line;
-  %subst(line:2:6)  = lJuno;
-  %subst(line:10:6) = lJusho;
-  %subst(line:18:5) = zeroPad(lJusu:5);
-  %subst(line:32 - %len(%trimr(statusText)):%len(%trimr(statusText)))
+  %subst(line:1:6)  = lJuno;
+  %subst(line:9:6)  = lJusho;
+  %subst(line:17:5) = zeroPad(lJusu:5);
+  %subst(line:31 - %len(%trimr(statusText)):%len(%trimr(statusText)))
     = %trimr(statusText);
   write qsysprt line;
 end-proc;
