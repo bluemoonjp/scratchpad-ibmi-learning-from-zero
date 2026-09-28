@@ -32,7 +32,7 @@
 // (q0613s.sqlrpgle, part06-1314-sql), or (b) QCMDEXC calling the CL
 // command RUNSQL. (b) is NOT a safe default here: this repo already
 // found ONE QCMDEXC restriction the hard way (SNDPGMMSG cannot run via
-// QCMDEXC from any HLL at any call depth - CPF0031, see
+// QCMDEXC from any HLL at any call depth - CPD0031, see
 // src/qrpglesrc/f0605bs.rpgle's own header and docs/probes.md's
 // part07-01-modules section) precisely because it looked plausible and
 // was not checked against IBM's own "Where allowed to run" restriction
@@ -90,7 +90,9 @@
 // procedure RETURN an ind (pass/fail), on the assumption a caller might
 // want to branch on it directly. Dropped because it invites a race
 // against the *ESCAPE mechanism below: on failure, this procedure sends
-// an *ESCAPE message targeted at its OWN caller (callStackCtr 1) before
+// (via its raiseFail() helper) an *ESCAPE message targeted at its OWN
+// caller (callStackCtr 2, not 1 - see "callStackCtr 2" below for why
+// the offset is counted from raiseFail's own call to QMHSNDPM) before
 // it returns - per the primary-source worked example this pattern is
 // built on (ilerpgref75.txt lines 13744-13773, "Procedure to send an
 // exception", QMHSNDPM call quoted verbatim in sendException() there),
@@ -292,9 +294,9 @@ end-proc;
 
 //=======================================================================
 // raiseFail - shared helper (NOT exported): sends the *ESCAPE message
-// described in this file's header ("callStackCtr 1"). Called only from
+// described in this file's header ("callStackCtr 2"). Called only from
 // inside an assertEquals*/assertTrue procedure's own body (never
-// through any deeper helper), so callStackCtr 1 always means "whatever
+// through any deeper helper), so callStackCtr 2 always means "whatever
 // called the assert procedure" - see the header note for why this
 // would need to change if a future edit adds another layer of call
 // indirection.

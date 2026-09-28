@@ -13,20 +13,28 @@
 // K JUTOK then K JUDATE) and its XFOOT/UDS-FTOK-filter mechanics,
 // which this file ports rather than re-derives.
 //
-// STATUS: JU0300's own golden master is CONFIRMED (verify/part08-05-
-// legacy-baseline, docs/probes.md, 2026-09-28 - see
-// golden-master.md). THIS file's 1st compile attempt
-// (part08-05-f0805a, 2026-09-28) failed: RNF7064 severity 30, "The
-// Factor 2 operand LDADS of IN or OUT is not a data area" - the
-// original draft wrote DTAARA('*LDA') (a quoted string literal), which
-// the compiler treats as a data area LITERALLY NAMED "*LDA" (not a
-// valid object name), not as the reserved *LDA keyword. FIXED (same
-// connection's own real error, verified against ilerpgref75.txt's own
-// worked example, lines 16345-16349: "DCL-DS LDA_DS DTAARA(*LDA);
-// SUBFLD CHAR(600); END-DS; IN LDA_DS;" - an UNQUOTED *lda is the
-// correct form; column positions/print logic were not implicated by
-// this error and remain unverified against the golden master until the
-// next connection recompiles with this fix.
+// STATUS: CONFIRMED (part08-05-f0805a, 4th connection, 2026-09-28).
+// JU0300's own golden master is CONFIRMED (verify/part08-05-legacy-
+// baseline, docs/probes.md - see golden-master.md). This file's 1st
+// compile attempt failed: RNF7064 severity 30, "The Factor 2 operand
+// LDADS of IN or OUT is not a data area" - the original draft wrote
+// DTAARA('*LDA') (a quoted string literal), which the compiler treats
+// as a data area LITERALLY NAMED "*LDA" (not a valid object name), not
+// as the reserved *LDA keyword. FIXED (verified against
+// ilerpgref75.txt's own worked example, lines 16345-16349: "DCL-DS
+// LDA_DS DTAARA(*LDA); SUBFLD CHAR(600); END-DS; IN LDA_DS;" - an
+// UNQUOTED *lda is the correct form). The 3rd connection compiled this
+// file cleanly (00 highest severity) and ran it, but its printed
+// output was found to be JU0300's own real output shifted exactly 1
+// column right on every line (byte-for-byte diff confirmed - see
+// docs/probes.md, part08-05-f0805a) - the column positions below were
+// FIXED (see printDetail's own header note). The 4th connection
+// recompiled and reran this file (00 highest severity) and confirmed,
+// via a strict byte-for-byte diff (no transform) of the same
+// connection's own captured output, that this file's printed output is
+// now IDENTICAL to JU0300's own printed output, which is itself
+// IDENTICAL to golden-master.md's own recorded text - "characteristics
+// testing" fully confirmed for this file.
 //
 // CONTROL-BREAK MODEL (the "characteristics testing" itself - same
 // business logic, explicit procedural form instead of the RPG cycle's
@@ -154,39 +162,48 @@ endif;
 return;
 
 //=======================================================================
-// printDetail - one DTL line. Column positions (empirically derived
-// from verify/part08-05-legacy-baseline/expected/golden-master.md, see
-// header): JUNO@6(6) JUTOK@16(6) JUDATEZ@26(8, edit code Z) JUTAN@38(6).
+// printDetail - one DTL line. Column positions (FIXED, part08-05-f0805a
+// 3rd connection, 2026-09-28 - see docs/probes.md and this file's own
+// STATUS note: the 1st draft's positions were the golden master's
+// OBSERVED columns, but golden-master.md's own "+1 offset from the
+// O-spec's stated end columns" note applies identically to THIS
+// program's %subst positions too - confirmed by a byte-for-byte diff
+// showing F0805A's real printed output is JU0300's own real printed
+// output shifted exactly 1 column right, uniformly, on every line. The
+// mechanism is not established; the fix is empirical - subtract 1 from
+// every start column below so F0805A's OWN printed output lines up with
+// JU0300's, not with golden-master.md's literal numbers.):
+// JUNO@5(6) JUTOK@15(6) JUDATEZ@25(8, edit code Z) JUTAN@37(6).
 //=======================================================================
 dcl-proc printDetail;
   dcl-pi *n;
   end-pi;
 
   clear line;
-  %subst(line:6:6)  = juno;
-  %subst(line:16:6) = jutok;
-  %subst(line:26:8) = %editc(judate:'Z');
-  %subst(line:38:6) = jutan;
+  %subst(line:5:6)  = juno;
+  %subst(line:15:6) = jutok;
+  %subst(line:25:8) = %editc(judate:'Z');
+  %subst(line:37:6) = jutan;
   write qsysprt line;
 end-proc;
 
 //=======================================================================
 // l1Break - closes out the OLD date sub-group (prevJutok/prevJudate -
 // the group that just ended, NOT the new record's own values). Column
-// positions: JUTOK@6(6) JUDATEZ@16(8) 'DATE TOTAL'@37(10) L1CNT@52(5,
-// edit code Z). Rolls L1CNT into L2CNT, then resets L1CNT for the next
-// date sub-group - same order as ju0300.rpg's own CL1-conditioned
-// calculations.
+// positions (FIXED, see printDetail's own note - same -1 correction):
+// JUTOK@5(6) JUDATEZ@15(8) 'DATE TOTAL'@36(10) L1CNT@51(5, edit code Z).
+// Rolls L1CNT into L2CNT, then resets L1CNT for the next date sub-group
+// - same order as ju0300.rpg's own CL1-conditioned calculations.
 //=======================================================================
 dcl-proc l1Break;
   dcl-pi *n;
   end-pi;
 
   clear line;
-  %subst(line:6:6)   = prevJutok;
-  %subst(line:16:8)  = %editc(prevJudate:'Z');
-  %subst(line:37:10) = 'DATE TOTAL';
-  %subst(line:52:5)  = %editc(l1cnt:'Z');
+  %subst(line:5:6)   = prevJutok;
+  %subst(line:15:8)  = %editc(prevJudate:'Z');
+  %subst(line:36:10) = 'DATE TOTAL';
+  %subst(line:51:5)  = %editc(l1cnt:'Z');
   write qsysprt line;
 
   l2cnt += l1cnt;
@@ -195,9 +212,10 @@ end-proc;
 
 //=======================================================================
 // l2Break - closes out the OLD customer group (prevJutok). Column
-// positions: JUTOK@6(6) 'CUST TOTAL'@37(10) L2CNT@52(5, edit code Z).
-// Stores L2CNT into the CT array (bounds-guarded, see header), then
-// resets L2CNT for the next customer.
+// positions (FIXED, see printDetail's own note - same -1 correction):
+// JUTOK@5(6) 'CUST TOTAL'@36(10) L2CNT@51(5, edit code Z). Stores L2CNT
+// into the CT array (bounds-guarded, see header), then resets L2CNT for
+// the next customer.
 //=======================================================================
 dcl-proc l2Break;
   dcl-pi *n;
@@ -209,18 +227,19 @@ dcl-proc l2Break;
   endif;
 
   clear line;
-  %subst(line:6:6)   = prevJutok;
-  %subst(line:37:10) = 'CUST TOTAL';
-  %subst(line:52:5)  = %editc(l2cnt:'Z');
+  %subst(line:5:6)   = prevJutok;
+  %subst(line:36:10) = 'CUST TOTAL';
+  %subst(line:51:5)  = %editc(l2cnt:'Z');
   write qsysprt line;
 
   l2cnt = 0;
 end-proc;
 
 //=======================================================================
-// grandTotal - LR processing. Column positions: 'GRAND TOTAL'@11(11)
-// GCNT@27(5, edit code Z) 'XFOOT='@36(6) XTOT@47(5, edit code Z)
-// 'OK'@60(2) or 'MISMATCH'@63(8).
+// grandTotal - LR processing. Column positions (FIXED, see printDetail's
+// own note - same -1 correction): 'GRAND TOTAL'@10(11) GCNT@26(5, edit
+// code Z) 'XFOOT='@35(6) XTOT@46(5, edit code Z) 'OK'@59(2) or
+// 'MISMATCH'@62(8).
 //=======================================================================
 dcl-proc grandTotal;
   dcl-pi *n;
@@ -232,14 +251,14 @@ dcl-proc grandTotal;
   xfootMatch = (xtot = gcnt);
 
   clear line;
-  %subst(line:11:11) = 'GRAND TOTAL';
-  %subst(line:27:5)  = %editc(gcnt:'Z');
-  %subst(line:36:6)  = 'XFOOT=';
-  %subst(line:47:5)  = %editc(xtot:'Z');
+  %subst(line:10:11) = 'GRAND TOTAL';
+  %subst(line:26:5)  = %editc(gcnt:'Z');
+  %subst(line:35:6)  = 'XFOOT=';
+  %subst(line:46:5)  = %editc(xtot:'Z');
   if xfootMatch;
-    %subst(line:60:2) = 'OK';
+    %subst(line:59:2) = 'OK';
   else;
-    %subst(line:63:8) = 'MISMATCH';
+    %subst(line:62:8) = 'MISMATCH';
   endif;
   write qsysprt line;
 end-proc;
