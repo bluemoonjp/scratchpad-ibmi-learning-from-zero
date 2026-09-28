@@ -1,24 +1,31 @@
       * V0601B - mixed fixed-form/free-form RPG IV demo (lesson 06-01b).
       * Ports R0402A (04-02, RPG III): 1580 x 1.10 = 1738.00, edit code 1.
-      * UNTESTED on real hardware (PUB400 SSH access is rate-limited).
+      * CONFIRMED on real hardware (part06-0103-freeform, 2026-09-26):
+      * CRTBNDRPG Highest Severity 00, CALL prints '1,738.00', matching
+      * R0402A's own real-machine value (not byte-for-byte identical as a
+      * print record -- R0402A's O-spec is 132 bytes wide, this is 15;
+      * only the edited digits match). See docs/probes.md.
       *
-      * Verified vs work/design/refs/ilerpgref75.txt: H/F/D-spec columns
-      * near line 24125-29948; C-spec columns near line 36799-37085 (NOT
-      * the same as RPG III; RPG III has no D-spec at all -- see report).
-      * /FREE and /END-FREE became no-ops in 7.2, still accepted in 7.5
-      * (near line 4204, 7536-7541); kept only so the reader can see the
-      * fixed/free boundary (06-01b core concept 2), not because 7.5
-      * requires them.
-      * %EDITC (near line 45287) replaces the O-spec edit-code column
-      * (RPG III has zero %-BIFs, appendix F). This realizes 06-01b core
-      * concept 1; it is not counted as new syntax for this lesson.
+      * H/F/D-spec and C-spec column positions here are NOT the same as
+      * RPG III's (RPG III has no D-spec at all -- see the 06-01b lesson
+      * prose for the full side-by-side column table).
+      * /FREE and /END-FREE are accepted (though no longer required by
+      * the compiler); kept only so the reader can see the fixed/free
+      * boundary (06-01b core concept 2).
+      * %EDITC is the free-form successor to the O-spec edit-code column
+      * (RPG III has zero %-BIFs, appendix F; the O-spec column itself
+      * still works unchanged in fixed-form RPG IV -- %EDITC is only
+      * required because this file's total is built in a /FREE block).
+      * This realizes 06-01b core concept 1; it is not counted as new
+      * syntax for this lesson.
       * WRITE to a program-described file needs a DS matching the file
-      * record length exactly (near line 66329-66358).
+      * record length exactly.
       *
-      * TODO: verify - hand-written by design (06-01 is the CVTRPGSRC-
-      * converted lesson, V0601A); this file has not been compiled.
-      * TODO: verify - exact %EDITC(...:'1') byte width for a 9,2 packed
-      * field; TOTALX is sized with slack (15) until confirmed on hardware.
+      * (Earlier drafts of this comment said this file was untested and
+      * had not been compiled -- that was already stale by the time
+      * 06-01b was written: part06-0103-freeform had settled it,
+      * including the %EDITC(...:'1') width against this 9,2 packed
+      * field -- 15 bytes was enough, no truncation observed.)
 
      H
 

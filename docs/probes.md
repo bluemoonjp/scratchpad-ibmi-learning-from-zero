@@ -2343,7 +2343,7 @@ B-5、1回目の接続。
 Highest Severity 00、Q0615Aの印字内容が採点表と完全一致、TXCHECK
 3 passed/0 failed)。
 
-## 第7部`part07-03-signature`の実機検証: 1回目は自分のバグでシナリオが崩れたが、`Program signature violation`のメッセージを実機確認(確認日2026-09-27)
+## 第7部`part07-03-signature`の実機検証: 1回目は自分のバグでシナリオが崩れたが、`Program signature violation`のメッセージを実機確認(確認日2026-09-28)
 
 B-7、1回目の接続。**候補として用意した2手続き版のスループアウェイ・
 ベースライン(`jucsrvb1.rpgle`)が実バグでコンパイル失敗**
@@ -2368,7 +2368,7 @@ OBJTYPE(*BNDDIR)`も成功。
 `jucsrvb1.rpgle`の`dcl-f juchum ... usropn;`行を削除して修正済み
 (`countCustOrders`を持たない2手続き版なので不要)。
 
-**再接続で完全なシナリオがCONFIRMED SUCCESS(2026-09-27)**:
+**再接続で完全なシナリオがCONFIRMED SUCCESS(2026-09-28)**:
 
 1. 2手続き版(`getCustName`・`pingJucsrv`のみ)を`EXPORT(*ALL)`で
    ベースライン化(モジュールSeverity 10=警告のみで成功)。
