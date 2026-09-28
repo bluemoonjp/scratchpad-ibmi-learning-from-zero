@@ -75,7 +75,13 @@
 // a compiled artifact (it is not part of this task and has no
 // committed source in this repo yet).
 //
-// STATUS: hardware-UNTESTED (Part 7 draft, draft/part07 branch).
+// STATUS: CONFIRMED on real hardware. getCustName's own call is V2
+// (part07-0203-srvpgm, 2026-09-27: "getCustName(C00001) = ACME
+// TRADING CO"). The full rebind/break/fix cycle this file undergoes
+// in 07-03 (EXPORT(*ALL) rebuild breaks it with MCH4431, then binder
+// source restores it without recompiling this file) is V2-confirmed
+// (part07-03-signature, 2026-09-28) - see src/qrpglesrc/jucsrv.rpgle's
+// and src/qsrvsrc/jucsrv.bnd's own headers for the full sequence.
 //=======================================================================
 
 ctl-opt dftactgrp(*no) actgrp(*new) bnddir('JUCSRVBD');

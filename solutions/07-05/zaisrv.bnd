@@ -3,12 +3,11 @@
    implementation (get / reserve / release) and their own headers for
    the full port/citation trail.
 
-   PROVENANCE OF THIS FILE'S SHAPE: neither src/qsrvsrc/jucsrv.bnd
-   (07-03's planned binder source) nor src/qsrvsrc/ itself exists in
-   this repo as of this writing (checked directly this session: no
-   src/qsrvsrc directory, no jucsrv.bnd anywhere). This file could
-   therefore not reuse an already-established example from this repo
-   and was instead built directly from
+   PROVENANCE OF THIS FILE'S SHAPE: src/qsrvsrc/jucsrv.bnd (07-03's own
+   binder source) now exists and is CONFIRMED on real hardware
+   (part07-03-signature) - see that file's own header for the full
+   EXPORT(*ALL)-vs-binder-source signature story. This file was
+   originally built directly from
    work/design/refs/ileconcepts75.txt's own worked STRPGMEXP / EXPORT
    SYMBOL / ENDPGMEXP examples - specifically the "Binder Language
    Example 1" block at lines 4131-4137, and the near-identical repeat
@@ -56,10 +55,11 @@
    had flagged this casing rule as unconfirmed against
    ileconcepts75.txt's own EXPORT SYMBOL examples alone; the rule was
    instead found in ilerpgref75.txt's EXTPROC section, read directly
-   this session. TODO: verify against a real CRTSRVPGM + DSPSRVPGM
-   listing before treating this as hardware-confirmed - nothing in
-   Part 6 or Part 7 has been compiled on real hardware yet
-   (docs/style-guide.md V1/V2/V3 scale).
+   this session. CONFIRMED (part07-05-checkpoint, 2026-09-27): DRIVER
+   successfully bound to and called get/reserve/release via
+   EXTPROC('GET')/('RESERVE')/('RELEASE') - a mismatched default
+   casing would have failed to bind, so this successful build+run is
+   itself the real-compile confirmation this TODO was waiting for.
 
    Intended member: QSRVSRC/ZAISRV (library resolved via *LIBL, per
    docs/style-guide.md - never a hardcoded library name in source).

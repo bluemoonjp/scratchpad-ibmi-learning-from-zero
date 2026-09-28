@@ -4,10 +4,10 @@
 /* before this lesson (confirmed by directory listing before writing  */
 /* this file). It maps to a QSRVSRC source file/member the same way   */
 /* src/qrpglesrc/ maps to QRPGLESRC - see this repo's build notes for  */
-/* the exact CRTSRCPF used to create it on PUB400 (not repeated here; */
-/* TODO: verify the harness actually creates a src/qsrvsrc -> QSRVSRC  */
-/* member mapping, since every other src/ subdirectory in this repo    */
-/* maps to an already-existing source file).                          */
+/* the exact CRTSRCPF used to create it on PUB400 (not repeated here). */
+/* CONFIRMED: this file transferred as QSRVSRC/JUCSRV and both         */
+/* CRTSRVPGM and UPDSRVPGM accepted it on real hardware                */
+/* (part07-03-signature, part07-0203-srvpgm).                          */
 /*                                                                     */
 /* Binder-language syntax (STRPGMEXP/EXPORT SYMBOL/ENDPGMEXP) and the  */
 /* PGMLVL(*CURRENT)/PGMLVL(*PRV) mechanics below are verified against  */
@@ -42,7 +42,7 @@
 /* ileconcepts75.txt's own worked example (Example 3, cited above)     */
 /* exactly.                                                            */
 /*                                                                     */
-/* CONFIRMED on real hardware (part07-03-signature, 2026-09-27), the   */
+/* CONFIRMED on real hardware (part07-03-signature, 2026-09-28), the   */
 /* full narrative this file exists to demonstrate: a 2-procedure       */
 /* module (getCustName+pingJucsrv) built with EXPORT(*ALL), with a     */
 /* client (F0702A) bound against it, keeps working across a REBUILD    */
@@ -53,22 +53,27 @@
 /* THIS binder source (PGMLVL(*PRV) exactly reproducing the original   */
 /* 2-symbol signature) - via either CRTSRVPGM or UPDSRVPGM, both       */
 /* confirmed working - immediately restores the SAME UNCHANGED F0702A  */
-/* to working order, with no recompile. This is the complete proof     */
-/* that binder source's PGMLVL(*PRV) mechanism does exactly what it    */
-/* promises: preserve compatibility for existing *ALL-bound clients    */
-/* while a NEW client (F0703A, needing countCustOrders) is added at    */
-/* the same time.                                                      */
+/* to working order, with no recompile. This confirms that binder      */
+/* source's PGMLVL(*PRV) mechanism preserves compatibility for existing */
+/* *ALL-bound clients while a NEW client (F0703A, needing               */
+/* countCustOrders) is added at the same time - PROVIDED the *PRV       */
+/* block's symbols are written in the same order EXPORT(*ALL) itself    */
+/* would have used (alphabetical). Here that happens to be the same     */
+/* order the symbols were originally declared in (getCustName,          */
+/* pingJucsrv), so this file doesn't demonstrate the alphabetical-vs-   */
+/* declaration-order distinction on its own; see jucsrv.rpgle's header  */
+/* for the case where that distinction actually matters.                */
 /*                                                                     */
 /* EXPORT SYMBOL names are all QUOTED, mixed-case, and match           */
 /* jucsrv.rpgle's own EXTPROC(*DCLCASE) choice on each procedure's      */
 /* DCL-PI exactly (getCustName, pingJucsrv, countCustOrders) - see     */
 /* that file's header comment for why *DCLCASE was used instead of     */
 /* relying on the compiler's default (uppercase) export name.          */
-/* CONFIRMED (part07-0203-srvpgm, part07-03-signature, 2026-09-27):    */
-/* the case-matching between a module's *DCLCASE-derived export name   */
-/* and a quoted EXPORT SYMBOL string works exactly as expected - both  */
-/* F0702A (getCustName) and F0703A (countCustOrders) resolved and ran  */
-/* correctly against this binder-source-built JUCSRV.                  */
+/* CONFIRMED (part07-0203-srvpgm, 2026-09-27; part07-03-signature,     */
+/* 2026-09-28): the case-matching between a module's *DCLCASE-derived   */
+/* export name and a quoted EXPORT SYMBOL string works exactly as       */
+/* expected - both F0702A (getCustName) and F0703A (countCustOrders)   */
+/* resolved and ran correctly against this binder-source-built JUCSRV.  */
 /*                                                                     */
 /* Snapshot note (this repo holds only ONE state of this file, the     */
 /* final one, per commit): the 07-03-step-2 intermediate state (a      */

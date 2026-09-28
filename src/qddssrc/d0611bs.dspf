@@ -279,7 +279,7 @@
      A*                                     decisions-2026-09.md P6-8 (3
      A*                                     judges): editable fields are
      A*                                     SHONM/SHOHAT only, so this
-     A*                                     packed(7:2) unit price never
+     A*                                     zoned(7:2) unit price never
      A*                                     needs an EDTCDE (an uncounted new
      A*                                     construct 06-11b's own new-syntax
      A*                                     budget has no room for). A newly

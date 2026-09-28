@@ -11,9 +11,11 @@
 //       C           ZERO      COMP 0                        60
 //       C  N60      NUM       DIV  ZERO      ANSWER  30
 //       C   60                MOVEL'DIV0ERR' MSG    10
-//   ("forbid the dangerous operation from ever running" - RPG III had no
-//   way to run the DIV and recover afterward; result indicators on DIV
-//   only report the SIGN of the result and do not prevent RPG0102).
+//   ("forbid the dangerous operation from ever running" - DIV has no
+//   error-indicator (columns 56-57) option at all, unlike most other
+//   opcodes, so RPG III had no way to let the DIV run and recover
+//   afterward via a result indicator; *PSSR (or a pre-check like this
+//   one) was DIV's only route back after RPG0102).
 //
 //   This file ports the SAME numbers (NUM=10, ZERO=0, matching R0412A's
 //   Z-ADD10/Z-ADD0) to the OPPOSITE strategy: let the division run
@@ -27,16 +29,22 @@
 //   on why the two-session record-lock scenario cannot be reproduced by
 //   the verify/ harness: a single connection, a single sequential job).
 //
-//   WHAT IS ACTUALLY NEW HERE (corrected from an earlier draft of this
-//   comment): RPG III (RPG/400) ALSO had a program status data
+//   WHAT IS ACTUALLY NEW HERE (corrected twice from earlier drafts of
+//   this comment): RPG III (RPG/400) ALSO had a program status data
 //   structure with the same predefined layout (STATUS at 11-15, the
 //   failing statement number at 21-28, ROUTINE at 29-36) - see
-//   work/design/refs/rpg400ref.txt lines 3368-3465. So a PSDS itself is
-//   NOT new. What IS new is that RPG III could only read its PSDS
-//   inside *PSSR, a single global error subroutine for the WHOLE
-//   program; RPG IV's MONITOR/ON-ERROR lets a handler be scoped to one
-//   small block of code, right at the point of risk, matching the
-//   design's core concept (1) for this lesson.
+//   work/design/refs/rpg400ref.txt lines 3368-3465. Per that same
+//   reference, STATUS is updated on ANY exception/error (whether an
+//   error indicator was set on or *PSSR received control), and can be
+//   read ANYWHERE in the program, not only inside *PSSR - so a PSDS
+//   itself is NOT new, and neither is where it can be read. What IS
+//   new is that RPG IV's MONITOR/ON-ERROR lets the *handler itself* be
+//   scoped to one small block of code instead of one whole-program
+//   *PSSR. For an opcode like DIV, which has no error-indicator
+//   (columns 56-57) option at all, *PSSR (or a pre-check) was RPG
+//   III's only way to regain control after a failure - that narrower
+//   point is what R0412A's own design (lines 10-16 above) illustrates,
+//   matching the design's core concept (1) for this lesson.
 //
 // Why SNDPGMMSG/QMHSNDPM and NOT DSPLY:
 //   DSPLY can only be CALLed from an interactive job (see final_policy.md
@@ -63,9 +71,9 @@
 // STRDBG / STRSRVJOB (V3, NOT exercised by this source file):
 //   STRDBG PGM(...) and STRSRVJOB are interactive-only debugging tools.
 //   Per style-guide.md's V1/V2/V3 scheme, they are V3 (5250 interactive
-//   operation) and will be covered in this lesson's prose (the
-//   docs/part06/06-09 page, not yet written), the same way 04-12
-//   covered STRDBG as description-only. This .rpgle file does not
+//   operation) and are covered in this lesson's prose
+//   (docs/part06/06-09-exception-handling-debugging.md), the same way
+//   04-12 covered STRDBG as description-only. This .rpgle file does not
 //   call, reference, or depend on either of them in any way.
 //
 // Program-entry dcl-pi: this program takes no CL-level parameters, so
@@ -230,11 +238,12 @@ dcl-proc runDivideDemo;
   dcl-s msgText char(200);
   dcl-s abnormalEnd ind;              // ON-EXIT's status indicator
 
-  // NOTE: %CHAR and %TRIMR are formally introduced as new syntax in
-  // 06-06, not this lesson. As 06-05's f0605s.rpgle already does with
-  // %TRIM/%CHAR ahead of their formal introduction, they are used here
-  // ahead of that too, because building a one-line job-log message
-  // needs them; nothing about MONITOR/ON-ERROR/PSDS/ON-EXIT/QMHSNDPM
+  // NOTE: %CHAR and %TRIMR were formally introduced as new syntax in
+  // 06-06, which precedes this lesson - unlike 06-05's f0605s.rpgle
+  // (which does use %TRIM/%CHAR ahead of their formal introduction),
+  // this file uses them AFTER their introduction, simply because
+  // building a one-line job-log message needs them; nothing about
+  // MONITOR/ON-ERROR/PSDS/ON-EXIT/QMHSNDPM
   // (this lesson's actual new material) depends on that ordering.
 
   // R0412A's protection was "COMP 0 before DIV". Here, instead, the DIV

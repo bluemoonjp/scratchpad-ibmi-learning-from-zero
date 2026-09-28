@@ -82,13 +82,15 @@
 // name to exactly the DCL-PROC spelling (getCustName, pingJucsrv,
 // countCustOrders), removing the guesswork instead of leaving it as an
 // unverified assumption. This decision is still flagged below with a
-// narrower TODO: verify, because the *interaction* of *DCLCASE with
+// CONFIRMED below: the *interaction* of *DCLCASE with
 // CRTSRVPGM EXPORT(*ALL) (07-02's first CRTSRVPGM, before any binder
-// source exists) has not been hardware-confirmed - *DCLCASE should
-// export under *ALL exactly as it does under *SRCFILE (the external
-// name is a property of the module's export table either way, not of
-// how CRTSRVPGM was told to expose it), but this repo has not compiled
-// this yet.
+// source exists) IS hardware-confirmed - *DCLCASE exports under *ALL
+// exactly as it does under *SRCFILE (the external name is a property
+// of the module's export table either way, not of how CRTSRVPGM was
+// told to expose it): 07-02's own EXPORT(*ALL) build successfully
+// resolved getCustName(C00001) = ACME TRADING CO via F0702A, and the
+// same interaction is confirmed again for all three procedures across
+// part07-0203-srvpgm and part07-03-signature.
 //
 // No internal dcl-pr/prototype is declared in THIS file for any of the
 // three exported procedures, and no separate .rpgleinc is used either.
@@ -152,31 +154,39 @@
 // src/qsrvsrc/jucsrv.bnd, permanently - "temporary" describes its
 // PURPOSE (it does nothing useful), not its lifespan in the file.
 //
-// Step 1's re-creation (still EXPORT(*ALL) at this point - this is what
-// breaks F0702A, since EXPORT(*ALL) recomputes the current signature
-// from whatever the module exports right now, with no *PRV/compat
-// block of its own):
+// Step 1's re-creation (still EXPORT(*ALL) at this point, module now
+// exports getCustName + pingJucsrv - 2 procedures):
 //     CRTRPGMOD MODULE(<USER>1/JUCSRV) SRCFILE(<USER>1/QRPGLESRC)
 //               SRCMBR(JUCSRV)
 //     CRTSRVPGM SRVPGM(<USER>1/JUCSRV) MODULE(<USER>1/JUCSRV)
-//               EXPORT(*ALL)
-// F0702A (built against 07-02's getCustName-only signature) now fails
-// to activate - TODO: verify the exact message ID on real hardware (not
-// recorded anywhere in this repo yet, per the design doc's own note in
-// part07-design-v1.md section 9 item 12; do not guess it here).
+//               EXPORT(*ALL) ACTGRP(*CALLER)
+// This 1->2-procedure transition does NOT leave F0702A broken and
+// later repaired - the shipped lesson (docs/part07/07-03-binder-source-signatures.md,
+// its own step 4) simply REBUILDS F0702A once, right here, still
+// under plain EXPORT(*ALL), to pick up the new 2-symbol signature.
+// This is the ONLY place F0702A is ever recompiled in this lesson.
 //
 // ----------------------------------------------------------------
-// 07-03 step 2: binder source, EXPORT(*SRCFILE), one rebind of F0702A
+// 07-03 step 2: countCustOrders added - THIS is what actually breaks
+// F0702A (now NOT rebound again)
+// ----------------------------------------------------------------
+// The module is rebuilt again (still EXPORT(*ALL)) with all 3
+// procedures. Since F0702A is NOT recompiled this time, it stays bound
+// to the 2-symbol signature from step 1 - EXPORT(*ALL) now computes a
+// DIFFERENT (3-symbol, alphabetical-order) signature, so F0702A fails
+// to activate: CONFIRMED real message MCH4431 ("Program signature
+// violation."), part07-03-signature, 2026-09-28.
+//
+// ----------------------------------------------------------------
+// 07-03 step 3: binder source, EXPORT(*SRCFILE), F0702A never rebound
+// again
 // ----------------------------------------------------------------
 // See src/qsrvsrc/jucsrv.bnd for the binder-source member itself and
 // its own header comment for the STRPGMEXP/PGMLVL/EXPORT SYMBOL syntax
-// and citations. After switching CRTSRVPGM to EXPORT(*SRCFILE), F0702A
-// is rebound EXACTLY ONCE (recompiled/re-created, its own source
-// unchanged) to pick up the new (getCustName + pingJucsrv) signature.
-// No "no-stop" claim is made for this step - see the design doc's own
-// core-concept note for 07-03 (part07-design-v1.md, 07-03 entry): this
-// lesson does not promise to repair the EXPORT(*ALL) version in place
-// without any interruption.
+// and citations. Switching CRTSRVPGM to EXPORT(*SRCFILE) - whose
+// PGMLVL(*PRV) block preserves the exact 2-symbol signature from step
+// 1 - restores F0702A WITHOUT recompiling it again: CONFIRMED
+// (part07-03-signature, 2026-09-28).
 //
 //     CRTSRVPGM SRVPGM(<USER>1/JUCSRV) MODULE(<USER>1/JUCSRV)
 //               EXPORT(*SRCFILE) SRCFILE(<USER>1/QSRVSRC)
@@ -265,9 +275,11 @@
 //   file ... for the first time in a module or subprocedure with an
 //   explicit OPEN operation, specify the USROPN keyword."
 //
-//   TODO: verify - this exact CLOSE/OPEN-every-call pattern has not
-//   been hardware-tested (this repo's SSH access has been rate-limited
-//   throughout Part 6 and Part 7 drafting). An alternative considered
+//   CONFIRMED (part07-0203-srvpgm, 2026-09-27; part07-03-signature,
+//   2026-09-28): the positive case (WITH this close/open pair) is
+//   V2-confirmed - F0703A's two calls in one activation group agree.
+//   Only the negative/counterfactual prediction (removing the fix
+//   causes call 2 to read 0) remains unverified. An alternative considered
 //   and REJECTED here: declaring juchum as a LOCAL file inside
 //   countCustOrders's own dcl-proc body instead (automatic-storage local
 //   files are opened fresh and closed automatically on every call per
@@ -285,10 +297,20 @@
 //   external-field style f0612s.rpgle and getCustName both already use.
 //
 //   To reproduce the ORIGINAL bug for the lesson (e.g. to demonstrate
-//   the failure before showing the fix): delete the two lines marked
-//   "-- repositioning fix --" below and re-create the module/service
-//   program; f0703s.rpgle's second reported count will then read 0
-//   regardless of the first count.
+//   the failure before showing the fix): deleting ONLY the two lines
+//   marked "-- repositioning fix --" below is NOT enough - juchum
+//   would then be USROPN with no OPEN statement anywhere in the
+//   module at all, which is a COMPILE-TIME failure (CONFIRMED,
+//   RNF7062, "There is no OPEN operation for file JUCHUM that
+//   specifies user controlled open", part07-03-signature's 1st
+//   connection hit exactly this in a throwaway 2-procedure baseline
+//   that made the same mistake), not the intended silent runtime bug.
+//   The correct reproduction: ALSO remove usropn from the dcl-f juchum
+//   line below (so it becomes an ordinary auto-opening global file,
+//   like tokuim), in addition to removing the two close/open lines -
+//   f0703s.rpgle's second reported count should then read 0 regardless
+//   of the first count. This exact recipe (with usropn removed too)
+//   remains hardware-unverified.
 //=======================================================================
 
 ctl-opt nomain;

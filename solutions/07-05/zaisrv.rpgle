@@ -117,7 +117,10 @@
 //   or "a procedure interface" specifically, and this file has
 //   neither for these three procedures (only dcl-proc + dcl-pi), so
 //   the exact wording is not a byte-for-byte match to this file's
-//   shape. Treat as high-confidence, not hardware-confirmed.
+//   shape. CONFIRMED (part07-05-checkpoint, 2026-09-27): DRIVER's own
+//   successful build+call via EXTPROC('GET')/('RESERVE')/('RELEASE')
+//   is the real-compile confirmation this TODO was waiting for - a
+//   mismatched default casing would have failed to bind.
 //
 // BUILD RECIPE (two-step: CRTRPGMOD then CRTSRVPGM - a *SRVPGM cannot
 // be produced by CRTBNDRPG, which only ever creates a *PGM; verified
@@ -167,9 +170,9 @@ dcl-ds zaikomKey likerec(zaikor : *key);
 // so this procedure never needs an UNLOCK.
 //
 // Returns the current ZASU value, or -1 if prodCode does not exist in
-// ZAIKOM. -1 is a safe sentinel: ZASU is packed(7:0) and this table's
-// business meaning never has negative stock (0 is a valid real
-// quantity - out of stock - so 0 cannot be the sentinel).
+// ZAIKOM. -1 is a safe sentinel: get()'s return value is packed(7:0)
+// and this table's business meaning never has negative stock (0 is a
+// valid real quantity - out of stock - so 0 cannot be the sentinel).
 //=======================================================================
 dcl-proc get export;
   dcl-pi *n packed(7:0);
@@ -355,7 +358,7 @@ end-proc;
 //
 // KNOWN LIMITATION (not exercised by driver.rpgle's own test data, and
 // not fixed here - flagging rather than guessing per this task's
-// instructions): ZASU is packed(7:0), maximum 9999999. reserve()'s
+// instructions): qty is packed(7:0), maximum 9999999. reserve()'s
 // SHORT check guards against underflow (going below zero); release()'s
 // zasu += qty has no symmetric guard against overflowing past 9999999
 // if ever called with an unrealistically large qty. F0608A never had

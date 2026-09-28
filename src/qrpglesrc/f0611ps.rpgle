@@ -122,6 +122,18 @@ return;
 // continuing RRN1 from wherever it left off. Sets eofReached *on the
 // moment JUCHUM's own %EOF fires, so the caller never asks for another
 // page after that.
+//
+// UNVERIFIED, DOCUMENTED INTERACTION (see docs/part06/06-11-subfiles-page-message.md's
+// own hardware notes section for the learner-facing version of this same note):
+// RRN1 (the SFILE(SFL1:RRN1) field) is also written by READC whenever
+// the caller reads a selected row (ilerpgref75.txt's own SFILE keyword
+// description: the RRN of a row retrieved by READC/CHAIN is placed
+// into the rrnfield). If a row is selected (READC overwrites RRN1)
+// and ROLLUP fires before the next EXFMT, this proc's `rrn1 += 1`
+// would continue from the selected row's RRN rather than the true
+// load position - interactive-only to test (WORKSTN/EXFMT cannot run
+// non-interactively in this harness), so this has not been confirmed
+// either way.
 //=======================================================================
 dcl-proc loadNextPage;
   dcl-pi *n;

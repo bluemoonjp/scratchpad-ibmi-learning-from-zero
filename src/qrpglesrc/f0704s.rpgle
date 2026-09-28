@@ -174,8 +174,9 @@
 //   *CALLER-bound comparison object from this same source, via
 //   CRTRPGMOD (module only) + CRTPGM ACTGRP(*CALLER) (CRTPGM's own
 //   ACTGRP parameter is meant to override whatever a module's ctl-opt
-//   said), FAILED at the CRTRPGMOD step itself: "Compilation stopped.
-//   Severity 20 errors found in program." This source's own ctl-opt
+//   said), FAILED at the CRTRPGMOD step itself: RNF1324 ("Keywords
+//   DFTACTGRP, ACTGRP, or USRPRF are not allowed."), "Compilation
+//   stopped. Severity 20 errors found in program." This source's own ctl-opt
 //   line below includes actgrp('F0704AG') - which this file's own
 //   header already cites as "valid only with CRTBNDRPG" - and
 //   CRTRPGMOD (unlike CRTBNDRPG) rejects that keyword outright, so a
