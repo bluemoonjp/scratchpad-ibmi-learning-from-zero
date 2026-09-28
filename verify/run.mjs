@@ -77,7 +77,9 @@ async function cmdRun(batchDirName) {
   const ledgerIndex = recordStart(manifest.batch, `verify/run.mjs ${batchDirName}`);
   console.log(`接続を開始します(台帳 index=${ledgerIndex})...`);
 
-  const result = await runSsh(cfg, script);
+  // manifest.sshTimeoutMs で既定(180秒)を上書きできる(makei等、時間が読めない
+  // 処理を含むマニフェスト向け)。省略時は runSsh 側の既定にそのまま委ねる。
+  const result = await runSsh(cfg, script, { timeoutMs: manifest.sshTimeoutMs });
   // connectionStatus は「SSH接続・認証が成功したか」だけを表す(===VFY:start=== が
   // 出たかどうかで判定。verify/lib/ssh.mjs 参照)。スクリプト内の各ステップ
   // (コンパイル・実行・RPG0102の自動応答等)が実際に成功したかどうかは、

@@ -87,6 +87,7 @@ ssh -i <鍵> -p 2222 -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterva
   "library": "<省略時は <USER>2。\"*B\" なら <USER>B(SAVF/退避役)に解決される>",
   "remoteDir": "<省略時は vfy/<batch>>",
   "wrapperCcsid": "<省略可。CLラッパー自身のソース転送に使うCCSID。省略時(またはfalse)は無指定>",
+  "sshTimeoutMs": "<省略可。この接続のkillタイマー(verify/lib/ssh.mjs)。省略時は既定180000(180秒)。makei等、時間が読めない処理を含むマニフェストで上書きする>",
   "steps": [
     { "type": "file", "localPath": "src/foo.rpg", "remoteSrcFile": "QRPGSRC", "member": "FOO", "ccsid": "<省略時(またはfalse)は無指定>" },
     { "type": "cl", "label": "COMPILE", "cmd": "CRTRPGPGM PGM(&LIB/FOO) SRCFILE(&LIB/QRPGSRC) SRCMBR(FOO)", "monmsg": ["CPF0000"] },
