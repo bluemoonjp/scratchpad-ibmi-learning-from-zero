@@ -2356,11 +2356,40 @@ B-7、1回目の接続。**候補として用意した2手続き版のスルー�
 OBJTYPE(*BNDDIR)`も成功。
 
 `jucsrvb1.rpgle`の`dcl-f juchum ... usropn;`行を削除して修正済み
-(`countCustOrders`を持たない2手続き版なので不要)。**次回接続で、
-本来意図していた「2手続き`EXPORT(*ALL)`ベースライン→3つ目の
-エクスポート追加でF0702Aが壊れる→バインダー言語で`PGMLVL(*PRV)`が
-元の2シンボル署名を保存しF0702Aが直る」という完全なシナリオを
-再確認する。**
+(`countCustOrders`を持たない2手続き版なので不要)。
+
+**再接続で完全なシナリオがCONFIRMED SUCCESS(2026-09-27)**:
+
+1. 2手続き版(`getCustName`・`pingJucsrv`のみ)を`EXPORT(*ALL)`で
+   ベースライン化(モジュールSeverity 10=警告のみで成功)。
+2. `F0702A`を新規コンパイルしこのベースラインに束縛
+   → `CALL`成功(`getCustName(C00001) = ACME TRADING CO`)。
+3. 実物の3手続き版(`countCustOrders`込み)を、依然`EXPORT(*ALL)`
+   のまま再構築(モジュール/サービス・プログラムとも再作成)。
+4. `F0702A`を**再コンパイルせずに**再度`CALL`
+   → **`Program signature violation.`(実機確認、メッセージ本文
+   「Program signature violation.」)で失敗。** これが本来確認
+   したかった「`EXPORT(*ALL)`のままエクスポートを追加すると
+   既存の束縛済みクライアントが壊れる」という核心の実演。
+5. `EXPORT(*SRCFILE)`(実物の`jucsrv.bnd`、`PGMLVL(*CURRENT)`=3
+   シンボル・`PGMLVL(*PRV)`=元の2シンボルと同じ順序)へ切り替え
+   (`CRTSRVPGM`)。
+6. 同じ設定で`UPDSRVPGM`も実行——`Service program JUCSRV in <lib>
+   updated.`で構文・動作とも成功確認。
+7. `F0702A`を**依然再コンパイルせずに**もう一度`CALL`
+   → **成功(`getCustName(C00001) = ACME TRADING CO`)。** これで
+   `PGMLVL(*PRV)`の明示的な2シンボル署名が、`EXPORT(*ALL)`が
+   同じ2手続きに対して計算した署名と実際に一致することを実機で
+   確認した——07-03(バインダー言語)の核心の主張(「バインダー
+   言語へ切り替えれば、既存クライアントの互換性を保ったまま
+   新しいエクスポートを追加できる」)がPUB400で成立することを
+   実証済み。
+8. `F0703A`(新規コンパイル、`countCustOrders`使用)も成功、
+   2回連続呼び出しの値も一致(`JUCHUM`再配置ロジックの正しさを
+   確認)。
+9. 使い捨ての`*BNDDIR`作成→`DLTOBJ OBJTYPE(*BNDDIR)`も成功。
+
+これでB-7は完全にCONFIRMED SUCCESS。
 
 ## 未実施のプローブ
 
