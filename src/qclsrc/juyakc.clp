@@ -1,6 +1,11 @@
 /* JUYAKC - nightly job stream skeleton (front / main / back / error).    */
 /* The "main" section is a placeholder: Part 4 (04-08) plugs ZAHIK3 in    */
 /* here once RPG III exists. See 03-13.                                   */
+/* FIXED: CPYTOIMPF needs RCDDLM(*CR) for a stream-file export, or it     */
+/* fails with CPF2845 reason code 11 (no primary source for this in      */
+/* this repo's reference set - confirmed via real hardware failure/fix   */
+/* in Part 7's JUYAKL, the identical command without this parameter,     */
+/* src/qclsrc/juyakl.clle, part07-04-actgrp-cl, 2026-09-27).              */
              PGM
 
              DCL        VAR(&LIB) TYPE(*CHAR) LEN(10)
@@ -35,7 +40,8 @@
              CHGVAR     VAR(&TOSTMF) VALUE('/home/' *TCAT %TRIM(&USRPRF) +
                           *TCAT '/work/juchum_export.csv')
              CPYTOIMPF  FROMFILE(&LIB/JUCHUM) TOSTMF(&TOSTMF) +
-                          MBROPT(*REPLACE) STMFCCSID(1208)
+                          MBROPT(*REPLACE) STMFCCSID(1208) +
+                          RCDDLM(*CR)
 
              SNDPGMMSG  MSG('JUYAKC: done. Next order number is now ' +
                           *BCAT %CHAR(&NEXTNO) *BCAT '.')
