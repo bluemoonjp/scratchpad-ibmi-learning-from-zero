@@ -2651,7 +2651,31 @@ ZAIKOM/SHOHIMへの書き込みは一切無いため、TXRESETは実施してい
 
 **副次的な確認(ハーネス自身の挙動)**: 今回のジョブ・ログの先頭は「Job 616906/QUSER/QP0ZSPWT started ... system CALL PGM(<USER>2/TPART06P43).」で始まっており、`docs/probes.md:113`(このファイル自身、TXSETUPの節)が指摘する「ADDLIBLEはsystem呼び出しを跨いで持続しない」の根拠を、この接続でも独立に再確認した——qshの個々の`system "..." 2>&1`呼び出しは、`cl`型ステップをまとめた1本のCLラッパー(`CALL PGM(...)`)も含め、それぞれ新規のジョブとして実行されるとみられる(clラッパー内部はもちろん1つのジョブ・1つの呼び出しレベルで完結しており、これが`SETWAIT`(`OVRDBF`)の効果が`RUNCHK`(同じラッパー内の後続ステップ)まで正しく持続した理由でもある)。
 
-06-11bのレッスン本文(`docs/part06/06-11b-maintenance-screen-locking.md`)を、この確認結果に合わせて更新する必要がある(「P43未実施」の記述・冒頭メタデータの依存プローブ欄を含む)。
+06-11bのレッスン本文(`docs/part06/06-11b-maintenance-screen-locking.md`)を、この確認結果に合わせて更新する必要がある(「P43未実施」の記述・冒頭メタデータの依存プローブ欄を含む)。**→この接続と同じPRで反映済み。**
+
+## 第8部`part08-04-testkit`: TESTKIT・TSTJUCSRV・TSTZAISRVを実機で初めて確認、CONFIRMED SUCCESS(確認日2026-09-28、2回の接続)
+
+Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・アサーション用`*SRVPGM`、`src/qrpglesrc/testkit.sqlrpgle`)・`TSTJUCSRV`(JUCSRVの10ケース+意図的な1件の失敗ケース、`solutions/08-04/tstjucsrv.rpgle`)・`TSTZAISRV`(ZAISRVの境界値5ケース、`solutions/08-04/tstzaisrv.rpgle`)は、いずれもこの接続まで一度もコンパイル・実行されたことが無かった。
+
+**1回目の接続(15:39:57Z)**: 3本ともHighest Severity 00でコンパイル成功。設計時に懸念していた未確認の技術的判断がすべて実機で解決した:
+
+- **NOMAINモジュール内、全dcl-procの外(モジュール・スコープ)に置いた`EXEC SQL SET OPTION`は、そのままコンパイル可能だった。** モジュール・レベルのD仕様(`qmhsndpmMsgFile`/`qmhsndpmErrCode`/`qmhsndpm`プロトタイプ)より後、最初の`dcl-proc`より前という配置で、severity 30以上のエラーは無かった。
+- **`CHGCURLIB1`(`CHGCURLIB CURLIB(&LIB)`)により、`testInit()`の無修飾`CREATE TABLE`が`<USER>2`(`&LIB`)に作られることを確認**(ジョブ・ログに「Current library changed to `<USER>2`.」)。`docs/probes.md`の`part07-04-actgrp-cl`節が指摘した「ハーネスの既定ではCURLIBが`<USER>1`のまま」という罠を、この`CHGCURLIB1`ステップで正しく回避できている。
+- **`callStackCtr=2`での`QMHSNDPM(*ESCAPE)`とMONITORの組み合わせが設計どおりに動作**: 意図的に失敗させた`00-DELIBERATE-FAIL-DEMO`(期待値999、実際の`countCustOrders('C00001')`=2)がジョブ・ログに「TESTKIT: assertion failed - 00-DELIBERATE-FAIL-DEMO.」を記録した直後も、ラッパー自身の`RUNTSTJUCSRV`ステップに「FAILED」マーカーが一切出なかった——`CALL PGM(TSTJUCSRV)`自体は正常終了で返ってきたことを意味し、`MONITOR`がエスケープを捉え、`TSTJUCSRV`のメインラインが最後まで実行された強い状況証拠になった(2回目の接続で直接確認、後述)。
+- **TSTZAISRVの11件のアサーションが全てPASS**。特に境界値2件(`1-RESERVE-EXACT-OK`/`1B-STOCK-ZERO`)・`2B-STOCK-UNCHANGED`(値`7`)が、`db/data/load_v1.sql`の実際のP00001初期値`45`ではなく、`SEEDQTEMP`ステップで注入した`7`を見ていたことから、**`OVRDBF FILE(ZAIKOM) TOFILE(QTEMP/ZAIKOM) OVRSCOPE(*JOB)`が、`ACTGRP(*NEW)`の`TSTZAISRV`から`ACTGRP(*CALLER)`で活性化される`ZAISRV`内部の`dcl-f zaikom`のオープンまで正しく届いていたことを直接確認できた**(advisorが指摘した、P43のOVRDBFが同一活性化グループ内でしか確認されていないという懸念への回答)。
+- **`shared-zaikom-check`collectが本物の`&LIB/ZAIKOM`のP00001を`45`のまま示した**——共有テーブルには一切触れていないことを独立に確認(QTEMP分離が機能した証拠)。
+
+**1回目の接続で見つけた実バグ(修正済み)**: `testInit()`が`CREATE TABLE`(存在すれば無視)に加えて`DELETE FROM TESTRES`も行う設計だった。`TSTJUCSRV`・`TSTZAISRV`はどちらも自分のメインラインの先頭で`testInit()`を呼ぶため、同じ接続内で`TSTJUCSRV`→`TSTZAISRV`の順に実行すると、**`TSTZAISRV`自身の`testInit()`が`TSTJUCSRV`の記録した11行を消してから自分の11行を書き込んでいた**(1回目のcollectが`TSTZAISRV`の11行だけを返した理由)。`testInit()`から`DELETE`を削除し(以後はテーブルの存在確認のみ)、マニフェスト側に明示的な`CLEARTESTRES`(`DELETE FROM &LIB/TESTRES`、VFYLOGと同じ「接続の先頭で1回だけ空にする」パターン)ステップを追加して2回目の接続で再検証した。
+
+**2回目の接続(15:55:29Z)**: 3本とも`REPLACE(*YES)`で再コンパイル(Highest Severity 00、実質無変更のため無害)。`CLEARTESTRES`で空にした`TESTRES`に、今度は`TSTJUCSRV`・`TSTZAISRV`両方の行が残った:
+
+- **`TSTJUCSRV`の実ケース12件(設計書の10項目、09・10がそれぞれ2アサーションに分かれるため実際は12件)が全てPASS**: `getCustName('C00001')`='ACME TRADING CO'、`getCustName('C00002')`='NORTH STAR LTD'、`getCustName('Z99999')`='NOTFOUND'、`countCustOrders('C00001')`=2、`countCustOrders('C00002')`=1、`countCustOrders('C00003')`=2、`countCustOrders('Z99999')`=0、`pingJucsrv()`=Y、`countCustOrders('C00001')`の同一活性化グループ内2連続呼び出し(JUCHUM再位置付け修正の検証)が両方とも2、`getCustName`→`countCustOrders`の呼び出し順序入れ替えも影響無し——**`db/data/load_v1.sql`の実データに基づく設計書の期待値が、すべて実機の値と一致した。**
+- **`00-DELIBERATE-FAIL-DEMO`はFAILのまま(期待999・実際2)**、かつ直後の`01-GETNAME-C00001`以降12件全てが記録されている——**MONITORによる継続実行を直接確認(1回目の状況証拠を裏付け)。**
+- **`TSTZAISRV`の11件も再度全てPASS**(QTEMPの再構築・再注入も再現性あり)。
+- **`shared-zaikom-check`は今回も`45`のまま**——2回の接続を通じて共有`ZAIKOM`には一切触れていない。`TXRESET`は不要。
+- 合計: `TESTRES` 24行(1 FAIL + 23 PASS)、`testres-summary`集計と一致。
+
+**結論**: `TESTKIT`・`TSTJUCSRV`・`TSTZAISRV`はCONFIRMED SUCCESS。08-04レッスン本文執筆時にそのまま使える実測値が揃った。
 
 ## 未実施のプローブ
 
