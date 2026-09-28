@@ -77,7 +77,7 @@
    CHGVAR     VAR(&TOSTMF) VALUE('/home/' *TCAT %TRIM(&USRPRF) +
                 *TCAT '/work/juchum_export.csv')
    CPYTOIMPF  FROMFILE(&LIB/JUCHUM) TOSTMF(&TOSTMF) MBROPT(*REPLACE) +
-                STMFCCSID(1208)
+                STMFCCSID(1208) RCDDLM(*CR)
 
    SNDPGMMSG  MSG('JUYAKC: done. Next order number is now ' *BCAT +
                 %CHAR(&NEXTNO) *BCAT '.')
@@ -115,4 +115,4 @@
 
 ## 実機メモ
 
-- 確認日: 未確認(このセッションでは実施していない、P15, P17, P35)。`ALCOBJ` のロック競合時のメッセージID(`CPF1002`/`CPF1085`)は、一次資料からの推定であり、実機で確定させる必要がある。`ALCOBJ`/`DLCOBJ`/`CPYTOIMPF` の一般的な仕様は一次資料に基づく。
+- 確認日: 未確認(このセッションでは実施していない、P15, P17, P35)。`ALCOBJ` のロック競合時のメッセージID(`CPF1002`/`CPF1085`)は、一次資料からの推定であり、実機で確定させる必要がある。`ALCOBJ`/`DLCOBJ`の一般的な仕様は一次資料に基づく。**`CPYTOIMPF`は`RCDDLM(*CR)`を追加済み**(第7部07-04の`JUYAKL`が同じ`CPYTOIMPF`(`RCDDLM`省略)で実際に`CPF2845`(理由コード11)を実機で起こし、`RCDDLM(*CR)`追加で解消することを確認した——本レッスン自身のこの行はまだ実機実行していないが、同じ設計ミスを未然に防ぐため先行して修正した)。

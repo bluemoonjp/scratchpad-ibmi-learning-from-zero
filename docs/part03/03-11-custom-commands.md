@@ -40,7 +40,7 @@ PARM       KWD(TOKCD) TYPE(*CHAR) LEN(6) MIN(1) +
 
 `KWD` がパラメーターのキーワード名(`TOKCD(...)` のように指定する部分)、`TYPE`/`LEN` が型と長さ、`MIN(1)` は「省略できない(最低1つ必要)」という意味です。
 
-`CRTCMD CMD(コマンド名) PGM(呼び出すプログラム名) SRCFILE(...) SRCMBR(...)` で、コマンドをコンパイルします。**コマンドの本体である `PGM()` を、CPP(Command Processing Program)と呼びます。** `JUCINQ` というコマンドの CPP は、03-09 で作った `JUCINQC` です。今後、この CPP を RPG III 版・RPG IV 版へと差し替えていきますが(第4部・第6部)、**コマンド `JUCINQ` のインターフェース(パラメーターの型)は変わりません。** これが「コマンドは型付きのインターフェースである」という意味です。
+`CRTCMD CMD(コマンド名) PGM(呼び出すプログラム名) SRCFILE(...) SRCMBR(...)` で、コマンドをコンパイルします。**コマンドの本体である `PGM()` を、CPP(Command Processing Program)と呼びます。** `JUCINQ` というコマンドの CPP は、03-09 で作った `JUCINQC` です。今後、この CPP を RPG IV 版へと差し替えます(第6部)。**コマンド `JUCINQ` のインターフェース(パラメーターの型)は変わりません。** これが「コマンドは型付きのインターフェースである」という意味です。
 
 ## 実演
 
@@ -114,4 +114,4 @@ ENDPGM
 
 ## 実機メモ
 
-- 確認日: 未確認(このセッションでは実施していない)。`CMD`/`PARM`/`CRTCMD` の一般的な仕様は一次資料に基づく。`SETENV` の `ADDLIBLE ... POSITION(*LAST)` の設計は、批評で見つかった「`*PRD` 切り替え時に `<USER>1` が `*LIBL` から外れる」問題への対策として組み込んだが、実機での動作確認はまだ行っていない。
+- 確認日: 2026-09-27(接続`part06-12-prtf-cpp-swap`、`<USER>2`)。`CMD`/`PARM`/`CRTCMD`は`JUCINQ`コマンドを実際に`CRTCMD`で作成・`CALL PGM(QCMDEXC)`経由で実行し、CPPである`JUCINQC`が正しく呼ばれることを確認した(V2)。同じ接続で、後日`CHGCMD`によりCPPを`F0612A`(RPG IV版、第6部06-12)へ差し替え、同じ`JUCINQ`コマンドから同一の正しい出力が得られることも確認済み——「コマンドは型付きのインターフェースである」という本文の主張が実機で裏付けられた。`SETENV`の`ADDLIBLE ... POSITION(*LAST)`設計については、この接続では動作確認していない(未確認のまま)。
