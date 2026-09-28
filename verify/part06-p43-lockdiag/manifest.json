@@ -1,0 +1,31 @@
+{
+  "batch": "part06-p43-lockdiag",
+  "sshTimeoutMs": 240000,
+  "description": "P43 (ロックの診断) の実機検証、4回目の接続。1回目(2026-09-28T11:49、sh直接実行)はT643HOLD/T643CHKともCRTBNDRPGがRNF2120(SHOHIMが*LIBLに無い)でコンパイル失敗。2回目(2026-09-28T12:04-12:05、part06-p43-lockdiag-2026-09-28T12-05-05-683Z、clラッパー導入でコンパイルは成功)はSBMJOB投入成功(CPC1221、既定のジョブ・キュー=投入元ユーザーと同名のキュー、QGPL内)したが、SBMJOBから+35秒後のPOSTLOCKまでWRKOBJLCK/DSPRCDLCKがどの時点でもロックを検出せず(T643CHKもNOLCKと記録)、原因はSBMJOBの既定ジョブ・キューがおそらく未サービスであること、と推測した。3回目(2026-09-28T12:19-12:20)はSSH接続自体がタイムアウト(connect to host pub400.com port 2222: Connection timed out)し、3時間停止となった。今回はJOBQ(QGPL/QBATCH)を明示してT643HOLDを投入し、末尾にQSYS2.JOB_INFOでT643HOLD自身の最終状態(JOB_STATUS/JOB_QUEUE_STATUS等)を確認するcollectステップを追加した。T643HOLDはP00006をchain(e)し、QCMDEXC経由のDLYJOB(30)で保持する(F0605B/part06-b8-compileで確認済みの**FREE QCMDEXC技法を再利用)。全ステップをclラッパー(自動でADDLIBLE LIB(&LIB)を先頭に実行、docs/probes.md:113の『ADDLIBLEはsystem呼び出しを跨いで持続しない』という既知の制約を回避するため)にまとめ、T643HOLD側もSBMJOBのINLLIBL既定(*CURRENT、投入元ジョブの現在のライブラリー・リストを継承、SBMJOBの一次資料で確認済み)によりSHOHIMを*LIBLで解決できるようにする。QBATCHでも間に合わなかった場合は、単にNOLCK(競合なし)という安全な結果になるだけでハングしない設計。SHOHIMへの書き込みは一切ないため、TXRESETは不要。事前の全ジョブ・キュー走査(WRKJOBQ JOBQ(*ALL))は他人のジョブを走査することになりdocs/style-guide.md:91-98の作法に反するため行わず、末尾のQSYS2.JOB_INFO(JOB_USER_FILTER=>CURRENT_USER、'*USER'という値は一次資料で裏取りできず未定義の可能性があったため、P01/docs/probes.mdのUSER_STORAGE照会で実機確認済みのCURRENT_USER特殊レジスターに差し替えた)で自分のジョブの状態だけを確認する。**advisor相談による4回目自体の設計修正(接続前)**: 当初案はT643CHKのchain(e)がSHOHIMの既定WAITRCD(未確認だが一般的に既定60秒程度と推測)の間ロックを待ってしまい、T643HOLDの保持(30秒)が明ける前でも「ロックが解けるのを待って結局NOLCKで成功する」という誤検出を起こしうる欠陥があった(一次資料未確認、OVRDBF自体もこのリポジトリーのwork/design/refs/には記載が無い一般知識)。SETWAITステップでOVRDBF FILE(SHOHIM) WAITRCD(5)を追加し、chain(e)がロック中なら5秒で1218を返すようにした上で、MIDRCDLCKをRUNCHKより前に動かし(T643CHKのchain(e)自体がロックの状態に影響しうるため、その前に読み取り専用の診断を先に済ませる)、WAITSTARTを20秒・WAITEND(POSTLOCKまでの待ち)を90秒に広げた(この2つだけで110秒、転送・コンパイルのオーバーヘッドを足すと既定のSSHタイムアウト180秒に対して余裕が少ないため、sshTimeoutMsで240秒に明示的に延長した——2026-09-28のPR #15で追加されたマニフェスト単位の上書き機能)。collectステップも3つに増やし、ロックの有無だけでなくT643HOLDジョブ自身の実行タイミング(JOB_ENTERED_SYSTEM_TIME等)・SHOHIMのP00006レコードの存在・QBATCH/自分名義キューのサービス状態を、この1回の接続でまとめて確認できるようにした(collect型ステップは接続先ジョブと同一かどうか未検証の別db2呼び出しのため、1ステップ1目的にして、列名の誤りが他の確認結果を巻き込まないようにしている)。",
+  "steps": [
+    { "type": "file", "localPath": "src/t643hold.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "T643HOLD", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "src/t643chk.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "T643CHK" },
+
+    { "type": "cl", "label": "CPHOLD", "cmd": "CRTBNDRPG PGM(&LIB/T643HOLD) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T643HOLD) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
+    { "type": "cl", "label": "CPCHK", "cmd": "CRTBNDRPG PGM(&LIB/T643CHK) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T643CHK) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
+    { "type": "cl", "label": "INITLDA", "cmd": "CHGDTAARA DTAARA(*LDA (61 5)) VALUE('INIT ')", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "PRELOCK", "cmd": "WRKOBJLCK OBJ(*LIBL/SHOHIM) OBJTYPE(*FILE) OUTPUT(*PRINT)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "SETWAIT", "cmd": "OVRDBF FILE(SHOHIM) WAITRCD(5)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "SBMHOLD", "cmd": "SBMJOB CMD(CALL PGM(&LIB/T643HOLD)) JOB(T643HOLD) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "WAITSTART", "cmd": "DLYJOB DLY(20)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "MIDLOCK", "cmd": "WRKOBJLCK OBJ(*LIBL/SHOHIM) OBJTYPE(*FILE) OUTPUT(*PRINT)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "MIDRCDLCK", "cmd": "DSPRCDLCK FILE(*LIBL/SHOHIM) MBR(*FIRST) RCDNBR(*ALL) OUTPUT(*PRINT)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "RUNCHK", "cmd": "CALL PGM(&LIB/T643CHK)", "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "RNX0000", "CEE0000"] },
+    { "type": "cl", "label": "READLDA1", "cmd": "DSPDTAARA DTAARA(*LDA) OUTPUT(*PRINT)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "WAITEND", "cmd": "DLYJOB DLY(90)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "POSTLOCK", "cmd": "WRKOBJLCK OBJ(*LIBL/SHOHIM) OBJTYPE(*FILE) OUTPUT(*PRINT)", "monmsg": ["CPF0000"] },
+
+    { "type": "collect", "kind": "jobstatus", "sql": "SELECT JOB_NAME, JOB_STATUS, JOB_SUBSYSTEM, JOB_QUEUE_LIBRARY, JOB_QUEUE_NAME, JOB_QUEUE_STATUS, JOB_ENTERED_SYSTEM_TIME, JOB_ACTIVE_TIME, JOB_END_TIME, COMPLETION_STATUS FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', JOB_USER_FILTER => CURRENT_USER)) X WHERE JOB_NAME LIKE '%T643HOLD%'" },
+    { "type": "collect", "kind": "shohim-exists", "sql": "SELECT SHOCD FROM &LIB/SHOHIM WHERE SHOCD = 'P00006'" },
+    { "type": "collect", "kind": "jobq-status", "sql": "SELECT JOB_QUEUE_LIBRARY, JOB_QUEUE_NAME, JOB_QUEUE_STATUS, SUBSYSTEM_NAME FROM QSYS2.JOB_QUEUE_INFO WHERE JOB_QUEUE_LIBRARY = 'QGPL' AND JOB_QUEUE_NAME IN ('QBATCH', CURRENT_USER)" }
+  ]
+}
