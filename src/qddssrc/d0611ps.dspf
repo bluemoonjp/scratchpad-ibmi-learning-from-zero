@@ -74,6 +74,15 @@
      A                                  3 21'Date'
      A                                  3 31'Rep'
      A          R SFL1FTR
+     A*                                     FIXED (Wave 2 review): OVERLAY
+     A*                                     added, matching the same fix
+     A*                                     applied to d0611s.dspf's own
+     A*                                     SFL1FTR (same bug: without it,
+     A*                                     WRITE SFL1FTR would clear
+     A*                                     whatever MSGCTL/sendInvalidOpt()
+     A*                                     just wrote). Needs a fresh V1
+     A*                                     recompile check (not yet re-run).
+     A                                      OVERLAY
      A            MORE          10A  O 20  2
      A                                 23  2'F3=Exit  Roll=Page'
      A          R MSGSFL                    SFL

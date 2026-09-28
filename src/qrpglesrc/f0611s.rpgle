@@ -40,20 +40,11 @@
 // exactly as d0611s.dspf's own header describes this as the
 // "header-only WRITE" case.
 //
-// PAGE-AT-A-TIME CONVERSION NOTE (described here, not implemented as a
-// second program - see task scoping; the DDS-side half of this same
-// note is in d0611s.dspf's header): (1) the load loop below would stop
-// after writing only SFLPAG (14) rows instead of scanning all of
-// JUCHUM; (2) JUCHUM's read position would need to survive across
-// EXFMT calls (e.g. a module-scope "more to load" flag plus not
-// re-opening JUCHUM each pass, unlike the CLOSE+OPEN-per-lookup pattern
-// f0604s.rpgle needs for its own, unrelated reason); (3) after each
-// EXFMT, on indicator 25 (ROLLUP/PAGEDOWN) with JUCHUM not yet at
-// end-of-file, the program would WRITE one more page's worth of rows
-// (continuing RRN1) before the next EXFMT; (4) d0611s.dspf's SFLSIZ
-// would shrink from 9999 to SFLPAG+1 (15), and a real SFLEND keyword
-// would replace the plain MORE output field this program MOVELs into
-// below.
+// PAGE-AT-A-TIME: implemented as a separate object pair, F0611AP/D0611AP
+// (f0611ps.rpgle/d0611ps.dspf) - CONFIRMED V1 (compile-check,
+// part06-b6-batch, 2026-09-27). See that RPG file's own header for the
+// actual loadNextPage()/eofReached design (SFLSIZ(4)/SFLPAG(3), not
+// SFLPAG(14)/SFLSIZ(15) as an earlier draft of this note sketched).
 //
 // MESSAGE SUBFILE: an "invalid option" diagnostic is sent through
 // MSGSFL/MSGCTL (d0611s.dspf) whenever OPT is neither blank nor '5'.
@@ -124,13 +115,17 @@
 // a zero-parameter dcl-pr extpgm('F0604A') prototype - the same shape
 // f0605s.rpgle already uses for R0409A, which likewise has no *ENTRY
 // PLIST - and a plain parameterless CALLP; the learner will retype the
-// customer code on F0604A's own screen after it comes up. THE 06-12
-// LESSON TEXT MUST REVISIT THIS: add F0604A's entry parameter and this
-// program's JUTOK-passing CALLP as an explicit step there, once dcl-pi
-// is new material. NOTE for the P7-9-driven 07-02 work: this is a
+// customer code on F0604A's own screen after it comes up. RESOLVED
+// (2026-09-28 design correction): the fix does NOT edit F0604A or this
+// file - it lives in new 06-12-owned objects, F0612B/F0612C
+// (src/qrpglesrc/f0612bs.rpgle/f0612cs.rpgle, reusing D0604A/D0611A's
+// DDS unchanged), CONFIRMED (part06-b7-bundle, 2026-09-28). F0604A and
+// this file (F0611A) stay exactly as written here - the learner still
+// retypes the customer code when going through F0604A/F0611A
+// themselves. NOTE for the P7-9-driven 07-02 work: this is a
 // separate, unrelated concern (P7-9 forbids editing D0611A/F0611A for
 // JUCSRV's getCustName integration specifically) - do not conflate the
-// two when 06-12 makes its own edit here.
+// two.
 //
 // STATUS: CONFIRMED V1 (compile-check, part06-screens-compile,
 // 2026-09-26). Interactive/EXFMT behavior (V3) is still untested -

@@ -22,8 +22,8 @@
 // exercise to restore the stock quantity) - and 06-08/f0608a's own
 // header, which cites 04-09's exact same
 // requirement for its own shared-table exercise (ZAIKOM) - this
-// program's lesson text (docs/part06/06-11b-..., not yet written) MUST
-// instruct learners to run <USER>1/TXRESET immediately after trying
+// program's lesson text (docs/part06/06-11b-maintenance-screen-locking.md)
+// instructs learners to run <USER>1/TXRESET immediately after trying
 // this exercise, before moving on to 04-13, 06-07's exercise, or
 // 06-15's checkpoint. This is not optional cleanup; skipping it will
 // make those lessons' expected output stop matching what they document.

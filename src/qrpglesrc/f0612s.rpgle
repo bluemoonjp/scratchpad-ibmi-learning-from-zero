@@ -123,11 +123,15 @@
 // paragraph describes - CHGCMD CMD(<lib>/JUCINQ) PGM(<lib>/F0612A) -
 // and called JUCINQ TOKCD('C00001') via QCMDEXC: the identical report
 // printed a SECOND time, through the real command, with its CPP now
-// pointing at F0612A. This is the first time this repo's JUCINQ command
-// has actually been invoked and produced real output (03-11's own
-// command definition had never been CALLed before). The interactive
-// F4-prompt path itself is still V3 (SSH is non-interactive) - the
-// underlying CHGCMD+CALL mechanism is V2-confirmed.
+// pointing at F0612A. JUCINQ itself had ALREADY been run successfully
+// with its original CPP (JUCINQC) at the start of this same
+// connection (and every retry of this manifest) - what is new here is
+// that the SAME command, same TOKCD(...), produced the identical
+// report a second time through the new CPP after the swap - the first
+// real-hardware test of 03-11's "the command's interface does not
+// change when you swap the CPP" promise. The interactive F4-prompt
+// path itself is still V3 (SSH is non-interactive) - the underlying
+// CHGCMD+CALL mechanism is V2-confirmed.
 // part06-b7-bundle (2026-09-28) added a second, independent
 // confirmation of F0612A - CALLed with a nonexistent customer code
 // ('C99999', same convention 04-08's own exercise 3 uses) - RPTHDR
@@ -210,11 +214,14 @@ dcl-f juchum usage(*input);
 // connection). Both forms are listed as valid
 // OFLIND parameters in ilerpgref75.txt lines 27970-27988 ("Valid
 // Parameters: *INOA-*INOG, *INOV" / "*IN01 through *IN99" separately),
-// but only the numbered-indicator family actually compiles against an
-// EXTERNALLY DESCRIBED printer file on this PUB400 PTF level - the
-// *INOA family appears to be reserved/already-claimed for externally
-// described printer files specifically - CONFIRMED (part06-decisions-2):
-// the identical oflind(*inoa) keyword compiles and runs fine on a
+// but only the numbered-indicator family compiles against an
+// EXTERNALLY DESCRIBED printer file - ilerpgref75.txt line 27990
+// states explicitly: "Note: Indicators *INOA through *INOG, and
+// *INOV are not valid for externally described files." This is
+// documented ILE RPG behavior, not a PUB400-specific quirk; the
+// RNF2014 failure observed here simply matches that documented rule.
+// CONFIRMED (part06-decisions-2): the identical oflind(*inoa) keyword
+// compiles and runs fine on a
 // PROGRAM-described printer file (verify/part06-12-prtf-cpp-swap/src/
 // t612ofc.rpgle, using QSYSPRT), so the conflict is specific to
 // externally described printer files, not to *INOA in general. *IN01's

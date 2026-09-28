@@ -1,10 +1,16 @@
 **FREE
 //=======================================================================
 // F0703A - client for JUCSRV's NEW countCustOrders export (Part 7,
-// lesson 07-03 step 3/"the real thing"). A NEW program - F0702A is NOT
-// recompiled or touched by this lesson at all; this file's whole
-// purpose is to demonstrate that F0702A keeps working, unrecompiled,
-// while a brand-new client can already see the newly-added export.
+// lesson 07-03 step 3/"the real thing"). A NEW program. F0703A itself
+// is never touched again once built - but the lesson DOES recompile
+// F0702A exactly once, at its own step 4 (rebinding it to the
+// 2-procedure EXPORT(*ALL) signature that PGMLVL(*PRV) later has to
+// match), before this file exists at all. After that single
+// recompile, F0702A is never touched again while JUCSRV gains
+// countCustOrders and switches to binder source - this file's whole
+// purpose is to demonstrate that THAT already-rebuilt F0702A keeps
+// working, unrecompiled, while a brand-new client (this one) can
+// already see the newly-added export.
 //
 // THE ACTUAL TEST THIS PROGRAM RUNS: call countCustOrders TWICE, back
 // to back, within this ONE program's own execution, and report BOTH
@@ -28,10 +34,12 @@
 // (job-level invocations) expecting to see the same effect - each such
 // CALL, since this program is dftactgrp(*no) actgrp(*new), gets its own
 // fresh activation group, and (per cl_commands_75.txt lines 7446-7448)
-// CRTSRVPGM's own ACTGRP default is *CALLER - JUCSRV has no ACTGRP()
-// specified on either of its own CRTSRVPGM/UPDSRVPGM commands (see
-// jucsrv.rpgle's header comment), so it activates INTO whichever
-// activation group calls it. Two separate CALL F0703A invocations would
+// CRTSRVPGM's own ACTGRP default is *CALLER, and the actually-executed
+// CRTSRVPGM for JUCSRV explicitly specifies ACTGRP(*CALLER) too (see
+// jucsrv.rpgle's header comment; UPDSRVPGM itself has no ACTGRP
+// parameter at all, so that command is the one with nothing to
+// specify), so it activates INTO whichever activation group calls it.
+// Two separate CALL F0703A invocations would
 // each get JUCSRV activated fresh, and the bug (if the fix below were
 // removed) could never be observed that way - flagging this explicitly
 // so a verify manifest for this lesson does not accidentally test
@@ -72,10 +80,16 @@
 ctl-opt dftactgrp(*no) actgrp(*new) bnddir('JUCSRVBD');
 
 //-----------------------------------------------------------------------
-// dcl-pr / EXTPROC(*DCLCASE): prototype for JUCSRV's countCustOrders -
-// only reachable once JUCSRV's *CURRENT signature includes it (07-03
-// step 3's binder-source update - see jucsrv.rpgle/jucsrv.bnd). This is
-// exactly why F0703A must be built AFTER that update, not before.
+// dcl-pr / EXTPROC(*DCLCASE): prototype for JUCSRV's countCustOrders.
+// countCustOrders is already exported by the module itself (dcl-proc
+// countCustOrders export;), so F0703A could in principle be COMPILED
+// against JUCSRV even under plain EXPORT(*ALL) - that is not why build
+// order matters here. The real reason F0703A is built only after the
+// binder-source switch is the alphabetical-vs-declaration-order
+// signature mismatch (see jucsrv.bnd's own header): a client built
+// earlier would bind to the alphabetical-order EXPORT(*ALL) 3-symbol
+// signature, which the declaration-order PGMLVL(*CURRENT) block does
+// not reproduce.
 //-----------------------------------------------------------------------
 dcl-pr countCustOrders zoned(5:0) extproc(*dclcase);
   custCode char(6) const;

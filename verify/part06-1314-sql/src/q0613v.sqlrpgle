@@ -44,11 +44,11 @@
 // section 1, the list of things this part deliberately does not
 // cover).
 //
-// HARDWARE STATUS: UNTESTED as of 2026-09-26 (Part 6 is a draft
-// branch; no probe or verify/ run has compiled this member yet).
-// Nothing below has been confirmed to compile or run on PUB400.
-// Treat every runtime claim in this file as "expected", not
-// "confirmed". Compile with CRTSQLRPGI.
+// HARDWARE STATUS: CONFIRMED (part06-1314-sql, 2026-09-27, 2nd
+// connection): CRTSQLRPGI succeeded and CALL failed on the UPDATE with
+// SQLSTATE=55019 and message SQL7008 ("TOKUIM in <USER>2 not valid for
+// operation."), confirming TOKUIM is not journaled. See docs/probes.md's
+// part06-1314-sql section for the full connection account.
 //
 // Primary-source citations (see work/design/refs/):
 //  - CLOSQLCSR's two allowed values for CRTSQLRPGI, *ENDACTGRP and
@@ -134,20 +134,19 @@
 // failure path demonstrated below is deliberately built around the
 // UPDATE (step 2), not the SELECT INTO (step 1).
 //
-// How to reproduce SQL7008 with this source (expected, untested):
-//   1. Comment out (or delete) the "EXEC SQL SET OPTION ...;"
-//      statement below, and make sure COMMIT(*NONE) is not passed as
-//      a CRTSQLRPGI command parameter either.
-//   2. Recompile. The program now precompiles under CRTSQLRPGI's own
-//      default, COMMIT(*CHG) (see citation above), instead of the
-//      COMMIT(*NONE) this source normally asks for.
-//   3. Run it against a copy of TOKUIM that is confirmed NOT to be
-//      journaled (whether the real TOKUIM is journaled has not been
-//      checked yet -- probe P12 has not been run; docs/probes.md has
-//      no journal-related entries as of this writing). Step 1
-//      (SELECT INTO) is still expected to succeed. Step 2 (UPDATE)
-//      is expected to fail with SQLSTATE not equal to '00000' and
-//      message SQL7008, because *CHG commitment control needs a
+// How SQL7008 is actually reproduced by this source (CONFIRMED,
+// part06-1314-sql, 2026-09-27, 2nd connection):
+//   1. This file already drops "commit = *none," from the SET OPTION
+//      line below (the only difference from q0613s.sqlrpgle - see the
+//      Q0613V header at the top of this file), and no COMMIT()
+//      parameter is passed on the CRTSQLRPGI command either.
+//   2. The program precompiles under CRTSQLRPGI's own default,
+//      COMMIT(*CHG) (see citation above), instead of the COMMIT(*NONE)
+//      q0613s.sqlrpgle normally asks for.
+//   3. TOKUIM is confirmed NOT journaled (CPF4328, part06-1314-sql).
+//      Step 1 (SELECT INTO) succeeds as usual. Step 2 (UPDATE) fails
+//      with SQLSTATE=55019 and message SQL7008 ("TOKUIM in <USER>2 not
+//      valid for operation."), because *CHG commitment control needs a
 //      journal to record the change for possible rollback, while a
 //      read has nothing to roll back and needs no journal at all.
 //==================================================================

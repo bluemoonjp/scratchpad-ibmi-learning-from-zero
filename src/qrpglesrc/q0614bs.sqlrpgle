@@ -30,27 +30,32 @@
 // were static too. A static SELECT/INSERT is bound to an access plan
 // AT PRECOMPILE TIME (CRTSQLRPGI), and QTEMP/W0614BA does not exist
 // then -- it is only created when the program actually RUNS, by the
-// embedded CREATE TABLE two steps below. Real-hardware CONFIRMED
-// (docs/probes.md, part06-14b-null connection #14, and
-// part06-decisions-1/-2/-3): the static forms produced SQL0204
-// ("W0614BA in QTEMP type *FILE not found") - first at RUN time with
-// only the cursor static (part06-14b-null #14, verified only with a
-// priming table pre-created outside this program), then as an outright
-// "SQL precompile failed" once the cursor was made dynamic but the two
-// INSERTs were still static (part06-decisions-2) -- the CREATE TABLE
-// and DROP TABLE statements are fine as static SQL (no column-level
-// access plan is needed to create or drop an object), but both SELECT
-// and INSERT need actual columns resolved against a real table. The
-// fix: the cursor's SELECT (PREPARE + DECLARE ... CURSOR FOR the
+// embedded CREATE TABLE two steps below. What was ACTUALLY confirmed
+// on real hardware, re-verified directly against the raw connection
+// JSONs (docs/probes.md, part06-14b-null and part06-decisions-1/-2/-3):
+// a fully-static SELECT+INSERT version DID compile (SQL1103, severity
+// 10, "column definitions not found" warnings on all 3 static
+// statements) and DID run correctly (part06-14b-null's unprimed
+// connection: RPG-compile completion reported "00 highest severity",
+// CALL printed both expected lines, with only the one benign SQL0204
+// from the initial DROP TABLE) -- so SQL1103 alone was never shown to
+// cause a runtime failure. The failure that WAS reliably, repeatedly
+// reproduced (part06-decisions-1 and -2, "SQL precompile failed",
+// SQL9001) was SQL0180 (severity 30, "Syntax of date, time, or
+// timestamp value not valid") on the two static INSERTs' TIMESTAMP
+// literals, which were still in RPG-native Z format at that point --
+// a literal-syntax bug, independent of the table-existence question.
+// The fix: the cursor's SELECT (PREPARE + DECLARE ... CURSOR FOR the
 // prepared statement, step 3 below) AND both INSERTs (EXECUTE
-// IMMEDIATE against a host variable) are now dynamic SQL -- this
-// defers access-plan creation to run time, by which point CREATE TABLE
-// has already run in this same job. This is a natural extension of
-// 06-14's own PREPARE technique (that lesson introduces PREPARE with a
-// "?" marker for a search value; this program's PREPARE/EXECUTE
-// IMMEDIATE use no marker at all, since the statement text itself is
-// fixed -- only the TARGET TABLE's existence, not any search
-// criteria, is what needed to become dynamic).
+// IMMEDIATE against a host variable) are now dynamic SQL, AND the
+// TIMESTAMP literals were corrected to ANSI/ISO format -- the combined
+// fix compiled and ran with no priming needed (part06-decisions-3,
+// CONFIRMED SUCCESS, see HARDWARE STATUS below). Going dynamic is a
+// natural extension of 06-14's own PREPARE technique (that lesson
+// introduces PREPARE with a "?" marker for a search value; this
+// program's PREPARE/EXECUTE IMMEDIATE use no marker at all, since the
+// statement text itself is fixed -- only the TARGET TABLE's
+// existence, not any search criteria, needed to become dynamic).
 //
 // HARDWARE STATUS: CONFIRMED SUCCESS, no priming needed
 // (part06-decisions-3, 2026-09-27). CRTSQLRPGI Highest Severity 00;
@@ -84,7 +89,8 @@
 // is RPG/CRTSQLRPGI-specific evidence, confirmed real-hardware: the
 // CREATE/DROP TABLE statements themselves compile and run fine as
 // static SQL even though the table does not exist at precompile time
-// (only the cursor's SELECT needed to become dynamic - see above).
+// (both the cursor's SELECT and the two INSERTs are dynamic in this
+// shipped version - see above).
 //
 // Other primary-source citations:
 //  - ALWNULL(*USRCTL) control-specification keyword and %NULLIND
@@ -216,21 +222,28 @@ endif;
 // One row with a real last-order date, one row where it is unknown
 // (NULL). TOKLTS (NOT NULL) always gets a real value.
 //
-// SECOND DESIGN-FLAW FIX (part06-decisions-2 re-verification): these
-// two INSERT statements were ALSO still static SQL against
-// QTEMP/W0614BA, which does not exist at CRTSQLRPGI precompile time -
-// same root cause as the cursor above (CREATE TABLE/DROP TABLE do not
-// need column-level access plans and stay static; INSERT does, and
-// real-hardware confirmed this fails with "SQL precompile failed"
-// even after the cursor alone was made dynamic). EXECUTE IMMEDIATE
-// against a host variable (no parameter markers needed for a fixed
-// statement) defers this the same way PREPARE does for the cursor.
+// SECOND DESIGN-FLAW FIX (part06-decisions-1/-2 re-verification): these
+// two INSERT statements were ALSO still static SQL at that point, and
+// "SQL precompile failed" (SQL9001) even after the cursor alone was
+// made dynamic - but the diagnostic in Q0614BA's own compile listing
+// was SQL0180 (severity 30, "Syntax of date, time, or timestamp value
+// not valid"), at exactly the two INSERTs' TIMESTAMP literals, NOT
+// SQL1103 - i.e. a literal-format syntax bug, not a demonstrated
+// column-level-access-plan/table-existence problem for INSERT
+// analogous to the cursor's SQL1103. EXECUTE IMMEDIATE against a host
+// variable (no parameter markers needed for a fixed statement) defers
+// statement resolution to run time the same way PREPARE does for the
+// cursor, which sidesteps the literal-format error becoming a
+// precompile-time failure - but the underlying fix that actually
+// matters here is the TIMESTAMP format correction below.
 //
-// TIMESTAMP LITERAL FORMAT FIX (part06-decisions-2 re-verification):
+// TIMESTAMP LITERAL FORMAT FIX (part06-decisions-1/-2 re-verification):
 // the original 'yyyy-mm-dd-hh.mm.ss.nnnnnn' form (matching RPG's own
-// Z-literal timestamp format) was rejected at real-hardware run time
-// ("Syntax of date, time, or timestamp value not valid") when tried
-// via a CL RUNSQL statement with this exact text. rbafy75.txt (search
+// Z-literal timestamp format) was rejected at real-hardware COMPILE
+// time (SQL0180, "Syntax of date, time, or timestamp value not
+// valid"), confirmed directly in Q0614BA's own static-INSERT compile
+// listing (part06-decisions-1 and -2, same two source positions both
+// times) - not via a separate CL RUNSQL test. rbafy75.txt (search
 // "the ANSI/ISO standard date, time, or timestamp format") documents
 // only the space-and-colons ISO form as guaranteed - switched to
 // that form here too rather than risk the same failure.

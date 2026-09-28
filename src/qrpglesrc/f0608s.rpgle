@@ -23,8 +23,9 @@
 // 06-11b, and 06-15's checkpoint all read and depend on having known
 // values. Running this program's default demo (product P00001,
 // quantity 2) changes ZASU the same way 04-09's own exercise does
-// (45 to 43). THE LESSON TEXT FOR 06-08 (WHEN WRITTEN) MUST INSTRUCT
-// THE LEARNER TO RUN <USER>1/TXRESET AFTERWARD, exactly as 04-09's own
+// (45 to 43). docs/part06/06-08-file-io-dclf.md's own demo step 5,
+// exercise step 5, self-check, and cleanup sections already require the learner
+// to run <USER>1/TXRESET afterward, exactly as 04-09's own
 // cleanup section already requires for R0409A. Do not skip this: a
 // stale ZAIKOM row will corrupt the checks that 06-07, 06-11b, and
 // 06-15 rely on.
@@ -142,8 +143,8 @@
 //     with *INPUT, *OUTPUT, or *ALL specified ... or no second
 //     parameter specified for the LIKEREC keyword").
 //   WRITE with a SEPARATE *ALL-typed likerec data structure
-//   (zaikomOut, declared likerec(zaikor : *all)), used only by the
-//   off-by-default demo:
+//   (zaikomOut, declared likerec(zaikor : *all)), used by the
+//   WRITE/DELETE demo below (runs by default, see header point 5):
 //     lines 66329-66348, esp. 66339-66341 ("If name refers to a
 //     record format from an externally described file, the data
 //     structure must be a data structure defined with type
@@ -209,7 +210,8 @@ dcl-ds zaikomRec likerec(zaikor);
 dcl-ds zaikomKey likerec(zaikor : *key);
 
 // A second, *ALL-typed data structure of the same record, used only
-// by the (off-by-default) WRITE/DELETE demo below - kept separate
+// by the WRITE/DELETE demo below (on by default, see header point 5)
+// - kept separate
 // from zaikomRec so the main allocation logic above always uses an
 // unambiguous *input-shaped buffer.
 dcl-ds zaikomOut likerec(zaikor : *all);

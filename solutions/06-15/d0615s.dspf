@@ -76,17 +76,26 @@
      A*                                     the same-name auto-match
      A*                                     trick during the load
      A*                                     loop; SHONM/SHOHAT are
-     A*                                     filled explicitly from a
-     A*                                     CHAIN against SHOHIM
-     A*                                     (different key field name,
-     A*                                     SHOCD, so no auto-match
-     A*                                     applies - same as
-     A*                                     R0413A's own ZASHO CHAIN
-     A*                                     SHOHIM). STATUS is a
-     A*                                     screen-only field (not in
-     A*                                     either DB file)
-     A*                                     f0615s.rpgle MOVELs
-     A*                                     'LOWSTOCK'/blanks into,
+     A*                                     auto-matched by the same
+     A*                                     field name from SHOHIM's
+     A*                                     record into these
+     A*                                     identically-named SFL1
+     A*                                     fields on a successful
+     A*                                     CHAIN (the CHAIN key itself
+     A*                                     is cross-field-name, ZASHO
+     A*                                     vs SHOCD - same as R0413A's
+     A*                                     own ZASHO CHAIN SHOHIM);
+     A*                                     f0615s.rpgle assigns them
+     A*                                     explicitly only in the
+     A*                                     not-%found fallback branch
+     A*                                     ('UNKNOWN PRODUCT'/0).
+     A*                                     STATUS is a screen-only
+     A*                                     field (not in either DB
+     A*                                     file); f0615s.rpgle sets it
+     A*                                     via plain free-form
+     A*                                     assignment (status =
+     A*                                     'LOWSTOCK'; / status =
+     A*                                     *blanks;), not MOVEL -
      A*                                     same plain-output-field
      A*                                     technique R0413A's own
      A*                                     O-spec conditioning (60

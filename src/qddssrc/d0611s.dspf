@@ -63,20 +63,18 @@
      A*                                     field()'s kw param;
      A*                                     no ERRMSGID (not needed - see
      A*                                     message-subfile note
-     A*                                     below). IMPORTANT: these
-     A*                                     SFL-specific column
-     A*                                     positions are THEMSELVES still
-     A*                                     unverified on real
-     A*                                     hardware -
+     A*                                     below). These SFL-specific
+     A*                                     column positions are now
+     A*                                     CONFIRMED - this file's own
+     A*                                     CRTDSPF (see STATUS above,
+     A*                                     part06-screens-compile,
+     A*                                     2026-09-26) succeeded at
+     A*                                     Highest Severity 00, which
+     A*                                     directly confirms them
+     A*                                     (independent of
      A*                                     verify/part05-gen-probe/src/t0sfl.ds
-     A*                                     pf
-     A*                                     (T0SFL) exercises them but has not
-     A*                                     yet been run
-     A*                                     per docs/probes.md. Verify with
-     A*                                     CRTDSPF before
-     A*                                     relying on this file, same as
-     A*                                     tk0100d.dspf's own
-     A*                                     header instructs.
+     A*                                     pf's own, separate T0SFL
+     A*                                     check).
      A*
      A*                                     NO DDS CONDITIONING INDICATORS (cols
      A*                                     7-16) are
@@ -133,40 +131,21 @@
      A*                                     load-all (contrast with
      A*                                     page-at-a-time below).
      A*
-     A*                                     PAGE-AT-A-TIME CONVERSION NOTE
-     A*                                     (described here, not
-     A*                                     implemented as a second file - see
-     A*                                     task scoping):
-     A*                                     (1) change SFLSIZ(9999) to
-     A*                                     SFLSIZ(15) i.e.
-     A*                                     SFLPAG+1 (the usual "one extra slot"
-     A*                                     convention so
-     A*                                     SFLEND's *MORE detection has a
-     A*                                     record to test);
-     A*                                     (2) f0611s.rpgle would WRITE only
-     A*                                     the first
-     A*                                     SFLPAG (14) JUCHUM rows before the
-     A*                                     first EXFMT,
-     A*                                     instead of every row; (3) after
-     A*                                     EXFMT, on ROLLUP
-     A*                                     (indicator 25/PAGEDOWN) with more
-     A*                                     JUCHUM rows
-     A*                                     still unread, the program would
-     A*                                     WRITE one more
-     A*                                     page's worth into the subfile
-     A*                                     (continuing RRN)
-     A*                                     before the next EXFMT, and stop
-     A*                                     advancing once
-     A*                                     READ on JUCHUM hits end-of-file; (4)
-     A*                                     add SFLEND
-     A*                                     (or SFLEND(*MORE)) to SFL1CTL,
-     A*                                     conditioned so the
-     A*                                     "+" more-records indicator only
-     A*                                     shows while JUCHUM
-     A*                                     is not yet exhausted. See
-     A*                                     f0611s.rpgle's header
-     A*                                     for the RPG-side half of this same
-     A*                                     note.
+     A*                                     PAGE-AT-A-TIME: implemented
+     A*                                     as a separate object pair,
+     A*                                     D0611AP/F0611AP
+     A*                                     (d0611ps.dspf/f0611ps.rpgle)
+     A*                                     - CONFIRMED V1 (compile-
+     A*                                     check, part06-b6-batch,
+     A*                                     2026-09-27). See that DDS's
+     A*                                     own header for its actual
+     A*                                     SFLSIZ(4)/SFLPAG(3) design
+     A*                                     (deliberately small, not
+     A*                                     SFLSIZ(15)/SFLPAG(14) as an
+     A*                                     earlier draft of this note
+     A*                                     sketched) and f0611ps.rpgle's
+     A*                                     header for the RPG-side
+     A*                                     load-more-on-ROLLUP logic.
      A*
      A*                                     MESSAGE SUBFILE (MSGSFL/MSGCTL
      A*                                     below): shows an
@@ -265,15 +244,19 @@
      A*                                     dcl-pi *entry -
      A*                                     deliberately deferred to 06-12 by
      A*                                     this design's own
-     A*                                     B1-16 disposition - so this is a
-     A*                                     genuine, not just
-     A*                                     cosmetic, cross-lesson design gap
-     A*                                     for the syllabus
-     A*                                     author to resolve (e.g. by rescoping
-     A*                                     06-11's "passes
-     A*                                     the customer code" claim, or by
-     A*                                     revisiting 06-04's
-     A*                                     dcl-pi timing).
+     A*                                     B1-16 disposition. RESOLVED
+     A*                                     (2026-09-28 design
+     A*                                     correction): the fix does
+     A*                                     NOT edit D0604A/F0604A or
+     A*                                     D0611A/F0611A - it lives in
+     A*                                     new 06-12-owned objects,
+     A*                                     F0612B/F0612C
+     A*                                     (src/qrpglesrc/f0612bs.rpgle/
+     A*                                     f0612cs.rpgle), CONFIRMED
+     A*                                     (part06-b7-bundle,
+     A*                                     2026-09-28). This file and
+     A*                                     f0611s.rpgle stay exactly as
+     A*                                     written here.
      A*
      A*                                     NAMING NOTE: this repo's general S/A
      A*                                     object-suffix
@@ -385,6 +368,17 @@
      A*                                     tk0100d.dspf
      A*                                     (stands in for SFLEND).
      A          R SFL1FTR
+     A*                                     FIXED (Wave 2 review): OVERLAY was
+     A*                                     missing here despite the header
+     A*                                     comment above claiming it was
+     A*                                     added - without it, WRITE SFL1FTR
+     A*                                     (re-run at the top of every outer
+     A*                                     loop pass) would clear whatever
+     A*                                     MSGCTL/sendInvalidOpt() just wrote,
+     A*                                     before the next EXFMT ever shows
+     A*                                     it. Needs a fresh V1 recompile
+     A*                                     check (not yet re-run).
+     A                                      OVERLAY
      A            MORE          10A  O 20  2
      A                                 23  2'F3=Exit  Roll=Page'
      A*                                     MSGSFL: message subfile detail line.
