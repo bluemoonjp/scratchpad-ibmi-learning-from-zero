@@ -10,7 +10,7 @@
 
 ## 道具
 
-5250(コンパイル・実行・画面確認)。ソース取り込みは SSH(`CPYFRMSTMF`)を使うレッスンが大半です(接続の粒度はレッスンごとに異なります。各レッスンの案内文の「同時接続数」欄を参照してください)。06-13 以降は SQL(`STRSQL`)も使います。
+5250(コンパイル・実行・画面確認)。ソース取り込みは SSH(`CPYFRMSTMF`)を使うレッスンが大半です(接続の粒度はレッスンごとに異なります。各レッスンの案内文の「同時接続数」欄を参照してください)。06-13 以降は SQL(`STRSQL`)も使います。06-02(任意)では VS Code + Code for IBM i も扱いますが、他のレッスンはこれに依存しません。
 
 ## この部で自分たちが作る道具
 
@@ -23,7 +23,6 @@
 ## この部で扱わないこと
 
 - モジュール・サービス・プログラム・活性化グループ(ILE の本格的な話。第7部)。
-- VS Code / Code for IBM i(06-02。GUI操作中心のため公開を保留しています)。
 - SQLのパフォーマンス・チューニング(インデックス・Visual Explain の存在だけ06-14で触れ、手を動かす演習はありません)。
 
 ## 同時接続数
@@ -44,7 +43,7 @@
 
 - [06-01 橋渡し: CVTRPGSRC と固定形式 RPG IV](06-01-cvtrpgsrc-bridge.md)
 - [06-01b 固定形式・混在形式の RPG IV を読む](06-01b-reading-fixed-mixed-form.md)
-- 06-02 VS Code と Code for IBM i の準備(公開保留)
+- [06-02 VS Code と Code for IBM i の準備(任意、V3)](06-02-vscode-code-for-ibmi.md)
 - [06-03 `**FREE` の骨格・データ型・制御構造](06-03-free-form-basics.md)
 - [06-04 `**FREE` に書き直す: 受注照会の画面版](06-04-free-form-order-inquiry-screen.md)
 - [06-05 サブプロシージャとプロトタイプ](06-05-subprocedures-prototypes.md)
