@@ -2983,7 +2983,14 @@ advisorの指摘を受け、`f0803s.rpgle`が実際にコンパイルできる�
 - **`F0803CHKA`(`CHAIN`+標識フィールド)はコンパイルに失敗した。** `RNF5191`(severity 30)「The Result-Field is not a data structure when Factor 2 is a file name.」——`ilerpgref75.txt`38795行目の自由形式`CHAIN`構文表が最初から「第3引数はdata-structure」と明記していたとおり、素の`ind`フィールドは第3引数として使えない。
 - **`F0803CHKB`(`CHAIN`+`%FOUND`)はHighest Severity 00で成功した。**
 - **修正**: `src/qrpglesrc/f0803s.rpgle`を、`foundInd`を削除し`%found(tokuim)`を使う形に書き換えた。これにより、当初「`NoIndicators`ルールを狙うが実在しないルール名だったため意図的に残した設計」としていた説明は誤りだったと判明した——rpglintのルールとして存在しないだけでなく、**この構文自体が自由形式RPGとしてそもそも無効だった。** ファイルのヘッダーもこの経緯どおりに訂正した。修正後もrpglintの5件の意図した違反(`SpecificCasing`・`NoGlobalSubroutines`・`StringLiteralDupe`・`NoUnreferenced`・`PrettyComments`、13件のエラー行)は変わらず検出される(行番号だけがヘッダー修正に伴いずれた)。
-- **未確認のまま残る点**: `F0803CHKA`/`F0803CHKB`は最小の独立テストであり、`f0803s.rpgle`全体(`orderCount`サブルーチンのJUCHUMループ、`%subst`/`WRITE QSYSPRT`のブロック)をひとまとまりとして実際にコンパイルしたわけではない。個々のパターン自体は`jucsrv.rpgle`(`countCustOrders`の同じJUCHUMループ)・第4/5部のRPG III帳票プログラム(同じ`%subst`/`WRITE QSYSPRT`の形)で既に確立済みだが、この具体的なファイル全体としての実機コンパイルは、08-03のverifyマニフェストを書く際に別途行うこと。
+- **未確認のまま残っていた点は`part08-02-testpf`で解消**: `f0803s.rpgle`全体(`orderCount`サブルーチンのJUCHUMループ、`%subst`/`WRITE QSYSPRT`のブロックを含む、ひとまとまりの実ファイル)と、`solutions/08-03/f0803s.rpgle`(模範解答、`orderCount`をdcl-procに書き換えた版)を、どちらも空の`&LIB2`へ`CRTBNDRPG`した。**両方ともHighest Severity 00で成功し、`CALL PGM(...) PARM('C00001')`もどちらもエラーなく完了した。** これで、08-03の演習ファイル(見本・模範解答の両方)が実際にコンパイル・実行できることが確認できた。
+
+## 第8部08-02/08-03: `part08-02-testpf`の1回目の接続——コンパイル確認は成功、`bsh`パス・PF演習は自作ミスで未検証(確認日2026-09-29)
+
+同じ接続でまとめて試みた残り2項目は、どちらも自作ミスにより未検証のまま終わった:
+
+1. **`bsh`の実在パスを誤っていた。** `/usr/bin/bsh`ではなく`/QOpenSys/usr/bin/bsh`が正しいパスだった(`ls`の結果自身が「/QOpenSys/usr/bin/bsh -> ../../QIBM/ProdData/OS400/PASE/bin/bsh」というシンボリック・リンクの実在を示していたにもかかわらず、後続の`-c`呼び出しでは誤って`/usr/bin/bsh`のままにしていた)。「qsh: 001-0014 Command /usr/bin/bsh not found.」で2回とも失敗し、実際のbsh経由での`makei`呼び出しはまだ一度も確認できていない。
+2. **「PFを追加する」演習のテストは、`file`型ステップの仕様を誤解していた。** `file`型ステップ(`testpf.pf`を`QDDSSRC`メンバーとして配送する設定)は、このハーネスの実装上**常に`&LIB`(`library2`ではない)を対象にする**——`CPYTOSTMF`の`FROMMBR`を`&LIB2`のパスにしていたため、「Object not found」で失敗し、その後の`makei build`も`testpf.pf`自体が存在しないため「No rule to make target 'testpf.pf'」で失敗した。`FROMMBR`のライブラリー部分を`&LIB`に直せば解決する見込みが高い——次回接続で再試行する。
 
 
 ## 未実施のプローブ
