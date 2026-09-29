@@ -1,6 +1,11 @@
 -- 08-06 exercise model answer: SHOHIM modernized as a SQL table.
 -- See docs/part08/08-06-dds-to-sql-ddl.md, exercise step 2.
 --
+-- STATUS: UNVERIFIED (2026-09-29) - this exact statement has not been
+-- run against real hardware in this material. Try it yourself and
+-- compare against the DSPFFD output, per the lesson's own framing of
+-- this exercise as unconfirmed (V3/未検証) until you do.
+--
 -- Unlike src/sql/08-06-ddl.sql (a faithful GENERATE_SQL conversion of
 -- TOKUIM that intentionally keeps the same record format level ID),
 -- this file deliberately CHANGES the shape of SHOHIM (db/v1/shohim.pf):
@@ -9,7 +14,11 @@
 --   SHOTNK 7S 2       -> DECIMAL(7, 2) (zoned -> packed, chosen on purpose;
 --                                        NUMERIC would have kept it zoned,
 --                                        the same way GENERATE_SQL mapped
---                                        TOKUPD's 8S 0 to NUMERIC(8, 0))
+--                                        TOKUPD's 8S 0 to NUMERIC(8, 0).
+--                                        UNVERIFIED: unlike that NUMERIC
+--                                        mapping, DECIMAL actually
+--                                        showing up as PACKED in DSPFFD
+--                                        has not been confirmed here.)
 --   SHOHAT 5S 0       -> NUMERIC(5, 0) (left zoned, unchanged)
 --   (new)             -> PRIMARY KEY (SHOCD) (DDS's K SHOCD was only a
 --                                        non-unique keyed access path,
@@ -19,8 +28,7 @@
 -- format level ID will NOT match the real SHOHIM's - that mismatch is
 -- the expected, correct result here (see the lesson's "演習" section).
 -- Run this in the SAME job/connection you will use for the DSPFFD
--- TYPE(*RCDFMT)-equivalent check (DSPFFD FILE(QTEMP/SHOHIM)) afterward,
--- since QTEMP is job-scoped.
+-- FILE(QTEMP/SHOHIM) check afterward, since QTEMP is job-scoped.
 
 CREATE TABLE QTEMP.SHOHIM (
     SHOCD  CHAR(6)       NOT NULL,

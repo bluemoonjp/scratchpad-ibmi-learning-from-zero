@@ -2936,6 +2936,8 @@ Build Successful!
 
 **3回連続で、修正するたびに別の種類のエラーに変わる(収束していない)ため、事前に宣言したとおりここで打ち切る。** `GENERATE_SQL`の正確な引数名・型・既定値は、この教材の一次資料(`work/design/refs/`)だけでは確定できないと判断する。08-06のレッスン設計は、`GENERATE_SQL`を「一般知識、要確認」として扱い(design doc自身の§9が既にこの想定をしていた)、本文で実際に使う具体的なSQL文を断定的に示すのではなく、学習者自身がIBM公式ドキュメント(`CALL QSYS2.GENERATE_SQL`)を参照しながら試す、という構成に倒す。三度の接続で得られた実際のエラー文言(`DATABASE_FILE_TYPE`は無効な引数名・`Conversion error`・`SQL0443`)は、いずれも「このプロシージャーは実在し呼び出しはできるが、正確な引数の組み合わせはこの接続からは特定できなかった」という誠実な記録として`docs/probes.md`に残す。**未実施のまま残っている一手(advisor提案)**: `SELECT * FROM QSYS2.SYSPARMS ... WHERE ROUTINE_NAME = 'GENERATE_SQL'`のようなDb2のシステム・カタログをSELECTする(読み取り専用、他ユーザーのデータには触れない)ことで、この一次資料ギャップを埋められる可能性がある——まだ試していない。
 
+**→ 後日`part08-06-lvlid-and-gensql`で解決(真因は`DATABASE_OBJECT_TYPE => '*FILE'`)。** この3回目の接続も`'*FILE'`のまま呼び出しており、実際に到達していた`GENERATE_SQL`本体からは同じ`SQL0443`が返っていた——引数名・型の当て推量ではなく、この値そのものが誤りだった。
+
 ## 第8部08-03: `rpglint`はPCローカルで実際にインストール・実行できることを確認(`work/design/part08-design-v1.md`§0.6の想定を覆す、確認日2026-09-29、PUB400接続不要)
 
 前セッションまで、`rpglint`は「`work/design/refs/`に一次資料ゼロ件、ローカルで実行可能なCLIも見つからない」という前提で扱われていた。advisorの指摘(08-02のmakei/TOBiと同じ「ホスト自身に実在する一次資料を読む」という考え方)を受けてnpmを検索したところ、**`@halcyontech/rpglint`という実在の公開npmパッケージ(v0.27.0、2024-12-03公開、`vscode-rpgle`拡張機能の開発元によるCLI版、依存パッケージ0件)が見つかった。** PUB400への接続は一切不要(PCローカルのnpm/pnpmだけで完結)。
@@ -3115,9 +3117,11 @@ advisorの再レビューで、02-04の修復手順が前提にしていた「`b
 
 **打ち切りの判断**: `GENERATE_SQL`単体の呼び出しに、このセッションだけで合計5回の接続(`part08-06-ddl`3回+この2回)を費やし、**引数の型・名前という当初の仮説を実際に修正しても解消しなかった。** これ以上の当て推量は生産的でないと判断し、`GENERATE_SQL`の実働例をこの教材で確立することは打ち切る。ただし、`part08-06-generate-sql-catalog`で確定した37引数の実在する名前・型・順序(`QSYS2.SYSROUTINES`/`QSYS2.SYSPARMS`という一次資料そのもの)は確定済みの成果として残る——08-06本文は、この確定済みの引数一覧を「実際に呼び出して確認済みの動作」としてではなく、「実引数一覧はカタログで確認済み、実際に動く具体的な呼び出し方は学習者自身が試す」という形で提示する。
 
+**→ 後日`part08-06-lvlid-and-gensql`で解決(真因は`DATABASE_OBJECT_TYPE => '*FILE'`)。** この2回目の接続も`'*FILE'`のまま呼び出しており、真因はこの値そのものだった——引数の型・名前という仮説自体が的外れだった。
+
 ## 第8部08-06: `part08-06-lvlid-and-gensql`——`GENERATE_SQL`がついにCONFIRMED SUCCESS、真因は`DATABASE_OBJECT_TYPE`の値そのものだった(確認日2026-09-29)
 
-advisorの指摘どおり、**これまでの5回の接続がすべて`DATABASE_OBJECT_TYPE => '*FILE'`を疑わずに使い続けていたこと自体が真因だった。** この接続で`db2` CLIから直接、最小限の3引数(オブジェクト名・ライブラリー・型)だけで2通り試したところ:
+advisorの指摘どおり、**これまでの5回の接続のうち、`DATABASE_OBJECT_TYPE => '*FILE'`のまま実際に`GENERATE_SQL`本体まで到達していたのは3回目(`part08-06-ddl`)と5回目(`part08-06-generate-sql-retry`の2回目)の2回で、どちらも`'*FILE'`を疑わずに使い続けていたことが真因だった可能性が高い**(残り3回──1回目は存在しない引数名、2回目は`CREATE_OR_REPLACE_OPTION`の型不一致、4回目はこの教材自身のCLラッパーのバグ──は別々の原因である)。この接続で`db2` CLIから直接、最小限の3引数(オブジェクト名・ライブラリー・型)だけで2通り試したところ:
 
 - **`DATABASE_OBJECT_TYPE => 'TABLE'`: 成功。** `SQLSTATE: 0100C`(クラス`01`=警告であり、エラーではない)は「`1 result sets are available from procedure GENERATE_SQL`」という情報にすぎない。**`TOKUIM`の完全な生成済みDDLが結果セットとして実際に返ってきた**(下記)。
 - **`DATABASE_OBJECT_TYPE => '*FILE'`: `SQLSTATE 22023`、`DATABASE_OBJECT_TYPE NOT VALID`——`*FILE`は最初から有効な値ではなかった。** `part08-06-ddl`の3回・`part08-06-generate-sql-retry`の2回、合計5回の失敗はすべてこれが原因だった可能性が高い(引数の型・名前という当初の仮説は的外れだった)。
@@ -3169,3 +3173,4 @@ P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)�
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P22 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。**P19(TXMIGR TO(2)実行)は`part05-txmigr-to2`/`-to2b`で、P23(SAVF証拠)・P44(CRTDUPOBJ複製後のソース情報)は`part05-promote-rollback`で、P20(不正な10進数データ)は`part05-lesson-decimal`で、P43(ロック診断)は`part06-p43-lockdiag`で、それぞれ実機解決済み(上記の各節参照)。**
 - 新規アカウントが必要なもの(P02, P41)は、ベータ・テスターの協力を得るか、一次資料 + 私的な既存実測(匿名化)で代替する。
+- **【2026-09-29追記】第8部の作業に伴い、P16(08-01/08-02で解消)・P28(`makei --version`・RPGLE/SRVPGMビルドが実機確認済み、`part08-02-makei-probe`等)・P29(`GENERATE_SQL`の実引数・生成DDL・レベルID一致が`part08-06-lvlid-and-gensql`・`part08-06-lvlid-confirm`で解決)も実機解決済み。この一覧はP15/P17/P24/P25/P30/P42等、第8部の他レッスンで解決済みの項目も含め、全体としては更新しきれていない——各レッスンの「依存するプローブ」欄と、対応する`docs/probes.md`節見出しを個別に参照すること。

@@ -1,9 +1,9 @@
 -- 08-06: DDS-to-SQL-DDL conversion - TOKUIM's confirmed GENERATE_SQL output.
 -- See docs/part08/08-06-dds-to-sql-ddl.md.
 --
--- Run this in the SAME job/connection as the DSPFD TYPE(*RCDFMT) check
--- below (QTEMP is job-scoped, so a different connection will not see
--- QTEMP.TOKUIM).
+-- Run this in the SAME job/connection as the lesson's DSPFD
+-- TYPE(*RCDFMT) verification step (実演 step 4; QTEMP is job-scoped, so
+-- a different connection will not see QTEMP.TOKUIM).
 --
 -- This is the CREATE TABLE portion of the DDL that QSYS2.GENERATE_SQL
 -- actually produced for TOKUIM (db/v1/tokuim.pf) when called as:
@@ -43,8 +43,10 @@
 -- PRIMARY KEY (vs. a plain non-unique index) is actually what restores
 -- CHAIN-style compatibility has not been verified in this material.
 --
--- Aside from the library-name substitution described above, only
--- whitespace/line breaks were reformatted for readability below; the
+-- Aside from the library-name substitution described above, the two
+-- SQL150B/SQL1506 warning comments (shown in the lesson's "実際に生成
+-- された TOKUIM のDDL" section) were dropped, and the remaining
+-- whitespace/line breaks were reformatted for readability; the
 -- column/type definitions themselves are unchanged from the confirmed
 -- generated text.
 
