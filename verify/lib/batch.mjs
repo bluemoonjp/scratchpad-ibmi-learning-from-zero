@@ -207,8 +207,13 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
   // `sh` ステップ: qsh(PASE)のシェル・コマンドを直接埋め込む(`system("...")`で
   // CLコマンドとして解釈させるのではない)。CL には無い操作が必要なマニフェスト向け
   // (2026-09-27追加、2Cの一部)。`file`ステップの後・`cl`ステップの前に置かれる。
-  const shSteps = manifest.steps.filter((s) => s.type === 'sh');
-  for (const step of shSteps) {
+  // `after: true` を付けた sh ステップは、cl ステップの後・collect の前へ回す(2026-09-30追加、
+  // Part 9 設計 §0.8 の解消: cl ステップが作った表・オブジェクトを、`$HOME` を qsh で展開する
+  // `system "RUNSQLSTM SRCSTMF('$HOME/vfy/<batch>/x.sql') ..."` から使うため)。
+  // qsh の system() は呼び出しごとに別ジョブなので、CURLIB は引き継がれない。作成先は
+  // 必ず DFTRDBCOL(&LIB) などで明示すること。
+  const shSteps = manifest.steps.filter((s) => s.type === 'sh' && !s.after);
+  const emitShStep = (step) => {
     lines.push(`echo ${MARKER(`sh:${step.label || 'step'}`)}`);
     // collectステップと同じ理由で&LIBを置換する(2026-09-27、advisor指摘: 実装
     // 漏れがあり、マニフェストに実ライブラリー名を決め打ちで書く=私的パターン
@@ -217,7 +222,8 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
     // &LIB2 にも対応(2026-09-27、05-12のような2ライブラリー間の検証向け)。
     lines.push(substituteLibraryPlaceholders(step.cmd, lib, lib2));
     lines.push(`echo ${MARKER(`sh-end:${step.label || 'step'}`)}`);
-  }
+  };
+  for (const step of shSteps) emitShStep(step);
 
   const clSteps = manifest.steps.filter((s) => s.type === 'cl');
   if (clSteps.length) {
@@ -281,6 +287,8 @@ export function buildQshScript(manifest, cfg, { baseDir } = {}) {
     lines.push(`db2 "SELECT MSG FROM ${logTableDotted} ORDER BY SEQ" 2>&1`);
     lines.push(`echo ${MARKER('vfylog-end')}`);
   }
+
+  for (const step of manifest.steps.filter((s) => s.type === 'sh' && s.after)) emitShStep(step);
 
   const collectSteps = manifest.steps.filter((s) => s.type === 'collect');
   for (const [i, step] of collectSteps.entries()) {
