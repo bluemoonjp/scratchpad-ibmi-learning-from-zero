@@ -1,0 +1,24 @@
+{
+  "batch": "part08-06-generate-sql-retry",
+  "description": "2nd connection. Retry of part08-06-ddl's GENSQL step, now grounded in part08-06-generate-sql-catalog's real 37-parameter signature (QSYS2.SYSROUTINES/SYSPARMS, SPECIFIC_NAME QSQGENSQL). Two corrections from the 3 non-converging prior attempts: (1) DATABASE_FILE_TYPE dropped entirely (confirmed not a real parameter name), (2) CREATE_OR_REPLACE_OPTION passed as a quoted CHAR(1) string '1' (its real, catalog-confirmed type), not an unquoted integer - the 2nd attempt's own fix had removed the quotes, which the catalog now shows was backwards. Also adds DATABASE_SOURCE_FILE_LIBRARY_NAME => 'QTEMP' explicitly, since the catalog gives no default and the original manifest's later DSPFD step assumes the output lands in QTEMP/QSQLTEMP. Read-only target (TOKUIM, QTEMP scratch) - same non-destructive shape as the original manifest.\n\n1st connection's own self-inflicted bug: SHOWGENSRC used DSPPFM ... OUTPUT(*PRINT) - DSPPFM has no OUTPUT parameter (CPD0043), which failed the whole CL program at COMPILE time (severity 30), so GENSQL never even ran and the entire connection produced zero new data (VFYLOG showed stale output from a prior, unrelated connection). Fixed by reading the generated source via plain SQL against the source PF's standard SRCSEQ/SRCDTA columns instead.",
+  "steps": [
+    {
+      "type": "cl",
+      "label": "GENSQL",
+      "cmd": "RUNSQL SQL('CALL QSYS2.GENERATE_SQL(DATABASE_OBJECT_NAME => ''TOKUIM'', DATABASE_OBJECT_LIBRARY_NAME => ''&LIB'', DATABASE_OBJECT_TYPE => ''*FILE'', DATABASE_SOURCE_FILE_NAME => ''QSQLTEMP'', DATABASE_SOURCE_FILE_LIBRARY_NAME => ''QTEMP'', CREATE_OR_REPLACE_OPTION => ''1'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000) EXEC(GOTO CMDLBL(ORIGLVLID))\nDSPFD FILE(QTEMP/QSQLTEMP) TYPE(*MBRLIST) OUTPUT(*PRINT)\nDSPFD FILE(QTEMP/QSQLTEMP) TYPE(*RCDFMT) OUTPUT(*PRINT)",
+      "monmsg": ["CPF0000", "SQL0000"]
+    },
+    {
+      "type": "cl",
+      "label": "SHOWGENSRC",
+      "cmd": "RUNSQL SQL('SELECT SRCDTA FROM QTEMP.QSQLTEMP ORDER BY SRCSEQ') COMMIT(*NONE)",
+      "monmsg": ["CPF0000", "SQL0000"]
+    },
+    {
+      "type": "cl",
+      "label": "ORIGLVLID",
+      "cmd": "DSPFD FILE(&LIB/TOKUIM) TYPE(*RCDFMT) OUTPUT(*PRINT)",
+      "monmsg": ["CPF0000"]
+    }
+  ]
+}
