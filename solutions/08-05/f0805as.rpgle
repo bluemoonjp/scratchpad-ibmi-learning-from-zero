@@ -64,31 +64,55 @@
 //
 // XFOOT / array-bounds guard: CT is a 50-element array, one slot per
 // customer's rolled-up L2CNT, filled via IX (starts at 0, incremented
-// before each store). Faithfully ports JU0300's own guard ("IX COMP
-// 49" BEFORE incrementing, skip both the increment AND the store when
-// IX already equals 49) - see that file's header comment 3 for why
-// this specific ordering exists (prevents IX from ever exceeding the
-// array's own 50-element bound). Note this guard actually caps usable
-// array slots at 49, not 50 (the 50th slot is never written) - a minor
-// asymmetry inherited unchanged from the original rather than "fixed",
-// since this rewrite's whole point is behavioral equivalence, not
-// improvement; with only 6 customers in db/data/load_v1.sql this never
-// triggers either way. %XFOOT(ct) sums all 50 declared elements
-// (ilerpgref75.txt, %XFOOT (Sum Array Expression Elements)) - unused
-// slots stay at their INZ(0) value, so this is safe regardless of how
-// many customers were actually seen.
+// before each store). Ports JU0300's own guard ("IX COMP 49" BEFORE
+// incrementing, skip both the increment AND the store when the compare
+// blocks it) - see that file's header comment 3 for why this specific
+// ordering exists (prevents IX from ever exceeding the array's own
+// 50-element bound: "IX itself can never advance past 50"). FIXED
+// (found during this lesson's own write-up, not by a real compile
+// error): an earlier draft read COMP's resulting indicator 90 as the
+// EQUAL condition (columns 58-59) and ported the guard as
+// "if ix <> 49", which incorrectly blocks the IX=49-to-50 transition,
+// capping usable array slots at 49 instead of the original's own 50.
+// rpg400ref.txt's own column table (lines 12559-12561, 14515-14517)
+// confirms indicator 90's actual column position in JU0300's C-spec
+// (54-55) is the HIGH condition, not EQUAL - COMP sets indicator 90
+// when IX > 49, so the guard's real meaning is "proceed only while
+// IX <= 49" (i.e. IX has not yet reached 50), correctly allowing IX to
+// reach exactly 50 and blocking only a hypothetical 51st customer.
+// Ported here as "if ix <= 49", matching that meaning exactly. With
+// only 6 customers in db/data/load_v1.sql, neither the original guard
+// nor this earlier incorrect port nor this fix changes any golden-
+// master output - the difference is latent, not observable in this
+// repo's own data, which is how the earlier misreading went unnoticed
+// until traced back to the original source's own column layout.
+// %XFOOT(ct) sums all 50 declared elements (ilerpgref75.txt, %XFOOT
+// (Sum Array Expression Elements)) - unused slots stay at their
+// INZ(0) value, so this is safe regardless of how many customers were
+// actually seen.
 //
-// *LDA FTOK FILTER: RPG IV free-form has no UDS auto-load (the
-// mechanism ju0300.rpg's own I-spec "U" option used). Ported instead
-// via the DTAARA keyword on a NAMED data structure with an explicit IN
-// operation - ilerpgref75.txt lines 16345-16349 ("DCL-DS LDA_DS
-// DTAARA(*LDA); SUBFLD CHAR(600); END-DS; IN LDA_DS; OUT LDA_DS;",
-// prose: "explicitly based on the *LDA... it must be handled using IN
-// and OUT operations") is the exact shape used below - note *LDA is
-// the UNQUOTED reserved keyword, not the quoted string literal
-// '*LDA' (which the compiler instead treats as a data area literally
-// named "*LDA" and rejects - RNF7064, confirmed the hard way on this
-// file's own 1st compile attempt, see STATUS above). A filler subfield
+// *LDA FTOK FILTER: RPG IV free-form DOES have a direct UDS-equivalent
+// auto-load form - ilerpgref75.txt lines 16326-16330: "DCL-DS *N
+// DTAARA(*AUTO); SUBFLD CHAR(600); END-DS;" (an unnamed data structure
+// with DTAARA(*AUTO)) is explicitly presented there as the free-form
+// equivalent of the fixed-form "D UDS" auto-load ju0300.rpg's own
+// I-spec "U" option used - no IN/OUT needed for that form. This file
+// deliberately uses the OTHER documented form instead - a NAMED data
+// structure with an explicit IN operation - ilerpgref75.txt lines
+// 16345-16349 ("DCL-DS LDA_DS DTAARA(*LDA); SUBFLD CHAR(600); END-DS;
+// IN LDA_DS; OUT LDA_DS;", prose: "explicitly based on the *LDA... it
+// must be handled using IN and OUT operations") is the exact shape
+// used below. Chosen over *AUTO because *AUTO's own auto-load timing
+// (module initialization vs. every reference) is not spelled out by
+// this repo's own primary sources with the same clarity as the
+// explicit-IN form's documented behavior, and an explicit `in ldaDs;`
+// right before the read loop keeps this rewrite's control flow visibly
+// self-contained rather than relying on an implicit load a reader
+// could miss. Note *LDA is the UNQUOTED reserved keyword, not the
+// quoted string literal '*LDA' (which the compiler instead treats as
+// a data area literally named "*LDA" and rejects - RNF7064, confirmed
+// the hard way on this file's own 1st compile attempt, see STATUS
+// above). A filler subfield
 // covers *LDA bytes 1-10 (the menu-digit byte MN0000C writes, per
 // ju0300.rpg's own header) so FTOK lands at the same bytes 11-16 the
 // original UDS used. Only IN is needed (this program only READS the
@@ -234,7 +258,7 @@ dcl-proc l2Break;
   dcl-pi *n;
   end-pi;
 
-  if ix <> 49;
+  if ix <= 49;
     ix += 1;
     ct(ix) = l2cnt;
   endif;
