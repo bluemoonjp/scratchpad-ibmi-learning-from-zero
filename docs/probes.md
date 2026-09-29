@@ -2812,6 +2812,22 @@ Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・�
 - 副次的に見つかったマニフェスト自身のバグ: `PROGRAM_INFO`のSELECT文に`QSYS2.PROGRAM_INFO('&LIB', 'ZAISRV')`という関数呼び出し構文を使っていたが、`part08-07-services`で確認済みの実際に動く形は`FROM QSYS2.PROGRAM_INFO WHERE PROGRAM_LIBRARY = '&LIB' ...`という素のビュー形式(かっこ無し)——`SQLSTATE 42601`(構文エラー)で失敗した。
 - **修正**: `iproj.json`の置換は、`part08-01-git-srcstmf`の`ed.py`と同じ安全な手段(`python3`のバイナリー・モード読み書き)に変更した(このハーネスのqshでは`>`によるリダイレクトがCCSID 273へ再エンコードしてしまう既知の問題があるため、`sed ... > tmp && mv tmp file`のような代替も避けた)。`BUILD`ステップは`bash -c 'cd ... && export PATH=/QOpenSys/pkgs/bin:$PATH && ... makei build'`という、`part08-02-makei-probe`で成功した形に`export`を明示的に含めるよう修正した。`PROGRAM_INFO`のSELECT文も素のビュー形式に修正した。次回接続で再試行する。
 
+## 第8部`part08-02-makei-probe2`続報: 2回目の接続で`makei build`は実際に走ったが「何もしない」と判定した(確認日2026-09-29)
+
+1回目の2つの自作バグ(`sed -i`・`PATH`未export)を修正した2回目の接続で、`iproj.json`の置換(`python3`バイナリー・モード)と`PATH`のexportはどちらも正しく機能した(`SETUP`の`cat`出力で`"objlib": "<USER>2"`への置換を確認、`BUILD`の`echo PATH=$PATH`で`/QOpenSys/pkgs/bin`を含むことを確認)。
+
+**`makei build`自体は今度こそ実際に走った**が、結果は次のとおり:
+
+```text
+> /QOpenSys/pkgs/bin/make -k BUILDVARSMKPATH="/tmp/..." -k TOBI_PATH="/QOpenSys/pkgs/lib/tobi" -f "/QOpenSys/pkgs/lib/tobi/src/mk/Makefile" all
+make: Nothing to be done for 'all'.
+Objects:            0 failed 0 succeed 0 total
+```
+
+**makeiは「何も作る必要が無い」と判定し、0件のオブジェクトで終わった。** `collect`型のSELECTが返した`ZAISRV *MODULE`/`*SRVPGM`(`&LIB`に存在)は、この判定のとおり**今回のビルドの成果ではなく**、Part 7由来の既存オブジェクトがそのまま見えているだけである可能性が高い(前回接続と同じ状況)。原因は2通り考えられ、この接続だけでは切り分けられない: (a) makeiが対象オブジェクト名(ここでは`ZAISRV`)が`objlib`に既に存在することだけを見て「最新」と判断している(ソースの内容や日時とは無関係)、(b) 何か別の理由(iproj.json/Rules.mkの記述不足、makei自身が期待する追加の初期化手順の欠落等)で、そもそも依存グラフに`ZAISRV`が1件も登録されていない。makei/Bob自体にこの教材の一次資料は無い(`work/design/part08-design-v1.md`§0.6)ため、これ以上は内部動作の推測に頼らざるを得ない。
+
+**次の一手**: この曖昧さを解消するため、`&LIB`(Part 7がZAISRVを既に持つライブラリー)ではなく、P01で確認済みの空のライブラリー`<USER>B`(`&LIB2`、このバッチのどの接続でもまだ一度も触れていない)を`objlib`/`curlib`に指定した3回目の接続を行う。**`<USER>B`は空なので、ここで実際にオブジェクトが作られれば(a)(b)の両方に同時に答えが出る**(makeiが本当にゼロから作れること、かつ`iproj.json`の`objlib`/`curlib`が実際に効くこと、の両方が一度に確認できる)。破壊的な操作は無い(`<USER>B`はこのバッチでも他のどのZAISRV関連接続でも触れていない)。
+
 ## 第8部`part08-07-services`: `OBJECT_PRIVILEGES`/`PROGRAM_INFO`が初回で成功、`RVKOBJAUT`の実バグを発見(確認日2026-09-29)
 
 08-07(IBM iサービスと権限)の実機確認。1回目の接続で、`collect`型ステップの4本のSELECT文はすべて成功した:
