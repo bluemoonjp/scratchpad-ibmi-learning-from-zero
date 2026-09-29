@@ -15,27 +15,45 @@
 // violated rule is named here for the AUTHOR's own reference; the
 // lesson text should not spoil exactly where each one is in the code
 // itself, so the learner has to actually run rpglint and read its
-// output to find them:
+// output to find them. CONFIRMED (see STATUS below) via a real local
+// run of @halcyontech/rpglint 0.27.0 against this exact file:
 //   - SpecificCasing (if/dcl-s/dcl-pr must be lowercase): IF and
-//     DCL-S below are uppercase.
-//   - NoIndicators: the CHAIN below uses a resulting indicator
-//     variable (foundInd) instead of %FOUND.
+//     DCL-S below are uppercase. Real message: "Does not match
+//     required case."
 //   - NoGlobalSubroutines: ORDERCOUNT below is a BEGSR/ENDSR global
-//     subroutine instead of a dcl-proc.
+//     subroutine instead of a dcl-proc. Real message: "Subroutines
+//     should not be defined in the global scope."
 //   - NoUnreferenced: UNUSEDFLD below is declared and never used
-//     anywhere.
+//     anywhere. Real message: "No reference to definition." (not the
+//     rule name - the README doesn't document exact message text).
 //   - StringLiteralDupe: the literal 'NOTFOUND' appears twice instead
-//     of being a named constant.
+//     of being a named constant. Real message: "Same string literal
+//     used more than once. Consider using a constant instead."
+//   - PrettyComments (NOT originally planned - found by the real run,
+//     kept because it's a genuine, confirmed 5th violation): this
+//     file's own //===...=== banner-style comments (including this
+//     block) trigger "Comments must be correctly formatted." This
+//     repo's other RPG sources (including jucsrv.rpgle) use the same
+//     banner style and are NOT PrettyComments-clean either - see
+//     docs/probes.md's 08-03 rpglint section.
 //
-// STATUS: never compiled or linted on real hardware - rpglint itself
-// has zero primary-source documentation in this repo (work/design/
-// part08-design-v1.md's own section 9), so both the exact violations
-// this file seeds AND whether rpglint actually reports them the way
-// this header predicts are UNCONFIRMED. Treat every claim above as
-// "general knowledge, to be checked against the real rpglint output
-// on this file's own first real run" - if rpglint's own real output
-// disagrees with this list, the real output wins and this header
-// should be corrected to match it, not the other way around.
+// NOT seeded (originally planned, does not actually fire): NoIndicators
+// was intended to be seeded via the CHAIN below using a resulting
+// indicator variable (foundInd) instead of %FOUND. A real run showed
+// NoIndicators never fires on this pattern, nor on a separately-tested
+// bare *IN90 array-indicator reference - its actual trigger condition
+// is unconfirmed (the README documents no rule-by-rule specifics). The
+// CHAIN/foundInd pattern is left as-is since it's still a legitimate
+// %FOUND-vs-indicator teaching point even though rpglint itself won't
+// flag it.
+//
+// STATUS: CONFIRMED - actually run locally (@halcyontech/rpglint
+// 0.27.0, npm, zero PUB400 connection needed) against this exact file
+// with templates/part08-project/rpglint.json, 2026-09-29. 18 total
+// error lines reported, matching the 5 rules listed above (see
+// docs/probes.md's Part 8 08-03 rpglint section for the full raw
+// output and line numbers). rpglint itself is a real, installable, locally
+// runnable tool - no longer "general knowledge, unconfirmed".
 //
 // PUB400 placeholders: <lib> stands for the learner's own library; no
 // real PUB400 user or library name appears in this file.
