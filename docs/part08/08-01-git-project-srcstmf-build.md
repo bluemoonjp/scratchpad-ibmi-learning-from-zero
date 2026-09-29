@@ -400,7 +400,7 @@ CPF9898:  F0703A: MATCH - both calls agree; JUCHUM repositioning is correct..
 | Fast-forward | 早送り(履歴が一直線につながる、単純な`git pull`の反映のされ方) |
 | Target CCSID | コンパイラーがソースを読むときに使うCCSID(`TGTCCSID`) |
 
-次のレッスン(08-02)では、`makei`を使って依存関係に沿った一括ビルドを行います(`iproj.json`・`Rules.mk`という別の`templates/part08-project/`ファイルを使い、`ZAISRV`を題材にします)。
+次のレッスン(08-02)では、`makei`を使って依存関係に沿った一括ビルドを行います(`iproj.json`・`Rules.mk`という`templates/part08-zaisrv/`の別ファイルを使い、`myproject`とは別の新しいプロジェクトで`ZAISRV`を題材にします)。
 
 ## 実機メモ
 

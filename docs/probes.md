@@ -2866,11 +2866,11 @@ makei cvtsrcpf  convert source physical file members to UTF8 IFS files
 
 5回目の接続(読み取り専用)で、`iproj-json.md`・`rules.mk.md`・`create-a-new-project.md`・`convert-source-code.md`・`sample-build.md`、およびバンドル済みサンプル・プロジェクト(`tests/data/build_env/sample_project1`)の実物を読んだ。
 
-- **`iproj.json`側は最初から正しかった。** `objlib`/`curlib`/`includePath`/`preUsrlibl`/`postUsrlibl`は、`iproj-json.md`が説明する実際のフィールドと完全に一致しており、このバッチの`templates/part08-project/iproj.json`に誤りは無かった。
-- **真因が判明: `Rules.mk`はエッジケース専用の任意ファイルではなく、makeiに「何をビルドするか」を教える主たる仕組みそのものだった。** `rules.mk.md`は「`オブジェクト名.オブジェクト型: ソース・ファイル`」という形の行(例: `VATDEF.FILE: VATDEF.PF SAMREF.FILE`)を1つも書かなければ、対象オブジェクトが1つも登録されないと明記している。バンドル済みサンプル・プロジェクトの実際に動く`Rules.mk`も、同じ形で`HELLO.MODULE: HELLOP.RPGLE`という1行だけを持っていた。**このバッチが1〜4回目の接続でずっと使っていた`Rules.mk`(`templates/part08-project/Rules.mk`)は100%コメントで、ターゲット宣言が1つも無かった。** これが、対象ライブラリーが`&LIB`(既存オブジェクトあり)でも`&LIB2`(空)でも変わらず同じ「`Nothing to be done for 'all'`」になっていた理由である——ライブラリーの中身とは無関係に、そもそも依存グラフに何も登録されていなかった。
+- **`iproj.json`側は最初から正しかった。** `objlib`/`curlib`/`includePath`/`preUsrlibl`/`postUsrlibl`は、`iproj-json.md`が説明する実際のフィールドと完全に一致しており、このバッチの`templates/part08-zaisrv/iproj.json`に誤りは無かった。
+- **真因が判明: `Rules.mk`はエッジケース専用の任意ファイルではなく、makeiに「何をビルドするか」を教える主たる仕組みそのものだった。** `rules.mk.md`は「`オブジェクト名.オブジェクト型: ソース・ファイル`」という形の行(例: `VATDEF.FILE: VATDEF.PF SAMREF.FILE`)を1つも書かなければ、対象オブジェクトが1つも登録されないと明記している。バンドル済みサンプル・プロジェクトの実際に動く`Rules.mk`も、同じ形で`HELLO.MODULE: HELLOP.RPGLE`という1行だけを持っていた。**このバッチが1〜4回目の接続でずっと使っていた`Rules.mk`(`templates/part08-zaisrv/Rules.mk`)は100%コメントで、ターゲット宣言が1つも無かった。** これが、対象ライブラリーが`&LIB`(既存オブジェクトあり)でも`&LIB2`(空)でも変わらず同じ「`Nothing to be done for 'all'`」になっていた理由である——ライブラリーの中身とは無関係に、そもそも依存グラフに何も登録されていなかった。
 - **`makei init`は対話式のウィザードだった。** `create-a-new-project.md`によれば、`makei init`は「descriptive application name」「git repository」「objlib」等を対話的に尋ねるプロンプト式のセットアップ・プログラムであり、非対話的にそのまま呼び出すと入力待ちで停止する(advisorが事前に警告した「プロンプトがスクリプトの残りを飲み込む」という懸念どおり)。
 - **`makei cvtsrcpf`は既存のソース物理ファイル・メンバーをIFSへ変換する専用サブコマンド**(`convert-source-code.md`)で、このバッチが手作業で行ってきた`CPYTOSTMF`の代わりに使うべき正規の道具だったと考えられる。
-- **修正**: `templates/part08-project/Rules.mk`を、実際にターゲットを宣言する形(`ZAISRV.MODULE: zaisrv.rpgle` / `ZAISRV.SRVPGM: ZAISRV.MODULE zaisrv.bnd`)に書き直した。従来のコメント(「通常このファイルへの追記は不要」)は誤りだったため削除した。6回目の接続で、この修正版`Rules.mk`を使い、引き続き空の`<USER>B`(`&LIB2`)を対象にビルドを再試行する。
+- **修正**: `templates/part08-zaisrv/Rules.mk`を、実際にターゲットを宣言する形(`ZAISRV.MODULE: zaisrv.rpgle` / `ZAISRV.SRVPGM: ZAISRV.MODULE zaisrv.bnd`)に書き直した。従来のコメント(「通常このファイルへの追記は不要」)は誤りだったため削除した。6回目の接続で、この修正版`Rules.mk`を使い、引き続き空の`<USER>B`(`&LIB2`)を対象にビルドを再試行する。
 
 ## 第8部`part08-02-makei-probe2`続報: 6回目の接続でmakeiビルドがCONFIRMED SUCCESS、ただし未決事項が残る(確認日2026-09-29)
 
@@ -2896,7 +2896,7 @@ Build Successful!
 
 **副産物として分かったこと**: makeiが生成した実際の`CRTRPGMOD`は`TGTCCSID(*JOB)`を自動的に付けていた(08-01が学習者に教える対処と同じ)。`CRTSRVPGM`は`ACTGRP(*CALLER)`を使っており、Part 7がZAISRVに最初から与えていた設計と一致する。
 
-**この4〜6回目の接続(すべて読み取り専用または空ライブラリー限定)を通じて、08-02のレッスン設計にとって決定的に重要な事実が1つ確定した**: `templates/part08-project/Rules.mk`はエッジケース専用ファイルではなく必須ファイルであり、対象オブジェクトごとに`オブジェクト名.オブジェクト型: ソース・ファイル`という行を書かなければmakeiは何もビルドしない。08-02のレッスン本文はこの点を中核概念として明記する必要がある(従来の設計メモ・テンプレートのコメントはこの点で誤っていた)。`makei init`(対話式ウィザード)・`makei cvtsrcpf`(ソースPFのIFS変換)は、このバッチでは実際には使わず、代わりに08-01で確立済みの`CPYTOSTMF`手法をそのまま使った——どちらの経路でも最終的なビルド結果は同じはずだが、`makei init`/`cvtsrcpf`自体をこの教材で実機確認したわけではない(V3のまま)。
+**この4〜6回目の接続(すべて読み取り専用または空ライブラリー限定)を通じて、08-02のレッスン設計にとって決定的に重要な事実が1つ確定した**: `templates/part08-zaisrv/Rules.mk`はエッジケース専用ファイルではなく必須ファイルであり、対象オブジェクトごとに`オブジェクト名.オブジェクト型: ソース・ファイル`という行を書かなければmakeiは何もビルドしない。08-02のレッスン本文はこの点を中核概念として明記する必要がある(従来の設計メモ・テンプレートのコメントはこの点で誤っていた)。`makei init`(対話式ウィザード)・`makei cvtsrcpf`(ソースPFのIFS変換)は、このバッチでは実際には使わず、代わりに08-01で確立済みの`CPYTOSTMF`手法をそのまま使った——どちらの経路でも最終的なビルド結果は同じはずだが、`makei init`/`cvtsrcpf`自体をこの教材で実機確認したわけではない(V3のまま)。
 
 **【advisor指摘、7回目の接続で一部解消】**: 6回目の接続は「空ライブラリーへの新規ビルド」しか確認しておらず、増分ビルド(2回目以降のmakei buildが本当にスキップするか)は未確認のままだった。7回目(このバッチ最後の接続)で、6回目からソースを一切変えず、同じ`$HOME/mk8/z`のまま`makei build`をもう一度実行したところ、**今度こそ正しい意味で「`make: Nothing to be done for 'all'. Objects: 0 failed 0 succeed 0 total`」が出た**——3回目の接続時とは違い、今回は`Rules.mk`に正しいターゲット宣言がある状態での結果であり、**makeiの依存グラフに基づく増分ビルド(変更が無いオブジェクトはスキップする)という中核概念(1)が、実機で確認できた。** 7回目の接続の最後に`DLTSRVPGM`/`DLTMOD`で`<USER>B`の`ZAISRV`を削除し、`collect`のSELECTが0件を返すことを確認して元の空の状態に戻した——このバッチが`<USER>B`に残したオブジェクトは無い。
 
