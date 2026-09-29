@@ -1,0 +1,40 @@
+{
+  "batch": "part08-02-makei-probe2",
+  "description": "2nd makei probe for 08-02, 1st connection of this batch. part08-02-makei-probe (1st connection) confirmed makei/TOBi actually works when invoked via `bash /QOpenSys/pkgs/bin/makei ...` (not bare qsh invocation) and confirmed TOBi version 3.2.1. This batch goes further: builds ZAISRV (Part 7's solutions/07-05/zaisrv.rpgle + zaisrv.bnd, already compiled and confirmed in &LIB per part07-05-checkpoint) as a real makei project, using templates/part08-project/iproj.json + Rules.mk, to answer two open design questions from work/design/part08-design-v1.md §7 point 2 / §8 point 6: (1) does `makei build` actually work end to end via the bash invocation path, producing the same *MODULE/*SRVPGM objects, and (2) does iproj.json's own objlib/curlib field control the target library, or is CHGCURLIB needed. iproj.json/Rules.mk are delivered as real QTXTSRC members (file-type steps, safe/EBCDIC-native) then CPYTOSTMF'd out with STMFCCSID(1208) ENDLINFMT(*LF) - the same recipe already proven twice in part08-01-git-srcstmf (seed files, ed.py). iproj.json's placeholder objlib/curlib (\"YOURUSER2\") is substituted with the real &LIB via sed, since &LIB is only resolved by this harness inside step cmd strings, not inside already-deployed file content. Deliberately does NOT build/call DRIVER in this connection - driver.rpgle mutates the shared ZAIKOM table and requires a TXRESET follow-up (see solutions/07-05/driver.rpgle's own header warning); that full round trip belongs in 08-02's real lesson verify manifest, not this probe.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../templates/part08-project/iproj.json",
+      "remoteSrcFile": "QTXTSRC",
+      "member": "IPROJJSN",
+      "ensureSrcFile": { "recordLength": 112 }
+    },
+    {
+      "type": "file",
+      "localPath": "../../templates/part08-project/Rules.mk",
+      "remoteSrcFile": "QTXTSRC",
+      "member": "RULESMK",
+      "ensureSrcFile": { "recordLength": 112 }
+    },
+    {
+      "type": "sh",
+      "label": "SETUP",
+      "cmd": "rm -rf \"$HOME/mk8\"\nmkdir -p \"$HOME/mk8/z/src/qrpglesrc\" \"$HOME/mk8/z/src/qsrvsrc\"\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGLESRC.FILE/ZAISRV.MBR') TOSTMF('$HOME/mk8/z/src/qrpglesrc/zaisrv.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QSRVSRC.FILE/ZAISRV.MBR') TOSTMF('$HOME/mk8/z/src/qsrvsrc/zaisrv.bnd') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QTXTSRC.FILE/IPROJJSN.MBR') TOSTMF('$HOME/mk8/z/iproj.json') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QTXTSRC.FILE/RULESMK.MBR') TOSTMF('$HOME/mk8/z/Rules.mk') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsed -i \"s/YOURUSER2/&LIB/g\" \"$HOME/mk8/z/iproj.json\"\necho ---IPROJ-JSON---\ncat \"$HOME/mk8/z/iproj.json\"\necho ---TREE---\nfind \"$HOME/mk8/z\" -type f\n"
+    },
+    {
+      "type": "sh",
+      "label": "BUILD",
+      "cmd": "cd \"$HOME/mk8/z\" && /QOpenSys/pkgs/bin/bash /QOpenSys/pkgs/bin/makei build 2>&1"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJLIB, OBJTEXT FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', 'ALL')) X WHERE OBJNAME = 'ZAISRV' ORDER BY OBJTYPE"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT PROGRAM_LIBRARY, PROGRAM_NAME, PROGRAM_TYPE, PROGRAM_OWNER FROM QSYS2.PROGRAM_INFO('&LIB', 'ZAISRV')"
+    }
+  ]
+}
