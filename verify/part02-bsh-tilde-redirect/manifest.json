@@ -1,0 +1,21 @@
+{
+  "batch": "part02-bsh-tilde-redirect",
+  "description": "1st connection. Follow-up to part08-02-driver-bsh, whose bsh tilde test was flawed (advisor review): `echo A=~`/`echo B=~/x` put `~` mid-argument, not at word-start, so POSIX tilde expansion rules never even applied there regardless of shell support - that test proved nothing about bsh's actual leading-tilde behavior. 02-04 (already published on main) tells learners to run `echo 'export PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile` - the `~/.profile` there IS a leading-tilde bare word (outside the quoted echo argument), the exact case that was never actually tested. If bsh does not expand a leading `~`, this command would try to write to a literal path `~/.profile` relative to CWD (a subdirectory literally named `~`), not the learner's real profile - the PATH fix would silently fail to persist across logins even though the current session's two-step export otherwise works. TILDEREDIRECT tests the exact same construct (a leading `~` inside a redirect target) against a disposable scratch filename, never touching the learner's real ~/.profile. TILDEBARE adds advisor's simpler, more direct leading-tilde forms (`echo ~`, `echo ~/x`, `cd ~/vfy && pwd`) as corroborating evidence.",
+  "steps": [
+    {
+      "type": "sh",
+      "label": "PRECHECK",
+      "cmd": "ls -la $HOME </dev/null 2>&1 | grep -F '~' </dev/null 2>&1; echo ---no-stray-tilde-entry-above-means-none-found---\n"
+    },
+    {
+      "type": "sh",
+      "label": "TILDEBARE",
+      "cmd": "/QOpenSys/usr/bin/bsh -c 'echo ~ ; echo ~/x ; cd ~/vfy && pwd' </dev/null 2>&1\n"
+    },
+    {
+      "type": "sh",
+      "label": "TILDEREDIRECT",
+      "cmd": "cd $HOME\nrm -f ./~ 2>&1\nrm -rf $HOME/vfytilde-scratch 2>&1\n/QOpenSys/usr/bin/bsh -c \"echo 'probe line' >> ~/vfytilde-scratch.txt\" </dev/null 2>&1\necho ---AFTER-BSH-REDIRECT---\nls -la $HOME/vfytilde-scratch.txt </dev/null 2>&1\necho ---LITERAL-TILDE-CHECK---\nls -la ./~ </dev/null 2>&1\ncat ./~ </dev/null 2>&1\necho ---CLEANUP---\nrm -f $HOME/vfytilde-scratch.txt ./~ 2>&1\n"
+    }
+  ]
+}

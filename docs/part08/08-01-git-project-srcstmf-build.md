@@ -105,8 +105,10 @@
 この教材は、この危険を設定に頼らず構造で避ける方針を取ります。**ベア・リポジトリー**(`git init --bare`)は、作業コピーを一切持たない、`.git`の中身だけのリポジトリーです。作業コピーが無いので、外部からのpushで「作業コピーとの食い違い」がそもそも発生しません。ビルドに使う作業コピーは、ベア・リポジトリーとは**別の場所**に`git clone`して用意します。
 
 ```sh
-git init --bare -b main ~/pub400-bare.git
+git init --bare -b main $HOME/pub400-bare.git
 ```
+
+**PUB400のSSH接続の既定シェル(P08確認済みの`bsh`)は語頭の`~`を一切展開しません**(実機確認済み、下の「実機メモ」参照)——IBM i側で直接実行するコマンドは、上のように`~`ではなく`$HOME`を使ってください。
 
 `receive.denyCurrentBranch=updateInstead`という代替設定名も、読み物として知っておいてください(上の「新出」参照)。ただし**この教材ではこの設定を一切使いません**——PUB400のgitバージョン(`git --version`で確認済み、2.47.0)でこの設定が実際にどう動くかは、gitのマニュアル自体がこのリポジトリの一次資料に含まれていないため確認できておらず、恒久的にV3(未検証)のままになる見込みだからです。この課の演習は、必ず`git init --bare`の経路で行ってください。
 
@@ -193,7 +195,7 @@ ADDLIBLE LIB(<自分のユーザー名>1) POSITION(*FIRST)
 
 **この実演で作る`JUCSRV`(*MODULE・*SRVPGM)は、実機での実行確認(V2)まで済んでいます。** ただし実機で実際に検証されたのは、下の「A」(本物のPCからの接続を要するため、このリポジトリの検証ハーネスでは構造的に確認できません)ではなく、「B」に相当するIFS内リハーサルを**構成する個々の要素**(ベア・リポジトリー+cloneという経路、SRCSTMFビルドのコマンド自体)です。「B」節が指示するこの具体的な手順そのもの(`cp`によるコピー)は、個別には検証していません。詳しくは下の「実機メモ」の区別を必ず読んでください。
 
-**A・Bどちらか一方だけを行えば、上の「ゴール」の2つ目・3つ目(SRCSTMFからのJUCSRVビルド、同じオブジェクトの作り直し)は達成できます。** ただし1つ目のゴール(本物のPCからPUB400への安全なpush)は、Aでしか確かめられません——Bは本物のPCを使わない代替リハーサルです。PCでgit・SSHがすぐ使える人はAを、まだ準備できていない人はまずBで練習し、あとでAに進んでください(下の「演習」はAを前提にします)。Aは`~/pub400-clone`、Bは`~/rehearsal-clone`というIFS上のディレクトリーに、それぞれ`jucsrv.rpgle`・`jucsrv.bnd`が揃った状態になります——下のC・Dは、どちらのディレクトリーに対しても同じ手順です(コマンド例は`~/pub400-clone`で示すので、Bだけを行った場合は`~/rehearsal-clone`と読み替えてください)。
+**A・Bどちらか一方だけを行えば、上の「ゴール」の2つ目・3つ目(SRCSTMFからのJUCSRVビルド、同じオブジェクトの作り直し)は達成できます。** ただし1つ目のゴール(本物のPCからPUB400への安全なpush)は、Aでしか確かめられません——Bは本物のPCを使わない代替リハーサルです。PCでgit・SSHがすぐ使える人はAを、まだ準備できていない人はまずBで練習し、あとでAに進んでください(下の「演習」はAを前提にします)。Aは`$HOME/pub400-clone`、Bは`$HOME/rehearsal-clone`というIFS上のディレクトリーに、それぞれ`jucsrv.rpgle`・`jucsrv.bnd`が揃った状態になります——下のC・Dは、どちらのディレクトリーに対しても同じ手順です(コマンド例は`$HOME/pub400-clone`で示すので、Bだけを行った場合は`$HOME/rehearsal-clone`と読み替えてください。**SSH接続の既定シェル(`bsh`)は語頭の`~`を一切展開しないため(実機確認済み、下の「実機メモ」参照)、IBM i側で直接実行するコマンドはすべて`~`ではなく`$HOME`を使います**)。
 
 ### A. 本筋: PCからPUB400へのgit push
 
@@ -225,7 +227,7 @@ ADDLIBLE LIB(<自分のユーザー名>1) POSITION(*FIRST)
 6. SSH(02-04で確立済みの接続方法で構いません)で接続し、PUB400側にベア・リポジトリーを作ります。
 
    ```sh
-   git init --bare -b main ~/pub400-bare.git
+   git init --bare -b main $HOME/pub400-bare.git
    ```
 
 7. PC側に戻り、リモートを登録してpushします。
@@ -249,29 +251,29 @@ ADDLIBLE LIB(<自分のユーザー名>1) POSITION(*FIRST)
 8. もう一度SSHで接続し、ビルド用の作業クローンを作ります(ベア・リポジトリー自身には作業コピーが無いため、ビルドには**別の**クローンが要ります)。
 
    ```sh
-   git clone ~/pub400-bare.git ~/pub400-clone
+   git clone $HOME/pub400-bare.git $HOME/pub400-clone
    ```
 
 ### B. 代替: PUB400のIFS内だけで練習する(PCの準備がまだの場合)
 
-**この経路は、A(本筋)と中身は同じ小さなプロジェクトを、PUB400のIFS内だけで(SSH接続だけで)用意する簡略版です。** ベア・リポジトリー+cloneという経路と、次のC・DのSRCSTMFビルドの手順そのものを、PCの用意を待たずに練習できます。Aで使う`~/pub400-bare.git`・`~/pub400-clone`とは別の名前を使うので、あとでAを行うときに衝突しません。
+**この経路は、A(本筋)と中身は同じ小さなプロジェクトを、PUB400のIFS内だけで(SSH接続だけで)用意する簡略版です。** ベア・リポジトリー+cloneという経路と、次のC・DのSRCSTMFビルドの手順そのものを、PCの用意を待たずに練習できます。Aで使う`$HOME/pub400-bare.git`・`$HOME/pub400-clone`とは別の名前を使うので、あとでAを行うときに衝突しません。
 
 1. SSH(02-04で確立済みの接続方法)で接続します。
 2. 練習用の作業ディレクトリーを作り、`git init`します(ベアではない、ふつうのリポジトリーです)。
 
    ```sh
-   mkdir -p ~/rehearsal-pc/src/qrpglesrc ~/rehearsal-pc/src/qsrvsrc
-   cd ~/rehearsal-pc
+   mkdir -p $HOME/rehearsal-pc/src/qrpglesrc $HOME/rehearsal-pc/src/qsrvsrc
+   cd $HOME/rehearsal-pc
    git init -b main
    ```
 
-3. 02-04で取り込み済みの`~/ibmi-kyozai`から、`jucsrv.rpgle`・`jucsrv.bnd`の2ファイルだけをコピーします。
+3. 02-04で取り込み済みの`$HOME/ibmi-kyozai`から、`jucsrv.rpgle`・`jucsrv.bnd`の2ファイルだけをコピーします。
 
    gitのユーザー名・メール・アドレスは、この練習用リポジトリーだけに設定します(`--global`は付けません)。
 
    ```sh
-   cp ~/ibmi-kyozai/src/qrpglesrc/jucsrv.rpgle src/qrpglesrc/
-   cp ~/ibmi-kyozai/src/qsrvsrc/jucsrv.bnd src/qsrvsrc/
+   cp $HOME/ibmi-kyozai/src/qrpglesrc/jucsrv.rpgle src/qrpglesrc/
+   cp $HOME/ibmi-kyozai/src/qsrvsrc/jucsrv.bnd src/qsrvsrc/
    git config user.name "自分の名前"
    git config user.email "自分のメール・アドレス"
    git add src
@@ -283,18 +285,18 @@ ADDLIBLE LIB(<自分のユーザー名>1) POSITION(*FIRST)
 4. ベア・リポジトリーを作り、pushします。
 
    ```sh
-   git init --bare -b main ~/rehearsal-bare.git
-   git remote add rehearsal ~/rehearsal-bare.git
+   git init --bare -b main $HOME/rehearsal-bare.git
+   git remote add rehearsal $HOME/rehearsal-bare.git
    git push rehearsal main
    ```
 
 5. ビルド用の作業クローンを作ります。
 
    ```sh
-   git clone ~/rehearsal-bare.git ~/rehearsal-clone
+   git clone $HOME/rehearsal-bare.git $HOME/rehearsal-clone
    ```
 
-`~/rehearsal-clone/src/qrpglesrc/jucsrv.rpgle`・`~/rehearsal-clone/src/qsrvsrc/jucsrv.bnd`が、A(本筋)の`myproject`と同じ内容で揃います(`.gitattributes`はこの簡略版には含めていません——git自身の改行正規化を練習する主眼はAにあるためです)。
+`$HOME/rehearsal-clone/src/qrpglesrc/jucsrv.rpgle`・`$HOME/rehearsal-clone/src/qsrvsrc/jucsrv.bnd`が、A(本筋)の`myproject`と同じ内容で揃います(`.gitattributes`はこの簡略版には含めていません——git自身の改行正規化を練習する主眼はAにあるためです)。
 
 ### C. SRCSTMFからのビルド(A・B共通)
 
@@ -361,10 +363,10 @@ CPF9898:  F0703A: MATCH - both calls agree; JUCHUM repositioning is correct..
    ```
 
    1行だけの挿入なら、`git commit`の要約はおおよそ`1 file changed, 1 insertion(+)`のような小さな差分になるはずです(このレッスンの検証でも、本物のUTF-8/LFファイルへの1行挿入でまったく同じ形の要約を確認しています——詳しくは下の「実機メモ」参照)。
-3. SSHで`~/pub400-clone`に接続し、pullします。
+3. SSHで`$HOME/pub400-clone`に接続し、pullします。
 
    ```sh
-   cd ~/pub400-clone
+   cd $HOME/pub400-clone
    git pull
    ```
 
@@ -387,8 +389,8 @@ CPF9898:  F0703A: MATCH - both calls agree; JUCHUM repositioning is correct..
 ## 片付け
 
 - SRCSTMFビルドで作り直した`<自分のユーザー名>1/JUCSRV`はそのまま残してください——07-02/07-03から引き続き使われるオブジェクトで、中身は元と同じです。削除しないでください。
-- `~/pub400-bare.git`・`~/pub400-clone`(A)、およびPC側の`myproject`は、以後の第8部のレッスンでも使う可能性があるため、特別な事情がなければ残しておいてください。
-- `~/rehearsal-pc`・`~/rehearsal-bare.git`・`~/rehearsal-clone`(Bの練習用)は、練習が済めば削除してかまいません。容量はわずかです。
+- `$HOME/pub400-bare.git`・`$HOME/pub400-clone`(A)、およびPC側の`myproject`は、以後の第8部のレッスンでも使う可能性があるため、特別な事情がなければ残しておいてください。
+- `$HOME/rehearsal-pc`・`$HOME/rehearsal-bare.git`・`$HOME/rehearsal-clone`(Bの練習用)は、練習が済めば削除してかまいません。容量はわずかです。
 
 ## まとめ
 
@@ -405,6 +407,7 @@ CPF9898:  F0703A: MATCH - both calls agree; JUCHUM repositioning is correct..
 ## 実機メモ
 
 - **確認日: 2026-09-28〜2026-09-29。接続`part08-01-git-srcstmf`(合計7回の接続)。** qshの1セッション内でIFS上に擬似「PC側」・「PUB400側(ベア)」・「ビルド用クローン」の3ディレクトリーを作り、`git init --bare`→`git push`→`git clone`という経路をリハーサルしたうえで、`JUCSRV`をメンバー経由ではなくSRCSTMF直接ビルドで作り直す、という実機確認を行いました。
+- **`bsh`は語頭の`~`を一切展開しません**(`part02-bsh-tilde-redirect`、確認日2026-09-29)。`echo ~`・`echo ~/x`はそのまま印字され、決定的な証拠として`cd ~/vfy && pwd`(`$HOME/vfy`はこのハーネスが毎回作る、確実に存在するディレクトリー)が「存在しない」というエラーで失敗しました。本文のIBM i側コマンドはすべて`~`ではなく`$HOME`を使っています。02-04の`export PATH=...`結合形バグと同じ種類の、bsh固有の実機バグです(詳細は`docs/probes.md`参照。02-04自体は別途`fix/part02-bsh-tilde`ブランチで修正します)。
 - **V2で確認済み(このverifyハーネス自身がqsh経由で確認済み)**:
   - `git init --bare`→`git push`→`git clone`という経路そのもの。
   - `CRTRPGMOD MODULE(&LIB/JUCSRV) SRCSTMF(...) TGTCCSID(*JOB) REPLACE(*YES)`が、本物のUTF-8/LFの`git clone`済みファイルに対して成功すること(「Module JUCSRV placed in library \<USER\>2. 10 highest severity.」)。
@@ -415,7 +418,7 @@ CPF9898:  F0703A: MATCH - both calls agree; JUCHUM repositioning is correct..
 - **V3のまま(このハーネスでは一度も確認していない、2026-09-29時点)**:
   - 本物のPC→PUB400へのgit push(SSH経由、実際のPCのgitクライアントから)。今回はqshセッション内で「PC側」「PUB400側」の両方を擬似的に再現しただけで、本物のPC側からの接続は一度も行っていません。
   - `~/.ssh/config`の`IdentitiesOnly yes`設定の要否そのもの(複数鍵の提示が認証失敗としてカウントされる、という一般知識に基づく対策です)。
-  - `.gitattributes`(LF強制)によるgit自身の改行正規化の経路そのもの——今回のリハーサルでは、この文書とは別の手段で直接LF化したファイルを使っており、`.gitattributes`によるgit自身の正規化は一度も経由していません。
+  - `.gitattributes`(LF強制)によるgit自身の改行正規化の経路そのもの——今回のリハーサルでは、この文書とは別の手段で直接LF化したファイルを使っており、`.gitattributes`によるgit自身の正規化は一度も経由していません。**→08-02で、同じ機構(`templates/part08-zaisrv/.gitattributes`、コメントを除き`templates/part08-project/.gitattributes`と同一内容)がCONFIRMED SUCCESSに格上げされました**(`Rules.mk`をわざとCRLFで書いてコミットし、gitの`CRLF will be replaced by LF`という警告と、クローン後のバイト単位での確認〔`\r`が消えていること〕の両方で確認済み——08-02の「実機メモ」参照)。08-01自身の検証だけを見ればこの点はV3のままですが、`.gitattributes`によるgit自身の正規化という仕組み自体は、08-02で実機確認済みです。
   - `INCDIR`——`JUCSRV`は`/COPY`ディレクティブを持たないため、`CRTRPGMOD`の`INCDIR`パラメーターは一度も実際に使われていません。
   - `receive.denyCurrentBranch=updateInstead`——この教材の決定でbareに一本化したため、そもそも採用していない経路です。
 - **見つかった実バグ、2件**(いずれも本文が教える技術的な要点そのものです): (1) `git clone`直後のファイルがCCSID 1208(UTF-8)とタグ付けされているのに対し、`CRTRPGMOD`の既定`TGTCCSID(*SRC)`はUnicode系CCSIDを受け付けず`RNS9380`になる——`TGTCCSID(*JOB)`の明示で解決しました。**ただしこの接続では、`TGTCCSID(*JOB)`を指定するだけでは終わらず、途中で`CPE3490`(「Conversion error.」)にもぶつかっています**——調査の結果判明した真因は、当時使っていた種ファイル自身が、CCSID 1208というタグだけ付いた**本物ではないEBCDICバイト列**だったことでした(このハーネス固有の種ファイル生成方法の問題で、学習者が実際に使う本物のUTF-8ファイルには当てはまりません)。本物のUTF-8シードに切り替えたところ、`TGTCCSID(*JOB)`はそのまま成功しています——つまり本文が教える対処(`TGTCCSID(*JOB)`)が効くのは、「タグと実際のバイト列が一致した、本物のUTF-8ファイル」に対してです。学習者がPC側のエディターで書いたファイルは最初からこの条件を満たしているため、この落とし穴自体を踏む心配はありません。(2) `*LIBL`にコンパイル対象ライブラリーが入っていないと、`TOKUIM`/`JUCHUM`の外部記述が解決できず`RNF2120`(重大度40)になる——`ADDLIBLE`で解決しました。**この(2)は、このハーネスの`sh`型ステップ(生の`system(...)`呼び出しの積み重ね)が`*LIBL`を維持できなかったために踏んだものです。** 5250の対話ジョブで、現行ライブラリーとして`<USER>1`が入ったまま(01-04の既定どおり)一連のコマンドを実行する学習者は、通常この経路を踏みません——`CHGCURLIB`で現行ライブラリーを変えた場合や`SBMJOB`のバッチ・ジョブを使った場合にだけ、実際に問題になります。本文の「説明」節は、この2点を中心に構成しています。
