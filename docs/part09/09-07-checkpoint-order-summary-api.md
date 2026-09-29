@@ -645,7 +645,7 @@ db2 "SELECT LOW_CNT, ORD_NO, ORD_DATE, LINE_CNT, AMT FROM <自分のユーザー
 
 ## 実機メモ
 
-- **確認日: 2026-09-29。バッチ`part09-07-checkpoint`(2回の接続。1回目17:50は部品の確認、2回目19:22がこのレッスンの結果)、PUB400、IBM i 7.5(V7R5M0)。** 検証は、著者の検証用ライブラリーで行いました。学習者の`<自分のユーザー名>1`そのものでの再現は、個別には確認していません(未検証(2026-09-29時点))。検証の記録は、[プローブ記録](../probes.md)の「第9部 09-07: `part09-07-checkpoint`」の節にあります(第9部の各レッスンの節も、同じファイルの「第9部」の節です)。結果は、`work/verify/results/`のバッチ結果ファイルと、`work/verify/facts-part09.md`の「part09-07-checkpoint」の節にあります。
+- **確認日: 2026-09-29。バッチ`part09-07-checkpoint`(2回の接続。1回目17:50は部品の確認、2回目19:22がこのレッスンの結果)、PUB400、IBM i 7.5(V7R5M0)。** 検証は、著者の検証用ライブラリーで行いました。学習者の`<自分のユーザー名>1`そのものでの再現は、個別には確認していません(未検証(2026-09-29時点))。検証の記録は、[プローブ記録](../probes.md)の「第9部 09-07: `part09-07-checkpoint`」の節にあります(第9部の各レッスンの節も、同じファイルの「第9部」の節です)。結果は、著者の非公開の実機記録(匿名化したバッチ結果)から書き起こしています。
 - **V2で確認できたこと**:
   - `ORDER_SUMMARY_JSON(P_N)`(`LANGUAGE SQL`、`SPECIFIC ORDSUMJSN`)が、`RUNSQLSTM`(ソース・メンバー`QSQLSRC(SUMMARY)`経由、`NAMING(*SQL)`・`DFTRDBCOL`)で作れた。実体は`*SRVPGM`の`ORDSUMJSN`(属性`CLE`、テキスト`SQL FUNCTION ORDER_SUMMARY_JSON`)。`SYSROUTINES`に1行(`EXTERNAL_NAME`は、検証用ライブラリーの修飾つき)。保存された`SQL_PATH`は`"QSYS","QSYS2","SYSPROC","SYSIBMADM","ユーザー名"`(ライブラリーを含まない。09-04と同じ)。
   - 新しい`db2`のジョブから、修飾して`N`=2で呼ぶと、手順4のJSONが返った。
