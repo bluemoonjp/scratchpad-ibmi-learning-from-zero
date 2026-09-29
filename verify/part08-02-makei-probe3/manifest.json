@@ -1,0 +1,48 @@
+{
+  "batch": "part08-02-makei-probe3",
+  "description": "New batch, 1st connection. part08-02-makei-probe2's 6 connections proved makei build works from scratch and skips genuinely-unchanged rebuilds, but never tested the actual lesson scenario: rebuilding a ZAISRV that ALREADY exists but was built the traditional (member-based CRTRPGMOD/CRTSRVPGM) way, not by makei itself - the same situation 08-01 tested for JUCSRV. Uses the empty &LIB2 (<USER>B) as a sandbox: first builds ZAISRV into &LIB2 via plain CRTRPGMOD/CRTSRVPGM from &LIB's own QRPGLESRC/QSRVSRC members (mirroring Part 7's real build method exactly, so &LIB2 now holds a 'pre-existing, non-makei-built' ZAISRV), then runs makei build (flat layout, same recipe already proven in part08-02-makei-probe2) targeting the same &LIB2 to see whether it rebuilds, skips, or fails against an object makei has never tracked before. Then edits zaisrv.rpgle (python3 binary-mode append, the safe recipe already established) and runs makei build again to confirm a real source change triggers a real rebuild. Cleans up &LIB2 afterward.",
+  "library2": "*B",
+  "steps": [
+    {
+      "type": "cl",
+      "label": "TRADBUILD",
+      "cmd": "CRTRPGMOD MODULE(&LIB2/ZAISRV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(ZAISRV)\nCRTSRVPGM SRVPGM(&LIB2/ZAISRV) MODULE(&LIB2/ZAISRV) SRCFILE(&LIB/QSRVSRC) SRCMBR(ZAISRV) EXPORT(*SRCFILE) ACTGRP(*CALLER)",
+      "monmsg": ["CPF0000", "RNF0000"]
+    },
+    {
+      "type": "sh",
+      "label": "SETUP",
+      "cmd": "rm -rf \"$HOME/mk9\"\nmkdir -p \"$HOME/mk9/z\"\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGLESRC.FILE/ZAISRV.MBR') TOSTMF('$HOME/mk9/z/zaisrv.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QSRVSRC.FILE/ZAISRV.MBR') TOSTMF('$HOME/mk9/z/zaisrv.bnd') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\ncat > \"$HOME/mk9/z/Rules.mk\" <<'RULESEOF'\nZAISRV.MODULE: zaisrv.rpgle\nZAISRV.SRVPGM: ZAISRV.MODULE zaisrv.bnd\nRULESEOF\n/QOpenSys/pkgs/bin/python3 -c \"open('$HOME/mk9/z/iproj.json','wb').write(b'{\\\"version\\\":\\\"0.0.1\\\",\\\"objlib\\\":\\\"&LIB2\\\",\\\"curlib\\\":\\\"&LIB2\\\"}')\"\ncat \"$HOME/mk9/z/iproj.json\" </dev/null\necho\n"
+    },
+    {
+      "type": "sh",
+      "label": "BUILD1",
+      "cmd": "/QOpenSys/pkgs/bin/bash -c 'cd \"$HOME/mk9/z\" && export PATH=/QOpenSys/pkgs/bin:$PATH && /QOpenSys/pkgs/bin/makei build' </dev/null 2>&1"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJLIB, OBJTEXT FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB2', 'ALL')) X WHERE OBJNAME = 'ZAISRV' ORDER BY OBJTYPE"
+    },
+    {
+      "type": "sh",
+      "label": "EDITSRC",
+      "cmd": "/QOpenSys/pkgs/bin/python3 -c \"p='$HOME/mk9/z/zaisrv.rpgle'; d=open(p,'rb').read(); open(p,'wb').write(d + b'\\n// verify-probe touch: force a source change\\n')\"\ntail -c 80 \"$HOME/mk9/z/zaisrv.rpgle\" </dev/null\necho\n"
+    },
+    {
+      "type": "sh",
+      "label": "BUILD2",
+      "cmd": "/QOpenSys/pkgs/bin/bash -c 'cd \"$HOME/mk9/z\" && export PATH=/QOpenSys/pkgs/bin:$PATH && /QOpenSys/pkgs/bin/makei build' </dev/null 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "CLEANUP",
+      "cmd": "system \"DLTSRVPGM SRVPGM(&LIB2/ZAISRV)\" 2>&1\nsystem \"DLTMOD MODULE(&LIB2/ZAISRV)\" 2>&1\nrm -rf \"$HOME/mk9\"\n"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJLIB FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB2', 'ALL')) X WHERE OBJNAME = 'ZAISRV' ORDER BY OBJTYPE"
+    }
+  ]
+}
