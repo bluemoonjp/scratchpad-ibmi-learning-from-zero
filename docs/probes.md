@@ -3233,7 +3233,7 @@ PR #26 で「未検証」と書いた05-12の手順12(静的確認・grep確認)
 - **実通信(合計4回、zipcloud)**: curl(exit 0、287バイト、`IFS_READ_UTF8` で読めた。`GET_CLOB_FROM_FILE` は SQL0443)、アダプターの REAL モード(HTTP_GET を1回、RESPLEN 287)、db2 の `VALUES QSYS2.HTTP_GET(URL, '')`、`HTTP_GET_VERBOSE`(RESPONSE_MESSAGE と RESPONSE_HTTP_HEADER が返る)がすべて成功した。この枠は使い切った。
 - **日本語(P39)**: 応答は CLOB(CCSID 1208)に UTF-8 のバイト列のまま入ったが、`JSON_TABLE` でジョブ CCSID の `VARCHAR(60)` に取り出すと HEX が 3F3F3F(代替文字)になった。`CCSID 1208` の列にすれば保てるはずだが未検証。db2 ユーティリティーの画面表示では日本語は空に見える。
 
-## 第9部 09-06: `part09-06-dtaq`——P15/P34 がCONFIRMED SUCCESS、既定のジョブ・キューではワーカーが動かなかった(確認日2026-09-29、3回の接続)
+## 第9部 09-06: `part09-06-dtaq`——P15/P34 がCONFIRMED SUCCESS、既定のジョブ・キューではワーカーが動かなかった(確認日2026-09-29、4回の接続)
 
 - `SEND_DATA_QUEUE` は名前付き・位置引数とも成功したが、ライブラリーを省くと(SSH の db2 で)SQLSTATE 42704。バッチ・ジョブで `'*LIBL'` を明示した送信は成功した。db2 で `'*LIBL'` を明示した形は未試行。`RECEIVE_DATA_QUEUE` は表関数で、REMOVE は 'YES'/'NO'、空の待ち行列は WAIT_TIME のあと0行。`DATA_QUEUE_ENTRIES`・`DATA_QUEUE_INFO`・`MESSAGE_QUEUE_INFO` が読めた。
 - `SBMJOB` を既定のジョブ・キューに投入するとワーカーは動かず(メッセージ9件が残った)、`JOBQ(QGPL/QBATCH)` を付けると即座に動いた。ワーカー C0906A は8件を処理して END で終了し、ログ表 12行・自分の MSGQ への通知・応答用キューの応答(最後は `BYE END 00008`)がそろった。END の応答を `BYE` とログに記録する修正は再実行(19:37)で確認した。

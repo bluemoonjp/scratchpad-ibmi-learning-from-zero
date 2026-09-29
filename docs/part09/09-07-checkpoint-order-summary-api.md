@@ -139,6 +139,8 @@ APIの設計書を決まった書式で書く方法の1つが、**OpenAPI**(HTTP
 
 2. **(SSH) 関数を作ります。**
 
+   (`solutions/`の下のファイルは、02-04のクローンには入っていません。まだなら、先に[扉ページ](index.md)の「解答ファイルの取得」を1回実行してください。未検証(2026-09-29時点)です。)
+
    ```sh
    system "RUNSQLSTM SRCSTMF('$HOME/ibmi-kyozai/solutions/09-07/09-07-summary.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(<自分のユーザー名>1) ERRLVL(40) OUTPUT(*PRINT)"
    ```
