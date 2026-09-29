@@ -2872,6 +2872,32 @@ makei cvtsrcpf  convert source physical file members to UTF8 IFS files
 - **`makei cvtsrcpf`は既存のソース物理ファイル・メンバーをIFSへ変換する専用サブコマンド**(`convert-source-code.md`)で、このバッチが手作業で行ってきた`CPYTOSTMF`の代わりに使うべき正規の道具だったと考えられる。
 - **修正**: `templates/part08-project/Rules.mk`を、実際にターゲットを宣言する形(`ZAISRV.MODULE: zaisrv.rpgle` / `ZAISRV.SRVPGM: ZAISRV.MODULE zaisrv.bnd`)に書き直した。従来のコメント(「通常このファイルへの追記は不要」)は誤りだったため削除した。6回目の接続で、この修正版`Rules.mk`を使い、引き続き空の`<USER>B`(`&LIB2`)を対象にビルドを再試行する。
 
+## 第8部`part08-02-makei-probe2`最終確認: 6回目の接続でmakeiビルドがCONFIRMED SUCCESS(確認日2026-09-29)
+
+修正版`Rules.mk`(`ZAISRV.MODULE: zaisrv.rpgle` / `ZAISRV.SRVPGM: ZAISRV.MODULE zaisrv.bnd`)を使い、引き続き空の`<USER>B`(`&LIB2`)を対象にした6回目の接続で、**`makei build`が実際にゼロからZAISRVを作り上げることに初めて成功した**:
+
+```text
+> /QOpenSys/pkgs/bin/make -k BUILDVARSMKPATH="..." -k TOBI_PATH="/QOpenSys/pkgs/lib/tobi" -f "/QOpenSys/pkgs/lib/tobi/src/mk/Makefile" all
+=== Creating RPG module [zaisrv.rpgle]
+crtrpgmod module(<USER>B/ZAISRV) srcstmf('...') ... TGTCCSID(*JOB) ...
+✓ ZAISRV.MODULE was created successfully!
+
+=== Creating service program [ZAISRV] from modules [ZAISRV] and service programs []
+CRTSRVPGM srcstmf('...') SRVPGM(<USER>B/ZAISRV) MODULE(ZAISRV) ... ACTGRP(*CALLER) ...
+✓ ZAISRV.SRVPGM was created successfully!
+
+Objects:             0 failed 2 succeed 2 total
+Build Successful!
+```
+
+`collect`型の2本のSELECTで、`ZAISRV`の`*MODULE`・`*SRVPGM`がどちらも(それまで0件だった)`<USER>B`に実在することを直接確認した。`PROGRAM_INFO`の`PROGRAM_TYPE`も`ILE`を正しく返した。
+
+**これで`work/design/part08-design-v1.md`§7項目2・§8項目6の未決事項の両方に、同時に実機で答えが出た**: (1) `makei build`は(`Rules.mk`に正しいターゲット宣言さえあれば)実際にゼロからオブジェクトを作れる、(2) `iproj.json`の`objlib`/`curlib`は実際にビルド先ライブラリーを制御する(既定の`*CURLIB`ではなく、指定した`<USER>B`に作られた)。
+
+**副産物として分かったこと**: makeiが生成した実際の`CRTRPGMOD`は`TGTCCSID(*JOB)`を自動的に付けていた(08-01が学習者に教える対処と同じ)。`CRTSRVPGM`は`ACTGRP(*CALLER)`を使っており、Part 7がZAISRVに最初から与えていた設計と一致する。
+
+**この4〜6回目の接続(すべて読み取り専用または空ライブラリー限定)を通じて、08-02のレッスン設計にとって決定的に重要な事実が1つ確定した**: `templates/part08-project/Rules.mk`はエッジケース専用ファイルではなく必須ファイルであり、対象オブジェクトごとに`オブジェクト名.オブジェクト型: ソース・ファイル`という行を書かなければmakeiは何もビルドしない。08-02のレッスン本文はこの点を中核概念として明記する必要がある(従来の設計メモ・テンプレートのコメントはこの点で誤っていた)。`makei init`(対話式ウィザード)・`makei cvtsrcpf`(ソースPFのIFS変換)は、このバッチでは実際には使わず、代わりに08-01で確立済みの`CPYTOSTMF`手法をそのまま使った——どちらの経路でも最終的なビルド結果は同じはずだが、`makei init`/`cvtsrcpf`自体をこの教材で実機確認したわけではない(V3のまま)。
+
 ## 第8部`part08-07-services`: `OBJECT_PRIVILEGES`/`PROGRAM_INFO`が初回で成功、`RVKOBJAUT`の実バグを発見(確認日2026-09-29)
 
 08-07(IBM iサービスと権限)の実機確認。1回目の接続で、`collect`型ステップの4本のSELECT文はすべて成功した:
