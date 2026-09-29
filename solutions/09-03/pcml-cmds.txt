@@ -1,52 +1,124 @@
-09-03 command sequence: generate PCML from ZAISRV (DRAFT, see handoff note)
+09-03 command sequence: generate PCML with CRTRPGMOD ... PGMINFO
 =========================================================================
 
-STATUS: draft. The exact output for a NOMAIN module (which procedures
-appear, which tags) is being probed by verify/part09-03-pcml (probe P26).
-Do not quote the result in the lesson until that probe has been read.
+STATUS: every step below was run on PUB400 (IBM i 7.5) on 2026-09-29 by the
+verification batches part09-03-pcml and part09-03-pcml2, except where a
+line says "not run". The lesson is docs/part09/09-03-api-boundary-service-
+program.md. Nothing here changes the real ZAISRV: the failing example uses
+its own member and module names (ZAISRVP, ZAISRVN).
 
-Nothing here changes ZAISRV. The module for the probe gets its own name
-(ZAISRVP) so the real ZAISRV *MODULE and *SRVPGM stay untouched.
+Placeholders: <USER> = your user profile name (the home directory is
+/home/<USER>), <USER>1 = your dev library. CL commands do not expand ~ or
+$HOME, so write the full path in INFOSTMF. In SSH (bsh) a leading ~ is not expanded, so use $HOME there.
 
-Placeholders: <USER>1 = your dev library, <USER> = your user profile name.
+PGMINFO and INFOSTMF are parameters of CRTRPGMOD (and CRTBNDRPG), not of
+CRTSRVPGM. INFOSTMF is required when PGMINFO location is *STMF.
 
-1. Make a directory in the IFS for the generated file (5250 or SSH):
+Run the CRTRPGMOD/CRTSRVPGM commands where your library list contains
+<USER>1 (ZAIKOM is resolved through *LIBL at compile time), for example
+from 5250. Each system() call from SSH is a separate job.
 
-     MKDIR DIR('/home/<USER>/pcml')
+1. (SSH) Make a directory in the IFS for the generated files:
 
-   (an SSH shell: mkdir -p ~/pcml). A CL command does not expand ~ or
-   $HOME, so write the full path.
+     mkdir -p $HOME/pcml
+     ls -ld $HOME/pcml
 
-2. Compile the ZAISRV source again, under another module name, and ask
-   for PCML in a stream file (INFOSTMF is required for *STMF):
+   (CL MKDIR: not run.) Whether INFOSTMF creates a missing directory: not
+   run, so create it first.
+
+2. (SSH) Bring the sources into members (same pattern as 07-02; these two
+   commands with STMFCCSID(1208) were not run; the batch used the same CPYFRMSTMF form without STMFCCSID, from a file tagged 273):
+
+     system "CPYFRMSTMF FROMSTMF('/home/<USER>/ibmi-kyozai/solutions/08-08/zaisrv.rpgle') TOMBR('/QSYS.LIB/<USER>1.LIB/QRPGLESRC.FILE/ZAISRVP.MBR') MBROPT(*REPLACE) STMFCCSID(1208)"
+     system "CPYFRMSTMF FROMSTMF('/home/<USER>/ibmi-kyozai/solutions/09-03/zaiapi.rpgle') TOMBR('/QSYS.LIB/<USER>1.LIB/QRPGLESRC.FILE/ZAIAPI.MBR') MBROPT(*REPLACE) STMFCCSID(1208)"
+
+3. (5250) The failing example: ZAISRV source with PGMINFO.
 
      CRTRPGMOD MODULE(<USER>1/ZAISRVP) SRCFILE(<USER>1/QRPGLESRC)
-               SRCMBR(ZAISRV) PGMINFO(*PCML *STMF)
+               SRCMBR(ZAISRVP) PGMINFO(*PCML *STMF)
                INFOSTMF('/home/<USER>/pcml/zaisrv.pcml')
                REPLACE(*YES) TGTCCSID(*JOB)
 
-   PGMINFO and INFOSTMF are parameters of CRTRPGMOD (and CRTBNDRPG), not
-   of CRTSRVPGM.
+   Confirmed result (batch part09-03-pcml):
+     RNS9308: Compilation stopped. Severity 20 errors found in program.
+     RNS9309: Compilation failed. Module ZAISRVP not created ...
+     listing: *RNF0319 20  Errors were found while generating the
+              program-information stream file.
+   The PCML file IS written (1195 bytes) even though the module is not:
+     4 <program> elements (PINGZAISRV, RELEASE, RESERVE, GET), each with
+     the comment  Error: return value must have type="int" and length="4".
+   Cause: the return types are ind / packed(7:0), not int(10).
 
-3. Look at the result (SSH shell, or WRKLNK / EDTF from 5250):
+4. (SSH) Read the file:
 
-     ls -lS /home/<USER>/pcml/zaisrv.pcml
-     cat /home/<USER>/pcml/zaisrv.pcml
-     grep -c "<program" /home/<USER>/pcml/zaisrv.pcml
+     ls -lS $HOME/pcml/zaisrv.pcml
+     cat $HOME/pcml/zaisrv.pcml
+     grep -c "<program" $HOME/pcml/zaisrv.pcml
 
-4. Clean up:
+   PASE grep does not accept -o (message 001-3010); -c works.
 
+5. (5250) Control run without PGMINFO: same source, module is created.
+
+     CRTRPGMOD MODULE(<USER>1/ZAISRVN) SRCFILE(<USER>1/QRPGLESRC)
+               SRCMBR(ZAISRVP) REPLACE(*YES) TGTCCSID(*JOB)
+
+   Confirmed: RNS9305 Module ZAISRVN placed, highest severity 10.
+
+   Variant (batch part09-03-pcml): PGMINFO(*PCML *MODULE) instead of
+   *STMF gave RNF0320 severity 30 and no module.
+
+6. (5250) The API-shaped module: solutions/09-03/zaiapi.rpgle
+   (int(10) return code, input DS const, output DS).
+
+     CRTRPGMOD MODULE(<USER>1/ZAIAPI) SRCFILE(<USER>1/QRPGLESRC)
+               SRCMBR(ZAIAPI) PGMINFO(*PCML *STMF)
+               INFOSTMF('/home/<USER>/pcml/zaiapi.pcml')
+               REPLACE(*YES) TGTCCSID(*JOB)
+     CRTSRVPGM SRVPGM(<USER>1/ZAIAPI) MODULE(<USER>1/ZAIAPI) EXPORT(*ALL)
+
+   Confirmed (batch part09-03-pcml2): module placed (highest severity 10,
+   RNF7534 advice), service program created (CPC5D0B).
+   EXPORT(*ALL) is only for this demonstration; a real API would use a
+   binder source (07-03).
+
+7. (SSH) Read the generated PCML:
+
+     cat $HOME/pcml/zaiapi.pcml
+     grep -c "<program" $HOME/pcml/zaiapi.pcml
+     grep -c "Error" $HOME/pcml/zaiapi.pcml
+
+   Confirmed: 817 bytes, 1 program, 0 Error.
+     struct ZAIRES (PRODCODE char 6, STOCKQTY packed 7.0, UPDDATE zoned 8.0)
+     struct ZAIREQ (PRODCODE char 6)
+     program ZAIAPIGET returnvalue="integer"
+       REQ  struct ZAIREQ  usage="input"
+       RES  struct ZAIRES  usage="inputoutput"
+   (the name is the upper-case form of the procedure name zaiApiGet; the
+   fields inside a struct show usage="inherit")
+
+   Not run: calling zaiApiGet (the lesson does not call it).
+   DSPSRVPGM (batch part09-03-pcml2) showed only ZAIAPIGET exported.
+
+8. Clean up (the ZAISRVP module does not exist because step 3 failed, so
+   DLTMOD ZAISRVP reports CPF2105, which is expected):
+
+     (5250)
+     DLTSRVPGM SRVPGM(<USER>1/ZAIAPI)
+     DLTMOD MODULE(<USER>1/ZAIAPI)
+     DLTMOD MODULE(<USER>1/ZAISRVN)
      DLTMOD MODULE(<USER>1/ZAISRVP)
-     RMVLNK OBJLNK('/home/<USER>/pcml/zaisrv.pcml')
+     RMVM FILE(<USER>1/QRPGLESRC) MBR(ZAISRVP)
+     RMVM FILE(<USER>1/QRPGLESRC) MBR(ZAIAPI)
 
-What to read in the PCML (to be confirmed by the probe):
-  - one <program> element per exported procedure? (GET, RESERVE, RELEASE,
-    PINGZAISRV) or none for a NOMAIN module
-  - <data> elements: type, length, precision for each parameter
-  - usage="input" / "output" / "inputoutput" per parameter (const -> input)
-  - a returnvalue element for the procedure result
+     (SSH)
+     rm -f $HOME/pcml/*.pcml
+     rmdir $HOME/pcml
 
-Paper exercise (no code): design the order-registration API contract.
-Write the input data structure, the output data structure and the result
-code list on paper: fixed-length fields only, no pointers, and one result
-code that tells the caller what happened.
+   Also delete the compile listings and the DSPOBJD listing of step 9 from the spooled file list (WRKSPLF,
+   not run).
+
+Paper exercise (no code, see the lesson, exercise 4): design the
+order-registration API contract. Write the input data structure, the
+output data structure and the result-code table: fixed-length fields
+only, no pointers, one int(10) result code, and a request ID so that a
+repeated request does not register the order twice.

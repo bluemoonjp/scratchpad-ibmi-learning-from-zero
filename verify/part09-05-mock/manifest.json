@@ -51,16 +51,34 @@
     },
     {
       "type": "cl",
+      "label": "DSNAPCFG",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYAPICFG') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
       "label": "SNAPCFG",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYAPICFG AS (SELECT APIMODE, BASEURL FROM &LIB/APICFG) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYAPICFG AS (SELECT APIMODE, BASEURL FROM &LIB/APICFG) WITH DATA') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000"
       ]
     },
     {
       "type": "cl",
+      "label": "DSNAPMOCK",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYAPIMOCK') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
       "label": "SNAPMOCK",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYAPIMOCK AS (SELECT ZIP, HTTPST, ZIPADR, LENGTH(BODY) AS BLEN, CAST(SUBSTR(BODY, 1, 400) AS VARCHAR(400)) AS BODYTXT FROM &LIB/APIMOCK) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYAPIMOCK AS (SELECT ZIP, HTTPST, ZIPADR, LENGTH(BODY) AS BLEN, CAST(SUBSTR(BODY, 1, 400) AS VARCHAR(400)) AS BODYTXT FROM &LIB/APIMOCK) WITH DATA') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000"
       ]
@@ -154,8 +172,17 @@
     },
     {
       "type": "cl",
+      "label": "DSNAPLOG",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYAPILOG') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
       "label": "SNAPLOG",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYAPILOG AS (SELECT LOGID, APIMODE, ZIP, URL, RC, HTTPST, RESPLEN, SQLST, RESP FROM &LIB/APILOG) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYAPILOG AS (SELECT LOGID, APIMODE, ZIP, URL, RC, HTTPST, RESPLEN, SQLST, RESP FROM &LIB/APILOG) WITH DATA') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000"
       ]
@@ -169,36 +196,12 @@
     {
       "type": "sh",
       "label": "SNAP1",
-      "cmd": "system \"RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYAPIZ1 AS (SELECT * FROM &LIB/APIZIP) WITH DATA') COMMIT(*NONE)\" 2>&1",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/VFYAPIZ1') COMMIT(*NONE)\" 2>&1; system \"RUNSQL SQL('CREATE TABLE &LIB/VFYAPIZ1 AS (SELECT * FROM &LIB/APIZIP) WITH DATA') COMMIT(*NONE)\" 2>&1",
       "after": true
     },
     {
       "type": "sh",
       "label": "DROPV1",
-      "cmd": "system \"RUNSQL SQL('DROP VIEW &LIB/APIZIP') COMMIT(*NONE)\" 2>&1",
-      "after": true
-    },
-    {
-      "type": "sh",
-      "label": "CONV",
-      "cmd": "iconv -f IBM-273 -t UTF-8 $HOME/vfy/part09-05-mock/parse-zip.sql > $HOME/vfy/part09-05-mock/parse-zipu.sql 2>&1; echo iconv-exit=$?; setccsid 1208 $HOME/vfy/part09-05-mock/parse-zipu.sql; ls -S $HOME/vfy/part09-05-mock/parse-zip.sql $HOME/vfy/part09-05-mock/parse-zipu.sql 2>&1",
-      "after": true
-    },
-    {
-      "type": "sh",
-      "label": "RUN2",
-      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part09-05-mock/parse-zipu.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40)\" 2>&1",
-      "after": true
-    },
-    {
-      "type": "sh",
-      "label": "SNAP2",
-      "cmd": "system \"RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYAPIZ2 AS (SELECT * FROM &LIB/APIZIP) WITH DATA') COMMIT(*NONE)\" 2>&1",
-      "after": true
-    },
-    {
-      "type": "sh",
-      "label": "DROPV2",
       "cmd": "system \"RUNSQL SQL('DROP VIEW &LIB/APIZIP') COMMIT(*NONE)\" 2>&1",
       "after": true
     },

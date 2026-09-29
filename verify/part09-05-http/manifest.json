@@ -89,8 +89,17 @@
     },
     {
       "type": "cl",
+      "label": "DSNAPCFG",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYAPICFG') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
       "label": "SNAPCFG",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYAPICFG AS (SELECT APIMODE, BASEURL FROM &LIB/APICFG) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYAPICFG AS (SELECT APIMODE, BASEURL FROM &LIB/APICFG) WITH DATA') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000"
       ]
@@ -109,8 +118,17 @@
     },
     {
       "type": "cl",
+      "label": "DSNAPLOG",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYAPILOG') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
       "label": "SNAPLOG",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYAPILOG AS (SELECT LOGID, APIMODE, ZIP, URL, RC, HTTPST, RESPLEN, SQLST, RESP FROM &LIB/APILOG) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYAPILOG AS (SELECT LOGID, APIMODE, ZIP, URL, RC, HTTPST, RESPLEN, SQLST, RESP FROM &LIB/APILOG) WITH DATA') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000"
       ]
@@ -130,13 +148,13 @@
     {
       "type": "sh",
       "label": "IFSR1",
-      "cmd": "system \"RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYAPIF1 AS (SELECT * FROM TABLE(QSYS2.IFS_READ_UTF8(PATH_NAME => ''$HOME/vfy/part09-05-http/zip.json'')) X) WITH DATA') COMMIT(*NONE)\" 2>&1",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/VFYAPIF1') COMMIT(*NONE)\" 2>&1; system \"RUNSQL SQL('CREATE TABLE &LIB/VFYAPIF1 AS (SELECT * FROM TABLE(QSYS2.IFS_READ_UTF8(PATH_NAME => ''$HOME/vfy/part09-05-http/zip.json'')) X) WITH DATA') COMMIT(*NONE)\" 2>&1",
       "after": true
     },
     {
       "type": "sh",
       "label": "IFSR2",
-      "cmd": "system \"RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYAPIF2 AS (SELECT QSYS2.GET_CLOB_FROM_FILE(''$HOME/vfy/part09-05-http/zip.json'') AS BODY FROM SYSIBM.SYSDUMMY1) WITH DATA') COMMIT(*NONE)\" 2>&1",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/VFYAPIF2') COMMIT(*NONE)\" 2>&1; system \"RUNSQL SQL('CREATE TABLE &LIB/VFYAPIF2 AS (SELECT QSYS2.GET_CLOB_FROM_FILE(''$HOME/vfy/part09-05-http/zip.json'') AS BODY FROM SYSIBM.SYSDUMMY1) WITH DATA') COMMIT(*NONE)\" 2>&1",
       "after": true
     },
     {
@@ -148,7 +166,7 @@
     {
       "type": "sh",
       "label": "SNAP1",
-      "cmd": "system \"RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYAPIZ1 AS (SELECT Z.*, HEX(Z.ADDR1) AS ADDR1HEX FROM &LIB/APIZIP Z) WITH DATA') COMMIT(*NONE)\" 2>&1",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/VFYAPIZ1') COMMIT(*NONE)\" 2>&1; system \"RUNSQL SQL('CREATE TABLE &LIB/VFYAPIZ1 AS (SELECT Z.*, HEX(Z.ADDR1) AS ADDR1HEX FROM &LIB/APIZIP Z) WITH DATA') COMMIT(*NONE)\" 2>&1",
       "after": true
     },
     {

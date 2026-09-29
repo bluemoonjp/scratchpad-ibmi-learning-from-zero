@@ -226,7 +226,7 @@
 |---|---|---|
 | 09-02 | 表`W0902A`(`solutions/09-02/roundtrip.sql`が作り、同じファイルの中で`DROP`します)、IFSに書き出したJSONファイル | IFSのファイルを削除(各レッスンで名前を指定します)。`W0902A`が残っていれば`DROP TABLE` |
 | 09-02b | 演習(d)を行った場合だけ、IFSの`/home/<自分のユーザー名>/j0902b.txt`。手順3で自分のジョブのCCSIDを変える | ファイルを削除。CCSIDはジョブごとの属性なので、ジョブを終えれば戻る想定(未検証(2026-09-29時点))。手順は09-02bの「片付け」 |
-| 09-03 | モジュール`ZAISRVP`、IFS上のPCMLファイル、IFS上のディレクトリー`/home/<自分のユーザー名>/pcml` | `DLTMOD MODULE(<自分のユーザー名>1/ZAISRVP)`。PCMLファイルの削除(`RMVLNK`)の後もディレクトリーは残るので、`RMDIR`で削除する(手順は[`solutions/09-03/pcml-cmds.txt`](../../solutions/09-03/pcml-cmds.txt)) |
+| 09-03 | モジュール`ZAISRVP`・`ZAISRVN`・`ZAIAPI`、サービス・プログラム`ZAIAPI`、ソース・メンバー`ZAISRVP`・`ZAIAPI`、IFS上のPCMLファイルとディレクトリー`/home/<自分のユーザー名>/pcml`、コンパイル一覧などのスプール・ファイル | `DLTSRVPGM`・`DLTMOD`・`RMVM`で削除し、IFSは`rm -f $HOME/pcml/*.pcml`と`rmdir $HOME/pcml`で削除する(`RMVLNK`・`RMDIR`は未検証(2026-09-29時点))。スプール・ファイルは`WRKSPLF`で削除する(未検証(2026-09-29時点))。手順は[`solutions/09-03/pcml-cmds.txt`](../../solutions/09-03/pcml-cmds.txt) |
 | 09-04 | SQLルーチン7本(SPECIFIC名: `GETCUSTNM`・`CNTCUSTORD`・`GETSTOCKQT`・`JUCHUINQJS`・`LOWSTOCKT`・`LOWSTOCKRS`・`JUCHUREGST`)、演習で追加した受注データ | 関数は`DROP SPECIFIC FUNCTION GETCUSTNM;`など、プロシージャー(`JUCHUREGST`・`LOWSTOCKRS`)は`DROP SPECIFIC PROCEDURE`(全文は[`src/sql/09-04-routines.sql`](../../src/sql/09-04-routines.sql)の末尾)。受注データは`TXRESET`で戻す想定(第9部では未検証(2026-09-29時点)) |
 | 09-05 | 表`APICFG`・`APIMOCK`・`APILOG`、ビュー`APIZIP`、プログラム`JUHTTPSV`。IFSやファイルを作る場合は、09-05の「片付け」で確認します | `DROP`文と`DLTPGM`(手順は09-05の「片付け」) |
 | 09-06 | データ待ち行列`Z0906A`・`Z0906B`、メッセージ・キュー`Z0906C`、プログラム`C0906A`、表`W0906A` | `DLTDTAQ`・`DLTMSGQ`・`DLTPGM`と`DROP TABLE`(手順は09-06の「片付け」) |
@@ -251,8 +251,8 @@
 - [09-01 API化の全体像とPUB400でできること](09-01-api-overview-pub400.md)(60分。ACS接続設定の節はV3)
 - [09-02 SQLでJSONを作る・読む](09-02-sql-json.md)(60分。[`src/sql/09-02-json.sql`](../../src/sql/09-02-json.sql))
 - [09-02b 日本語・DBCSを実機で体験する](09-02b-japanese-dbcs.md)(60分。**GUI中心のV3。00-02・06-02と同じ例外として公開**。[付録J](../appendix/j-dbcs.md)を参照)
-- [09-03 API境界(1): APIにできるサービス・プログラム](09-03-api-boundary-srvpgm.md)(60分。[`solutions/09-03/`](../../solutions/09-03/pcml-cmds.txt))
-- [09-04 API境界(2): SQL外部プロシージャー・関数](09-04-sql-routines.md)(75分。[`src/sql/09-04-routines.sql`](../../src/sql/09-04-routines.sql))
+- [09-03 API境界(1): APIにできるサービス・プログラム](09-03-api-boundary-service-program.md)(60分。[`solutions/09-03/`](../../solutions/09-03/pcml-cmds.txt))
+- [09-04 API境界(2): SQL外部プロシージャー・関数](09-04-api-boundary-sql-routines.md)(75分。[`src/sql/09-04-routines.sql`](../../src/sql/09-04-routines.sql))
 - [09-05 外部API: アダプターとモック](09-05-external-api-mock.md)(90分。[`solutions/09-05/`](../../solutions/09-05/parse-zip.sql))
 - [09-06 データ待ち行列で非同期に連携する](09-06-data-queues.md)(60分。[`src/sql/09-06-dtaq.sql`](../../src/sql/09-06-dtaq.sql))
 - [09-07 チェックポイント: 受注サマリーAPIと公開設計書](09-07-checkpoint-order-summary-api.md)(120分。ACS・VS Codeから呼ぶ節はV3。[`solutions/09-07/`](../../solutions/09-07/09-07-summary.sql)・[API設計テンプレート](../templates/api-design.md))

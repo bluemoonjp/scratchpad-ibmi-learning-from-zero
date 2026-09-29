@@ -224,15 +224,33 @@
     {
       "type": "cl",
       "label": "SUBMIT",
-      "cmd": "SBMJOB CMD(CALL PGM(&LIB/C0906A) PARM('&LIB')) JOB(C0906A) CURLIB(&LIB) INLLIBL(*JOBD) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/C0906A) PARM('&LIB')) JOB(C0906A) JOBQ(QGPL/QBATCH) CURLIB(&LIB) INLLIBL(*JOBD) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
       "monmsg": [
         "CPF0000"
       ]
     },
     {
       "type": "cl",
+      "label": "DR1",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC1') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
       "label": "R1",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYRC1 AS (SELECT * FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 60)) X) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC1 AS (SELECT * FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 60)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR2",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC2') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -241,7 +259,16 @@
     {
       "type": "cl",
       "label": "R2",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYRC2 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC2 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR3",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC3') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -250,7 +277,16 @@
     {
       "type": "cl",
       "label": "R3",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYRC3 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC3 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR4",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC4') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -259,7 +295,16 @@
     {
       "type": "cl",
       "label": "R4",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYRC4 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC4 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR5",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC5') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -268,7 +313,16 @@
     {
       "type": "cl",
       "label": "R5",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYRC5 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC5 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR6",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC6') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -277,7 +331,16 @@
     {
       "type": "cl",
       "label": "R6",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYRC6 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC6 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR7",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC7') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -286,7 +349,16 @@
     {
       "type": "cl",
       "label": "R7",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYRC7 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC7 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR8",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC8') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -295,7 +367,7 @@
     {
       "type": "cl",
       "label": "R8",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYRC8 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC8 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -311,8 +383,26 @@
     },
     {
       "type": "cl",
+      "label": "DJOB2",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYJOB2') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
       "label": "JOB2",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYJOB2 AS (SELECT JOB_NAME, JOB_STATUS, SUBSYSTEM, AUTHORIZATION_NAME FROM TABLE(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => ''C0906A'')) X WHERE AUTHORIZATION_NAME = CURRENT_USER) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYJOB2 AS (SELECT JOB_NAME, JOB_STATUS, SUBSYSTEM, AUTHORIZATION_NAME FROM TABLE(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => ''C0906A'')) X WHERE AUTHORIZATION_NAME = CURRENT_USER) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DENTS",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYENT') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -321,7 +411,16 @@
     {
       "type": "cl",
       "label": "ENTS",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYENT AS (SELECT * FROM TABLE(QSYS2.DATA_QUEUE_ENTRIES(DATA_QUEUE => ''Z0906A'', DATA_QUEUE_LIBRARY => ''&LIB'')) X) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYENT AS (SELECT * FROM TABLE(QSYS2.DATA_QUEUE_ENTRIES(DATA_QUEUE => ''Z0906A'', DATA_QUEUE_LIBRARY => ''&LIB'')) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DMSGA",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYMSGA') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -330,7 +429,16 @@
     {
       "type": "cl",
       "label": "MSGA",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYMSGA AS (SELECT * FROM QSYS2.MESSAGE_QUEUE_INFO WHERE MESSAGE_QUEUE_LIBRARY = ''&LIB'' AND MESSAGE_QUEUE_NAME = ''Z0906C'') WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYMSGA AS (SELECT * FROM QSYS2.MESSAGE_QUEUE_INFO WHERE MESSAGE_QUEUE_LIBRARY = ''&LIB'' AND MESSAGE_QUEUE_NAME = ''Z0906C'') WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DMSGB",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYMSGB') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -339,7 +447,16 @@
     {
       "type": "cl",
       "label": "MSGB",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYMSGB AS (SELECT * FROM TABLE(QSYS2.MESSAGE_QUEUE_INFO(QUEUE_LIBRARY => ''&LIB'', QUEUE_NAME => ''Z0906C'')) X) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYMSGB AS (SELECT * FROM TABLE(QSYS2.MESSAGE_QUEUE_INFO(QUEUE_LIBRARY => ''&LIB'', QUEUE_NAME => ''Z0906C'')) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLOGCP",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYWLOG') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -348,7 +465,7 @@
     {
       "type": "cl",
       "label": "LOGCP",
-      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYWLOG AS (SELECT SEQ, TS, PHASE, MSG FROM &LIB/W0906A) WITH DATA') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYWLOG AS (SELECT SEQ, TS, PHASE, MSG FROM &LIB/W0906A) WITH DATA') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000"

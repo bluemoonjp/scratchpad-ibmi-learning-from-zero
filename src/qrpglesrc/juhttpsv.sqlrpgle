@@ -18,7 +18,6 @@
 // Tables are found through the library list (system naming), so the
 // caller must have the library on the list or as current library.
 //
-// Status: draft, not yet compiled on the real machine.
 ctl-opt dftactgrp(*no) actgrp(*new);
 
 dcl-pi *n;
@@ -26,8 +25,8 @@ dcl-pi *n;
   rc  char(8);
 end-pi;
 
-// CLOB host variable: the precompiler turns this into a data
-// structure with fields resp_len and resp_data.
+// CLOB host variable: the RPG compiler turns this into a data structure
+// with fields resp_len and resp_data. SQL statements use only :resp.
 dcl-s resp sqltype(clob:32000) ccsid(1208);
 dcl-s wMode  char(4) inz('MOCK');
 dcl-s wBase  varchar(100) inz('');
@@ -79,11 +78,14 @@ else;
   endif;
 endif;
 
-// 3. Log every call. resp_len is the length of the stored text.
+// 3. Log every call, then store the length of the response text.
 exec sql
   INSERT INTO APILOG
     (APIMODE, ZIP, URL, RC, HTTPST, RESPLEN, SQLST, RESP)
-  VALUES (:wMode, :zip, :wUrl, :rc, :wSt, :resp_len, :wSqlst, :resp);
+  VALUES (:wMode, :zip, :wUrl, :rc, :wSt, 0, :wSqlst, :resp);
+exec sql
+  UPDATE APILOG SET RESPLEN = LENGTH(RESP)
+    WHERE LOGID = IDENTITY_VAL_LOCAL();
 
 *inlr = *on;
 return;
