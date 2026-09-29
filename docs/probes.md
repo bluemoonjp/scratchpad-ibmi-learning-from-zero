@@ -2930,7 +2930,23 @@ Build Successful!
 
 3回目の接続(`DATABASE_SOURCE_FILE_NAME`の単純化・`CREATE_OR_REPLACE_OPTION`の引用符除去後)は、また別のエラーで失敗した:「`SQL0443`: Trigger program or external routine detected an error.」——これはCALL先の外部ルーチン(`GENERATE_SQL`自体)の内部で何らかのエラーが起きたことを示す汎用メッセージで、この接続で捕捉した`run`セクションのテキストには、その先の詳細(第2レベル・テキスト)が含まれていなかった。
 
-**3回連続で、修正するたびに別の種類のエラーに変わる(収束していない)ため、事前に宣言したとおりここで打ち切る。** `GENERATE_SQL`の正確な引数名・型・既定値は、この教材の一次資料(`work/design/refs/`)だけでは確定できないと判断する。08-06のレッスン設計は、`GENERATE_SQL`を「一般知識、要確認」として扱い(design doc自身の§9が既にこの想定をしていた)、本文で実際に使う具体的なSQL文を断定的に示すのではなく、学習者自身がIBM公式ドキュメント(`CALL QSYS2.GENERATE_SQL`)を参照しながら試す、という構成に倒す。三度の接続で得られた実際のエラー文言(`DATABASE_FILE_TYPE`は無効な引数名・`Conversion error`・`SQL0443`)は、いずれも「このプロシージャーは実在し呼び出しはできるが、正確な引数の組み合わせはこの接続からは特定できなかった」という誠実な記録として`docs/probes.md`に残す。
+**3回連続で、修正するたびに別の種類のエラーに変わる(収束していない)ため、事前に宣言したとおりここで打ち切る。** `GENERATE_SQL`の正確な引数名・型・既定値は、この教材の一次資料(`work/design/refs/`)だけでは確定できないと判断する。08-06のレッスン設計は、`GENERATE_SQL`を「一般知識、要確認」として扱い(design doc自身の§9が既にこの想定をしていた)、本文で実際に使う具体的なSQL文を断定的に示すのではなく、学習者自身がIBM公式ドキュメント(`CALL QSYS2.GENERATE_SQL`)を参照しながら試す、という構成に倒す。三度の接続で得られた実際のエラー文言(`DATABASE_FILE_TYPE`は無効な引数名・`Conversion error`・`SQL0443`)は、いずれも「このプロシージャーは実在し呼び出しはできるが、正確な引数の組み合わせはこの接続からは特定できなかった」という誠実な記録として`docs/probes.md`に残す。**未実施のまま残っている一手(advisor提案)**: `SELECT * FROM QSYS2.SYSPARMS ... WHERE ROUTINE_NAME = 'GENERATE_SQL'`のようなDb2のシステム・カタログをSELECTする(読み取り専用、他ユーザーのデータには触れない)ことで、この一次資料ギャップを埋められる可能性がある——まだ試していない。
+
+## 第8部08-03: `rpglint`はPCローカルで実際にインストール・実行できることを確認(`work/design/part08-design-v1.md`§0.6の想定を覆す、確認日2026-09-29、PUB400接続不要)
+
+前セッションまで、`rpglint`は「`work/design/refs/`に一次資料ゼロ件、ローカルで実行可能なCLIも見つからない」という前提で扱われていた。advisorの指摘(08-02のmakei/TOBiと同じ「ホスト自身に実在する一次資料を読む」という考え方)を受けてnpmを検索したところ、**`@halcyontech/rpglint`という実在の公開npmパッケージ(v0.27.0、2024-12-03公開、`vscode-rpgle`拡張機能の開発元によるCLI版、依存パッケージ0件)が見つかった。** PUB400への接続は一切不要(PCローカルのnpm/pnpmだけで完結)。
+
+`pnpm add @halcyontech/rpglint`でインストールし、`node node_modules/@halcyontech/rpglint/dist/index.js -d <ディレクトリー>`(そのディレクトリー配下に`rpglint.json`と対象の`.rpgle`が両方必要——`-f`を指定すると`rpglint.json`探索用のglobまで上書きしてしまい見つからなくなる、という実装上のクセを実機で確認済み)として実際に実行できることを確認した。
+
+- **`src/qrpglesrc/f0803s.rpgle`(08-03演習用に意図的にリント違反を仕込んだファイル)に対する実際の出力(`templates/part08-project/rpglint.json`使用、18件のエラー)**:
+  - `SpecificCasing`(`if`/`dcl-s`の大文字小文字): 実際に「Does not match required case.」として複数行(56・57・58・59・62・73・97行目)で検出された。
+  - `NoGlobalSubroutines`: 「Subroutines should not be defined in the global scope.」として68・91・104行目で検出された。
+  - `StringLiteralDupe`(`'NOTFOUND'`の重複): 「Same string literal used more than once. Consider using a constant instead.」として65・73・76行目で検出された。
+  - `NoUnreferenced`(`unusedFld`): メッセージは想定と違う文言「No reference to definition.」(58行目)だったが、実際に検出された。
+  - **想定外の新しい違反: 「Comments must be correctly formatted.」(`PrettyComments`ルール、2・42・83・90行目)。** このファイルの`//====...====`という罫線コメントの書き方自体がこのルールに違反していた——ファイルのヘッダー自身が5つの意図的な違反として列挙していなかった、6つ目の(意図しない)実在の違反。
+  - **`NoIndicators`が検出されなかった。** `chain (custCode) tokuim foundInd;`(結果標識変数を`%FOUND`の代わりに使う)というこのファイルが意図した違反パターンでは、実際には一度もこのルールが反応しなかった。同じ設定ファイルを使い、`*in90`という裸の配列標識参照でも別途試したが、やはり反応しなかった——このバージョンの`NoIndicators`が実際に何を検出するのかは、この教材の一次資料(READMEには詳細な仕様が無い)だけでは確定できず、要追加調査。
+- **`src/qrpglesrc/jucsrv.rpgle`(この教材がPart 6〜8で「お手本」として使い続けているソース)に対する実際の出力: 15件のエラー、うち11件が`PrettyComments`(「Comments must be correctly formatted.」、2・314・318・325・328・334・337・343・357・363・371・381行目)、4件が`SpecificCasing`(「Does not match required case.」、350・387・394行目)。** `JUCSRV`は**まったくリント・クリーンではない**——08-03の設計が想定する「`JUCSRV`の警告を0にする」という実演は、単純作業ではなく、罫線コメント(`//===...===`という書式)を大量に書き直す、実質的な修正作業になることが実機で確認できた。
+- **08-03のレッスン設計への示唆**: `rpglint`はもはや「一般知識、要確認」として扱う必要がない——PCローカルにインストールして実際に実行し、確認済みの出力を本文に使えることが分かった。ただし`NoIndicators`が期待どおり反応しない点と、`PrettyComments`が罫線コメントに反応する点(このリポジトリの既存ソース〔`JUCSRV`を含む〕の大部分がこの罫線コメント様式を使っている)は、レッスン設計・`f0803s.rpgle`のヘッダー・`JUCSRV`側の実演手順のいずれにも反映する必要がある。
 
 ## 未実施のプローブ
 
