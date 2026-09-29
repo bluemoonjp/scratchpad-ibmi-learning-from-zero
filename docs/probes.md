@@ -2976,6 +2976,15 @@ Build Successful!
 
 PCローカルで、`sed`により`jucsrv.rpgle`の全ての`//`直後に半角スペースを1つ挿入した写しを作り、修正版`rpglint.json`でリントしたところ、**エラー0件になることを確認した**(`src/qrpglesrc/jucsrv.rpgle`自身は書き換えていない、検証のみ)。この置換はコメントの中身にのみ影響し、コンパイル結果には一切影響しない(コメントの意味的な内容は変わらないため)。08-03の「`JUCSRV`の警告を0にする」実演は、この機械的な置換(またはコメントを`///`形式に変える)だけで達成できることが確認できた。
 
+## 第8部08-03: `f0803s.rpgle`に実バグを発見——`CHAIN`+結果標識フィールドは自由形式ではコンパイルできない(確認日2026-09-29)
+
+advisorの指摘を受け、`f0803s.rpgle`が実際にコンパイルできるかを実機で確かめた(rpglintの構文解析は寛容で、この種のコンパイル・エラーを検出できない)。`chain (custCode) tokuim foundInd;`(`foundInd`は`dcl-s foundInd ind;`という素の標識フィールド)という、このファイルがずっと使ってきたパターンと、`chain (custCode) tokuim;`+`if %found(tokuim);`という代替パターンを、それぞれ最小の独立したテスト・プログラム(`F0803CHKA`・`F0803CHKB`)として、`&LIB`の本物の`TOKUIM`に対し空の`&LIB2`へ`CRTBNDRPG`した(`verify/part08-03-f0803-compile`)。
+
+- **`F0803CHKA`(`CHAIN`+標識フィールド)はコンパイルに失敗した。** `RNF5191`(severity 30)「The Result-Field is not a data structure when Factor 2 is a file name.」——`ilerpgref75.txt`38795行目の自由形式`CHAIN`構文表が最初から「第3引数はdata-structure」と明記していたとおり、素の`ind`フィールドは第3引数として使えない。
+- **`F0803CHKB`(`CHAIN`+`%FOUND`)はHighest Severity 00で成功した。**
+- **修正**: `src/qrpglesrc/f0803s.rpgle`を、`foundInd`を削除し`%found(tokuim)`を使う形に書き換えた。これにより、当初「`NoIndicators`ルールを狙うが実在しないルール名だったため意図的に残した設計」としていた説明は誤りだったと判明した——rpglintのルールとして存在しないだけでなく、**この構文自体が自由形式RPGとしてそもそも無効だった。** ファイルのヘッダーもこの経緯どおりに訂正した。修正後もrpglintの5件の意図した違反(`SpecificCasing`・`NoGlobalSubroutines`・`StringLiteralDupe`・`NoUnreferenced`・`PrettyComments`、13件のエラー行)は変わらず検出される(行番号だけがヘッダー修正に伴いずれた)。
+- **未確認のまま残る点**: `F0803CHKA`/`F0803CHKB`は最小の独立テストであり、`f0803s.rpgle`全体(`orderCount`サブルーチンのJUCHUMループ、`%subst`/`WRITE QSYSPRT`のブロック)をひとまとまりとして実際にコンパイルしたわけではない。個々のパターン自体は`jucsrv.rpgle`(`countCustOrders`の同じJUCHUMループ)・第4/5部のRPG III帳票プログラム(同じ`%subst`/`WRITE QSYSPRT`の形)で既に確立済みだが、この具体的なファイル全体としての実機コンパイルは、08-03のverifyマニフェストを書く際に別途行うこと。
+
 
 ## 未実施のプローブ
 
