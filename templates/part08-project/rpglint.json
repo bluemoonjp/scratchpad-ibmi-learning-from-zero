@@ -1,20 +1,17 @@
 {
   "indent": 2,
   "NoOCCURS": true,
-  "NoIndicators": true,
   "NoSELECTAll": true,
-  "NoSQLJoinInWhere": true,
+  "NoSQLJoins": true,
   "NoGlobalSubroutines": true,
   "NoUnreferenced": true,
   "NoCTDATA": true,
   "RequiresParameter": true,
-  "RequireBlockIf": true,
   "StringLiteralDupe": true,
   "PrettyComments": true,
-  "IncludeComment": "BlockComment",
   "SpecificCasing": [
-    { "operation": "if", "expected": "lower" },
-    { "operation": "dcl-s", "expected": "lower" },
-    { "operation": "dcl-pr", "expected": "lower" }
+    { "operation": "if", "expected": "*LOWER" },
+    { "operation": "dcl-s", "expected": "*LOWER" },
+    { "operation": "dcl-pr", "expected": "*LOWER" }
   ]
 }
