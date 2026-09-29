@@ -1,11 +1,16 @@
-# makei(Bob)の既定の依存推論では表現できないビルド手順を追加するファイル。
-# iproj.json と同じディレクトリーに置くと makei が自動的に読み込む(未確認、
-# 一般知識。work/design/refs/ にはmakei/Bob自体の一次資料が無いため、
-# 08-02レッスン本文では「一般知識、要確認」として扱うこと)。
+# makeiが実際に何をビルドするかを宣言するファイル(必須)。iproj.jsonと
+# 同じディレクトリー(または各サブディレクトリー)に置くとmakeiが自動的に
+# 読み込む。TOBi自身のドキュメント(PUB400上の
+# /QOpenSys/pkgs/lib/tobi/docs/prepare-the-project/rules.mk.md、
+# work/design/refs/にはミラーされていない一次資料)によれば、
+# 「オブジェクト名.オブジェクト型: ソース・ファイル」という形の行(ルール)
+# を1つも書かなければ、makeiは「ビルドするものが無い」と判断する
+# (このリポジトリでの実機確認: `docs/probes.md`のpart08-02-makei-probe2、
+# コメントのみのRules.mkでは`make: Nothing to be done for 'all'`になった)。
 #
-# 例: ZAISRV に依存クライアント(F0702B等)がある場合、既定の推論順序
-# (モジュール→*SRVPGM→クライアント)を明示したいときに書き足す。
-# 08-02演習(PFを1つ追加する)では、通常はこのファイルへの追記は不要
-# (makeiのDDS規則がPFの依存関係を自動的に解決するはず、これも未確認)。
+# オブジェクト名は大文字、`.MODULE`/`.SRVPGM`のようなIFS拡張子を付けて
+# 書く(TOBi自身の規約)。ソース・ファイル名は実際のファイル名をそのまま
+# 小文字で書いてよい(`$(d)/`のような接頭辞は現在のTOBiでは不要)。
 
-# .PHONY: rebuild-all
+ZAISRV.MODULE: zaisrv.rpgle
+ZAISRV.SRVPGM: ZAISRV.MODULE zaisrv.bnd
