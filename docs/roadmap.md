@@ -13,7 +13,7 @@
 | 3 | 簡単な RPG III プログラムを作成できる | 第4部 | [04-13](part04/04-13-checkpoint-stock-list.md) |
 | 4 | 既存の RPG III ソースを読み・保守できる | 第5部 | 05-13(チェックポイント: 保守チケット3本) |
 | 5 | RPG IV(完全自由形式)を主力言語として使える | 第6〜7部 | 06-15(在庫照会をサブファイル+SQLで)・07-05(在庫サービスZAISRV) |
-| 6 | 現代的なプログラミング手法を活用できる | 第8部 | 同上 |
+| 6 | 現代的なプログラミング手法を活用できる | 第8部 | [08-08](part08/08-08-checkpoint-promote-rollback.md)(ブランチから本番昇格・切り戻しまで) |
 | 7 | API 化・API からのデータ取得(環境が許す範囲で) | 第9部 | 同上 |
 
 第10部(総合演習)は、この7つの目標すべてを1つの題材で通しで使う仕上げの部です。
@@ -41,7 +41,7 @@
 例外は次の2種類だけです。
 
 - **枝番レッスン(`b` の付くもの)**: 例 [01-06b](part01/01-06b-object-lifecycle.md)(オブジェクトのライフサイクル)、[06-01b](part06/06-01b-reading-fixed-mixed-form.md)(固定形式・混在形式のRPG IVを読む)、[06-11b](part06/06-11b-maintenance-screen-locking.md)(RPG IVの保守画面)、[06-14b](part06/06-14b-date-timestamp-null.md)(DATE/TIMESTAMP/NULL)、09-02b(日本語・DBCSを実機で体験、執筆予定)。本編の流れには含まれず、直前のレッスンが終わっていれば、その場で寄り道してもよいですし、後回しにしてもかまいません。
-- **各部末のチェックポイント**: [01-10](part01/01-10-checkpoint.md)・[02-11](part02/02-11-checkpoint.md)・[03-14](part03/03-14-checkpoint-backup.md)・[04-13](part04/04-13-checkpoint-stock-list.md)・[05-13](part05/05-13-checkpoint-tickets.md)・[06-15](part06/06-15-checkpoint-stock-inquiry.md)・[07-05](part07/07-05-checkpoint-zaisrv.md)・(第8部以降は執筆予定)。次の部に進むための必須条件ではありませんが、その部の到達点を1問1問確かめる場なので、詰まったら次の部へ進む前に戻ることを勧めます。
+- **各部末のチェックポイント**: [01-10](part01/01-10-checkpoint.md)・[02-11](part02/02-11-checkpoint.md)・[03-14](part03/03-14-checkpoint-backup.md)・[04-13](part04/04-13-checkpoint-stock-list.md)・[05-13](part05/05-13-checkpoint-tickets.md)・[06-15](part06/06-15-checkpoint-stock-inquiry.md)・[07-05](part07/07-05-checkpoint-zaisrv.md)・[08-08](part08/08-08-checkpoint-promote-rollback.md)・(第9部以降は執筆予定)。次の部に進むための必須条件ではありませんが、その部の到達点を1問1問確かめる場なので、詰まったら次の部へ進む前に戻ることを勧めます。
 
 ## 早回しルート
 
