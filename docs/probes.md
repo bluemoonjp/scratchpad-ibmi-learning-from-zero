@@ -3115,6 +3115,42 @@ advisorの再レビューで、02-04の修復手順が前提にしていた「`b
 
 **打ち切りの判断**: `GENERATE_SQL`単体の呼び出しに、このセッションだけで合計5回の接続(`part08-06-ddl`3回+この2回)を費やし、**引数の型・名前という当初の仮説を実際に修正しても解消しなかった。** これ以上の当て推量は生産的でないと判断し、`GENERATE_SQL`の実働例をこの教材で確立することは打ち切る。ただし、`part08-06-generate-sql-catalog`で確定した37引数の実在する名前・型・順序(`QSYS2.SYSROUTINES`/`QSYS2.SYSPARMS`という一次資料そのもの)は確定済みの成果として残る——08-06本文は、この確定済みの引数一覧を「実際に呼び出して確認済みの動作」としてではなく、「実引数一覧はカタログで確認済み、実際に動く具体的な呼び出し方は学習者自身が試す」という形で提示する。
 
+## 第8部08-06: `part08-06-lvlid-and-gensql`——`GENERATE_SQL`がついにCONFIRMED SUCCESS、真因は`DATABASE_OBJECT_TYPE`の値そのものだった(確認日2026-09-29)
+
+advisorの指摘どおり、**これまでの5回の接続がすべて`DATABASE_OBJECT_TYPE => '*FILE'`を疑わずに使い続けていたこと自体が真因だった。** この接続で`db2` CLIから直接、最小限の3引数(オブジェクト名・ライブラリー・型)だけで2通り試したところ:
+
+- **`DATABASE_OBJECT_TYPE => 'TABLE'`: 成功。** `SQLSTATE: 0100C`(クラス`01`=警告であり、エラーではない)は「`1 result sets are available from procedure GENERATE_SQL`」という情報にすぎない。**`TOKUIM`の完全な生成済みDDLが結果セットとして実際に返ってきた**(下記)。
+- **`DATABASE_OBJECT_TYPE => '*FILE'`: `SQLSTATE 22023`、`DATABASE_OBJECT_TYPE NOT VALID`——`*FILE`は最初から有効な値ではなかった。** `part08-06-ddl`の3回・`part08-06-generate-sql-retry`の2回、合計5回の失敗はすべてこれが原因だった可能性が高い(引数の型・名前という当初の仮説は的外れだった)。
+
+**`TOKUIM`に対して実際に生成されたDDL(`&LIB`はライブラリー名に読み替え):**
+
+```sql
+CREATE TABLE &LIB.TOKUIM (
+    TOKCD CHAR(6) CCSID 273 NOT NULL DEFAULT '' ,
+    TOKNM CHAR(30) CCSID 273 NOT NULL DEFAULT '' ,
+    TOKZIP CHAR(7) CCSID 273 NOT NULL DEFAULT '' ,
+    TOKTAN CHAR(6) CCSID 273 NOT NULL DEFAULT '' ,
+    TOKUPD NUMERIC(8, 0) NOT NULL DEFAULT 0 )
+    RCDFMT TOKUIR ;
+
+LABEL ON TABLE &LIB.TOKUIM IS 'Customer master' ;
+LABEL ON COLUMN &LIB.TOKUIM
+( TOKCD TEXT IS 'Customer code' ,
+    TOKNM TEXT IS 'Customer name' ,
+    TOKZIP TEXT IS 'Zip code' ,
+    TOKTAN TEXT IS 'Sales rep code' ,
+    TOKUPD TEXT IS 'Updated date YYYYMMDD' ) ;
+
+GRANT ALTER, DELETE, INDEX, INSERT, REFERENCES, SELECT, UPDATE
+ON &LIB.TOKUIM TO <学習者のユーザー> WITH GRANT OPTION ;
+```
+
+生成コメントの中に、IBM自身の警告メッセージが2件そのまま埋め込まれていた: `SQL150B: REUSEDLT(*NO) in table TOKUIM ignored`・`SQL1506: Key or attribute for TOKUIM ignored`——**DDSの`K TOKCD`(キー付きアクセス経路)は、この変換ではSQL側の制約(`PRIMARY KEY`等)には変換されず、そのまま無視されることが実機で確認できた。** これは08-06の本文にとって重要な限界であり、「レベルIDが一致した」ことと「そのままキー・アクセス(`CHAIN`等)の代替になる」ことは別問題だと明記する必要がある(advisor指摘)。
+
+**副産物**: `TOKUPD NUMERIC(8,0)`(ゾーン10進数)・各列`NOT NULL DEFAULT`・`RCDFMT TOKUIR`という生成結果は、advisorが指摘して修正した手書きDDL案の想定(`DECIMAL`ではなく`NUMERIC`、`NOT NULL WITH DEFAULT`が必要)と完全に一致していた——手書き版は書き方自体の実機確認(`FOR COLUMN`句の位置)がまだ済んでいないため(下記)、このIBM生成版をそのまま一次資料として使う。
+
+**この接続の自作ミス(致命的ではない、次回で修正)**: `LVLIDTEST`ステップの手書きDDL案は`TOKCD FOR COLUMN TOKCD CHAR(6)`のように`FOR COLUMN`句を型宣言の**前**に書いてしまい、`SQL0612`(列名の重複)で3パターンとも失敗した。正しい構文は`TOKCD CHAR(6) FOR COLUMN TOKCD`(型宣言の**後**)。**ただしGENERATE_SQLが実際に動いたことで、この手書きDDL案自体がもう不要になった**——次回接続では、この自作ミスを直した版を試す代わりに、上のIBM生成DDLをそのまま`QTEMP`に実行し、`&LIB/TOKUIM`とのレベルID一致を直接確認する。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
