@@ -3038,6 +3038,19 @@ exit code: 0
 **もう1つの実バグ、`RequiresParameter`の説明**: `solutions/08-03/f0803s.rpgle`の当初のヘッダーは「`RequiresParameter`ルールが`exsr`(大域呼び出し)を咎めるので、`dcl-proc`+括弧呼び出しへの書き換えが必要」と断定していたが、**この教材自身が実測した13件の内訳に`RequiresParameter`は1件も含まれていなかった**(`exsr orderCount;`を含む見本ファイルに対する実測)。技術反証エージェントがこの矛盾を発見し、レッスン本文の該当ルール表・模範解答のヘッダーの両方を、「一般的な推測にとどまり、実測はこれに反する」という正直な記述に修正した。
 
 
+## 第8部08-02: `part08-02-makei`——08-02のレッスン本文用の本番マニフェスト、git配送経路のCRLF正規化と実ライブラリーでの再ビルドをCONFIRMED SUCCESS(確認日2026-09-29)
+
+`part08-02-makei-probe`/`-probe2`/`-probe3`はmakeiビルドの仕組み自体を確認したが、いずれも`Rules.mk`/`iproj.json`をpython3のバイナリー書き込みで直接置き、対象ライブラリーも使い捨ての`<USER>B`だった——**08-01が学習者に教えるgit経由の配送(PC側で作成→push→IBM i側でclone)を経た`Rules.mk`/`iproj.json`に対してmakeiビルドを試した接続は、それまで1つも無かった。** さらに`templates/part08-project/`から`templates/part08-zaisrv/`への分割(本セッション)で、後者に`.gitattributes`が無いまま残っていた——advisorレビューでこの2点が指摘され、本番用の新規マニフェスト`verify/part08-02-makei/manifest.json`で1回の接続により両方を同時に解消した。
+
+- **`templates/part08-zaisrv/.gitattributes`を新規に用意した**(`templates/part08-project/.gitattributes`と同内容——`* text=auto eol=lf`が拡張子非依存の既定行のため、`.mk`ファイルも含め全ファイルに効く)。
+- **CRLF正規化を実際に確認した。** 08-01と同じ手順(ベア・リポジトリー→PC側リポジトリー役→push→clone、いずれもこのハーネスのIFS上で実演)で、`Rules.mk`だけは意図的にCRLF(`\r\n`)で書き込んでから`git add`/`git commit`した。コミット時に`warning: in the working copy of 'Rules.mk', CRLF will be replaced by LF the next time Git touches it`というgit自身の警告が出て(`.gitattributes`が効いている証拠)、`git clone`後の`Rules.mk`を`od -c`で確認すると、コミット前にあった`\r`バイトが無くなり、LFのみになっていた。**`.gitattributes`が無ければ学習者のgit設定次第でCRLFのまま`Rules.mk`が届きうる、という懸念が、対策込みで実機決着した。**
+- **既存の(makei以外で作った)実オブジェクトの再ビルドを、使い捨てライブラリーではなく実際の開発ライブラリーで確認した。** `&LIB`(このハーネスの既定開発ライブラリー、`verify/lib/config.mjs`の`resolveLibrary()`——`part07-05-checkpoint`が`ZAISRV`を実際に作った先と同じライブラリー)を対象に、git clone後のプロジェクトで`makei build`を実行したところ、`crtrpgmod`→`CRTSRVPGM`のフル実行で成功した(`Objects: 0 failed 2 succeed 2 total, Build Successful!`)。これは`part08-02-makei-probe3`が使い捨ての`<USER>B`で確認した「既存オブジェクトの再ビルド」シナリオを、実際にPart 7由来の本物の`ZAISRV`が存在するライブラリーで再現したものであり、08-02のレッスン本文がそのまま使える形になった。
+- **「PFを追加する」演習も同じプロジェクトでCONFIRMED SUCCESS。** `part08-02-testpf`と同じ`TESTPF.FILE: testpf.pf`という1行追加で、`makei build`が`TESTPF.FILE was created successfully!`まで成功。後片付け(`DLTF`)も正常。
+- **プロジェクトの配置はフラット(サブディレクトリー無し)。** `zaisrv.rpgle`・`zaisrv.bnd`・`Rules.mk`・`iproj.json`をすべてプロジェクトのルート直下に置く形で確認した。08-01の`myproject`(`src/qrpglesrc/`・`src/qsrvsrc/`のサブディレクトリー構成)とは異なる構成であり、08-02の本文では「`myproject`とは別の新しいプロジェクトで、フラットな配置」と明記する必要がある。
+- **起動方法は`bash -c 'cd ... && export PATH=... && makei build'`(bash経由)で確認した。** `bsh`の2段階export形(P08/02-04修正で確立済み)と組み合わせてmakeiを実際に動かした接続はまだ無い——08-02本文では、この`bash -c`形をそのまま使うか、`bsh`形を使うかのどちらか一方に絞り、未確認の組み合わせを「確認済み」と書かないこと。
+- **小さな新発見: PASEの`find`に`-maxdepth`オプションが無い**(`find: 001-2187 The option -maxdepth is not valid.`)。このマニフェスト自身の確認用コマンド(`find "$HOME/mk10/c" -maxdepth 1 -type f`)が失敗しただけで、ビルド結果には影響しない。08-02本文で`find`を使う場合はこのオプションを避ける。
+- **レッスン本文の紙上の置き換え規則(`<自分のユーザー名>1`等)と、このハーネスの`&LIB`(既定で`<実ユーザー名>2`に解決)は、別々の命名である。** 07-05は学習者に`<自分のユーザー名>1`という置き換え済み库を使わせているが、これは本文の説明用プレースホルダーであり、このハーネス自身の`&LIB`という内部規約(`<ユーザー名>2`が既定)とは無関係——08-02本文は07-05と同じ`<自分のユーザー名>1`という表記をそのまま踏襲すればよく、このハーネスの`&LIB`という記号を本文に持ち込む必要はない。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
