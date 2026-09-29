@@ -2940,16 +2940,16 @@ Build Successful!
 
 `pnpm add @halcyontech/rpglint`でインストールし、`node node_modules/@halcyontech/rpglint/dist/index.js -d <ディレクトリー>`(そのディレクトリー配下に`rpglint.json`と対象の`.rpgle`が両方必要)として実際に実行できることを確認した。`-f`を指定すると`rpglint.json`が見つからなくなる事象を最初観測したが、**この節の最初の記録は誤りだった(advisor指摘、訂正)**——`dist/index.js`自身のコードを直接読むと、設定ファイルの探索は`"**/rpglint.json"`という固定のglob文字列であり、`-f`の値とは無関係だと確認できた。`-f`がなぜ最初の試行で失敗したのかは特定できておらず(検証手順自体に別の不備があった可能性が高い)、確実に動くやり方だけを記録する: `rpglint.json`と対象ソースを同じディレクトリーに置き、`-f`を指定せずに実行する。08-03のレッスンでは、READMEの正式な使い方(`.vscode/rpglint.json`に置き、プロジェクト・ルートで`rpglint`を無引数実行する)を採用すればこの論点自体を避けられる。
 
-**advisorの指摘で、`templates/part08-project/rpglint.json`自体に実在する2つのバグを発見・修正した(このテンプレートは前セッション以前に一次資料の裏付け無く書かれていた):**
+**advisorの指摘で、`templates/part08-project/.vscode/rpglint.json`自体に実在する2つのバグを発見・修正した(このテンプレートは前セッション以前に一次資料の裏付け無く書かれていた):**
 
 1. **設定キー4つが、このバージョン(0.27.0)には存在しないルール名だった。** `dist/index.js`自身が持つルール名→メッセージ文言の辞書オブジェクトを直接読み、全キーを列挙して突き合わせたところ、`NoIndicators`・`NoSQLJoinInWhere`・`RequireBlockIf`・`IncludeComment`の4つは、このルール辞書のどこにも存在しなかった(`grep`でのヒット数が0件)——つまりこれらは黙って無視される、無効なキーだった。`NoSELECTAll`と対になる「SQL JOIN禁止」に相当する実在のルール名は`NoSQLJoins`(`NoSQLJoinInWhere`ではない)だと判明したため、そちらに直した。`NoIndicators`・`RequireBlockIf`・`IncludeComment`は対応する実在ルールが見つからず削除した。
 2. **`SpecificCasing`の`expected`値が、CLの特殊値形式(`*LOWER`/`*UPPER`、アスタリスク接頭辞つき)を要求していた。** `dist/index.js`の該当コードは`e.expected`を`.toUpperCase()`した上で`"*UPPER"`/`"*LOWER"`という文字列とだけ比較しており、一致しない場合は`expected`の値(例えば単なる文字列`"lower"`)がそのままトークンの期待値として使われてしまう。この場合`"if" !== "lower"`は常に真になるため、**大文字・小文字にかかわらず`if`/`dcl-s`のすべての出現が誤検出される**、という実バグだった(`dcl-s x ind;`のような明白な小文字ですら「Does not match required case.」として検出されていたのは、このバグのため)。`"expected": "*LOWER"`に修正し、小文字のトークンが誤検出されなくなり、大文字のトークン(`DCL-S`/`IF`)だけが正しく検出されることを、別途作った検証用スクラッチ・ファイルで確認した。
 
-**修正後の`templates/part08-project/rpglint.json`で再実行した、正しい結果:**
+**修正後の`templates/part08-project/.vscode/rpglint.json`で再実行した、正しい結果:**
 
 - **`src/qrpglesrc/f0803s.rpgle`(08-03演習用ファイル、ヘッダー修正済みの現行版): 13件のエラー**(以前記録した18件は、上記のバグが混入した誤ったルール構成での結果だったため無効。以下の内訳が正)。`SpecificCasing`2件(「Does not match required case.」——`IF`/`DCL-S`の大文字表記のみが検出され、想定どおり)、`NoGlobalSubroutines`3件(「Subroutines should not be defined in the global scope.」)、`StringLiteralDupe`3件(「Same string literal used more than once...」——`'NOTFOUND'`は実際には**3回**出現しており、ファイルのヘッダーが当初「2回」と書いていたのは誤りだった、修正済み)、`NoUnreferenced`1件(実際のメッセージは「No reference to definition.」)、`PrettyComments`4件(「Comments must be correctly formatted.」、当初は想定外だったが正当な5つ目の違反として確定)。`NoIndicators`は設定から削除したため対象外——`chain (custCode) tokuim foundInd;`という%FOUND代替パターン自体は、リント対象ではない読解用の教材として残す。
 - **`src/qrpglesrc/jucsrv.rpgle`(この教材がPart 6〜8で「お手本」として使い続けているソース): 12件のエラー、全件`PrettyComments`**(以前記録した「15件、うち4件がSpecificCasing」は誤り——`SpecificCasing`のバグを修正した結果、`JUCSRV`自身の`dcl-s`/`if`はすべて正しく小文字で書かれており、ケースの誤りは実在しなかったことが判明した)。12件はすべて`//===...===`という罫線コメントの書式に対する「Comments must be correctly formatted.」であり、`JUCSRV`の実体としての品質(命名・大文字小文字の規律)自体には問題が無いことも、あわせて確認できた。
-- **08-03のレッスン設計への示唆**: `rpglint`はもはや「一般知識、要確認」として扱う必要がない——PCローカルにインストールして実際に実行し、確認済みの出力を本文に使える。本文で使う`rpglint.json`は、このリポジトリの`templates/part08-project/rpglint.json`(修正済み版)をそのまま使うこと——修正前の版に存在した2つのバグ(存在しないルール名・`SpecificCasing`の値形式の誤り)を再現しないよう注意する。`PrettyComments`が罫線コメント(`//===...===`)に反応する点は、このリポジトリの既存ソース(`JUCSRV`を含む)の大部分がこの様式を使っているため、レッスン設計・`f0803s.rpgle`のヘッダー・`JUCSRV`側の実演手順のいずれにも反映する必要がある。`JUCSRV`の実演(「警告を0にする」)は、罫線コメントを書き直すだけの比較的単純な修正で達成できる見込みが高い(大文字小文字の修正は不要と判明したため)。
+- **08-03のレッスン設計への示唆**: `rpglint`はもはや「一般知識、要確認」として扱う必要がない——PCローカルにインストールして実際に実行し、確認済みの出力を本文に使える。本文で使う`rpglint.json`は、このリポジトリの`templates/part08-project/.vscode/rpglint.json`(修正済み版)をそのまま使うこと——修正前の版に存在した2つのバグ(存在しないルール名・`SpecificCasing`の値形式の誤り)を再現しないよう注意する。`PrettyComments`が罫線コメント(`//===...===`)に反応する点は、このリポジトリの既存ソース(`JUCSRV`を含む)の大部分がこの様式を使っているため、レッスン設計・`f0803s.rpgle`のヘッダー・`JUCSRV`側の実演手順のいずれにも反映する必要がある。`JUCSRV`の実演(「警告を0にする」)は、罫線コメントを書き直すだけの比較的単純な修正で達成できる見込みが高い(大文字小文字の修正は不要と判明したため)。
 
 ## 第8部`part08-02-makei-probe3`: 1回目の接続は2つの自作ミスで学習者シナリオを検証できず(確認日2026-09-29)
 

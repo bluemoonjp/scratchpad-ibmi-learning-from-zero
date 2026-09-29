@@ -17,7 +17,7 @@
 // itself, so the learner has to actually run rpglint and read its
 // output to find them. CONFIRMED (see STATUS below) via a real local
 // run of @halcyontech/rpglint 0.27.0 against this exact file, using
-// the corrected templates/part08-project/rpglint.json (see that
+// the corrected templates/part08-project/.vscode/rpglint.json (see that
 // file's own history - the first version had 4 keys, including
 // NoIndicators, that are not real rule names in 0.27.0 at all, and
 // SpecificCasing's "expected" value needs the CL-style "*LOWER"/
@@ -60,20 +60,17 @@
 // %FOUND-based form below was compiled in the same connection
 // (F0803CHKB, Highest Severity 00) and is what this file now uses.
 //
-// STATUS: CONFIRMED - the %FOUND-based CHAIN construct actually
-// compiled on real hardware (verify/part08-03-f0803-compile,
-// 2026-09-29, Highest Severity 00). The rest of this file (the
-// orderCount subroutine's JUCHUM loop, the %subst/WRITE QSYSPRT
-// block) has NOT been compiled as this whole, assembled file - each
-// individual pattern is already established elsewhere in this repo
-// (jucsrv.rpgle's countCustOrders uses the identical JUCHUM
-// close/open/read loop; Part 4/5's RPG III printer programs use the
-// same %subst/WRITE QSYSPRT shape), but that is not the same as
-// compiling this exact file.
+// STATUS: CONFIRMED - the %FOUND-based CHAIN construct compiled in
+// isolation first (verify/part08-03-f0803-compile, 2026-09-29,
+// Highest Severity 00), and this whole, assembled file (the
+// orderCount subroutine's JUCHUM loop, the %subst/WRITE QSYSPRT block,
+// all of it together) was then compiled as one real CRTBNDRPG program
+// and CALLed without error (verify/part08-02-testpf, 2026-09-29,
+// Highest Severity 00).
 //
 // rpglint re-run locally against this exact, current file
 // (@halcyontech/rpglint 0.27.0, npm, zero PUB400 connection needed,
-// corrected templates/part08-project/rpglint.json, 2026-09-29): 13
+// corrected templates/part08-project/.vscode/rpglint.json, 2026-09-29): 13
 // errors - SpecificCasing x2, NoGlobalSubroutines x3, StringLiteralDupe
 // x3, NoUnreferenced x1, PrettyComments x4. Matches the 5 rules
 // described above exactly. Line numbers are deliberately not quoted
