@@ -162,18 +162,20 @@ used with TGTCCSID(*SRC).
 |---|---|---|
 | `RNS9380` | `CRTRPGMOD`の既定`TGTCCSID(*SRC)`は、CCSID 1208(UTF-8)のようなUnicode系CCSIDを受け付けない | `TGTCCSID(*JOB)`を明示する |
 
-なお`CRTSRVPGM`側(バインダー・ソースを読む方の`SRCSTMF`)には、CCSID関連のパラメーターを何も渡していませんが、実機確認ではそのままで成功しています——`CRTSRVPGM`のバインダー言語の読み込みは、`CRTRPGMOD`のRPGソース読み込みとは別の扱いのようです(この違いの内部的な理由までは、このリポジトリでは未確認です)。
+なお`CRTSRVPGM`には、そもそもCCSID関連のパラメーターが1つもありません(一次資料`cl_commands_75.txt`のパラメーター表全体で確認済み)。実機確認でも、`CRTSRVPGM`の`SRCSTMF`(バインダー・ソースを読む方)には何も指定せずに成功しています——`CRTSRVPGM`のバインダー言語の読み込みは、`CRTRPGMOD`のRPGソース読み込みとは別の扱いのようです(この違いの内部的な理由までは、このリポジトリでは未確認です)。
 
 ### `*LIBL`の壁: `ADDLIBLE`を忘れずに
 
-`jucsrv.rpgle`は`TOKUIM`・`JUCHUM`という外部記述ファイルを(ライブラリー名を修飾せずに)参照しています。`CRTRPGMOD`は、コンパイルの時点でこれらの外部記述を`*LIBL`から探します——ソースがメンバーから来ようとSRCSTMFから来ようと、この探し方自体は変わりません。コンパイル・ジョブの`*LIBL`に対象ライブラリーが見当たらないと、`TOKUIM`・`JUCHUM`の外部記述が解決できず、次の形のメッセージ(`RNF2120`、重大度40)が記録されます(実機確認済み)。
+`jucsrv.rpgle`は`TOKUIM`・`JUCHUM`という外部記述ファイルを(ライブラリー名を修飾せずに)参照しています。`CRTRPGMOD`は、コンパイルの時点でこれらの外部記述を`*LIBL`から探します——ソースがメンバーから来ようとSRCSTMFから来ようと、この探し方自体は変わりません。コンパイル・ジョブの`*LIBL`に対象ライブラリーが見当たらないと、`TOKUIM`・`JUCHUM`の外部記述が解決できず、参照しているファイルの数だけ次の形のメッセージ(`RNF2120`、重大度40)が記録されます(実機確認済み。`jucsrv.rpgle`は2ファイルを参照するため、実際には2行出ます)。
 
 ```text
-RNF2120: External descriptions for file TOKUIM/JUCHUM not found;
-file is ignored.
+RNF2120: External descriptions for file TOKUIM not found; file is
+ignored.
+RNF2120: External descriptions for file JUCHUM not found; file is
+ignored.
 ```
 
-**5250の対話ジョブでは、通常`<USER>1`が現行ライブラリー(`*CURLIB`)として`*LIBL`に入っています**(01-05のとおり、サインオン時の既定です)。現行ライブラリーはユーザー部より先に探されるため(これも01-05のとおりです)、`<USER>1`にある`TOKUIM`/`JUCHUM`は通常問題なく見つかります。`CHGCURLIB`で現行ライブラリーを変えている場合や、`SBMJOB`で投入したバッチ・ジョブのような対話式でない実行経路では、`ADDLIBLE`でユーザー部へ明示的に追加する必要があります。まず`DSPLIBL`で、`<USER>1`が現行ライブラリーにも`*LIBL`のどこにも見当たらないことを確認してから、次のように追加してください。
+**5250の対話ジョブでは、通常`<USER>1`が現行ライブラリー(`*CURLIB`)として`*LIBL`に入っています**(01-04のとおり、サインオン時の既定です)。現行ライブラリーはユーザー部より先に探されるため(01-05のとおりです)、`<USER>1`にある`TOKUIM`/`JUCHUM`は通常問題なく見つかります。`CHGCURLIB`で現行ライブラリーを変えている場合や、`SBMJOB`で投入したバッチ・ジョブのような対話式でない実行経路では、`ADDLIBLE`でユーザー部へ明示的に追加する必要があります。まず`DSPLIBL`で、`<USER>1`が現行ライブラリーにも`*LIBL`のどこにも見当たらないことを確認してから、次のように追加してください。
 
 ```text
 ADDLIBLE LIB(<自分のユーザー名>1) POSITION(*FIRST)
@@ -191,7 +193,7 @@ ADDLIBLE LIB(<自分のユーザー名>1) POSITION(*FIRST)
 
 **この実演で作る`JUCSRV`(*MODULE・*SRVPGM)は、実機での実行確認(V2)まで済んでいます。** ただし実機で実際に検証されたのは、下の「A」(本物のPCからの接続を要するため、このリポジトリの検証ハーネスでは構造的に確認できません)ではなく、「B」に相当するIFS内リハーサルを**構成する個々の要素**(ベア・リポジトリー+cloneという経路、SRCSTMFビルドのコマンド自体)です。「B」節が指示するこの具体的な手順そのもの(`cp`によるコピー)は、個別には検証していません。詳しくは下の「実機メモ」の区別を必ず読んでください。
 
-**A・Bどちらか一方だけを行えば、このレッスンの目標(SRCSTMFからのJUCSRVビルド)は達成できます。** PCでgit・SSHがすぐ使える人はAを、まだ準備できていない人はまずBで練習し、あとでAに進んでください(下の「演習」はAを前提にします)。Aは`~/pub400-clone`、Bは`~/rehearsal-clone`というIFS上のディレクトリーに、それぞれ`jucsrv.rpgle`・`jucsrv.bnd`が揃った状態になります——下のC・Dは、どちらのディレクトリーに対しても同じ手順です(コマンド例は`~/pub400-clone`で示すので、Bだけを行った場合は`~/rehearsal-clone`と読み替えてください)。
+**A・Bどちらか一方だけを行えば、上の「ゴール」の2つ目・3つ目(SRCSTMFからのJUCSRVビルド、同じオブジェクトの作り直し)は達成できます。** ただし1つ目のゴール(本物のPCからPUB400への安全なpush)は、Aでしか確かめられません——Bは本物のPCを使わない代替リハーサルです。PCでgit・SSHがすぐ使える人はAを、まだ準備できていない人はまずBで練習し、あとでAに進んでください(下の「演習」はAを前提にします)。Aは`~/pub400-clone`、Bは`~/rehearsal-clone`というIFS上のディレクトリーに、それぞれ`jucsrv.rpgle`・`jucsrv.bnd`が揃った状態になります——下のC・Dは、どちらのディレクトリーに対しても同じ手順です(コマンド例は`~/pub400-clone`で示すので、Bだけを行った場合は`~/rehearsal-clone`と読み替えてください)。
 
 ### A. 本筋: PCからPUB400へのgit push
 
@@ -206,14 +208,16 @@ ADDLIBLE LIB(<自分のユーザー名>1) POSITION(*FIRST)
 
 3. この教材のリポジトリーをPCにも`git clone`し(`~/ibmi-kyozai`はPUB400側だけの話です。PC側にも同じリポジトリーをクローンして構いません)、`src/qrpglesrc/jucsrv.rpgle`・`src/qsrvsrc/jucsrv.bnd`の2ファイルだけを、`myproject`の同じ名前のサブディレクトリーへコピーします。教材のgit履歴は持ち込みません——単なるファイル・コピーです。
 
-4. コミットします。
+4. コミットします。**まだPCでgitのユーザー名・メール・アドレスを設定したことがなければ、最初の`git commit`の前に一度設定してください**(無指定だと`git commit`は「Please tell me who you are」で失敗します)。既に他のプロジェクトで設定済みなら、この手順は不要です。
 
    ```sh
+   git config --global user.name "自分の名前"
+   git config --global user.email "自分のメール・アドレス"
    git add .gitattributes src
    git commit -m "Initial JUCSRV project"
    ```
 
-5. PC側の`~/.ssh/config`に、上の「説明」で見た`Host pub400`のエントリーを追記します(`your_username_here`は自分のユーザー名に置き換え)。
+5. **SSH鍵認証を使う場合は**、PC側の`~/.ssh/config`に、上の「説明」で見た`Host pub400`のエントリーを追記します(`your_username_here`は自分のユーザー名に置き換え)。パスワード認証のまま進める場合はこの手順を飛ばしてください(手順7で使うリモートURLが変わります)。
 
 6. SSH(02-04で確立済みの接続方法で構いません)で接続し、PUB400側にベア・リポジトリーを作ります。
 
@@ -223,12 +227,21 @@ ADDLIBLE LIB(<自分のユーザー名>1) POSITION(*FIRST)
 
 7. PC側に戻り、リモートを登録してpushします。
 
+   手順5で`Host pub400`を設定した場合:
+
    ```sh
    git remote add pub400 pub400:pub400-bare.git
    git push pub400 main
    ```
 
-   `Host pub400`のエイリアスにより、ポート番号・ユーザー名・鍵は`~/.ssh/config`から自動的に補われます。**もし`git-receive-pack: command not found`のようなメッセージで失敗したら**、上の「説明」の「pushが失敗したら」を参照してください。
+   `Host pub400`のエイリアスにより、ポート番号・ユーザー名・鍵は`~/.ssh/config`から自動的に補われます。パスワード認証のまま進める場合(手順5を飛ばした場合)は、ポート番号・ユーザー名を書いたリモートURLを使います。
+
+   ```sh
+   git remote add pub400 ssh://<自分のユーザー名>@pub400.com:2222/~/pub400-bare.git
+   git push pub400 main
+   ```
+
+   (`<自分のユーザー名>`は自分のユーザー名に置き換えてください。パスワードを尋ねられたら入力します。)**もし`git-receive-pack: command not found`のようなメッセージで失敗したら**、上の「説明」の「pushが失敗したら」を参照してください。
 
 8. もう一度SSHで接続し、ビルド用の作業クローンを作ります(ベア・リポジトリー自身には作業コピーが無いため、ビルドには**別の**クローンが要ります)。
 
@@ -251,9 +264,13 @@ ADDLIBLE LIB(<自分のユーザー名>1) POSITION(*FIRST)
 
 3. 02-04で取り込み済みの`~/ibmi-kyozai`から、`jucsrv.rpgle`・`jucsrv.bnd`の2ファイルだけをコピーします。
 
+   PUB400は共有アカウントなので、gitのユーザー名・メール・アドレスはこのリポジトリーだけに設定します(`--global`は付けません)。
+
    ```sh
    cp ~/ibmi-kyozai/src/qrpglesrc/jucsrv.rpgle src/qrpglesrc/
    cp ~/ibmi-kyozai/src/qsrvsrc/jucsrv.bnd src/qsrvsrc/
+   git config user.name "自分の名前"
+   git config user.email "自分のメール・アドレス"
    git add src
    git commit -m "Rehearsal: JUCSRV project"
    ```
@@ -278,7 +295,7 @@ ADDLIBLE LIB(<自分のユーザー名>1) POSITION(*FIRST)
 
 ### C. SRCSTMFからのビルド(A・B共通)
 
-1. 5250に戻り(またはそのまま)、`DSPLIBL`で`<自分のユーザー名>1`が`*LIBL`に入っていることを確認します。入っていなければ`ADDLIBLE LIB(<自分のユーザー名>1) POSITION(*FIRST)`を実行してください(上の「説明」参照)。
+1. 5250に切り替えます(`DSPLIBL`は画面系のコマンドで、`docs/style-guide.md`の作法どおりSSHの中では使いません。5250とSSHは別々のジョブとして両方開いたままにしておけます——02-04参照)。`DSPLIBL`で`<自分のユーザー名>1`が`*LIBL`に入っていることを確認します。入っていなければ`ADDLIBLE LIB(<自分のユーザー名>1) POSITION(*FIRST)`を実行してください(上の「説明」参照)。
 
 2. `CRTRPGMOD`で、`jucsrv.rpgle`をSRCSTMFから直接コンパイルします。**`TGTCCSID(*JOB)`を忘れないでください**(無指定だと`RNS9380`になります)。IFSパスが長い場合は、コマンド名だけ入力して`F4`(プロンプト)を押すと、パラメーターごとに別々の入力欄に分けて書けます。
 
@@ -292,7 +309,7 @@ ADDLIBLE LIB(<自分のユーザー名>1) POSITION(*FIRST)
    Module JUCSRV placed in library <自分のユーザー名>1. 10 highest severity.
    ```
 
-   **最高重大度が`10`であって`00`ではない点に注意してください。** `CRTRPGMOD`の`GENLVL`(生成を打ち切る重大度のしきい値)パラメーターの既定値は10です——一次資料(`cl_commands_75.txt`)によれば「コンパイル時のエラーがすべてこのしきい値以下なら、モジュール・オブジェクトを生成する」という規則で、既定の10ちょうどはこの「生成する」側に含まれます。個々のメッセージの内容までは、このレッスンでは確認していません。`00`ではなく`10`になっても、慌てず先に進んでください。
+   **最高重大度が`10`であって`00`ではない点に注意してください。** `CRTRPGMOD`の`GENLVL`(生成を打ち切る重大度のしきい値)パラメーターの既定値は10です——一次資料(`cl_commands_75.txt`)によれば「コンパイル時のエラーがすべてこのしきい値以下なら、モジュール・オブジェクトを生成する」という規則で、既定の10ちょうどはこの「生成する」側に含まれます。この`10`は、07-02/07-03でメンバー経由の`JUCSRV`をコンパイルしたときに見たのと同じ`RNF7534`(「非サイクル・モジュールでは`TOKUIM`を明示的にクローズすべき」という助言のみ、実機確認済み)です。ソースの中身が同じ以上、警告の中身も同じになる——これも「メンバーとSRCSTMFは同じコンパイラーへの2つの入口に過ぎない」ことの一例です。`00`ではなく`10`になっても、慌てず先に進んでください。
 
 3. `CRTSRVPGM`で、`jucsrv.bnd`(バインダー・ソース)をSRCSTMFから直接読み、サービス・プログラムを作り直します。`MODULE()`には、手順2で作った*MODULEオブジェクトを(ライブラリー修飾つきで)指定します。
 
@@ -319,6 +336,7 @@ CALL PGM(<自分のユーザー名>1/F0703A) PARM('C00001')
 `DSPJOBLOG`で、07-02/07-03で見たのとまったく同じ値が出ることを確認してください。
 
 ```text
+CPF9898:  F0702A: getCustName(C00001) = ACME TRADING CO.
 CPF9898:  F0703A: countCustOrders(C00001) call 1 = 2.
 CPF9898:  F0703A: countCustOrders(C00001) call 2 = 2.
 CPF9898:  F0703A: MATCH - both calls agree; JUCHUM repositioning is correct..
@@ -339,7 +357,7 @@ CPF9898:  F0703A: MATCH - both calls agree; JUCHUM repositioning is correct..
    git push pub400 main
    ```
 
-   1行だけの挿入なら、`git commit`の要約はおおよそ`1 file changed, 1 insertion(+)`のような小さな差分になるはずです(このレッスンの検証でも、genuineなUTF-8/LFファイルへの1行挿入でまったく同じ形の要約を確認しています——詳しくは下の「実機メモ」参照)。
+   1行だけの挿入なら、`git commit`の要約はおおよそ`1 file changed, 1 insertion(+)`のような小さな差分になるはずです(このレッスンの検証でも、本物のUTF-8/LFファイルへの1行挿入でまったく同じ形の要約を確認しています——詳しくは下の「実機メモ」参照)。
 3. SSHで`~/pub400-clone`に接続し、pullします。
 
    ```sh
@@ -386,19 +404,19 @@ CPF9898:  F0703A: MATCH - both calls agree; JUCHUM repositioning is correct..
 - **確認日: 2026-09-28〜2026-09-29。接続`part08-01-git-srcstmf`(合計7回の接続)。** qshの1セッション内でIFS上に擬似「PC側」・「PUB400側(ベア)」・「ビルド用クローン」の3ディレクトリーを作り、`git init --bare`→`git push`→`git clone`という経路をリハーサルしたうえで、`JUCSRV`をメンバー経由ではなくSRCSTMF直接ビルドで作り直す、という実機確認を行いました。
 - **V2で確認済み(このverifyハーネス自身がqsh経由で確認済み)**:
   - `git init --bare`→`git push`→`git clone`という経路そのもの。
-  - `CRTRPGMOD MODULE(&LIB/JUCSRV) SRCSTMF(...) TGTCCSID(*JOB) REPLACE(*YES)`が、genuineなUTF-8/LFの`git clone`済みファイルに対して成功すること(「Module JUCSRV placed in library \<USER\>2. 10 highest severity.」)。
+  - `CRTRPGMOD MODULE(&LIB/JUCSRV) SRCSTMF(...) TGTCCSID(*JOB) REPLACE(*YES)`が、本物のUTF-8/LFの`git clone`済みファイルに対して成功すること(「Module JUCSRV placed in library \<USER\>2. 10 highest severity.」)。
   - `CRTSRVPGM SRVPGM(&LIB/JUCSRV) MODULE(&LIB/JUCSRV) EXPORT(*SRCFILE) SRCSTMF(...) ACTGRP(*CALLER) REPLACE(*YES)`が成功すること(「Replaced object JUCSRV type *SRVPGM was moved to QRPLOBJ.」「Service program JUCSRV created in library \<USER\>2.」)。
   - 再ビルドした`JUCSRV`に対し、`F0702A`/`F0703A`が`*LIBL`経由で正しく解決・動作すること(`getCustName(C00001) = ACME TRADING CO`、`countCustOrders(C00001)`の2連続呼び出しがどちらも`2`——メンバー経由の元のビルドと完全に同じ値)。
-  - PCでの1行編集→commit→push→pull→再ビルドという一往復の**機構**(genuineなUTF-8/LFファイルへの1行挿入、`git commit`の要約が`1 file changed, 1 insertion(+)`になること、pushの成功、`pub400-clone`側での`git pull`のFast-forward、再ビルドの成功、`F0702A`/`F0703A`の再確認)。
+  - PCでの1行編集→commit→push→pull→再ビルドという一往復の**機構**(本物のUTF-8/LFファイルへの1行挿入、`git commit`の要約が`1 file changed, 1 insertion(+)`になること、pushの成功、`pub400-clone`側での`git pull`のFast-forward、再ビルドの成功、`F0702A`/`F0703A`の再確認)。
 - **本文の「B. 代替」節が指示する具体的な手順(`~/ibmi-kyozai`から`cp`で2ファイルだけコピーする簡略版)は、このレッスンの検証ハーネス自身が実行したものと完全に同一ではありません**(ハーネスは、既にコンパイル済みのメンバーから`CPYTOSTMF`で本物のUTF-8/LFストリーム・ファイルを新規に書き出す、という別の方法で種ファイルを用意しました——学習者向けの本文には、この教材のこれまでの`CPYFRMSTMF`/`CPYTOSTMF`の使い方と混同を避けるため、より単純な`cp`を採用しています)。個々の要素(`git init --bare`→`push`→`clone`という経路自体、`SRCSTMF`ビルドのコマンド自体)はいずれも上のとおりV2で確認済みですが、「B」節が指示する**この具体的な組み合わせ**(`cp`によるコピー)そのものは、このリポジトリでは個別に検証していません(V3)。
-- **V3のまま(このハーネスでは一度も確認していない)**:
+- **V3のまま(このハーネスでは一度も確認していない、2026-09-29時点)**:
   - 本物のPC→PUB400へのgit push(SSH経由、実際のPCのgitクライアントから)。今回はqshセッション内で「PC側」「PUB400側」の両方を擬似的に再現しただけで、本物のPC側からの接続は一度も行っていません。
   - `~/.ssh/config`の`IdentitiesOnly yes`設定の要否そのもの(複数鍵の提示が認証失敗としてカウントされる、という一般知識に基づく対策です)。
   - `.gitattributes`(LF強制)によるgit自身の改行正規化の経路そのもの——今回のリハーサルでは、この文書とは別の手段で直接LF化したファイルを使っており、`.gitattributes`によるgit自身の正規化は一度も経由していません。
   - `INCDIR`——`JUCSRV`は`/COPY`ディレクティブを持たないため、`CRTRPGMOD`の`INCDIR`パラメーターは一度も実際に使われていません。
   - `receive.denyCurrentBranch=updateInstead`——この教材の決定でbareに一本化したため、そもそも採用していない経路です。
-- **見つかった実バグ、2件**(いずれも本文が教える技術的な要点そのものです): (1) `git clone`直後のファイルがCCSID 1208(UTF-8)とタグ付けされているのに対し、`CRTRPGMOD`の既定`TGTCCSID(*SRC)`はUnicode系CCSIDを受け付けず`RNS9380`になる——`TGTCCSID(*JOB)`の明示で解決しました。**ただしこの接続では、`TGTCCSID(*JOB)`を指定するだけでは終わらず、途中で`CPE3490`(「Conversion error.」)にもぶつかっています**——advisorとの相談で判明した真因は、当時使っていた種ファイル自身が、CCSID 1208というタグだけ付いた**本物ではないEBCDICバイト列**だったことでした(このハーネス固有の種ファイル生成方法の問題で、学習者が実際に使う本物のUTF-8ファイルには当てはまりません)。本物のUTF-8シードに切り替えたところ、`TGTCCSID(*JOB)`はそのまま成功しています——つまり本文が教える対処(`TGTCCSID(*JOB)`)が効くのは、「タグと実際のバイト列が一致した、本物のUTF-8ファイル」に対してです。学習者がPC側のエディターで書いたファイルは最初からこの条件を満たしているため、この落とし穴自体を踏む心配はありません。(2) `*LIBL`にコンパイル対象ライブラリーが入っていないと、`TOKUIM`/`JUCHUM`の外部記述が解決できず`RNF2120`(重大度40)になる——`ADDLIBLE`で解決しました。本文の「説明」節は、この2点を中心に構成しています。
-- **ハーネス固有の回避策で、学習者向けの本文には一切含めていないもの**: 種ファイルを本物のUTF-8として用意するための`CPYTOSTMF`経由の生成(学習者はPC側の本物のエディターでファイルを作るので不要です)、`*LIBL`をジョブ内で維持するための動的生成CLヘルパー・プログラム(qshの`system()`呼び出しが1回ごとに別ジョブになるという、このハーネス固有の制約への対処です。5250の対話ジョブでは1つのコマンド行の実行がそのまま1つのジョブの中で完結します)、短縮したIFSディレクトリー名やCLの`+`継続行への分割(CL行の桁数制限を避けるための、ハーネス内部限定の対処です。学習者は`pub400-bare.git`/`pub400-clone`のような分かりやすい名前を自由に使えますし、5250の`F4`プロンプトを使えば1行の桁数を気にする必要もありません)、PCでの編集をシミュレートするPythonスクリプト自体の配送方法(heredoc経由で書き込んだスクリプト自身がEBCDIC化されてしまう、というこのハーネス固有の問題への対処です。学習者はPC側のエディターで直接編集するので無関係です)。
+- **見つかった実バグ、2件**(いずれも本文が教える技術的な要点そのものです): (1) `git clone`直後のファイルがCCSID 1208(UTF-8)とタグ付けされているのに対し、`CRTRPGMOD`の既定`TGTCCSID(*SRC)`はUnicode系CCSIDを受け付けず`RNS9380`になる——`TGTCCSID(*JOB)`の明示で解決しました。**ただしこの接続では、`TGTCCSID(*JOB)`を指定するだけでは終わらず、途中で`CPE3490`(「Conversion error.」)にもぶつかっています**——調査の結果判明した真因は、当時使っていた種ファイル自身が、CCSID 1208というタグだけ付いた**本物ではないEBCDICバイト列**だったことでした(このハーネス固有の種ファイル生成方法の問題で、学習者が実際に使う本物のUTF-8ファイルには当てはまりません)。本物のUTF-8シードに切り替えたところ、`TGTCCSID(*JOB)`はそのまま成功しています——つまり本文が教える対処(`TGTCCSID(*JOB)`)が効くのは、「タグと実際のバイト列が一致した、本物のUTF-8ファイル」に対してです。学習者がPC側のエディターで書いたファイルは最初からこの条件を満たしているため、この落とし穴自体を踏む心配はありません。(2) `*LIBL`にコンパイル対象ライブラリーが入っていないと、`TOKUIM`/`JUCHUM`の外部記述が解決できず`RNF2120`(重大度40)になる——`ADDLIBLE`で解決しました。本文の「説明」節は、この2点を中心に構成しています。
+- **ハーネス固有の回避策で、学習者向けの本文には一切含めていないもの**: 種ファイルを本物のUTF-8として用意するための`CPYTOSTMF`経由の生成(学習者はPC側の本物のエディターでファイルを作るので不要です)、`*LIBL`をジョブ内で維持するための動的生成CLヘルパー・プログラム(qshの`system()`呼び出しが1回ごとに別ジョブになるという、このハーネス固有の制約への対処です。5250の対話ジョブでは1つのコマンド行の実行がそのまま1つのジョブの中で完結します)、短縮したIFSディレクトリー名やCLの`+`継続行への分割(CL行の桁数制限を避けるための、ハーネス内部限定の対処です。学習者は`pub400-bare.git`/`pub400-clone`のような分かりやすい名前を自由に使えますし、5250の`F4`プロンプトを使えばパラメーターごとに別の入力欄になるため、1行の桁数はハーネスほど気にする必要はないはずです——ただしこの具体的な組み合わせ〔長いIFSパス+F4プロンプト〕自体は、このリポジトリでは個別に検証していません〔一般知識〕)、PCでの編集をシミュレートするPythonスクリプト自体の配送方法(heredoc経由で書き込んだスクリプト自身がEBCDIC化されてしまう、というこのハーネス固有の問題への対処です。学習者はPC側のエディターで直接編集するので無関係です)。
 - **「qshのリダイレクト(`>`)がファイルをCCSID 273(EBCDIC)へ再エンコードする」という現象は、qsh固有の挙動であり、一般化しないでください。** 同じ接続でPASEのgit自身は一貫してCCSID 1208タグ付きファイルを作成しており、qshとPASEログイン・シェル(`bsh`、02-04で確立済みのSSH接続で入るシェル)は異なる既定動作を持つ別々の実行環境です。学習者は02-04の方法でSSH接続し、既定のPASE `bsh`シェルを使う分にはqshを明示的に起動しないため、この現象を前提にした心配は不要です。
 - **実際にコンパイル・実行されたライブラリーは`<USER>2`でした**(この教材の検証ハーネス自身の方針、`docs/probes.md`)。学習者向けの本文では、この教材のこれまでの慣例どおり`<USER>1`(開発用)への手順として書いています——オブジェクトの中身・動作自体はどちらのライブラリーでも変わりません。
 - 食い違いに気づいたら [Issue](https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero/issues) で教えてください。
