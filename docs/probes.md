@@ -2802,6 +2802,16 @@ Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・�
 - **`TOBi`のバージョンは`3.2.1`で確定した。** `work/design/part08-design-v1.md`§0.5(B2-27)が「PUB400のTOBiバージョンは3.2.1と報告されていたが、このリポジトリには一切の実測記録が無い」としていた未確認事項が、これで実測により解消した。
 - **08-02のレッスン設計への示唆**: 学習者が5250から`STRQSH`等でqshに入り、そこで直接`makei`を呼ぶと、PATHが正しく設定されていても失敗する(見かけ上の診断メッセージに惑わされる)可能性がある。02-04で確立した経路(SSHで直接ログインし、既定のPASE `bsh`シェルから`makei`を呼ぶ)であれば、この問題を踏まずに済む見込みが高い(`bash`経由の呼び出しが成功したのと同じ経路のため)——ただし`bsh`自体でこの回避が成立することを直接確認したわけではなく(今回確認したのは`bash -x`経由のみ)、この対応関係はV3(未検証)のまま扱う。`makei`のビルド動作そのもの(依存関係順の一括ビルド、`iproj.json`/`Rules.mk`の実際の効き方)は今回`--version`しか試していないため、引き続き未確認。
 
+## 第8部`part08-02-makei-probe2`: 1回目の接続は2つの自作エラーで失敗、実際のmakeiビルドはまだ未確認(確認日2026-09-29)
+
+`ZAISRV`(Part 7で確立済み)を`iproj.json`+`Rules.mk`で実際に`makei build`させ、(1)`makei build`がエンド・ツー・エンドで動くか、(2)`iproj.json`の`objlib`/`curlib`が実際に効くか(`work/design/part08-design-v1.md`§7項目2・§8項目6の未決事項)を確かめる専用マニフェスト`verify/part08-02-makei-probe2/manifest.json`の1回目の接続。**この接続はmakei自体について何も新しく確認できなかった**——2つとも、このマニフェスト自身の作り方の誤りが原因である:
+
+- **PASEの`sed`に`-i`オプションが無い。** `iproj.json`のプレースホルダー`YOURUSER2`を実ライブラリー名に置き換えるつもりで`sed -i "s/YOURUSER2/&LIB/g" iproj.json`を実行したが、stderrに`sed: 001-3036 usage: sed [-an] [-C ccsid] command file ... sed [-an] [-C ccsid] [-e command] [-f command_file] file ...`という使用法メッセージが記録されており、**置換は一度も成功していなかった**(`SETUP`ステップの`cat`出力でも`"objlib": "YOURUSER2"`のままなのが直接確認できる)。PASEの`sed`はGNU sedと違い、その場書き換え(`-i`)を持たない。
+- **`BUILD`ステップが`PATH`を一切exportしていなかった。** 各`sh`型ステップは別ジョブ(=別シェル)になるため、`SETUP`ステップで通したはずの`PATH`は`BUILD`ステップには引き継がれない。`BUILD`は`cd "$HOME/mk8/z" && /QOpenSys/pkgs/bin/bash /QOpenSys/pkgs/bin/makei build`という形で、`PATH`を一度もexportせずにいきなり`makei`(bash経由)を呼んでいた。結果は`part08-02-makei-probe`の1回目接続(qsh直接呼び出し)と同じ「It looks like /QOpenSys/pkgs/bin/ is not currently in your system PATH.」——**ただし今回はこの診断が事実として正しい**(本当に`PATH`に`/QOpenSys/pkgs/bin`が入っていなかった)。`bash`経由なら`PATH`の有無に関わらず動く、という単純な話ではなく、`bash`経由でも`PATH`をきちんと通す必要があることが分かる。
+- `collect`型のSELECT文が返した`ZAISRV *MODULE`/`*SRVPGM`(`&LIB`に存在)は、**`BUILD`が失敗して何も作らなかったため、Part 7の`part07-05-checkpoint`由来の既存オブジェクトがそのまま見えていただけ**で、今回のmakeiビルドの成果ではない。
+- 副次的に見つかったマニフェスト自身のバグ: `PROGRAM_INFO`のSELECT文に`QSYS2.PROGRAM_INFO('&LIB', 'ZAISRV')`という関数呼び出し構文を使っていたが、`part08-07-services`で確認済みの実際に動く形は`FROM QSYS2.PROGRAM_INFO WHERE PROGRAM_LIBRARY = '&LIB' ...`という素のビュー形式(かっこ無し)——`SQLSTATE 42601`(構文エラー)で失敗した。
+- **修正**: `iproj.json`の置換は、`part08-01-git-srcstmf`の`ed.py`と同じ安全な手段(`python3`のバイナリー・モード読み書き)に変更した(このハーネスのqshでは`>`によるリダイレクトがCCSID 273へ再エンコードしてしまう既知の問題があるため、`sed ... > tmp && mv tmp file`のような代替も避けた)。`BUILD`ステップは`bash -c 'cd ... && export PATH=/QOpenSys/pkgs/bin:$PATH && ... makei build'`という、`part08-02-makei-probe`で成功した形に`export`を明示的に含めるよう修正した。`PROGRAM_INFO`のSELECT文も素のビュー形式に修正した。次回接続で再試行する。
+
 ## 第8部`part08-07-services`: `OBJECT_PRIVILEGES`/`PROGRAM_INFO`が初回で成功、`RVKOBJAUT`の実バグを発見(確認日2026-09-29)
 
 08-07(IBM iサービスと権限)の実機確認。1回目の接続で、`collect`型ステップの4本のSELECT文はすべて成功した:
