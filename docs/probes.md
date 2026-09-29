@@ -2814,6 +2814,10 @@ Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・�
 - **実バグ発見: `DATABASE_FILE_TYPE`という引数名は無効。** `Named argument DATABASE_FILE_TYPE for routine GENERATE_SQL not valid for reason code 1.`——他の引数名(`DATABASE_OBJECT_NAME`等)はすべて通ったため、`GENERATE_SQL`プロシージャー自体は実在し、これら他の引数名は正しいと分かった。`DATABASE_FILE_TYPE`のみ削除して次回接続で再試行する。
 - **マニフェスト自身のバグ(発見・修正): `RUNSQL`(CALL文)の直後に`DSPFD`を置き、末尾に1つの`MONMSG`しか置いていなかったため、`verify/README.md`が既に指摘する「`MONMSG`は直前の1コマンドしか監視しない」という罠どおり、`RUNSQL`自身のエラー(`SQL9010`)が一切監視されず、`Function check`として異常終了した。** この結果、`FAILSAFE`ラベル自身の丁寧な処理(メッセージ送出等)にすら到達せず、`run`セクションには`DSPFD`の出力が何も現れなかった。`RUNSQL`の直後に専用の`MONMSG`を追加して修正済み。次回接続で再試行する。
 
+## 第8部`part08-06-ddl`続報: 2回目の接続で`Conversion error`(確認日2026-09-29)
+
+2回目の接続(`DATABASE_FILE_TYPE`削除・`MONMSG`修正後)では、マニフェスト自身は正しく`DONE`まで到達したが、`RUNSQL`自体が新しいエラーで失敗した:「Conversion error on variable or parameter *N.」。一次資料が無いため確証は無いが、2つの疑わしい箇所を同時に修正して3回目を試す——(1) `DATABASE_SOURCE_FILE_NAME`に`'QTEMP/QSQLTEMP'`という`/`区切りのライブラリー修飾パスを渡していたが、これは単純な名前(10文字以下)を期待するパラメーターである可能性が高く、`'QSQLTEMP'`に修正、(2) `CREATE_OR_REPLACE_OPTION`に引用符付きの文字列`'1'`を渡していたが、実際の型が数値であれば型変換エラーの原因になりうるため、引用符無しの`1`に修正。この2つの変更をどちらも一次資料で裏付けられないまま同時に適用するため、3回目でも失敗した場合は`GENERATE_SQL`の正確な引数の型・形を、この教材の一次資料だけでは確定できないと判断し、これ以上の当て推量は打ち切って「一般知識、要確認」という誠実な扱いに切り替える。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
