@@ -74,11 +74,13 @@
 // rpglint re-run locally against this exact, current file
 // (@halcyontech/rpglint 0.27.0, npm, zero PUB400 connection needed,
 // corrected templates/part08-project/rpglint.json, 2026-09-29): 13
-// errors - SpecificCasing x2 (lines 99, 104), NoGlobalSubroutines x3
-// (lines 110, 133, 146), StringLiteralDupe x3 (lines 107, 115, 118),
-// NoUnreferenced x1 (line 101), PrettyComments x4 (lines 2, 85, 125,
-// 132). Matches the 5 rules described above exactly. rpglint itself
-// is a real, installable, locally runnable tool - no longer "general
+// errors - SpecificCasing x2, NoGlobalSubroutines x3, StringLiteralDupe
+// x3, NoUnreferenced x1, PrettyComments x4. Matches the 5 rules
+// described above exactly. Line numbers are deliberately not quoted
+// here - they drift every time this header itself is edited (already
+// observed twice this session); re-run rpglint against the current
+// file rather than trusting a hardcoded number. rpglint itself is a
+// real, installable, locally runnable tool - no longer "general
 // knowledge, unconfirmed".
 //
 // PUB400 placeholders: <lib> stands for the learner's own library; no
