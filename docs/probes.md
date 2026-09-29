@@ -80,7 +80,9 @@ command -v make
 - `/QOpenSys/pkgs/bin/tobi` という名前のコマンドは **無い**(TOBi への改称後も、コマンド名は `makei` のまま)。
 - `/QOpenSys/pkgs/bin/` には約 1.5GB 相当のパッケージ群がインストール済み(git・Python・GNU make・Ansible 等、多数)。
 
-**結論**: git・GNU make・makei・python3 はすべて使えるが、**既定の PATH には入っていない。** SSH 経由の自動化(02-04 の `git clone`、08-01/08-02 の `makei` ビルド)では、フルパスを使うか、`~/.profile` に `PATH=/QOpenSys/pkgs/bin:$PATH` の代入と `export PATH` を(**別々の行として**)追記する必要がある。**【2026-09-29 訂正】** ここで当初書いていた `export PATH=/QOpenSys/pkgs/bin:$PATH` という結合形は、実際には `bsh`(SSH ログイン直後の既定シェル)で `0402-026 The specified data is not a valid identifier` エラーになることが後日判明した(第8部 `part08-02-bsh-export` 接続、詳細は該当節参照)。02-04 は `fix/part02-bsh-export` で2段階形に修正済み。
+**結論**: git・GNU make・makei・python3 はすべて使えるが、**既定の PATH には入っていない。** SSH 経由の自動化(02-04 の `git clone`、08-01/08-02 の `makei` ビルド)では、フルパスを使うか、`$HOME/.profile` に `PATH=/QOpenSys/pkgs/bin:$PATH` の代入と `export PATH` を(**別々の行として**)追記する必要がある。**【2026-09-29 訂正】** ここで当初書いていた `export PATH=/QOpenSys/pkgs/bin:$PATH` という結合形は、実際には `bsh`(SSH ログイン直後の既定シェル)で `0402-026 The specified data is not a valid identifier` エラーになることが後日判明した(第8部 `part08-02-bsh-export` 接続、詳細は該当節参照)。02-04 は `fix/part02-bsh-export` で2段階形に修正済み。
+
+**【2026-09-29 追記: SSHログイン直後のシェルが本当に`bsh`かどうか、初めて直接確認した】** 上のP08自身の本来の確認(2026-09-24)は、SSHのremote commandとして`/usr/bin/qsh`を直接指定しており、**ログイン・シェルそのものは一度も経由していなかった**(このファイル自身の56行目が明記するとおり)。以後この教材が積み重ねてきた`part08-02-bsh-export`・`part02-bsh-tilde-redirect`等の「`bsh`固有のバグ」という確認も、すべて`/QOpenSys/usr/bin/bsh -c '...'`のように`bsh`を明示的に呼び出したものであり、「対話ログイン時に実際に`bsh`が起動する」こと自体は、advisorの指摘まで一度も直接確認されていなかった。この教材自身の検証ハーネス(`verify/lib/ssh.mjs`)も、常に`/usr/bin/qsh`をremote commandとして固定しており、同じ理由でログイン・シェルを観測できない。そこで、remote commandを指定しない生の`ssh`接続(標準入力からコマンドを渡す、台帳のゲートは通常どおり通す一時的なスクリプト)で直接確認したところ、`$SHELL=/QOpenSys/usr/bin/bsh`・`ps`が報告する実行中のコマンド名`bsh`・`$0`の値`-bsh`(先頭の`-`はログイン・シェルであることを示す慣例)のすべてが一致し、**「SSHの対話ログイン直後に実際に起動するシェルは`bsh`である」ことが、初めて直接確認できた。** これで、02-04・08-01・08-02の「既定シェルは`bsh`」という記述、およびそれに基づくすべての`bsh`固有バグの発見(結合`export`・語頭`~`非展開)の前提が、正しかったことが裏付けられた。
 
 **影響**: 02-04, 03-10, 08-01, 08-02。批評で確定した「中重大度」の修正(PATH の既定に関する項目)を、この実測で裏付けた。
 
