@@ -1,29 +1,21 @@
--- 09-04: SQL routines as the API boundary. See docs/part09/09-04-api-boundary-sql-routines.md
--- Run this file as a script with RUNSQLSTM SRCSTMF from the IFS, with
--- NAMING(*SQL) DFTRDBCOL(<your dev library>): that is the route verified on the
--- real machine. Unqualified names are then created in the DFTRDBCOL library.
--- ACS Run SQL Scripts is untested: there the current schema stays your user
--- name, so set the schema explicitly first (for example SET SCHEMA <dev
--- library>, or the schema setting of the ACS connection). Untested.
--- Do NOT copy it into a source-physical-file member: the JSON path
+-- 09-04: SQL routines as the API boundary. See docs/part09/09-04-sql-routines.md
+-- Run this file as a script (ACS Run SQL Scripts, or RUNSQLSTM SRCSTMF from
+-- the IFS). Do NOT copy it into a source-physical-file member: the JSON path
 -- expressions in section 5 contain characters that move in CCSID 273.
+-- Unqualified names resolve through the current schema (your dev library).
 -- Write a comma followed by a space in every list (PUB400 uses a decimal comma).
 -- Every routine gets an explicit SPECIFIC name (at most 10 characters) so the
 -- object that Db2 creates for it has a name you can predict and check.
--- Run order: create everything first (the whole file), then try the routines
--- (the commented "try it" lines at the end). Creating or dropping a routine
--- that points at JUCSRV or ZAISRV may need an exclusive lock on that service
--- program, so do not call the functions from the same job in between.
+-- Run order: section 1 first (section 2 uses GET_CUST_NAME). Create everything
+-- first, then try the routines (the commented "try it" lines at the end).
 
 -- 1. Register existing service program procedures as SQL functions.
 --    No new RPG is written: JUCSRV and ZAISRV stay exactly as they are.
 --    The quoted name in EXTERNAL NAME must match the exported name exactly:
 --    JUCSRV exports mixed case (extproc(*dclcase)), ZAISRV exports upper case.
---    The library part is left out. Run through RUNSQLSTM with DFTRDBCOL on
---    PUB400, Db2 stored the library it found at CREATE time (LIB/JUCSRV(...)).
---    Writing the library yourself (EXTERNAL NAME 'YOURLIB/JUCSRV(getCustName)')
---    was seen to work. A CREATE that fails with "not found" for the
---    unqualified name was never observed, so that remedy is untested.
+--    The library part is left out, so the program is found through the
+--    library list. If a call fails to find it, write the library:
+--    EXTERNAL NAME 'YOURLIB/JUCSRVU(getCustName)'.
 CREATE OR REPLACE FUNCTION GET_CUST_NAME (CUST_CODE CHAR(6))
   RETURNS CHAR(30)
   LANGUAGE RPGLE
@@ -31,7 +23,7 @@ CREATE OR REPLACE FUNCTION GET_CUST_NAME (CUST_CODE CHAR(6))
   NOT DETERMINISTIC
   NO SQL
   RETURNS NULL ON NULL INPUT
-  EXTERNAL NAME 'JUCSRV(getCustName)'
+  EXTERNAL NAME 'JUCSRVU(getCustName)'
   PARAMETER STYLE GENERAL
   NOT FENCED
   DISALLOW PARALLEL;
@@ -43,7 +35,7 @@ CREATE OR REPLACE FUNCTION COUNT_CUST_ORDERS (CUST_CODE CHAR(6))
   NOT DETERMINISTIC
   NO SQL
   RETURNS NULL ON NULL INPUT
-  EXTERNAL NAME 'JUCSRV(countCustOrders)'
+  EXTERNAL NAME 'JUCSRVU(countCustOrders)'
   PARAMETER STYLE GENERAL
   NOT FENCED
   DISALLOW PARALLEL;
@@ -55,7 +47,7 @@ CREATE OR REPLACE FUNCTION GET_STOCK_QTY (PROD_CODE CHAR(6))
   NOT DETERMINISTIC
   NO SQL
   RETURNS NULL ON NULL INPUT
-  EXTERNAL NAME 'ZAISRV(GET)'
+  EXTERNAL NAME 'ZAISRVU(GET)'
   PARAMETER STYLE GENERAL
   NOT FENCED
   DISALLOW PARALLEL;
@@ -107,9 +99,7 @@ CREATE OR REPLACE FUNCTION LOW_STOCK ()
           WHERE Z.ZASU < S.SHOHAT;
 
 -- 4. Procedure that returns a result set: open a cursor WITH RETURN and leave
---    it open (no CLOSE). IBM Docs list SQL PL, embedded SQL, JDBC, CLI and ODBC as interfaces
---    that can work with result sets and do not mention STRSQL (whether STRSQL
---    shows them is untested).
+--    it open (no CLOSE). ACS or a Java/ODBC client reads it; STRSQL does not.
 CREATE OR REPLACE PROCEDURE LOW_STOCK_RS ()
   LANGUAGE SQL
   SPECIFIC LOWSTOCKRS
@@ -166,14 +156,12 @@ END;
 -- Pass the document as ONE text literal. (Building it with JSON_OBJECT and
 -- literal numbers inside RUNSQL/RUNSQLSTM gave quoted numbers and a decimal
 -- comma such as "1580,00" on PUB400, and the detail insert then failed.)
--- CALL JUCHU_REGISTER('{"orderNo":"J09901","customer":"C00001","orderDate":20260930,"salesRep":"T00001","lines":[{"line":1,"product":"P00001","qty":2,"unitPrice":1580.00},{"line":2,"product":"P00003","qty":5,"unitPrice":480.00}]}');
+-- CALL JUCHU_REGISTER('{"orderNo":"J09901","customer":"C00001","orderDate":20260930,"salesRep":"T00001","lines":[{"line":1,"product":"P00001","qty":2,"unitPrice":1580.00}]}');
 -- SELECT JUCHU_INQUIRY_JSON('J09901') AS ORDER_JSON FROM SYSIBM.SYSDUMMY1;
 
 -- 7. Clean up what you created (the sample data rows too).
--- Delete the detail rows before the header rows (J09902 and J09903 are the
--- order numbers used by the lesson exercises).
--- DELETE FROM JUCHUD WHERE JUNO IN ('J09901', 'J09902', 'J09903');
--- DELETE FROM JUCHUM WHERE JUNO IN ('J09901', 'J09902', 'J09903');
+-- DELETE FROM JUCHUD WHERE JUNO = 'J09901';
+-- DELETE FROM JUCHUM WHERE JUNO = 'J09901';
 -- DROP SPECIFIC PROCEDURE JUCHUREGST;
 -- DROP SPECIFIC PROCEDURE LOWSTOCKRS;
 -- DROP SPECIFIC FUNCTION LOWSTOCKT;
@@ -181,4 +169,3 @@ END;
 -- DROP SPECIFIC FUNCTION GETSTOCKQT;
 -- DROP SPECIFIC FUNCTION CNTCUSTORD;
 -- DROP SPECIFIC FUNCTION GETCUSTNM;
--- From the db2 utility, qualify the name: DROP SPECIFIC FUNCTION LIB.GETCUSTNM

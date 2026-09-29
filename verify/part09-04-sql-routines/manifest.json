@@ -8,6 +8,10 @@
       "localPath": "../../src/sql/09-04-routines.sql"
     },
     {
+      "type": "file",
+      "localPath": "src-lesson-u.sql"
+    },
+    {
       "type": "sh",
       "label": "MKCPY",
       "cmd": "system \"DLTSRVPGM SRVPGM(&LIB/JUCSRVU)\" 2>&1; system \"DLTSRVPGM SRVPGM(&LIB/ZAISRVU)\" 2>&1; system \"CRTDUPOBJ OBJ(JUCSRV) FROMLIB(&LIB) OBJTYPE(*SRVPGM) TOLIB(&LIB) NEWOBJ(JUCSRVU)\" 2>&1; system \"CRTDUPOBJ OBJ(ZAISRV) FROMLIB(&LIB) OBJTYPE(*SRVPGM) TOLIB(&LIB) NEWOBJ(ZAISRVU)\" 2>&1"
@@ -15,52 +19,47 @@
     {
       "type": "sh",
       "label": "CRGCQ",
-      "cmd": "db2 \"CREATE OR REPLACE FUNCTION &LIB.PRB_GC_Q (CUST_CODE CHAR(6)) RETURNS CHAR(30) LANGUAGE RPGLE SPECIFIC PRBGCQ NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT EXTERNAL NAME '&LIB/JUCSRV(getCustName)' PARAMETER STYLE GENERAL NOT FENCED DISALLOW PARALLEL\" 2>&1"
+      "cmd": "db2 \"CREATE OR REPLACE FUNCTION &LIB.PRB_GC_Q (CUST_CODE CHAR(6)) RETURNS CHAR(30) LANGUAGE RPGLE SPECIFIC &LIB.PRBGCQ NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT EXTERNAL NAME '&LIB/JUCSRV(getCustName)' PARAMETER STYLE GENERAL NOT FENCED DISALLOW PARALLEL\" 2>&1"
     },
     {
       "type": "sh",
       "label": "CRCCQ",
-      "cmd": "db2 \"CREATE OR REPLACE FUNCTION &LIB.PRB_CC_Q (CUST_CODE CHAR(6)) RETURNS NUMERIC(5, 0) LANGUAGE RPGLE SPECIFIC PRBCCQ NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT EXTERNAL NAME '&LIB/JUCSRV(countCustOrders)' PARAMETER STYLE GENERAL NOT FENCED DISALLOW PARALLEL\" 2>&1"
+      "cmd": "db2 \"CREATE OR REPLACE FUNCTION &LIB.PRB_CC_Q (CUST_CODE CHAR(6)) RETURNS NUMERIC(5, 0) LANGUAGE RPGLE SPECIFIC &LIB.PRBCCQ NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT EXTERNAL NAME '&LIB/JUCSRV(countCustOrders)' PARAMETER STYLE GENERAL NOT FENCED DISALLOW PARALLEL\" 2>&1"
     },
     {
       "type": "sh",
       "label": "CRZGQ",
-      "cmd": "db2 \"CREATE OR REPLACE FUNCTION &LIB.PRB_ZG_Q (PROD_CODE CHAR(6)) RETURNS DECIMAL(7, 0) LANGUAGE RPGLE SPECIFIC PRBZGQ NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT EXTERNAL NAME '&LIB/ZAISRV(GET)' PARAMETER STYLE GENERAL NOT FENCED DISALLOW PARALLEL\" 2>&1"
+      "cmd": "db2 \"CREATE OR REPLACE FUNCTION &LIB.PRB_ZG_Q (PROD_CODE CHAR(6)) RETURNS DECIMAL(7, 0) LANGUAGE RPGLE SPECIFIC &LIB.PRBZGQ NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT EXTERNAL NAME '&LIB/ZAISRV(GET)' PARAMETER STYLE GENERAL NOT FENCED DISALLOW PARALLEL\" 2>&1"
     },
     {
       "type": "sh",
       "label": "CRGCUP",
-      "cmd": "db2 \"CREATE OR REPLACE FUNCTION &LIB.PRB_GC_UP (CUST_CODE CHAR(6)) RETURNS CHAR(30) LANGUAGE RPGLE SPECIFIC PRBGCUP NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT EXTERNAL NAME '&LIB/JUCSRV(GETCUSTNAME)' PARAMETER STYLE GENERAL NOT FENCED DISALLOW PARALLEL\" 2>&1"
+      "cmd": "db2 \"CREATE OR REPLACE FUNCTION &LIB.PRB_GC_UP (CUST_CODE CHAR(6)) RETURNS CHAR(30) LANGUAGE RPGLE SPECIFIC &LIB.PRBGCUP NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT EXTERNAL NAME '&LIB/JUCSRV(GETCUSTNAME)' PARAMETER STYLE GENERAL NOT FENCED DISALLOW PARALLEL\" 2>&1"
     },
     {
       "type": "sh",
       "label": "CRZGLC",
-      "cmd": "db2 \"CREATE OR REPLACE FUNCTION &LIB.PRB_ZG_LC (PROD_CODE CHAR(6)) RETURNS DECIMAL(7, 0) LANGUAGE RPGLE SPECIFIC PRBZGLC NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT EXTERNAL NAME '&LIB/ZAISRV(get)' PARAMETER STYLE GENERAL NOT FENCED DISALLOW PARALLEL\" 2>&1"
+      "cmd": "db2 \"CREATE OR REPLACE FUNCTION &LIB.PRB_ZG_LC (PROD_CODE CHAR(6)) RETURNS DECIMAL(7, 0) LANGUAGE RPGLE SPECIFIC &LIB.PRBZGLC NOT DETERMINISTIC NO SQL RETURNS NULL ON NULL INPUT EXTERNAL NAME '&LIB/ZAISRV(get)' PARAMETER STYLE GENERAL NOT FENCED DISALLOW PARALLEL\" 2>&1"
     },
     {
       "type": "sh",
       "label": "CRINQW",
-      "cmd": "db2 \"CREATE OR REPLACE FUNCTION &LIB.PRB_INQ_W (P_ORDER_NO CHAR(6)) RETURNS VARCHAR(4000) CCSID 1208 LANGUAGE SQL SPECIFIC PRBINQW NOT DETERMINISTIC READS SQL DATA RETURN CAST((SELECT JSON_OBJECT('orderNo': M.JUNO, 'customer': M.JUTOK, 'customerName': TRIM(&LIB.PRB_GC_Q(M.JUTOK)), 'orderDate': M.JUDATE, 'salesRep': M.JUTAN, 'lines': (SELECT JSON_ARRAYAGG(JSON_OBJECT('line': D.JULINE, 'product': D.JUSHO, 'qty': D.JUSU, 'unitPrice': D.JUTNK) ORDER BY D.JULINE) FROM &LIB.JUCHUD D WHERE D.JUNO = M.JUNO) FORMAT JSON) FROM &LIB.JUCHUM M WHERE M.JUNO = P_ORDER_NO) AS VARCHAR(4000) CCSID 1208)\" 2>&1"
+      "cmd": "db2 \"CREATE OR REPLACE FUNCTION &LIB.PRB_INQ_W (P_ORDER_NO CHAR(6)) RETURNS VARCHAR(4000) CCSID 1208 LANGUAGE SQL SPECIFIC &LIB.PRBINQW NOT DETERMINISTIC READS SQL DATA RETURN CAST((SELECT JSON_OBJECT('orderNo': M.JUNO, 'customer': M.JUTOK, 'customerName': TRIM(&LIB.PRB_GC_Q(M.JUTOK)), 'orderDate': M.JUDATE, 'salesRep': M.JUTAN, 'lines': (SELECT JSON_ARRAYAGG(JSON_OBJECT('line': D.JULINE, 'product': D.JUSHO, 'qty': D.JUSU, 'unitPrice': D.JUTNK) ORDER BY D.JULINE) FROM &LIB.JUCHUD D WHERE D.JUNO = M.JUNO) FORMAT JSON) FROM &LIB.JUCHUM M WHERE M.JUNO = P_ORDER_NO) AS VARCHAR(4000) CCSID 1208)\" 2>&1"
     },
     {
       "type": "sh",
       "label": "CRINQJ",
-      "cmd": "db2 \"CREATE OR REPLACE FUNCTION &LIB.PRB_INQ_J (P_ORDER_NO CHAR(6)) RETURNS VARCHAR(4000) CCSID 1208 LANGUAGE SQL SPECIFIC PRBINQJ NOT DETERMINISTIC READS SQL DATA RETURN CAST((SELECT JSON_OBJECT('orderNo': M.JUNO, 'customer': M.JUTOK, 'customerName': (SELECT TRIM(T.TOKNM) FROM &LIB.TOKUIM T WHERE T.TOKCD = M.JUTOK), 'orderDate': M.JUDATE, 'salesRep': M.JUTAN, 'lines': (SELECT JSON_ARRAYAGG(JSON_OBJECT('line': D.JULINE, 'product': D.JUSHO, 'qty': D.JUSU, 'unitPrice': D.JUTNK) ORDER BY D.JULINE) FROM &LIB.JUCHUD D WHERE D.JUNO = M.JUNO) FORMAT JSON) FROM &LIB.JUCHUM M WHERE M.JUNO = P_ORDER_NO) AS VARCHAR(4000) CCSID 1208)\" 2>&1"
+      "cmd": "db2 \"CREATE OR REPLACE FUNCTION &LIB.PRB_INQ_J (P_ORDER_NO CHAR(6)) RETURNS VARCHAR(4000) CCSID 1208 LANGUAGE SQL SPECIFIC &LIB.PRBINQJ NOT DETERMINISTIC READS SQL DATA RETURN CAST((SELECT JSON_OBJECT('orderNo': M.JUNO, 'customer': M.JUTOK, 'customerName': (SELECT TRIM(T.TOKNM) FROM &LIB.TOKUIM T WHERE T.TOKCD = M.JUTOK), 'orderDate': M.JUDATE, 'salesRep': M.JUTAN, 'lines': (SELECT JSON_ARRAYAGG(JSON_OBJECT('line': D.JULINE, 'product': D.JUSHO, 'qty': D.JUSU, 'unitPrice': D.JUTNK) ORDER BY D.JULINE) FROM &LIB.JUCHUD D WHERE D.JUNO = M.JUNO) FORMAT JSON) FROM &LIB.JUCHUM M WHERE M.JUNO = P_ORDER_NO) AS VARCHAR(4000) CCSID 1208)\" 2>&1"
     },
     {
       "type": "sh",
       "label": "CRREGC",
-      "cmd": "db2 \"CREATE OR REPLACE PROCEDURE &LIB.PRB_REGISTER_C (IN P_JSON VARCHAR(4000) CCSID 1208) LANGUAGE SQL SPECIFIC PRBREGC MODIFIES SQL DATA SET OPTION COMMIT = *NONE BEGIN DECLARE V_NO CHAR(6); SET V_NO = (SELECT H.ORDER_NO FROM JSON_TABLE(P_JSON, 'lax \\$' COLUMNS(ORDER_NO CHAR(6) PATH 'lax \\$.orderNo')) AS H); IF EXISTS (SELECT 1 FROM &LIB.JUCHUM WHERE JUNO = V_NO) THEN SIGNAL SQLSTATE '75001' SET MESSAGE_TEXT = 'Order already exists'; END IF; INSERT INTO &LIB.JUCHUM (JUNO, JUTOK, JUDATE, JUTAN) SELECT H.ORDER_NO, H.CUSTOMER, H.ORDER_DATE, H.SALES_REP FROM JSON_TABLE(P_JSON, 'lax \\$' COLUMNS(ORDER_NO CHAR(6) PATH 'lax \\$.orderNo', CUSTOMER CHAR(6) PATH 'lax \\$.customer', ORDER_DATE DECIMAL(8, 0) PATH 'lax \\$.orderDate', SALES_REP CHAR(6) PATH 'lax \\$.salesRep')) AS H; INSERT INTO &LIB.JUCHUD (JUNO, JULINE, JUSHO, JUSU, JUTNK) SELECT T.ORDER_NO, T.LINE_NO, T.PRODUCT, T.QTY, T.PRICE FROM JSON_TABLE(P_JSON, 'lax \\$' COLUMNS(ORDER_NO CHAR(6) PATH 'lax \\$.orderNo', NESTED PATH 'lax \\$.lines[*]' COLUMNS(LINE_NO DECIMAL(3, 0) PATH 'lax \\$.line', PRODUCT CHAR(6) PATH 'lax \\$.product', QTY DECIMAL(5, 0) PATH 'lax \\$.qty', PRICE DECIMAL(7, 2) PATH 'lax \\$.unitPrice'))) AS T; END\" 2>&1"
-    },
-    {
-      "type": "sh",
-      "label": "CONV",
-      "cmd": "iconv -f IBM-273 -t UTF-8 $HOME/vfy/part09-04-sql-routines/09-04-routines.sql | sed -e 's/JUCSRV(/JUCSRVU(/g' -e 's/ZAISRV(/ZAISRVU(/g' > $HOME/vfy/part09-04-sql-routines/lesson_u.sql 2>&1; echo iconv-exit=$?; setccsid 1208 $HOME/vfy/part09-04-sql-routines/lesson_u.sql; ls -S $HOME/vfy/part09-04-sql-routines/09-04-routines.sql $HOME/vfy/part09-04-sql-routines/lesson_u.sql 2>&1; grep -n 'EXTERNAL NAME' $HOME/vfy/part09-04-sql-routines/lesson_u.sql 2>&1; grep -n 'lax' $HOME/vfy/part09-04-sql-routines/lesson_u.sql 2>&1 | head -12"
+      "cmd": "db2 \"CREATE OR REPLACE PROCEDURE &LIB.PRB_REGISTER_C (IN P_JSON VARCHAR(4000) CCSID 1208) LANGUAGE SQL SPECIFIC &LIB.PRBREGC MODIFIES SQL DATA SET OPTION COMMIT = *NONE BEGIN DECLARE V_NO CHAR(6); SET V_NO = (SELECT H.ORDER_NO FROM JSON_TABLE(P_JSON, 'lax \\$' COLUMNS(ORDER_NO CHAR(6) PATH 'lax \\$.orderNo')) AS H); IF EXISTS (SELECT 1 FROM &LIB.JUCHUM WHERE JUNO = V_NO) THEN SIGNAL SQLSTATE '75001' SET MESSAGE_TEXT = 'Order already exists'; END IF; INSERT INTO &LIB.JUCHUM (JUNO, JUTOK, JUDATE, JUTAN) SELECT H.ORDER_NO, H.CUSTOMER, H.ORDER_DATE, H.SALES_REP FROM JSON_TABLE(P_JSON, 'lax \\$' COLUMNS(ORDER_NO CHAR(6) PATH 'lax \\$.orderNo', CUSTOMER CHAR(6) PATH 'lax \\$.customer', ORDER_DATE DECIMAL(8, 0) PATH 'lax \\$.orderDate', SALES_REP CHAR(6) PATH 'lax \\$.salesRep')) AS H; INSERT INTO &LIB.JUCHUD (JUNO, JULINE, JUSHO, JUSU, JUTNK) SELECT T.ORDER_NO, T.LINE_NO, T.PRODUCT, T.QTY, T.PRICE FROM JSON_TABLE(P_JSON, 'lax \\$' COLUMNS(ORDER_NO CHAR(6) PATH 'lax \\$.orderNo', NESTED PATH 'lax \\$.lines[*]' COLUMNS(LINE_NO DECIMAL(3, 0) PATH 'lax \\$.line', PRODUCT CHAR(6) PATH 'lax \\$.product', QTY DECIMAL(5, 0) PATH 'lax \\$.qty', PRICE DECIMAL(7, 2) PATH 'lax \\$.unitPrice'))) AS T; END\" 2>&1"
     },
     {
       "type": "sh",
       "label": "RUNL",
-      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part09-04-sql-routines/lesson_u.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40) OUTPUT(*PRINT)\" 2>&1"
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part09-04-sql-routines/src-lesson-u.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40) OUTPUT(*PRINT)\" 2>&1"
     },
     {
       "type": "cl",
@@ -218,7 +217,7 @@
     {
       "type": "cl",
       "label": "GCQ",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''GC-Q-C00001'', ''<'' || CAST(&LIB/PRB_GC_Q(''C00001'') AS VARCHAR(60)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''GC-Q-C00001'', ''<'' || CAST(&LIB.PRB_GC_Q(''C00001'') AS VARCHAR(60)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -227,7 +226,7 @@
     {
       "type": "cl",
       "label": "GCU",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''GC-U-C00001'', ''<'' || CAST(&LIB/PRB_GC_U(''C00001'') AS VARCHAR(60)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''GC-U-C00001'', ''<'' || CAST(&LIB.PRB_GC_U(''C00001'') AS VARCHAR(60)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -236,7 +235,7 @@
     {
       "type": "cl",
       "label": "GCL",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''GC-LESSON-C00001'', ''<'' || CAST(&LIB/GET_CUST_NAME(''C00001'') AS VARCHAR(60)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''GC-LESSON-C00001'', ''<'' || CAST(&LIB.GET_CUST_NAME(''C00001'') AS VARCHAR(60)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -245,7 +244,7 @@
     {
       "type": "cl",
       "label": "GCNF",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''GC-LESSON-NOTFOUND'', ''<'' || CAST(&LIB/GET_CUST_NAME(''ZZZZZZ'') AS VARCHAR(60)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''GC-LESSON-NOTFOUND'', ''<'' || CAST(&LIB.GET_CUST_NAME(''ZZZZZZ'') AS VARCHAR(60)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -254,7 +253,7 @@
     {
       "type": "cl",
       "label": "GCNUL",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''GC-LESSON-NULLARG'', COALESCE(CAST(&LIB/GET_CUST_NAME(CAST(NULL AS CHAR(6))) AS VARCHAR(60)), ''SQLNULL'') FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''GC-LESSON-NULLARG'', COALESCE(CAST(&LIB.GET_CUST_NAME(CAST(NULL AS CHAR(6))) AS VARCHAR(60)), ''SQLNULL'') FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -263,7 +262,7 @@
     {
       "type": "cl",
       "label": "CCQ",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''CC-Q-C00001'', ''<'' || CAST(&LIB/PRB_CC_Q(''C00001'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''CC-Q-C00001'', ''<'' || CAST(&LIB.PRB_CC_Q(''C00001'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -272,7 +271,7 @@
     {
       "type": "cl",
       "label": "CCU",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''CC-U-C00001'', ''<'' || CAST(&LIB/PRB_CC_U(''C00001'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''CC-U-C00001'', ''<'' || CAST(&LIB.PRB_CC_U(''C00001'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -281,7 +280,7 @@
     {
       "type": "cl",
       "label": "CCL",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''CC-LESSON-C00001'', ''<'' || CAST(&LIB/COUNT_CUST_ORDERS(''C00001'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''CC-LESSON-C00001'', ''<'' || CAST(&LIB.COUNT_CUST_ORDERS(''C00001'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -290,7 +289,7 @@
     {
       "type": "cl",
       "label": "ZGQ",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''ZG-Q-P00002'', ''<'' || CAST(&LIB/PRB_ZG_Q(''P00002'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''ZG-Q-P00002'', ''<'' || CAST(&LIB.PRB_ZG_Q(''P00002'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -299,7 +298,7 @@
     {
       "type": "cl",
       "label": "ZGU",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''ZG-U-P00002'', ''<'' || CAST(&LIB/PRB_ZG_U(''P00002'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''ZG-U-P00002'', ''<'' || CAST(&LIB.PRB_ZG_U(''P00002'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -308,7 +307,7 @@
     {
       "type": "cl",
       "label": "ZGL",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''ZG-LESSON-P00002'', ''<'' || CAST(&LIB/GET_STOCK_QTY(''P00002'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''ZG-LESSON-P00002'', ''<'' || CAST(&LIB.GET_STOCK_QTY(''P00002'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -317,7 +316,7 @@
     {
       "type": "cl",
       "label": "ZGNF",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''ZG-LESSON-NOTFOUND'', ''<'' || CAST(&LIB/GET_STOCK_QTY(''P99999'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''ZG-LESSON-NOTFOUND'', ''<'' || CAST(&LIB.GET_STOCK_QTY(''P99999'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -326,7 +325,7 @@
     {
       "type": "cl",
       "label": "INQL",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''INQ-LESSON-J00001'', &LIB/JUCHU_INQUIRY_JSON(''J00001'') FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''INQ-LESSON-J00001'', &LIB.JUCHU_INQUIRY_JSON(''J00001'') FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -335,7 +334,7 @@
     {
       "type": "cl",
       "label": "INQW",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''INQ-WRAPPER-J00001'', &LIB/PRB_INQ_W(''J00001'') FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''INQ-WRAPPER-J00001'', &LIB.PRB_INQ_W(''J00001'') FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -344,7 +343,7 @@
     {
       "type": "cl",
       "label": "INQJ",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''INQ-JOIN-J00001'', &LIB/PRB_INQ_J(''J00001'') FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''INQ-JOIN-J00001'', &LIB.PRB_INQ_J(''J00001'') FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -353,7 +352,7 @@
     {
       "type": "cl",
       "label": "LSC",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''LOW_STOCK'', PRODUCT_CODE || '' '' || TRIM(PRODUCT_NAME) || '' stock='' || CHAR(STOCK_QTY) || '' point='' || CHAR(REORDER_POINT) FROM TABLE(&LIB/LOW_STOCK()) X ORDER BY PRODUCT_CODE') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''LOW_STOCK'', PRODUCT_CODE || '' '' || TRIM(PRODUCT_NAME) || '' stock='' || CHAR(STOCK_QTY) || '' point='' || CHAR(REORDER_POINT) FROM TABLE(&LIB.LOW_STOCK()) X ORDER BY PRODUCT_CODE') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -362,7 +361,7 @@
     {
       "type": "cl",
       "label": "LSRS",
-      "cmd": "RUNSQL SQL('CALL &LIB/LOW_STOCK_RS()') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('CALL &LIB.LOW_STOCK_RS()') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -372,96 +371,6 @@
       "type": "cl",
       "label": "JSONV",
       "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''JSON-BUILT-J09901'', CAST(JSON_OBJECT(''orderNo'': ''J09901'', ''customer'': ''C00001'', ''orderDate'': 20260930, ''salesRep'': ''T00001'', ''lines'': JSON_ARRAY(JSON_OBJECT(''line'': 1, ''product'': ''P00001'', ''qty'': 2, ''unitPrice'': 1580.00), JSON_OBJECT(''line'': 2, ''product'': ''P00003'', ''qty'': 5, ''unitPrice'': 480.00)) FORMAT JSON) AS VARCHAR(4000) CCSID 1208) FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
-      "monmsg": [
-        "CPF0000",
-        "SQL0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "REG1",
-      "cmd": "RUNSQL SQL('CALL &LIB/JUCHU_REGISTER(CAST(JSON_OBJECT(''orderNo'': ''J09901'', ''customer'': ''C00001'', ''orderDate'': 20260930, ''salesRep'': ''T00001'', ''lines'': JSON_ARRAY(JSON_OBJECT(''line'': 1, ''product'': ''P00001'', ''qty'': 2, ''unitPrice'': 1580.00), JSON_OBJECT(''line'': 2, ''product'': ''P00003'', ''qty'': 5, ''unitPrice'': 480.00)) FORMAT JSON) AS VARCHAR(4000) CCSID 1208))') COMMIT(*NONE)",
-      "monmsg": [
-        "CPF0000",
-        "SQL0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "R1HDR",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''REG1-HDR'', JUNO || '' '' || JUTOK || '' '' || CHAR(JUDATE) || '' '' || JUTAN FROM &LIB/JUCHUM WHERE JUNO = ''J09901''') COMMIT(*NONE)",
-      "monmsg": [
-        "CPF0000",
-        "SQL0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "R1DTL",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''REG1-DTL'', JUNO || '' '' || CHAR(JULINE) || '' '' || JUSHO || '' '' || CHAR(JUSU) || '' '' || CHAR(JUTNK) FROM &LIB/JUCHUD WHERE JUNO = ''J09901''') COMMIT(*NONE)",
-      "monmsg": [
-        "CPF0000",
-        "SQL0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "R1RT",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''REG1-ROUNDTRIP'', &LIB/PRB_INQ_J(''J09901'') FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
-      "monmsg": [
-        "CPF0000",
-        "SQL0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "REG1D",
-      "cmd": "RUNSQL SQL('CALL &LIB/JUCHU_REGISTER(CAST(JSON_OBJECT(''orderNo'': ''J09901'', ''customer'': ''C00001'', ''orderDate'': 20260930, ''salesRep'': ''T00001'', ''lines'': JSON_ARRAY(JSON_OBJECT(''line'': 1, ''product'': ''P00001'', ''qty'': 2, ''unitPrice'': 1580.00), JSON_OBJECT(''line'': 2, ''product'': ''P00003'', ''qty'': 5, ''unitPrice'': 480.00)) FORMAT JSON) AS VARCHAR(4000) CCSID 1208))') COMMIT(*NONE)",
-      "monmsg": [
-        "CPF0000",
-        "SQL0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "CNT1",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''COUNTS-AFTER-REG1-AND-DUP'', ''JUCHUM='' || CHAR((SELECT COUNT(*) FROM &LIB/JUCHUM)) || '' JUCHUD='' || CHAR((SELECT COUNT(*) FROM &LIB/JUCHUD)) || '' ZAIKOM='' || CHAR((SELECT COUNT(*) FROM &LIB/ZAIKOM)) FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
-      "monmsg": [
-        "CPF0000",
-        "SQL0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "REG2",
-      "cmd": "RUNSQL SQL('CALL &LIB/PRB_REGISTER_C(CAST(JSON_OBJECT(''orderNo'': ''J09902'', ''customer'': ''C00002'', ''orderDate'': 20260930, ''salesRep'': ''T00001'', ''lines'': JSON_ARRAY(JSON_OBJECT(''line'': 1, ''product'': ''P00002'', ''qty'': 1, ''unitPrice'': 12800.00), JSON_OBJECT(''line'': 2, ''product'': ''P00006'', ''qty'': 3, ''unitPrice'': 3200.00)) FORMAT JSON) AS VARCHAR(4000) CCSID 1208))') COMMIT(*NONE)",
-      "monmsg": [
-        "CPF0000",
-        "SQL0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "R2HDR",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''REG2-HDR'', JUNO || '' '' || JUTOK || '' '' || CHAR(JUDATE) || '' '' || JUTAN FROM &LIB/JUCHUM WHERE JUNO = ''J09902''') COMMIT(*NONE)",
-      "monmsg": [
-        "CPF0000",
-        "SQL0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "R2DTL",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''REG2-DTL'', JUNO || '' '' || CHAR(JULINE) || '' '' || JUSHO || '' '' || CHAR(JUSU) || '' '' || CHAR(JUTNK) FROM &LIB/JUCHUD WHERE JUNO = ''J09902''') COMMIT(*NONE)",
-      "monmsg": [
-        "CPF0000",
-        "SQL0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "R2RT",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''REG2-ROUNDTRIP'', &LIB/PRB_INQ_J(''J09902'') FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -497,7 +406,7 @@
     {
       "type": "cl",
       "label": "NGC",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''NEG-GC-UPPERCASE-EXPORT'', ''<'' || CAST(&LIB/PRB_GC_UP(''C00001'') AS VARCHAR(60)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''NEG-GC-UPPERCASE-EXPORT'', ''<'' || CAST(&LIB.PRB_GC_UP(''C00001'') AS VARCHAR(60)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -506,7 +415,7 @@
     {
       "type": "cl",
       "label": "NZG",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY0904 (TAG, VAL) SELECT ''NEG-ZG-LOWERCASE-EXPORT'', ''<'' || CAST(&LIB/PRB_ZG_LC(''P00002'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY0904 (TAG, VAL) SELECT ''NEG-ZG-LOWERCASE-EXPORT'', ''<'' || CAST(&LIB.PRB_ZG_LC(''P00002'') AS VARCHAR(20)) || ''>'' FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
       "monmsg": [
         "CPF0000",
         "SQL0000"
@@ -552,6 +461,42 @@
       "type": "sh",
       "label": "INQDB2",
       "cmd": "db2 \"SELECT &LIB.PRB_INQ_J('J00001') FROM SYSIBM.SYSDUMMY1\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "REGCLEAN0",
+      "cmd": "db2 \"DELETE FROM &LIB.JUCHUD WHERE JUNO IN ('J09901', 'J09902')\" 2>&1; db2 \"DELETE FROM &LIB.JUCHUM WHERE JUNO IN ('J09901', 'J09902')\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "REG1",
+      "cmd": "db2 \"CALL &LIB.JUCHU_REGISTER('{\\\"orderNo\\\":\\\"J09901\\\",\\\"customer\\\":\\\"C00001\\\",\\\"orderDate\\\":20260930,\\\"salesRep\\\":\\\"T00001\\\",\\\"lines\\\":[{\\\"line\\\":1,\\\"product\\\":\\\"P00001\\\",\\\"qty\\\":2,\\\"unitPrice\\\":1580.00},{\\\"line\\\":2,\\\"product\\\":\\\"P00003\\\",\\\"qty\\\":5,\\\"unitPrice\\\":480.00}]}')\" 2>&1; db2 \"SELECT JUNO, JUTOK, JUDATE, JUTAN FROM &LIB.JUCHUM WHERE JUNO = 'J09901'\" 2>&1; db2 \"SELECT JUNO, JULINE, JUSHO, JUSU, JUTNK FROM &LIB.JUCHUD WHERE JUNO = 'J09901' ORDER BY JULINE\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "REG1RT",
+      "cmd": "db2 \"SELECT &LIB.JUCHU_INQUIRY_JSON('J09901') FROM SYSIBM.SYSDUMMY1\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "REG1DUP",
+      "cmd": "db2 \"CALL &LIB.JUCHU_REGISTER('{\\\"orderNo\\\":\\\"J09901\\\",\\\"customer\\\":\\\"C00001\\\",\\\"orderDate\\\":20260930,\\\"salesRep\\\":\\\"T00001\\\",\\\"lines\\\":[{\\\"line\\\":1,\\\"product\\\":\\\"P00001\\\",\\\"qty\\\":2,\\\"unitPrice\\\":1580.00},{\\\"line\\\":2,\\\"product\\\":\\\"P00003\\\",\\\"qty\\\":5,\\\"unitPrice\\\":480.00}]}')\" 2>&1; db2 \"SELECT COUNT(*) AS N FROM &LIB.JUCHUD WHERE JUNO = 'J09901'\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "REG2",
+      "cmd": "db2 \"CALL &LIB.JUCHU_REGISTER('{\\\"orderNo\\\":\\\"J09902\\\",\\\"customer\\\":\\\"C00002\\\",\\\"orderDate\\\":20260930,\\\"salesRep\\\":\\\"T00001\\\",\\\"lines\\\":[{\\\"line\\\":1,\\\"product\\\":\\\"P00002\\\",\\\"qty\\\":1,\\\"unitPrice\\\":12800.00}]}')\" 2>&1; db2 \"SELECT JUNO, JULINE, JUSHO, JUSU, JUTNK FROM &LIB.JUCHUD WHERE JUNO = 'J09902'\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "REGCLEAN1",
+      "cmd": "db2 \"DELETE FROM &LIB.JUCHUD WHERE JUNO IN ('J09901', 'J09902')\" 2>&1; db2 \"DELETE FROM &LIB.JUCHUM WHERE JUNO IN ('J09901', 'J09902')\" 2>&1; db2 \"SELECT (SELECT COUNT(*) FROM &LIB.JUCHUM) AS M, (SELECT COUNT(*) FROM &LIB.JUCHUD) AS D, (SELECT COUNT(*) FROM &LIB.ZAIKOM) AS Z FROM SYSIBM.SYSDUMMY1\" 2>&1",
       "after": true
     },
     {
