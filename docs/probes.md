@@ -2992,6 +2992,14 @@ advisorの指摘を受け、`f0803s.rpgle`が実際にコンパイルできる�
 1. **`bsh`の実在パスを誤っていた。** `/usr/bin/bsh`ではなく`/QOpenSys/usr/bin/bsh`が正しいパスだった(`ls`の結果自身が「/QOpenSys/usr/bin/bsh -> ../../QIBM/ProdData/OS400/PASE/bin/bsh」というシンボリック・リンクの実在を示していたにもかかわらず、後続の`-c`呼び出しでは誤って`/usr/bin/bsh`のままにしていた)。「qsh: 001-0014 Command /usr/bin/bsh not found.」で2回とも失敗し、実際のbsh経由での`makei`呼び出しはまだ一度も確認できていない。
 2. **「PFを追加する」演習のテストは、`file`型ステップの仕様を誤解していた。** `file`型ステップ(`testpf.pf`を`QDDSSRC`メンバーとして配送する設定)は、このハーネスの実装上**常に`&LIB`(`library2`ではない)を対象にする**——`CPYTOSTMF`の`FROMMBR`を`&LIB2`のパスにしていたため、「Object not found」で失敗し、その後の`makei build`も`testpf.pf`自体が存在しないため「No rule to make target 'testpf.pf'」で失敗した。`FROMMBR`のライブラリー部分を`&LIB`に直せば解決する見込みが高い——次回接続で再試行する。
 
+## 第8部08-02/08-03: `part08-02-testpf`の2回目の接続——PF演習はCONFIRMED SUCCESS、`bsh`は部分的、`GENERATE_SQL`のSYSPARMS調査は打ち切り(確認日2026-09-29)
+
+1回目の2つの自作ミスを修正した2回目の接続で、以下が判明した。
+
+- **「PFを追加する」演習: CONFIRMED SUCCESS。** 正しいライブラリー(`&LIB`)から`CPYTOSTMF`した後、`Rules.mk`に`TESTPF.FILE: testpf.pf`という1行を追加しただけで、`makei build`は`=== Creating PF [testpf.pf] in <USER>B`→`crtfrmstmf`(DDSソースからPFを作る、TOBi自身のスクリプト)→`TESTPF.FILE was created successfully!`→`Objects: 0 failed 1 succeed 1 total, Build Successful!`で成功した。08-02の「PFを追加する」演習は、この形でそのまま実演できる。
+- **`bsh`の既定PATHには`/QOpenSys/pkgs/bin`が含まれないことを確認した**(`echo $PATH`の実測: `/QOpenSys/usr/bin:/usr/ccs/bin:/QOpenSys/usr/bin/X11:/usr/sbin:.:/usr/bin`)——P08の既存の知見と整合する。**しかし、`bsh -c 'export PATH=...; echo ...; makei --version'`という1つの`-c`引数にまとめた呼び出しは、`0402-026 The specified data is not a valid identifier.`という`bsh`自身のエラーで失敗した。** 原因はこの接続だけでは特定できていない(`bsh`固有の`export`構文の制約か、`-c`引数のクォーティングの問題か)。**これは2回目の失敗であり、これ以上この特定の呼び出し方を当て推量で直すのは打ち切る。** 08-02のレッスン本文では、この`bsh -c`一括呼び出し方式そのものを教えるのではなく、`makei`を呼ぶときは確実に成功する経路(`bash`を起動し、`export PATH=...`してから`makei build`を実行する、`part08-02-makei-probe`系のバッチで繰り返し確認済みの経路)を明示的に指示し、素の`bsh`プロンプトから直接`export`→`makei build`を対話的に行う経路自体はV3(未検証)として扱う。
+- **`GENERATE_SQL`のSYSPARMSカタログ調査は、意図した目的を果たせなかったため打ち切る。** `SPECIFIC_NAME LIKE '%GENERATE_SQL%'`で37件がヒットしたが、**`SPECIFIC_SCHEMA`の値はいずれもシステム・スキーマ(`QSYS2`等)ではなく、他の利用者自身のライブラリー名だった**——つまりヒットしたのは、他の利用者が自分のライブラリーに作った、たまたま同名(`GENERATE_SQL`・`GENERATE_SQL_FOR_DEPENDENTS`)の自作プロシージャーであり、**`QSYS2.GENERATE_SQL`というIBM提供の本物のシステム・プロシージャー自体はこのクエリーでは一度も見つからなかった。** これは`docs/probes.md`が既に確立している「システム全体を走査する照会は、フィルターを付けなければ他の利用者の情報を返しうる」という安全規律そのものの実例でもある——**この結果に含まれていた実在のライブラリー名・パラメーター詳細は、他の利用者自身の情報であるため、ここには一切記録しない。** `GENERATE_SQL`の正確な引数は、この教材の一次資料(`work/design/refs/`)でもこのSYSPARMSアプローチでも確定できなかったため、`part08-06-ddl`の3回目接続時点での決定(「一般知識、要確認」として扱う)を変更せず維持する。
+
 
 ## 未実施のプローブ
 
