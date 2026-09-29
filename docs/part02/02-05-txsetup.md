@@ -14,7 +14,7 @@
 1. `git clone --sparse` の後、git を使うために最初にすることは?
 2. 5250 と SSH は同じジョブ?
 
-答え: 1. PATH を通す(`export PATH=/QOpenSys/pkgs/bin:$PATH`) 2. 別のジョブ
+答え: 1. PATH を通す(`PATH=/QOpenSys/pkgs/bin:$PATH` に続けて `export PATH`——代入と `export` は別の行にする必要があります、02-04参照) 2. 別のジョブ
 
 </details>
 
