@@ -2807,6 +2807,13 @@ Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・�
 
 **08-07(IBM iサービスと権限)のレッスンが必要とする実機確認事項(`OBJECT_STATISTICS`・`USER_STORAGE`・`OBJECT_PRIVILEGES`・`PROGRAM_INFO`・`GRTOBJAUT`/`RVKOBJAUT`)は、これで2回の接続を通じてすべてCONFIRMED SUCCESSとなった。** `JOBLOG_INFO`は既存のCLラッパー機構自体が既に何十回も実行してきたため、新たなプローブなしでV2として扱ってよい。`GRTOBJAUT`/`USRPRF(*OWNER)`の**拒否効果**そのもの(2つ目のユーザー・プロファイルが必要)は、design doc自身が明記するとおり、このPUB400アカウントの構成では実演できない——V3のまま。
 
+## 第8部`part08-06-ddl`: 1回目の接続で`GENERATE_SQL`の実引数エラーとマニフェスト自身のバグを発見(確認日2026-09-29)
+
+08-06(DDSからSQL DDLへ)の探索的な1回目の接続。`GENERATE_SQL`は一次資料に列定義・実例の記載が一切無いため、一般的なDb2 for i知識に基づく名前付き引数(`DATABASE_OBJECT_NAME`・`DATABASE_OBJECT_LIBRARY_NAME`・`DATABASE_SOURCE_FILE_NAME`・`DATABASE_OBJECT_TYPE`・`DATABASE_FILE_TYPE`・`CREATE_OR_REPLACE_OPTION`)を試した。
+
+- **実バグ発見: `DATABASE_FILE_TYPE`という引数名は無効。** `Named argument DATABASE_FILE_TYPE for routine GENERATE_SQL not valid for reason code 1.`——他の引数名(`DATABASE_OBJECT_NAME`等)はすべて通ったため、`GENERATE_SQL`プロシージャー自体は実在し、これら他の引数名は正しいと分かった。`DATABASE_FILE_TYPE`のみ削除して次回接続で再試行する。
+- **マニフェスト自身のバグ(発見・修正): `RUNSQL`(CALL文)の直後に`DSPFD`を置き、末尾に1つの`MONMSG`しか置いていなかったため、`verify/README.md`が既に指摘する「`MONMSG`は直前の1コマンドしか監視しない」という罠どおり、`RUNSQL`自身のエラー(`SQL9010`)が一切監視されず、`Function check`として異常終了した。** この結果、`FAILSAFE`ラベル自身の丁寧な処理(メッセージ送出等)にすら到達せず、`run`セクションには`DSPFD`の出力が何も現れなかった。`RUNSQL`の直後に専用の`MONMSG`を追加して修正済み。次回接続で再試行する。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
