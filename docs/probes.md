@@ -2792,6 +2792,16 @@ Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・�
 
 同じ接続に追加した`makei`のqsh直接呼び出し/bash経由呼び出しの比較テスト(`MAKEICHECK`)は、シェル・スクリプトの`&&`連鎖の書き方に不備があり、1つ目(qsh直接呼び出し)が非ゼロ終了コードを返した時点で2つ目(bash経由)が実行されなかった。qsh直接呼び出しの結果は従来どおり失敗(`python3.9 is not installed or not in your system PATH.`)。bash経由での比較は次回接続以降の課題として持ち越す——`makei`自体は引き続き「一般知識、この環境での挙動は未確認」の扱いのままとする。
 
+## 第8部`part08-02-makei-probe`: qsh直接呼び出しと`bash`経由呼び出しの比較が初めて成立し、`makei`(TOBi)が実際に動くことを確認(確認日2026-09-29)
+
+`part08-05-f0805a`の`MAKEICHECK`(2回)で`&&`連鎖の不備により未達成だった比較を、`;`区切り(両方の半分が相手の終了コードに関わらず必ず実行される)にした専用の1ステップ・マニフェスト(`verify/part08-02-makei-probe/manifest.json`)で1回目の接続にて実施した。読み取り専用(`makei --version`のみ、ビルドは試みていない)。
+
+- **qsh直接呼び出しは、従来どおり失敗する。** `export PATH=/QOpenSys/pkgs/bin:$PATH`を直前に実行し、実際`echo $PATH`は`/QOpenSys/pkgs/bin:/usr/bin:.:/QOpenSys/usr/bin`(`/QOpenSys/pkgs/bin`を含む)を返しているにもかかわらず、`makei --version`自身は「It looks like /QOpenSys/pkgs/bin/ is not currently in your system PATH.」「python3.9 is not installed or not in your system PATH.」という、PATHが通っていないという趣旨の(実際には誤った)診断を出し続けた。
+- **`bash -x /QOpenSys/pkgs/bin/makei --version`(bash経由呼び出し)は初めて成功した。** トレース出力によれば、`check_dependencies`→`check_path`→`return 0`(通過)、続く`check_tool python3.9`/`check_tool bash`/`check_tool make`もすべて`return 0`で通過し、最終的に`/QOpenSys/pkgs/bin/python3.9 /QOpenSys/pkgs/lib/tobi/src/makei/cli/makei_entry.py --version`が実行され、**`TOBi version 3.2.1`**という正常な出力が得られた。
+- **結論: `makei`(TOBi)自体は実在し、正しく動く。** 4回目接続時点の推測(「`#!/usr/bin/env bash`のシバン行が起動するbashが独自の起動ファイルでPATHをリセットしている可能性」)は誤りだったと判明した——もしそうなら`bash -x`経由の呼び出しも同じ理由で失敗するはずだが、実際には成功している。真因は、`makei`のラッパー・スクリプト自身の`check_path()`(PATHの中に`/QOpenSys/pkgs/bin`が含まれるかを確認するロジック)が、**qshから直接起動された場合にだけ**誤って失敗と判定する、という`makei`自身の実装上のクセにある(内部的な理由——`$PATH`の見え方の違いか、`uname`等の判定分岐の違いか——までは今回のトレースからは特定できていない)。
+- **`TOBi`のバージョンは`3.2.1`で確定した。** `work/design/part08-design-v1.md`§0.5(B2-27)が「PUB400のTOBiバージョンは3.2.1と報告されていたが、このリポジトリには一切の実測記録が無い」としていた未確認事項が、これで実測により解消した。
+- **08-02のレッスン設計への示唆**: 学習者が5250から`STRQSH`等でqshに入り、そこで直接`makei`を呼ぶと、PATHが正しく設定されていても失敗する(見かけ上の診断メッセージに惑わされる)可能性がある。02-04で確立した経路(SSHで直接ログインし、既定のPASE `bsh`シェルから`makei`を呼ぶ)であれば、この問題を踏まずに済む見込みが高い(`bash`経由の呼び出しが成功したのと同じ経路のため)——ただし`bsh`自体でこの回避が成立することを直接確認したわけではなく(今回確認したのは`bash -x`経由のみ)、この対応関係はV3(未検証)のまま扱う。`makei`のビルド動作そのもの(依存関係順の一括ビルド、`iproj.json`/`Rules.mk`の実際の効き方)は今回`--version`しか試していないため、引き続き未確認。
+
 ## 第8部`part08-07-services`: `OBJECT_PRIVILEGES`/`PROGRAM_INFO`が初回で成功、`RVKOBJAUT`の実バグを発見(確認日2026-09-29)
 
 08-07(IBM iサービスと権限)の実機確認。1回目の接続で、`collect`型ステップの4本のSELECT文はすべて成功した:

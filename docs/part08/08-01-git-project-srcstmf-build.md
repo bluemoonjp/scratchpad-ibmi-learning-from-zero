@@ -63,7 +63,7 @@
 - `SRCFILE`/`SRCMBR`: ソース物理ファイルの中のメンバーを指定する、これまでどおりの方法。
 - `SRCSTMF`: IFS上のストリーム・ファイルのパス名を直接指定する方法(一次資料: `cl_commands_75.txt`、`CRTRPGMOD`のパラメーター表に`SRCSTMF | Source stream file | Path name | Optional`として明記)。
 
-どちらを使っても、コンパイラー自身は同じです。**メンバーもSRCSTMFも、コンパイラーから見れば「文字の並びが書かれた入れ物」という点で同じであり、中身(文字の並び)さえ同じなら同じオブジェクトができます。** この課で行うのは、07-02/07-03で`SRCFILE(<USER>1/QRPGLESRC) SRCMBR(JUCSRV)`として渡していたのと**中身が同じ**`jucsrv.rpgle`を、今度は`SRCSTMF('/home/.../jucsrv.rpgle')`としてIFSから直接渡すことです。
+どちらを使っても、コンパイラー自身は同じです。**メンバーもSRCSTMFも、コンパイラーから見れば「文字の並びが書かれた入れ物」という点で同じであり、中身(文字の並び)さえ同じなら同じオブジェクトができます。** この課で行うのは、07-02/07-03で`SRCFILE(<USER>1/QRPGLESRC) SRCMBR(JUCSRV)`として渡していたのと**中身が同じ**`jucsrv.rpgle`を、今度は`SRCSTMF('/home/<自分のユーザー名>/.../jucsrv.rpgle')`としてIFSから直接渡すことです。
 
 `CRTSRVPGM`(サービス・プログラムを作るコマンド)にも`SRCSTMF`パラメーターがありますが、**用途がまったく違います。** 一次資料(`cl_commands_75.txt`)によれば、`CRTSRVPGM`の`SRCSTMF`は"Export source stream file"(エクスポート・ソース・ストリーム・ファイル)——つまり07-03で`QSRVSRC/JUCSRV`メンバーに書いたバインダー言語(`STRPGMEXP`/`EXPORT SYMBOL`/`ENDPGMEXP`)を、メンバーの代わりにIFS上のストリーム・ファイルから読む、という指定です。**モジュールのソース(RPGのコード)の話ではありません。** この課では、`CRTRPGMOD`の`SRCSTMF`は`jucsrv.rpgle`を、`CRTSRVPGM`の`SRCSTMF`は`jucsrv.bnd`(バインダー・ソース)を、それぞれ指すことになります。
 
