@@ -1,41 +1,22 @@
 {
   "batch": "part08-02-makei-probe2",
-  "description": "6th connection of this batch. 5th connection read TOBi's own docs (prepare-the-project/rules.mk.md) and found the real cause of every prior 'Nothing to be done for all': Rules.mk is not optional/edge-case-only (as this batch's own comment-only Rules.mk claimed) - it's the primary mechanism that tells TOBi what objects to build at all, via 'OBJNAME.TYPE: sourcefile' rule lines (confirmed against the docs' own worked example and the bundled sample_project1's real, working Rules.mk: 'HELLO.MODULE: HELLOP.RPGLE'). Fixed templates/part08-project/Rules.mk to declare real targets (ZAISRV.MODULE: zaisrv.rpgle / ZAISRV.SRVPGM: ZAISRV.MODULE zaisrv.bnd) instead of being 100% comments. This connection retries the build with the corrected Rules.mk, still targeting the empty &LIB2 (<USER>B) library so a failure can't damage anything Part 7 established. Also greps TOBi's own mk/def_rules.mk for the SRVPGM pattern rule as a read-only diagnostic in case the SRVPGM dependency line's exact form needs adjusting.",
+  "description": "7th (final) connection of this batch. 6th connection built ZAISRV from scratch into the empty &LIB2 (<USER>B) via a corrected Rules.mk. That IFS project directory ($HOME/mk8/z) is real filesystem state that persists across SSH connections, so this connection re-runs `makei build` in the SAME unchanged directory (no source edits, same objects already present) to test the still-open question from part08-design-v1.md's core concept (1) - does makei's dependency tracking actually skip a build when the target is genuinely up to date, or does it always rebuild unconditionally? This is a safe way to test the incremental-build/staleness-check mechanism without touching Part 7's real ZAISRV in &LIB (per advisor review: the 3rd connection's earlier 'Nothing to be done' didn't test this at all, since Rules.mk had zero targets at that point - this connection is the first real test). After the check, DLTSRVPGM/DLTMOD clean up &LIB2 back to empty, since that library isn't otherwise used by this repo's harness.",
   "library2": "*B",
   "steps": [
     {
-      "type": "file",
-      "localPath": "../../templates/part08-project/iproj.json",
-      "remoteSrcFile": "QTXTSRC",
-      "member": "IPROJJSN",
-      "ensureSrcFile": { "recordLength": 112 }
-    },
-    {
-      "type": "file",
-      "localPath": "../../templates/part08-project/Rules.mk",
-      "remoteSrcFile": "QTXTSRC",
-      "member": "RULESMK",
-      "ensureSrcFile": { "recordLength": 112 }
+      "type": "sh",
+      "label": "REBUILD",
+      "cmd": "/QOpenSys/pkgs/bin/bash -c 'cd \"$HOME/mk8/z\" && export PATH=/QOpenSys/pkgs/bin:$PATH && echo PATH=$PATH && ls -la && echo ---BUILD-AGAIN--- && /QOpenSys/pkgs/bin/makei build' </dev/null 2>&1"
     },
     {
       "type": "sh",
-      "label": "SETUP",
-      "cmd": "rm -rf \"$HOME/mk8\"\nmkdir -p \"$HOME/mk8/z\"\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGLESRC.FILE/ZAISRV.MBR') TOSTMF('$HOME/mk8/z/zaisrv.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QSRVSRC.FILE/ZAISRV.MBR') TOSTMF('$HOME/mk8/z/zaisrv.bnd') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QTXTSRC.FILE/IPROJJSN.MBR') TOSTMF('$HOME/mk8/z/iproj.json') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QTXTSRC.FILE/RULESMK.MBR') TOSTMF('$HOME/mk8/z/Rules.mk') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\n/QOpenSys/pkgs/bin/python3 -c \"p='$HOME/mk8/z/iproj.json'; d=open(p,'rb').read(); open(p,'wb').write(d.replace(b'YOURUSER2', b'&LIB2'))\"\necho ---IPROJ-JSON---\ncat \"$HOME/mk8/z/iproj.json\" </dev/null\necho ---RULES-MK---\ncat \"$HOME/mk8/z/Rules.mk\" </dev/null\necho ---TREE---\nfind \"$HOME/mk8/z\" -type f </dev/null\necho ---DEF-RULES-SRVPGM---\ngrep -n -B2 -A15 '^%\\.SRVPGM\\|SRVPGM:' /QOpenSys/pkgs/lib/tobi/src/mk/def_rules.mk </dev/null 2>&1 | head -60\n"
-    },
-    {
-      "type": "sh",
-      "label": "BUILD",
-      "cmd": "/QOpenSys/pkgs/bin/bash -c 'cd \"$HOME/mk8/z\" && export PATH=/QOpenSys/pkgs/bin:$PATH && echo PATH=$PATH && /QOpenSys/pkgs/bin/makei build' </dev/null 2>&1"
+      "label": "CLEANUP",
+      "cmd": "system \"DLTSRVPGM SRVPGM(&LIB2/ZAISRV)\" 2>&1\nsystem \"DLTMOD MODULE(&LIB2/ZAISRV)\" 2>&1\nrm -rf \"$HOME/mk8\"\n"
     },
     {
       "type": "collect",
       "kind": "sql",
-      "sql": "SELECT OBJNAME, OBJTYPE, OBJLIB, OBJTEXT FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB2', 'ALL')) X WHERE OBJNAME = 'ZAISRV' ORDER BY OBJTYPE"
-    },
-    {
-      "type": "collect",
-      "kind": "sql",
-      "sql": "SELECT PROGRAM_LIBRARY, PROGRAM_NAME, PROGRAM_TYPE, PROGRAM_OWNER FROM QSYS2.PROGRAM_INFO WHERE PROGRAM_LIBRARY = '&LIB2' AND PROGRAM_NAME = 'ZAISRV'"
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJLIB FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB2', 'ALL')) X WHERE OBJNAME = 'ZAISRV' ORDER BY OBJTYPE"
     }
   ]
 }
