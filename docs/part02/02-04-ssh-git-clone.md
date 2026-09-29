@@ -48,11 +48,38 @@ PUB400 は共有の練習機です(00-02 参照)。SSH 接続では、次のこ�
 
 ### git が既定の PATH に入っていない
 
-PUB400 には git が入っていますが、**SSH でログインした直後の `PATH` には含まれていません。** 実行するには、フル・パス(`/QOpenSys/pkgs/bin/git`)を指定するか、次のように `~/.profile` に1行追加してください(最初の1回だけで済みます)。
+PUB400 には git が入っていますが、**SSH でログインした直後の `PATH` には含まれていません。** 実行するには、フル・パス(`/QOpenSys/pkgs/bin/git`)を指定するか、次のように `.profile` に追加してください(最初の1回だけで済みます)。
 
 ```sh
-echo 'export PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile
+echo 'PATH=/QOpenSys/pkgs/bin:$PATH' >> $HOME/.profile
+echo 'export PATH' >> $HOME/.profile
 ```
+
+**`~`ではなく`$HOME`を使う理由**: SSH でログインした直後のシェルは `bsh`(本物の Bourne シェル系)で、語頭の`~`を一切展開しません(実機確認済み、下の「実機メモ」参照)。`~/.profile`のように書くと、実際にはホーム・ディレクトリーではなく、文字どおり`~`という名前のオブジェクト(無ければ「無い」エラーになりますが、既に`~`という名前のディレクトリーが存在していると、エラーも出ないままその中に書き込んでしまいます)を対象にしてしまいます。`$HOME`なら確実に展開されます。**以後のレッスンで`~/ibmi-kyozai`のように書かれている箇所も、実際に指しているのは`$HOME/ibmi-kyozai`です——コマンドとして打つときは、必ず`$HOME`を使ってください。**
+
+**2行に分けて追加する理由**: 同じ`bsh`は、`export 変数名=値` のように代入と `export` を1つにまとめた書き方も受け付けません(`0402-026 The specified data is not a valid identifier` というエラーになります)。`変数名=値` という代入と、`export 変数名`(値を書かない、裸の変数名だけ)という指定を、必ず別の行に分けてください。
+
+**もし既に `~/.profile`・`~/ibmi-kyozai`のように、語頭の`~`を使ってコマンドを打ってしまったことがある場合**: `.profile`と`ibmi-kyozai`は別々に確認してください(片方が無事でも、もう片方が紛れ込んでいることがあります)。
+
+**`.profile`の確認**: `cat $HOME/.profile`を実行してください。`PATH=/QOpenSys/pkgs/bin:$PATH`・`export PATH`の2行が無ければ(ファイル自体が存在しない場合も含む)、上の2行をそのまま実行してください。念のため`ls -la $HOME`で`~`という名前のディレクトリーが無いか確認し、もしあれば`cat "$HOME/~/.profile"`で中身が紛れ込んでいないか確認してください(下の「`ibmi-kyozai`の確認」の手順2〜4と同じ`$HOME/~`です)。
+
+**`ibmi-kyozai`の確認**:
+
+1. `ls -d $HOME/ibmi-kyozai`を実行します。**見つかれば正しい場所に既にあるので、これ以降の手順は不要です。**
+2. 見つからなければ、`ls -la $HOME`で`~`という名前のディレクトリーが無いか確認します。**`git clone`は、行き先に指定した`~`をシェルが展開しなくても、行き先の親ディレクトリーが存在しなければgit自身がそのまま(`~`という名前で文字どおり)作ってその中にクローンします——実機確認済みです。** `ls -d "$HOME/~/ibmi-kyozai"`で、そこにクローンが実際にあるか確認してください(`cd ~/ibmi-kyozai`は、その後は`~`ディレクトリーの中を指す**相対パス**として成功してしまうため、これだけでは気づけません)。
+3. `$HOME/~/ibmi-kyozai`が見つかった場合は、まず中身を確認してから正しい場所へ移動します。
+
+   ```sh
+   ls -la "$HOME/~"
+   mv "$HOME/~/ibmi-kyozai" "$HOME/"
+   ```
+
+4. **どちらの場所にも`ibmi-kyozai`が見つからなかった場合**は、上の「実演」手順3をやり直してください(`$HOME`を使った形で)。
+5. 最後に、`$HOME/~`の中身が空になった(または移すべきものを移し終えた)ことを確認してから削除します。**`rm -rf ~`とは絶対に打たないでください**(展開されないはずの`~`が、コマンドによっては展開されてホーム・ディレクトリー全体を消してしまう可能性があります)。削除は必ずこの形で、ディレクトリー名を引用符で囲んで指定してください。
+
+   ```sh
+   rm -r "$HOME/~"
+   ```
 
 ## 実演
 
@@ -64,42 +91,44 @@ echo 'export PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile
 
    パスワードを尋ねられたら入力します。
 
-2. 接続できたら、まず PATH を通します(初回のみ)。
+2. 接続できたら、まず PATH を通します(初回のみ)。**代入と `export` は必ず別の行にしてください**(上の「説明」参照。1行にまとめると `bsh` がエラーで拒否します)。**`~`ではなく`$HOME`を使います**(上の「説明」参照。`bsh`は語頭の`~`を展開しません)。
 
    ```sh
-   echo 'export PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile
-   export PATH=/QOpenSys/pkgs/bin:$PATH
+   echo 'PATH=/QOpenSys/pkgs/bin:$PATH' >> $HOME/.profile
+   echo 'export PATH' >> $HOME/.profile
+   PATH=/QOpenSys/pkgs/bin:$PATH
+   export PATH
    ```
 
 3. この教材のリポジトリーを、必要なディレクトリーだけに絞って取り込みます(`--sparse` で、最初は最小限だけ取得します)。
 
    ```sh
-   git clone --filter=blob:none --sparse https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero.git ~/ibmi-kyozai
-   cd ~/ibmi-kyozai
+   git clone --filter=blob:none --sparse https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero.git $HOME/ibmi-kyozai
+   cd $HOME/ibmi-kyozai
    git sparse-checkout set src db tools
    ```
 
 4. 取り込んだ容量を確認します。
 
    ```sh
-   du -sh ~/ibmi-kyozai
+   du -sh $HOME/ibmi-kyozai
    ```
 
 5. `exit` で SSH セッションを終了し、5250 に戻ります。
 
 ## 同じ手順を別の対象で
 
-1. もう一度 SSH で接続し、`cd ~/ibmi-kyozai && git pull` で更新を取り込む練習をします(今は変更がなくても、コマンドの流れを覚えることが目的です)。
+1. もう一度 SSH で接続し、`cd $HOME/ibmi-kyozai && git pull` で更新を取り込む練習をします(今は変更がなくても、コマンドの流れを覚えることが目的です)。
 2. 5250 の対話式ジョブと、SSH のジョブが別物であることを確かめます。5250 のコマンド行で `system "DSPLIB LIB(<自分のユーザー名>1) OUTPUT(*PRINT)"` を **SSH の中で** 実行し(`qsh` 経由。`ssh <ユーザー>@pub400.com /usr/bin/qsh` として、標準入力からこのコマンドを渡す方法もあります)、`WRKSPLF` を **5250 側で** 実行して、スプールがちゃんと自分のライブラリーに対して作られていることを確認してください。
 
 ## 出力が違うとき
 
-- `git: command not found` のようなエラーが出たら、PATH が通っていません。上記の `export PATH=...` を再確認してください。
+- `git: command not found` のようなエラーが出たら、PATH が通っていません。上記の「PATH を通す」の2行(`PATH=...`の代入と`export PATH`)を再確認してください——1行にまとめると`bsh`がエラーで拒否します。
 - 接続がタイムアウトする、または拒否される場合は、無理に再接続を繰り返さず、時間を空けてください。
 
 ## 演習
 
-1. `~/ibmi-kyozai/db/v1/` の中身を `ls` で一覧し、02-02 で自分が手入力した `TOKUIM`/`SHOHIM` の DDS と見比べてください(内容が一致するはずです)。
+1. `$HOME/ibmi-kyozai/db/v1/` の中身を `ls` で一覧し、02-02 で自分が手入力した `TOKUIM`/`SHOHIM` の DDS と見比べてください(内容が一致するはずです)。
 2. SSH のセッションを終了し、5250 に戻って `DSPJOBLOG` を確認してください。SSH での操作が、5250 側のジョブ・ログには**現れない**ことを確認してください(別ジョブだからです)。
 
 ## セルフチェック
@@ -111,7 +140,7 @@ echo 'export PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile
 
 ## 片付け
 
-このレッスンで取り込んだ `~/ibmi-kyozai` は、この先ずっと使うので削除しないでください。
+このレッスンで取り込んだ `$HOME/ibmi-kyozai` は、この先ずっと使うので削除しないでください。
 
 ## まとめ
 
@@ -124,6 +153,8 @@ echo 'export PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile
 
 ## 実機メモ
 
-- 確認日: 2026-09-25(`docs/probes.md` P08 関連)。SSH(2222番)での接続方法、git が `/QOpenSys/pkgs/bin/` にあるが既定 PATH には含まれないこと、`~/.profile` での対処は、著者が実機で確認済み。
+- 確認日: 2026-09-25(`docs/probes.md` P08 関連)。SSH(2222番)での接続方法、git が `/QOpenSys/pkgs/bin/` にあるが既定 PATH には含まれないことは、著者が実機で確認済み。
+- **実バグの発見・修正(確認日 2026-09-29、`docs/probes.md` の第8部 `part08-02-bsh-export` 節参照)**: 当初この課は `export PATH=/QOpenSys/pkgs/bin:$PATH` という代入と `export` を1行にまとめた形を指示していたが、これは実機の `bsh`(SSH ログイン直後の既定シェル)では `0402-026 The specified data is not a valid identifier` というエラーで失敗することが確認された。学習者が本文どおりに操作すると、初回の `export` も `.profile` への追記も両方失敗する(`.profile` は毎回のログインで実行されるため、直さない限りログインのたびに同じエラーが出続ける)。`PATH=/QOpenSys/pkgs/bin:$PATH` という代入と `export PATH`(裸の変数名)という指定を別の行に分ける2段階形に修正し、この2段階形が `bsh` で実際にエラー無く通ることを実機で確認した。
+- **もう1つの実バグの発見・修正(確認日 2026-09-29、`docs/probes.md` の `part02-bsh-tilde-redirect`・`part02-bsh-tilde-cleanup` 節参照)**: この課は`~/.profile`・`~/ibmi-kyozai`のように、語頭に`~`を使った書き方を指示していたが、`bsh`は語頭の`~`を一切展開しないことが実機確認された(`echo ~`・`echo ~/x`はそのまま印字され、決定的な証拠として`cd ~/vfy`(実在するディレクトリー)が「存在しない」というエラーで失敗した)。学習者が本文どおりに操作すると、`.profile`への追記も`git clone`の行き先も、文字どおり`~`という名前のオブジェクトを対象にしてしまい、意図した場所には届かない。**`git clone`は行き先の親ディレクトリーが無ければ自分でそのまま(`~`という名前で文字どおり)作ってその中にクローンすることも、使い捨てのディレクトリーでの再現実験により実機確認済み**——つまり最初の1回はエラーにならず成功し、以後`.profile`への追記も含めてエラー無くその中へ書き込まれ続けるため、症状に気づきにくい。実際、この教材自身のPUB400アカウントに、2026-09-25の時点の検証作業でできたとみられる`$HOME/~`ディレクトリー(中身は空の`db/data/`のみ)が残っていたことが今回の調査で判明し、`part02-bsh-tilde-cleanup`で削除・片付け済み。すべて`~`ではなく`$HOME`を使う形に修正した。
 - 接続数の上限に関する記述は、このセッション中に著者自身が実際に SSH 接続不能を経験したことに基づく(`docs/probes.md` の「接続数に関する注意」参照)。
 - `git clone` をこの教材自身のリポジトリー(学習者にとっての「相手」)に対して行う手順そのものは、このセッションでは実行していない(次回確認する)。

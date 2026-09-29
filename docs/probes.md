@@ -80,7 +80,7 @@ command -v make
 - `/QOpenSys/pkgs/bin/tobi` という名前のコマンドは **無い**(TOBi への改称後も、コマンド名は `makei` のまま)。
 - `/QOpenSys/pkgs/bin/` には約 1.5GB 相当のパッケージ群がインストール済み(git・Python・GNU make・Ansible 等、多数)。
 
-**結論**: git・GNU make・makei・python3 はすべて使えるが、**既定の PATH には入っていない。** SSH 経由の自動化(02-04 の `git clone`、08-01/08-02 の `makei` ビルド)では、フルパスを使うか、`~/.profile` に `export PATH=/QOpenSys/pkgs/bin:$PATH` を追記する必要がある。
+**結論**: git・GNU make・makei・python3 はすべて使えるが、**既定の PATH には入っていない。** SSH 経由の自動化(02-04 の `git clone`、08-01/08-02 の `makei` ビルド)では、フルパスを使うか、`~/.profile` に `PATH=/QOpenSys/pkgs/bin:$PATH` の代入と `export PATH` を(**別々の行として**)追記する必要がある。**【2026-09-29 訂正】** ここで当初書いていた `export PATH=/QOpenSys/pkgs/bin:$PATH` という結合形は、実際には `bsh`(SSH ログイン直後の既定シェル)で `0402-026 The specified data is not a valid identifier` エラーになることが後日判明した(第8部 `part08-02-bsh-export` 接続、詳細は該当節参照)。02-04 は `fix/part02-bsh-export` で2段階形に修正済み。
 
 **影響**: 02-04, 03-10, 08-01, 08-02。批評で確定した「中重大度」の修正(PATH の既定に関する項目)を、この実測で裏付けた。
 

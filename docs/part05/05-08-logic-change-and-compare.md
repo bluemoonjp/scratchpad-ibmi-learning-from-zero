@@ -151,7 +151,7 @@ SELECT * FROM QTEMP.SNAPA EXCEPT SELECT * FROM QTEMP.SNAPB;  -- AFTER にしか�
 
    ```text
    system "CPYTOSTMF FROMMBR('/QSYS.LIB/<USER>1.LIB/QRPGSRC.FILE/JU0300.MBR') TOSTMF('/home/<自分のユーザー名>/ibmi-kyozai/src/legacy/qrpgsrc/ju0300.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)"
-   cd ~/ibmi-kyozai && git diff -- src/legacy/qrpgsrc/ju0300.rpg
+   cd $HOME/ibmi-kyozai && git diff -- src/legacy/qrpgsrc/ju0300.rpg
    ```
 
    ソースの変更が**手順3で意図した箇所だけ**であることを確認してください。
