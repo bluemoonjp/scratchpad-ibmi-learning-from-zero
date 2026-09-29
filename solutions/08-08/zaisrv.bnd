@@ -1,0 +1,57 @@
+/* ZAISRV binder source - 08-08's updated version (adds pingZaisrv).
+   See solutions/08-08/zaisrv.rpgle for the implementation, and
+   solutions/07-05/zaisrv.bnd for the ORIGINAL (3-procedure,
+   PGMLVL(*CURRENT)-only) binder source this file replaces.
+
+   This is exactly the procedure solutions/07-05/zaisrv.bnd's own
+   header comment (lines 32-47) already laid out in advance, citing
+   work/design/refs/ileconcepts75.txt lines 4287-4289 ("1. Duplicate
+   the STRPGMEXP, ENDPGMEXP block that contains PGMLVL(*CURRENT).
+   2. Change the duplicated PGMLVL(*CURRENT) value to PGMLVL(*PRV).
+   3. In the STRPGMEXP command that contains PGMLVL(*CURRENT), add to
+   the end of the list the new symbol"):
+
+     (1) the OLD PGMLVL(*CURRENT) block (GET/RESERVE/RELEASE, in that
+         exact order) becomes a NEW PGMLVL(*PRV) block below, unedited
+         except for the PGMLVL value - this is what lets any program
+         still bound against the 3-symbol signature (e.g. DRIVER,
+         solutions/07-05/driver.rpgle, which this lesson deliberately
+         does NOT recompile) keep working unchanged.
+     (2) the new procedure's EXPORT SYMBOL is appended to the END of
+         the PGMLVL(*CURRENT) list - GET/RESERVE/RELEASE keep their
+         original relative order, PINGZAISRV is added after them.
+
+   EXPORT SYMBOL('PINGZAISRV'): upper case, no quotes-preserving-case
+   trick - matches this file's own established default-casing
+   convention (zaisrv.rpgle has no EXTPROC clause on get/reserve/
+   release, so RPG exports them upper-case by default; pingZaisrv
+   follows the same rule, per solutions/07-05/zaisrv.bnd's own citation
+   of ilerpgref75.txt lines 31322-31324/31334-31336/31381-31383).
+
+   STATUS: this file's own claims (successful CRTSRVPGM with this
+   4-symbol *CURRENT + 3-symbol *PRV split, and DRIVER continuing to
+   run unchanged against the *PRV block) are confirmed separately -
+   see docs/probes.md's part08-08-* sections.
+
+   BUILD RECIPE (same two-step path as solutions/07-05/zaisrv.bnd -
+   CRTBNDRPG cannot produce a *SRVPGM):
+     CRTRPGMOD MODULE(<lib>/ZAISRV) SRCFILE(<lib>/QRPGLESRC)
+       SRCMBR(ZAISRV)
+     CRTSRVPGM SRVPGM(<lib>/ZAISRV) MODULE(<lib>/ZAISRV)
+       EXPORT(*SRCFILE) SRCFILE(<lib>/QSRVSRC) SRCMBR(ZAISRV)
+       ACTGRP(*CALLER)
+   <lib> is a placeholder for the learner's own library - no real
+   PUB400 library or user name appears in this file. */
+
+STRPGMEXP PGMLVL(*CURRENT)
+   EXPORT SYMBOL('GET')
+   EXPORT SYMBOL('RESERVE')
+   EXPORT SYMBOL('RELEASE')
+   EXPORT SYMBOL('PINGZAISRV')
+ENDPGMEXP
+
+STRPGMEXP PGMLVL(*PRV)
+   EXPORT SYMBOL('GET')
+   EXPORT SYMBOL('RESERVE')
+   EXPORT SYMBOL('RELEASE')
+ENDPGMEXP
