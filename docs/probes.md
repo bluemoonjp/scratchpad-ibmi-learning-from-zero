@@ -3151,6 +3151,18 @@ ON &LIB.TOKUIM TO <学習者のユーザー> WITH GRANT OPTION ;
 
 **この接続の自作ミス(致命的ではない、次回で修正)**: `LVLIDTEST`ステップの手書きDDL案は`TOKCD FOR COLUMN TOKCD CHAR(6)`のように`FOR COLUMN`句を型宣言の**前**に書いてしまい、`SQL0612`(列名の重複)で3パターンとも失敗した。正しい構文は`TOKCD CHAR(6) FOR COLUMN TOKCD`(型宣言の**後**)。**ただしGENERATE_SQLが実際に動いたことで、この手書きDDL案自体がもう不要になった**——次回接続では、この自作ミスを直した版を試す代わりに、上のIBM生成DDLをそのまま`QTEMP`に実行し、`&LIB/TOKUIM`とのレベルID一致を直接確認する。
 
+## 第8部08-06: `part08-06-lvlid-confirm`——GENERATE_SQL生成DDLとDDS原本のレベルID完全一致をCONFIRMED SUCCESS(確認日2026-09-29)
+
+`part08-06-lvlid-and-gensql`で得た`TOKUIM`の生成済みDDL(`CREATE TABLE`部分のみ、`LABEL ON`/`GRANT`は含めず)を、実際に`QTEMP.TOKUIM`として実行し、`&LIB/TOKUIM`(本物のDDS原本)と様式レベルIDを直接比較した。
+
+- **`QTEMP.TOKUIM`(GENERATE_SQLの生成DDLから作成): `3B1ECB3196772`**
+- **`&LIB/TOKUIM`(DDS原本): `3B1ECB3196772`**
+- **完全一致。08-06の中核概念(2)「様式レベルIDは形が変わったかどうかの機械判定」を、実際に「GENERATE_SQLで生成したSQL表が、DDS原本と同じ様式として認識される」という具体例で、実機の最初から最後まで確認できた。**
+
+副次的な確認: `DSPFFD`のフィールド一覧も、型(`CHAR`×4・`ZONED 8,0`)・バッファー長・位置まで`TOKUIM`原本と完全に一致した。`TEXT`(見出し)は今回`LABEL ON TABLE`を実行しなかったため空欄のままだったが、これは様式レベルIDには影響しない(IBM文書どおり、レベルIDの算出対象にTEXT記述は含まれない)。
+
+**これで08-06の実機的な裏付けがすべて揃った**: `GENERATE_SQL`の実引数(37個、確認済み)、正しい`DATABASE_OBJECT_TYPE`の値(`'TABLE'`、`'*FILE'`は無効)、`TOKUIM`への実際の生成DDL(確認済み)、そのDDLを実行した結果が原本とレベルID完全一致すること(確認済み)。唯一の限界は、DDSの`K TOKCD`(キー付きアクセス経路)が生成DDLには反映されない(`SQL1506`警告で無視される)ことで、08-06本文はこの点を「レベルID一致=そのままキー・アクセスの代替になる、ではない」という限界として明記する。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
