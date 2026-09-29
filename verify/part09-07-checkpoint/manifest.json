@@ -1,0 +1,326 @@
+{
+  "batch": "part09-07-checkpoint",
+  "sshTimeoutMs": 300000,
+  "description": "Part 9 lesson 09-07 checkpoint. Creates the single order-summary routine ORDER_SUMMARY_JSON (SPECIFIC ORDSUMJSN, LANGUAGE SQL scalar function on the base tables, source solutions/09-07/09-07-summary.sql loaded into member QSQLSRC/SUMMARY and run with RUNSQLSTM from inside the wrapper job). Records what the routine really created (QSYS2.SYSROUTINES row, OBJECT_STATISTICS by name and by creation time) to settle the TXCKM object name and type. Calls it in-job (qualified, unqualified through the library list, N = 3, 1, 20, 0) into VFYSUM and parses the JSON back with JSON_TABLE in collect (expected with load_v1 data: orders J00008, J00007, J00006 for N = 3, lowStockCount 2). Seeds TXCKM rows for lesson 09-07 (row 1 is inserted from the catalog so it reports the real type; row 2 ZAIKOM *FILE; row 3 is the *SRVPGM guess) and runs TXCHECK through the *CMD route (TXCHKRUN helper from part06-15) once, then a second time in the same job on purpose (08-08 found CPF4174 on the second call). After the wrapper: a fresh-job qualified call through db2 (what a learner sees in ACS), then DROP SPECIFIC FUNCTION and removal of the 09-07 TXCKM rows in sh(after) steps. TXCKM, TXCHECK, TXCHKRUN are shared state and are never deleted; only rows with LESSON 09-07 are touched. The private library is never written.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../tools/qddssrc/txckm.pf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "TXCKM"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txcheck.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCHECK"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qcmdsrc/txcheck.cmd",
+      "remoteSrcFile": "QCMDSRC",
+      "member": "TXCHECK",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../part06-15-checkpoint/src/txchkrun.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCHKRUN"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/09-07/09-07-summary.sql",
+      "remoteSrcFile": "QSQLSRC",
+      "member": "SUMMARY",
+      "ensureSrcFile": {
+        "recordLength": 160
+      }
+    },
+    {
+      "type": "cl",
+      "label": "CURSET",
+      "cmd": "CHGCURLIB CURLIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKCUR",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYCUR (TAG VARCHAR(40), ORD INT, LIB VARCHAR(20), TYPE VARCHAR(10))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "REC0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYCUR SELECT ''A0-AFTER-CHGCURLIB'', ORDINAL_POSITION, SCHEMA_NAME, TYPE FROM QSYS2.LIBRARY_LIST_INFO') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRECLEAN",
+      "cmd": "RUNSQL SQL('DROP SPECIFIC FUNCTION &LIB/ORDSUMJSN') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCKM",
+      "cmd": "CHKOBJ OBJ(&LIB/TXCKM) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/TXCKM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TXCKM))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHECK",
+      "cmd": "CHKOBJ OBJ(&LIB/TXCHECK) OBJTYPE(*PGM)\nMONMSG MSGID(CPF9801) EXEC(CRTCLPGM PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHECK))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHKCMD",
+      "cmd": "DLTCMD CMD(&LIB/TXCHECK)\nMONMSG MSGID(CPF0000)\nCRTCMD CMD(&LIB/TXCHECK) PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXCHECK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHKRUN",
+      "cmd": "CRTCLPGM PGM(&LIB/TXCHKRUN) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHKRUN) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKSUM",
+      "cmd": "RUNSQLSTM SRCFILE(&LIB/QSQLSRC) SRCMBR(SUMMARY) COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(30)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CATA",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYCAT AS (SELECT * FROM QSYS2.SYSROUTINES WHERE SPECIFIC_SCHEMA = ''&LIB'' AND ROUTINE_NAME = ''ORDER_SUMMARY_JSON'') WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CATB",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYOBJ AS (SELECT OBJNAME, OBJTYPE, OBJATTRIBUTE, OBJTEXT FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*ALL'')) X WHERE OBJNAME LIKE ''ORDSUM%'' OR OBJNAME LIKE ''ORDER_SUM%'') WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CATC",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYOBJN AS (SELECT OBJNAME, OBJTYPE, OBJATTRIBUTE, OBJCREATED FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*ALL'')) X WHERE OBJCREATED > CURRENT TIMESTAMP - 30 MINUTES) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKSUM2",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYSUM (TAG VARCHAR(20), J VARCHAR(4000) CCSID 1208)') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALLQ3",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYSUM SELECT ''Q3-QUAL'', &LIB/ORDER_SUMMARY_JSON(3) FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALLU3",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYSUM SELECT ''Q3-UNQUAL'', ORDER_SUMMARY_JSON(3) FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALLQ1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYSUM SELECT ''Q1'', &LIB/ORDER_SUMMARY_JSON(1) FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALLQ20",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYSUM SELECT ''Q20'', &LIB/ORDER_SUMMARY_JSON(20) FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALLQ0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYSUM SELECT ''Q0'', &LIB/ORDER_SUMMARY_JSON(0) FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEEDDEL",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/TXCKM WHERE LESSON = ''09-07''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEED1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM SELECT ''09-07'', 1, OBJNAME, OBJTYPE, '' '', ''ORDSUMJSN routine object exists'' FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*ALL'')) X WHERE OBJNAME = ''ORDSUMJSN'' FETCH FIRST 1 ROW ONLY') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEED2",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''09-07'', 2, ''ZAIKOM'', ''*FILE'', '' '', ''ZAIKOM base table exists'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEED3",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''09-07'', 3, ''ORDSUMJSN'', ''*SRVPGM'', '' '', ''ORDSUMJSN is a service program (guess)'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TXCHK1",
+      "cmd": "CALL PGM(&LIB/TXCHKRUN) PARM('09-07' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TXCHK2",
+      "cmd": "CALL PGM(&LIB/TXCHKRUN) PARM('09-07' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "sh",
+      "label": "FRESHCALL",
+      "cmd": "db2 \"SELECT &LIB.ORDER_SUMMARY_JSON(2) AS J FROM SYSIBM.SYSDUMMY1\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "OBJBEFORE",
+      "cmd": "db2 \"SELECT OBJNAME, OBJTYPE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*ALL')) X WHERE OBJNAME = 'ORDSUMJSN'\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DROPF",
+      "cmd": "system \"RUNSQL SQL('DROP SPECIFIC FUNCTION &LIB/ORDSUMJSN') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "CLNSEED",
+      "cmd": "system \"RUNSQL SQL('DELETE FROM &LIB/TXCKM WHERE LESSON = ''09-07''') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "GONE",
+      "cmd": "db2 \"SELECT COUNT(*) AS ROUTINES_LEFT FROM QSYS2.SYSROUTINES WHERE SPECIFIC_SCHEMA = '&LIB' AND ROUTINE_NAME = 'ORDER_SUMMARY_JSON'\" 2>&1; db2 \"SELECT OBJNAME, OBJTYPE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*ALL')) X WHERE OBJNAME = 'ORDSUMJSN'\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, ORD, LIB, TYPE FROM &LIB.VFYCUR ORDER BY TAG, ORD"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT ROUTINE_SCHEMA, ROUTINE_NAME, SPECIFIC_NAME, ROUTINE_TYPE, EXTERNAL_NAME FROM &LIB.VFYCAT"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYCAT"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJATTRIBUTE, OBJTEXT FROM &LIB.VFYOBJ ORDER BY OBJNAME, OBJTYPE"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJATTRIBUTE, OBJCREATED FROM &LIB.VFYOBJN ORDER BY OBJCREATED, OBJNAME"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, J FROM &LIB.VFYSUM ORDER BY TAG"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT S.TAG, T.LOW_CNT, T.ORD_NO, T.ORD_DATE, T.LINE_CNT, T.AMT FROM &LIB.VFYSUM S, JSON_TABLE(S.J, 'lax $' COLUMNS(LOW_CNT INT PATH 'lax $.lowStockCount', NESTED PATH 'lax $.latestOrders[*]' COLUMNS(ORD_NO CHAR(6) PATH 'lax $.orderNo', ORD_DATE INT PATH 'lax $.orderDate', LINE_CNT INT PATH 'lax $.lineCount', AMT DECIMAL(11, 2) PATH 'lax $.amount'))) AS T WHERE S.TAG = 'Q3-QUAL' ORDER BY T.ORD_NO DESC"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT S.TAG, COUNT(T.ORD_NO) AS N_ORDERS, MAX(T.LOW_CNT) AS LOW_CNT FROM &LIB.VFYSUM S, JSON_TABLE(S.J, 'lax $' COLUMNS(LOW_CNT INT PATH 'lax $.lowStockCount', NESTED PATH 'lax $.latestOrders[*]' COLUMNS(ORD_NO CHAR(6) PATH 'lax $.orderNo'))) AS T GROUP BY S.TAG ORDER BY S.TAG"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COUNT(*) AS TXCKM_0907_LEFT FROM &LIB.TXCKM WHERE LESSON = '09-07'"
+    }
+  ]
+}

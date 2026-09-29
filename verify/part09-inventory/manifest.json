@@ -1,0 +1,18 @@
+{
+  "batch": "part09-inventory",
+  "library2": "*B",
+  "description": "Read-only inventory before the Part 9 (#10) and Issue #27 probes: which of TK0100/TK0100D/LASTCD/SETENV/JUCSRV/ZAISRV/JUCHUM/JUCHUD/ZAIKOM/SHOHIM/TOKUIM/TANTOM exist in &LIB and &LIB2, the connection's library list and IBM i level, whether curl exists in PASE (P08 for 09-05), and a few 1-line SQL feature checks (JSON_OBJECT/JSON_TABLE, IFS_WRITE_UTF8, HTTP_GET, SEND_DATA_QUEUE) using catalog lookups only. No object is created, changed or deleted.",
+  "steps": [
+    { "type": "collect", "kind": "sql", "sql": "SELECT '&LIB' AS LIB, OBJNAME, OBJTYPE, OBJATTRIBUTE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*ALL')) X WHERE OBJNAME IN ('TK0100','TK0100D','LASTCD','SETENV','JUCSRV','ZAISRV','JUCHUM','JUCHUD','ZAIKOM','SHOHIM','TOKUIM','TANTOM','JUCHUMV','TXSETUP','TXCHECK','ZAISRVBD') ORDER BY OBJNAME, OBJTYPE" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT '&LIB2' AS LIB, OBJNAME, OBJTYPE, OBJATTRIBUTE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB2', '*ALL')) X WHERE OBJNAME IN ('TK0100','TK0100D','LASTCD','SETENV','JUCSRV','ZAISRV','JUCHUM','JUCHUD','ZAIKOM','SHOHIM','TOKUIM','TANTOM','JUCHUMV','TXSETUP','TXCHECK','ZAISRVBD') ORDER BY OBJNAME, OBJTYPE" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT '&LIB' AS LIB, COUNT(*) AS N FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*ALL')) X" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT SYSTEM_SCHEMA_NAME, SYSTEM_TABLE_NAME, FILE_TYPE FROM QSYS2.SYSTABLES WHERE SYSTEM_TABLE_SCHEMA IN ('&LIB','&LIB2') AND TABLE_TYPE = 'P' FETCH FIRST 60 ROWS ONLY" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT ORDINAL_POSITION, SCHEMA_NAME, TYPE FROM QSYS2.LIBRARY_LIST_INFO ORDER BY ORDINAL_POSITION" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT OS_VERSION, OS_RELEASE FROM SYSIBMADM.ENV_SYS_INFO" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT ROUTINE_SCHEMA, ROUTINE_NAME, ROUTINE_TYPE FROM QSYS2.SYSROUTINES WHERE ROUTINE_SCHEMA IN ('QSYS2','SYSTOOLS') AND ROUTINE_NAME IN ('HTTP_GET','HTTP_POST','IFS_WRITE_UTF8','IFS_WRITE','SEND_DATA_QUEUE','RECEIVE_DATA_QUEUE','SEND_DATA_QUEUE_UTF8','SPOOLED_FILE_DATA','JSON_TABLE') ORDER BY 1,2,3" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT JSON_OBJECT('a':1, 'b':'x') AS J FROM SYSIBM.SYSDUMMY1" },
+    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM JSON_TABLE('{\"a\":[{\"k\":1},{\"k\":2}]}', 'lax $.a[*]' COLUMNS(K INT PATH 'lax $.k')) AS T" },
+    { "type": "sh", "label": "CURL", "cmd": "ls -l /QOpenSys/pkgs/bin/curl /usr/bin/curl 2>&1; which curl 2>&1; echo PATH=$PATH" },
+    { "type": "sh", "label": "JOBCCSID", "cmd": "system \"DSPJOB OPTION(*DFNA) OUTPUT(*PRINT)\" 2>&1 | head -3; echo LANG=$LANG; locale 2>&1 | head -3" }
+  ]
+}
