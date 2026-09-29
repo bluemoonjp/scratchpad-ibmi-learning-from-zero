@@ -44,7 +44,6 @@
   - `CREATE FUNCTION`の指定句: `RETURNS NULL ON NULL INPUT`・`NOT FENCED`・`DISALLOW PARALLEL`・`NO SQL`・`NOT DETERMINISTIC`(コピーして使います)。
   - `SIGNAL SQLSTATE`(二重登録を断る)、`SET OPTION COMMIT = *NONE`、`CALL`、`DROP SPECIFIC`(片付け)、`db2`からの呼び出し、`RUNSQL ... NAMING(*SQL)`。
   - `CREATE PROCEDURE ... LANGUAGE SQL`による受注登録(`VARCHAR(n) CCSID 1208`の入力を`JSON_TABLE ... NESTED PATH`で分解。09-02の復習です)。
-  - 下の「読解用の囲み」: RPGで表関数や結果セットのルーチンを自分で書く場合の`PARAMETER STYLE DB2SQL`・`ACTGRP(*CALLER)`・`CLOSQLCSR`。
 
 ## 説明
 
@@ -109,7 +108,7 @@ CREATE OR REPLACE FUNCTION GET_CUST_NAME (CUST_CODE CHAR(6))
 
 `EXTERNAL NAME`にライブラリーを書かずに`'JUCSRV(getCustName)'`と書くと、どうなるでしょうか。IBM Docsには、ライブラリーを省略した例がありません。そこで実機で試しました(CLプログラムの中の`RUNSQL`と、`RUNSQLSTM`)。結果は次のとおりです。
 
-- **ライブラリーを書いても('ライブラリー/JUCSRV(getCustName)')、書かなくても、作成でき、どちらも呼び出せました。** このレッスンのスクリプトは、書かない形です(案A)。
+- **ライブラリーを書いても('ライブラリー/JUCSRV(getCustName)')、書かなくても、作成でき、どちらも呼び出せました。** このレッスンのスクリプトは、書かない形です。
 - ただし、書かなくても**「呼び出すたびにライブラリー・リストで探す」わけではありませんでした**。`QSYS2.SYSROUTINES`の`EXTERNAL_NAME`列を見ると、`RUNSQLSTM`(SQL命名・`DFTRDBCOL`指定)で作ったものは、`ライブラリー/JUCSRVU(getCustName)`のように、**作成した時点で、見つかったライブラリーの名前が付いた形**で記録されていました。一方、`RUNSQL`(システム命名)で作ったものは`*LIBL/JUCSRVU(getCustName)`と記録されました。どちらの記録も、呼び出せました。
 - 作成時のライブラリーが、ライブラリー・リストで見つかったのか`DFTRDBCOL`で見つかったのかは、切り分けていません。この教材の検証では、どちらにも同じライブラリーが入っていました(未検証(2026-09-29時点))。
 
@@ -218,38 +217,17 @@ END;
 
 ### 読解用の囲み: RPGで表関数や結果セットのルーチンを書くなら
 
-このレッスンは、表関数と結果セットのプロシージャーを`LANGUAGE SQL`で作りました。RPGで書く選択肢もあります。読めるように、要点を整理します(**手を動かしません。新出に数えません**)。
+このレッスンは、表関数と結果セットのプロシージャーを`LANGUAGE SQL`で作りました。RPGで書く場合の要点だけ挙げます(**手を動かしません。新出に数えません**)。
 
-**1. 表関数の`PARAMETER STYLE`は、`GENERAL`ではなく`DB2SQL`(または`LANGUAGE SQL`)が正規の形です。** これは「わなを避けた」ということではなく、IBM Docsにある**正規の形(`DB2SQL`、または`LANGUAGE SQL`)に従った**ということです。
-
-- IBM Docsの表関数の実例は、外部の`LANGUAGE C`版(`PARAMETER STYLE DB2SQL`)と、`LANGUAGE SQL`版(`PARAMETER STYLE`を書かない)だけです。`PARAMETER STYLE GENERAL`の表関数の実例は、見つかりませんでした。RPGで書いた表関数の実例も見つかりませんでした(以上、IBM Docs『Db2 for i SQLプログラミング』の範囲で確認。実機未確認)。
-- `PARAMETER STYLE DB2SQL`の表関数は、呼び出しの種類(`OPEN`・`FETCH`・`CLOSE`)を引数で受け取って処理を分け、終了時に`SQLSTATE '02000'`を返す形になります。
-- `GENERAL WITH NULLS`はスカラー関数専用と、IBM Docsに明記されています(実機未確認)。裸の`GENERAL`について同じ制限を書いた一文は見つかりませんでしたが、スカラー関数・単純なプロシージャーには使える(この教材の3つの登録は、実際に動いた)一方、表関数の実例は上のとおり見つからなかった、というのが確認できた範囲です。
-
-**2. 結果セットを返す外部(RPG)プロシージャーの実例は、IBM Docs『Db2 for i SQLプログラミング』の結果セットの説明にあります。** 次のような形です(IBM Docsの実例の要点。この教材では実行していません)。
-
-```text
-CREATE PROCEDURE prod.rtnclient () LANGUAGE RPGLE
-              EXTERNAL NAME prod.rtnclient GENERAL;
-  (RPG側の埋め込みSQLで)
-  DECLARE C2 CURSOR WITH RETURN TO CLIENT FOR SELECT LSTNAM FROM QIWS.QCUSTCDT
-  OPEN C2
-  SET RESULT SETS FOR RETURN TO CLIENT ARRAY :RESULT FOR :X ROWS, CURSOR C2
-```
-
-`WITH RETURN TO CLIENT`は、入れ子のプロシージャーの中から、一番外の呼び出し元(クライアント)へ結果セットを返す指定です。この実例そのものは、`ACTGRP(*CALLER)`や`CLOSQLCSR`には触れていません。
-
-**3. `ACTGRP(*CALLER)`と`CLOSQLCSR`は、IBM Docsに直接の記載が見つからなかった点です。** 「結果セットを返す外部プロシージャーは`ACTGRP(*CALLER)`にする」「`CLOSQLCSR(*ENDMOD)`だと、`WITH RETURN`のカーソルが早く閉じる」という2点は、この教材の設計時にあった指摘で、IBM Docs『Db2 for i SQLプログラミング』には、そのとおりの直接記載は見つかりませんでした。実機でも確かめていません(未検証(2026-09-29時点))。参考として、次のことは確認できています。
-
-- IBM Docsの外部関数用サービス・プログラムの作成例は、いずれも`ACTGRP(*CALLER)`を付けています(外部関数の作成例の節)。`JUCSRV`・`ZAISRV`も、`ACTGRP(*CALLER)`で作っています(07-05)。
-- `CREATE PROCEDURE`・`CREATE FUNCTION`の中の`SET OPTION`句そのものは、`LANGUAGE SQL`のルーチンにもあります(`DBGVIEW`の実例)。ただし、`CLOSQLCSR`が`SET OPTION`で指定できるという直接の記載は見つかりませんでした(06-13の`SET OPTION CLOSQLCSR=*ENDMOD`との関係は、状況証拠だけです)。
-- カーソルが自動的に閉じる条件は、IBM Docsの同じ本のカーソルの説明にあります。その中に、「最初のSQLプログラムがコールスタックから終わり、プリコンパイル時に`CLOSQLCSR(*ENDJOB)`も`(*ENDACTGRP)`も指定されていない場合」があります。`CLOSQLCSR`の話の間接的な背景ですが、`*ENDMOD`と`WITH RETURN`のカーソルの関係についての直接の記載ではありません(結果セットが自動的に閉じられる、という趣旨の注記も、別の箇所にあります)。
+- 表関数は`LANGUAGE SQL`で作るのが素直です。RPGなど外部言語で書く場合の正規の形は`PARAMETER STYLE DB2SQL`で、呼び出しの種類(`OPEN`・`FETCH`・`CLOSE`)を引数で受け取って処理を分け、終了時に`SQLSTATE '02000'`を返します(IBM Docsの`LANGUAGE C`の実例による。実機未確認)。
+- `GENERAL WITH NULLS`はスカラー関数専用と、IBM Docsに明記されています(実機未確認)。この教材の3つの`GENERAL`の登録はスカラー関数と単純な手続きで、実際に動きました。
+- RPGで結果セットを返す場合は、埋め込みSQLで`WITH RETURN TO CLIENT`のカーソルを宣言します(IBM Docsに実例があります。この教材では実行していません)。
 
 ## 実演
 
 **警告(共有データ)**: 手順10〜12と演習(b)は、あなたの`JUCHUM`・`JUCHUD`に、受注番号`J09901`〜`J09903`の行を書き込みます。この2つの表は09-07も読みます。`J09901`の受注日は`20260930`で、`J00008`(`20260912`)より新しいので、行が残ったままだと、09-07の`ORDER_SUMMARY_JSON`の期待値(最新の受注が`J00008`・`J00007`)が変わります。途中でやめた場合も、片付けの手順1は必ず実行してください。表を初期状態に戻す`TXRESET`の、第9部での扱いは未検証(2026-09-29時点)です([第9部の扉](index.md)参照)。
 
-前提: `<自分のユーザー名>1`に`JUCSRV`・`ZAISRV`・`JUCHUM`・`JUCHUD`・`ZAIKOM`・`TOKUIM`・`SHOHIM`があること(第8部の作り直し後)。SSHの`$HOME/ibmi-kyozai`が最新であること(`git pull`)。`(SSH)`はSSH、`(5250)`は5250の操作です。**呼び出しの道具を使い分けます。** `LANGUAGE RPGLE`の関数を呼ぶ`RUNSQL`と`CHKOBJ`は、検証では、CLプログラムの中からバッチ・ジョブ(SSHで起動)で実行しました。5250の対話式ジョブで同じコマンドを打つ形は、実機では確かめていません(未検証(2026-09-29時点)。対話式ジョブのライブラリー・リストや`CPD000D`の出方も含みます)。`db2`や、ACSでの呼び出しも、実機では確かめていません(未検証(2026-09-29時点))。`LANGUAGE SQL`のルーチンは、`db2`で確かめた形で呼びます。
+前提: `<自分のユーザー名>1`に`JUCSRV`・`ZAISRV`・`JUCHUM`・`JUCHUD`・`ZAIKOM`・`TOKUIM`・`SHOHIM`があること(第8部の作り直し後)。SSHの`$HOME/ibmi-kyozai`が最新であること(`git pull`)。`(SSH)`はSSH、`(5250)`は5250の操作です。(SSH)の手順は、SSH接続後に`qsh`を入力して、qshの中で実行します(`db2`はqshのコマンドです)。**呼び出しの道具を使い分けます。** `LANGUAGE RPGLE`の関数を呼ぶ`RUNSQL`と`CHKOBJ`は、検証では、CLプログラムの中からバッチ・ジョブ(SSHで起動)で実行しました。5250の対話式ジョブで同じコマンドを打つ形は、実機では確かめていません(未検証(2026-09-29時点)。対話式ジョブのライブラリー・リストや`CPD000D`の出方も含みます)。`db2`や、ACSでの呼び出しも、実機では確かめていません(未検証(2026-09-29時点))。`LANGUAGE SQL`のルーチンは、`db2`で確かめた形で呼びます。
 
 1. **(SSH) 最初の件数を控えます。**
 
@@ -542,12 +520,7 @@ CREATE PROCEDURE prod.rtnclient () LANGUAGE RPGLE
 
 <details><summary>答え</summary>
 
-1. 次のとおりです。`LOW_STOCK`は表関数なので、通常の表と同じように`WHERE`で絞れます(この文そのものは、実機では実行していません。手順7の形の`WHERE`つきです。未検証(2026-09-29時点))。期待される結果は、手順7の`P00005`の1行(`USB CABLE`、在庫12、発注点50)です。
-
-   ```sh
-   db2 "SELECT * FROM TABLE(<自分のユーザー名>1.LOW_STOCK()) X WHERE PRODUCT_CODE = 'P00005'"
-   ```
-
+1. `LOW_STOCK`は表関数なので、通常の表と同じように`WHERE`で絞れます(手順7の形の`WHERE`つきです。この文そのものは、実機では実行していません。未検証(2026-09-29時点))。文は`solutions/09-04/README.txt`にあります。期待される結果は、手順7の`P00005`の1行(`USB CABLE`、在庫12、発注点50)です。
 2. 手順5の5行目の`GET_STOCK_QTY(''P00002'')`を`''P00005''`に変えます。期待される値は`12`です(手順7の`P00005`の在庫。`GET_STOCK_QTY('P00005')`の実行そのものは未実施。未検証(2026-09-29時点))。`GET_STOCK_QTY('P00002')`は`3`(実機確認済み)です。
 3. 模範は`solutions/09-04/lowstockb.sql`です(**実機では実行していません。未検証(2026-09-29時点)**)。`RETURNS TABLE`の型は、`LOW_STOCK`と揃えています。`RUNSQLSTM`で作るときは、手順2と同じコマンドの`SRCSTMF`を、自分のファイルに変えます。
 
@@ -614,7 +587,6 @@ CREATE PROCEDURE prod.rtnclient () LANGUAGE RPGLE
 - [ ] `COMMIT(*NONE)`のとき、明細が失敗するとヘッダーだけが残ること(`"lines":null`)を説明できる。
 - [ ] JSON文書を、1つのテキスト・リテラルで渡す理由(`RUNSQL`の中でリテラルの数値が文字列になる現象。原因は未確認)を説明できる。
 - [ ] 「先に全部`CREATE`、それから呼ぶ」理由(排他ロック。IBM Docsの記載。呼ぶと活動化されるという結びつきは推測)と、第8部の作り直しの後に行う順序の依存を説明できる。
-- [ ] 読解用の囲みの3点(表関数は`DB2SQL`か`LANGUAGE SQL`が正規、RPGの結果セットの実例がIBM Docsにある、`ACTGRP(*CALLER)`・`CLOSQLCSR`はIBM Docsに直接の記載がなく実機未確認)を言える。
 
 ## 片付け
 
@@ -692,11 +664,11 @@ CREATE PROCEDURE prod.rtnclient () LANGUAGE RPGLE
 
 - 新しいメッセージ ID: `SQL0455`・`SQL0438`・`SQL7909`・`CPF426A`(このレッスンの意味で)・`CPC5D0B`・`CPC5D07`。
 - 決まり: 綴りは大文字小文字まで一致、`SPECIFIC`名は10文字以内の有効なシステム名(同名のオブジェクトが無いこと)、先に全部`CREATE`、JSONは1つのテキスト・リテラル、`db2`では`SPECIFIC`名も修飾。
-- 次のレッスン(09-05 外部API: アダプターとモック。まだ書かれていないので、リンクは付けていません)では、外部のAPIを呼ぶアダプター`JUHTTPSV`を作り、モックと実通信を切り替えます。ここで作った`JUCHU_INQUIRY_JSON`・`LOW_STOCK`は、09-07(09-07 チェックポイント)の受注サマリーAPIの部品になります。データ待ち行列は09-06で扱います。
+- 次のレッスン([09-05 外部API: アダプターとモック](09-05-external-api-adapter-mock.md))では、外部のAPIを呼ぶアダプター`JUHTTPSV`を作り、モックと実通信を切り替えます。ここで作った`JUCHU_INQUIRY_JSON`・`LOW_STOCK`は、09-07([09-07 チェックポイント](09-07-checkpoint-order-summary-api.md))の受注サマリーAPIの部品になります。データ待ち行列は[09-06](09-06-data-queues-async.md)で扱います。
 
 ## 実機メモ
 
-- **確認日: 2026-09-29。バッチ`part09-04-sql-routines`(3回の接続: 16:49・17:05・18:05)、PUB400、IBM i 7.5(V7R5M0)。** 検証は、著者の検証用ライブラリーで行いました。学習者の`<自分のユーザー名>1`そのものでの再現は、個別には確認していません(未検証(2026-09-29時点))。
+- **確認日: 2026-09-29。バッチ`part09-04-sql-routines`(3回の接続: 16:49・17:05・18:05)、PUB400、IBM i 7.5(V7R5M0)。** 検証は、著者の検証用ライブラリーで行いました(実機の記録は[../probes.md](../probes.md)の「第9部 09-04」の節にあります)。学習者の`<自分のユーザー名>1`そのものでの再現は、個別には確認していません(未検証(2026-09-29時点))。
   - **`JUCSRV`・`ZAISRV`の代わりに、複製(`CRTDUPOBJ`で作った`JUCSRVU`・`ZAISRVU`)を指して検証しました。** スクリプトの`EXTERNAL NAME`を、`JUCSRV(`から`JUCSRVU(`に置き換えた版(内容はコメント以外同じ)を実行し、最後に複製を削除しました。本物の`JUCSRV`への登録は、ライブラリーを書いた別名の関数(`getCustName`・`countCustOrders`・`GET`)を作って呼ぶ形だけ、実機で確認しています。**レッスンのスクリプトそのもの(本物の`JUCSRV`・`ZAISRV`を無修飾で指す形)を、そのまま実行した結果ではありません(未検証(2026-09-29時点))。**
   - 1回目(16:49)は、検証用の呼び出しの書き方の誤り(`db2`の`SPECIFIC`名が無修飾で`SQL0455`、`RUNSQL`のシステム命名で`SQL0206`)が多く出ました。2回目(17:05)と3回目(18:05)で修正して確認しました。
 - **V2で確認できたこと**:
@@ -721,6 +693,6 @@ CREATE PROCEDURE prod.rtnclient () LANGUAGE RPGLE
   - 手で書いた・`git clone`したファイルのタグ(273以外のとき)と、演習(a)の3のヒアドキュメントでのファイル作成。
   - `LOW_STOCK_BELOW`(演習(a)の3。`solutions/09-04/lowstockb.sql`)、`P00005`への絞り込みと`GET_STOCK_QTY('P00005')`の実行(演習(a)の1・2)、`J09902`の読み戻しの全文と単価を書かない文書(演習(b))、外部プロシージャーの登録の実体(演習(c))。
   - `DLTF`(作業表)・`WRKSPLF`での削除・`OBJECT_STATISTICS`の`OBJNAME`絞り込み・`SYSROUTINES`の`ROUTINE_SCHEMA`絞り込みの、学習者の環境での結果。
-  - 読解用の囲みの、`ACTGRP(*CALLER)`・`CLOSQLCSR`に関する2つの指摘(IBM Docsに直接の記載なし)と、RPGの結果セットの実例(IBM Docsの実例で、実行していない)。
+  - 読解用の囲みの、RPGの結果セットの実例(IBM Docsの実例で、実行していない)と、`GENERAL WITH NULLS`の制限(IBM Docsの記載)。
   - 空の`lines`配列(明細0件)の文書を渡したときの動作。
   - 容量(実体のオブジェクトの大きさ)。
