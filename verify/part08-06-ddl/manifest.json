@@ -1,0 +1,18 @@
+{
+  "batch": "part08-06-ddl",
+  "description": "1st connection, EXPLORATORY. 08-06 (DDSからSQL DDLへ) needs GENERATE_SQL and DSPFD TYPE(*RCDFMT) level-ID comparison - design doc's own §9 states GENERATE_SQL/RCDFMT have ZERO real primary-source documentation anywhere in work/design/refs/ (only permission-matrix passing mentions), so this manifest uses GENERATE_SQL's well-known (general IBM i knowledge, NOT primary-source-confirmed in this repo) named-parameter signature as a first candidate: DATABASE_OBJECT_NAME/DATABASE_OBJECT_LIBRARY_NAME/DATABASE_SOURCE_FILE_NAME/DATABASE_OBJECT_TYPE/DATABASE_FILE_TYPE. Per this part's own established design principle (§0.3) and verify/README.md's own newly-documented trap ('collect always runs last, sh gets no ADDLIBLE'), this lesson's whole POINT (B2-17: QTEMP verification is job-scoped) requires generating the SQL, running it to recreate TOKUIM as an SQL table IN QTEMP, and comparing DSPFD TYPE(*RCDFMT) level IDs between the ORIGINAL &LIB/TOKUIM and the QTEMP-recreated one - ALL inside ONE cl-type step (one compiled CL wrapper, one job), never split across steps or delegated to a collect step. GENSQL below is intentionally minimal (just call GENERATE_SQL and inspect what it actually produces via the compile-listing-style captured output) before attempting the full recreate+compare in a later connection - the exact form of GENERATE_SQL's own output (a source member? a full CREATE TABLE text?) is unconfirmed, so this connection's job is to find out, not to build the whole lesson mechanism blind.",
+  "steps": [
+    {
+      "type": "cl",
+      "label": "GENSQL",
+      "cmd": "RUNSQL SQL('CALL QSYS2.GENERATE_SQL(DATABASE_OBJECT_NAME => ''TOKUIM'', DATABASE_OBJECT_LIBRARY_NAME => ''&LIB'', DATABASE_SOURCE_FILE_NAME => ''QTEMP/QSQLTEMP'', DATABASE_OBJECT_TYPE => ''*FILE'', DATABASE_FILE_TYPE => ''*TABLE'', CREATE_OR_REPLACE_OPTION => ''1'')') COMMIT(*NONE)\nDSPFD FILE(QTEMP/QSQLTEMP) TYPE(*MBRLIST) OUTPUT(*PRINT)",
+      "monmsg": ["CPF0000", "SQL0000"]
+    },
+    {
+      "type": "cl",
+      "label": "ORIGLVLID",
+      "cmd": "DSPFD FILE(&LIB/TOKUIM) TYPE(*RCDFMT) OUTPUT(*PRINT)",
+      "monmsg": ["CPF0000"]
+    }
+  ]
+}
