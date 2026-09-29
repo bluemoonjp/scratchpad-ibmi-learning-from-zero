@@ -1,6 +1,6 @@
 {
   "batch": "part08-01-git-srcstmf",
-  "description": "6th connection. 5th connection's dynamically-generated CL helper (GENBUILDER, combining ADDLIBLE+DLTMOD+CRTRPGMOD+CRTSRVPGM in one job to fix RNF2120) itself failed to compile: CPIA083 'Stream file copied to object with truncated records', then CPD0014/CPD0013 ('A matching apostrophe/parenthesis not found') on the CRTRPGMOD/CRTSRVPGM lines. Root cause: this repo's own CL wrapper generator (verify/lib/clgen.mjs) wraps long CL statements at CL_MAX_COL=80, splitting only at whitespace between complete tokens - but a SRCSTMF('...') parameter's long absolute IFS path has no internal whitespace, so it cannot be split at all, and the full previous path (/home/<user>/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone/src/qrpglesrc/jucsrv.rpgle) was long enough by itself to overflow the physical CL source line and get silently truncated by CPYFRMSTMF, breaking the quote/paren matching. FIXED by shortening every IFS directory name this manifest creates: remoteDir overridden to 'v8' (was the auto-derived vfy/part08-01-git-srcstmf), bare repo 'b.git' (was pub400-bare.git), working copy 'p' (was pc-side), build clone 'c' (was pub400-clone) - the resulting SRCSTMF path is short enough to fit one physical line comfortably. Directory names are internal-only (never shown to a learner - the lesson prose uses descriptive names like 'pc-side'/'pub400-clone' regardless of what this harness's own IFS scratch space is named).",
+  "description": "7th connection. 6th connection CONFIRMED SUCCESS for the core exercise: JUCSRV rebuilt end-to-end via git clone + CRTRPGMOD/CRTSRVPGM SRCSTMF (Module JUCSRV placed, 10 highest severity; Service program JUCSRV created, old object correctly moved to QRPLOBJ; CHECK702/CHECK703 both resolved and ran it correctly via *LIBL - same values as the member-based build). The CL line-length fix (shortened v8/b.git/p/c paths, +-continued CRTRPGMOD/CRTSRVPGM statements) and the ADDLIBLE-in-one-job fix (dynamically generated BUILDMOD CL helper) both worked as designed.\n\nOnly ROUNDTRIP-EDIT failed, on a NEW instance of the same class of bug already fixed twice elsewhere in this manifest: the heredoc-written ed.py python script was itself written as EBCDIC bytes (this harness's own well-established heredoc-write default), so python3 refused to parse it (SyntaxError: non-UTF-8 code, no encoding declared). A PEP 263 coding-declaration comment cannot fix this - Python's own bootstrap scan for that comment assumes the first two lines are already ASCII-compatible, which EBCDIC bytes are not. Fixed the same way the jucsrv.rpgle/jucsrv.bnd seed was fixed: ed.py is now a real source member (QTXTSRC/EDPY, added via this manifest's own file-type step, so CPYFRMSTMF - proven safe for EBCDIC-native member content) exported to the IFS via CPYTOSTMF (STMFCCSID(1208) ENDLINFMT(*LF), the same already-twice-proven recipe), instead of ever going through a heredoc write for this specific file.",
   "steps": [
     {
       "type": "file",
@@ -14,6 +14,13 @@
       "localPath": "../../src/qsrvsrc/jucsrv.bnd",
       "remoteSrcFile": "QSRVSRC",
       "member": "JUCSRV",
+      "ensureSrcFile": { "recordLength": 112 }
+    },
+    {
+      "type": "file",
+      "localPath": "scratch/ed.py",
+      "remoteSrcFile": "QTXTSRC",
+      "member": "EDPY",
       "ensureSrcFile": { "recordLength": 112 }
     },
     {
@@ -54,7 +61,7 @@
     {
       "type": "sh",
       "label": "GENEDITOR",
-      "cmd": "cat > \"$HOME/v8/ed.py\" <<'PYEOF'\npath = 'src/qrpglesrc/jucsrv.rpgle'\nwith open(path, 'rb') as f:\n    content = f.read()\nnl = content.find(b'\\n')\nmarker = b'// verify-rehearsal round-trip edit: this comment line only.\\n'\ncontent = content[:nl+1] + marker + content[nl+1:]\nwith open(path, 'wb') as f:\n    f.write(content)\nPYEOF\ncat \"$HOME/v8/ed.py\""
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QTXTSRC.FILE/EDPY.MBR') TOSTMF('$HOME/v8/ed.py') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\ncat \"$HOME/v8/ed.py\""
     },
     {
       "type": "sh",

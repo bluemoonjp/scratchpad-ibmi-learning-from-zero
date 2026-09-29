@@ -2745,6 +2745,18 @@ Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・�
 1. **`ix <> 49`ガードの誤り(実バグ、修正済み)**: `f0805as.rpgle`の`l2Break`は当初「JU0300自身の配列境界ガードを忠実に移植した結果、使用可能なスロットが49個に制限される(50番目は書き込まれない)——これは元のクセをそのまま継承したもの」と説明していたが、これは誤り。`ju0300.rpg`152行目`CL2 IX COMP 49 90`の桁位置を実際に数えると、標識`90`は54-55桁目に置かれている。`rpg400ref.txt`12559-12561行目・14515-14517行目によれば、COMP命令の結果標識は54-55桁目がHigh(Factor1>Factor2)・56-57桁目がLow・58-59桁目がEqualであり、54-55桁目は**High**を意味する——**Equal(本来58-59桁目)ではない。** つまり標識90は「IXが49より大きい(=50以上)」ときにONになる。続く`CL2N90`(標識90がOFF、すなわちIX<=49)のときだけ加算・格納するため、元のガードは「IXが49以下ならインクリメントしてよい」という意味であり、**IXが49→50への遷移を正しく許可し、50を使い切ったうえで51件目だけを防ぐ**設計だった(`ju0300.rpg`自身のヘッダー・コメント67-71行目「IX itself can never advance past 50」とも整合する)。`f0805as.rpgle`の`if ix <> 49;`という移植は、IX=49のときに加算をブロックしてしまう誤りで、50番目のスロットを永遠に使わせない(移植側だけの)実バグだった。`if ix <= 49;`に修正済み。
 2. **「free-form RPGにはUDS自動読み込みの相当機能が無い」という過大な主張(訂正済み)**: `ilerpgref75.txt`16326-16330行目は、`DCL-DS *N DTAARA(*AUTO); ...; END-DS;`(無名データ構造+`DTAARA(*AUTO)`)を、固定形式`D UDS`の自由形式での直接の相当形として明示している——`IN`/`OUT`が不要な自動読み込み形式が実際に存在する。`f0805as.rpgle`はこの`*AUTO`形ではなく、もう一方の明示`IN`/`OUT`形(`DTAARA(*LDA)`+`in ldaDs;`)を意図的に選んで使っているが、ヘッダー・コメントは「free-formにはUDS自動読み込みが無い」と誤って一般化していた。「`*AUTO`という選択肢自体はある。読み込みタイミングの一次資料での確証が明示`IN`ほど明確でないため、読み手にとって制御の流れが分かりやすい明示`IN`形をあえて選んだ」という設計判断として訂正済み。
 
+## 第8部`part08-01-git-srcstmf`続報: 中核演習(SRCSTMFビルド)がCONFIRMED SUCCESS(6回目の接続、確認日2026-09-29)
+
+5回目接続で見つかったCL行の切り詰め(`CRTRPGMOD`/`CRTSRVPGM`の`SRCSTMF('...')`パスが長すぎて`CPIA083`「Stream file copied to object with truncated records」で切り詰められ、`CPD0014`/`CPD0013`「引用符・かっこが対応しない」で失敗)を、IFSディレクトリー名の短縮(`v8`/`b.git`/`p`/`c`)と、CLの`+`継続行への分割(`verify/lib/clgen.mjs`自身の`CL_MAX_COL=80`規約に倣う)で修正し、6回目の接続で**このレッスンの中核演習(`JUCSRV`をgit clone+SRCSTMFで作り直す)が完全に成功した**:
+
+- `CRTRPGMOD MODULE(&LIB/JUCSRV) SRCSTMF(...) TGTCCSID(*JOB)`が「Module JUCSRV placed in library <USER>2. 10 highest severity.」で成功(`TOKUIM`/`JUCHUM`の外部記述も正しく解決——動的生成した`BUILDMOD`ヘルパーCLプログラム自身の`ADDLIBLE`が効いている)。
+- `CRTSRVPGM ... SRCSTMF(...)`も「Replaced object JUCSRV type *SRVPGM was moved to QRPLOBJ.」「Service program JUCSRV created in library <USER>2.」で成功——既存のJUCSRVを正しく検出・退避してから置き換えた。
+- `CHECK702`/`CHECK703`(`cl`型ステップ、`ADDLIBLE`はラッパー自動発行分のみ)がどちらも成功: `getCustName(C00001) = ACME TRADING CO`・`countCustOrders(C00001)`の2連続呼び出しがどちらも`2`——member経由の従来ビルドと完全に同じ値。`QSYS2.OBJECT_STATISTICS`で`*MODULE`・`*SRVPGM`ともJUCSRVの実在を確認。
+
+**「同じ最終オブジェクトを別のビルド経路(SRCSTMF)で作る」という08-01のレッスンの核心そのものが、実機で確認できた。**
+
+唯一`ROUNDTRIP-EDIT`(PC側で1行編集→push→pull→再ビルド、という演習の後半)だけが新しい実バグで失敗した: 編集用の`python3`スクリプト(`ed.py`)自体をheredocで書き込んだところ、これも(seedファイル・CLヘルパーで2度確認済みの)heredoc書き込みの既定挙動どおりEBCDICバイト列になり、python3が`SyntaxError: Non-UTF-8 code ... but no encoding declared`で読み込めなかった。PEP 263の`# -*- coding: ... -*-`宣言では直せない(Pythonの先頭2行スキャン自体がASCII互換を前提にしており、EBCDICバイトではその宣言自体を認識できない)。**修正**: `ed.py`を(heredocではなく)このマニフェスト自身の`file`型ステップでQTXTSRC/EDPYという実在のメンバーとして転送し、`CPYTOSTMF`(`STMFCCSID(1208) ENDLINFMT(*LF)`、seedファイルで2度実証済みの同じレシピ)でIFSへ書き出す方式に変更した。次回接続で検証予定。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
