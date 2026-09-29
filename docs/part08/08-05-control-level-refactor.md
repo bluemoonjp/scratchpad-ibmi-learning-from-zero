@@ -253,7 +253,7 @@ end-proc;
 1. SSHで接続します。**`git pull`の前に、まず`git status`(または`git diff -- src/legacy/qrpgsrc/ju0300.rpg`)で`~/ibmi-kyozai`が汚れていないか確認してください。** 05-08の実演(手順7)は`CPYTOSTMF`で、税込み列を追加した`JU0300`メンバーの内容を、まさにこの`~/ibmi-kyozai/src/legacy/qrpgsrc/ju0300.rpg`というクローン内のファイルへ書き戻しています。05-08の指示は`git diff`で差分を**見る**ところまでで、`git commit`はしていないため、素直に進めていれば未コミットの変更(dirty)として残っているはずです。差分があれば、リポジトリ側を元の状態へ戻してから進めます。`git restore -- <パス>`は、指定したパスを直前のコミット時点の内容に戻し、未コミットの変更を捨てるコマンドです。
 
    ```sh
-   cd ~/ibmi-kyozai && git status
+   cd $HOME/ibmi-kyozai && git status
    git restore -- src/legacy/qrpgsrc/ju0300.rpg
    git pull
    ```
