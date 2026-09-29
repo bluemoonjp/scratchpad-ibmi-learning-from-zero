@@ -2940,6 +2940,8 @@ Build Successful!
 
 `pnpm add @halcyontech/rpglint`でインストールし、`node node_modules/@halcyontech/rpglint/dist/index.js -d <ディレクトリー>`(そのディレクトリー配下に`rpglint.json`と対象の`.rpgle`が両方必要)として実際に実行できることを確認した。`-f`を指定すると`rpglint.json`が見つからなくなる事象を最初観測したが、**この節の最初の記録は誤りだった(advisor指摘、訂正)**——`dist/index.js`自身のコードを直接読むと、設定ファイルの探索は`"**/rpglint.json"`という固定のglob文字列であり、`-f`の値とは無関係だと確認できた。`-f`がなぜ最初の試行で失敗したのかは特定できておらず(検証手順自体に別の不備があった可能性が高い)、確実に動くやり方だけを記録する: `rpglint.json`と対象ソースを同じディレクトリーに置き、`-f`を指定せずに実行する。08-03のレッスンでは、READMEの正式な使い方(`.vscode/rpglint.json`に置き、プロジェクト・ルートで`rpglint`を無引数実行する)を採用すればこの論点自体を避けられる。
 
+**追加確認(2026-09-29、PCローカル): READMEの正式な使い方(`.vscode/rpglint.json`+プロジェクト・ルートで無引数実行)そのものを、`npx`・`pnpm dlx`の両方で実際に確認した。** `.vscode/rpglint.json`と対象の`.rpgle`をプロジェクト・ルート直下に置いた(祖先ディレクトリーに競合する`package.json`が無い、クリーンな)状態で、`npx --yes @halcyontech/rpglint`(引数無し)と`pnpm dlx @halcyontech/rpglint`(引数無し)のどちらも、正しく`.vscode/rpglint.json`を見つけて実行され、想定どおりのエラー件数を返した(`npx`は`npm`が祖先の`package.json`にある`"packageManager"`宣言と食い違うと`EBADDEVENGINES`で失敗する——学習者の新規プロジェクトには無関係だが、この教材自身の検証環境では祖先ディレクトリーを汚染しないよう注意が必要だった)。08-03のレッスン本文が案内する`npx --yes @halcyontech/rpglint`は、この確認済みの形と完全に一致する。
+
 **advisorの指摘で、`templates/part08-project/.vscode/rpglint.json`自体に実在する2つのバグを発見・修正した(このテンプレートは前セッション以前に一次資料の裏付け無く書かれていた):**
 
 1. **設定キー4つが、このバージョン(0.27.0)には存在しないルール名だった。** `dist/index.js`自身が持つルール名→メッセージ文言の辞書オブジェクトを直接読み、全キーを列挙して突き合わせたところ、`NoIndicators`・`NoSQLJoinInWhere`・`RequireBlockIf`・`IncludeComment`の4つは、このルール辞書のどこにも存在しなかった(`grep`でのヒット数が0件)——つまりこれらは黙って無視される、無効なキーだった。`NoSELECTAll`と対になる「SQL JOIN禁止」に相当する実在のルール名は`NoSQLJoins`(`NoSQLJoinInWhere`ではない)だと判明したため、そちらに直した。`NoIndicators`・`RequireBlockIf`・`IncludeComment`は対応する実在ルールが見つからず削除した。

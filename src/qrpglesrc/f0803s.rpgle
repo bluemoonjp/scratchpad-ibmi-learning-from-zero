@@ -10,19 +10,15 @@
 // deliberately familiar data, so the exercise itself, not the
 // business data, is what is new).
 //
-// This file is styled to match this repo's own rpglint.json
-// (templates/part08-project/.vscode/rpglint.json). Run rpglint
-// against it yourself and read the output - that is the point of the
-// 08-03 exercise. See solutions/08-03/f0803s.rpgle for a model answer
-// afterward, not before.
+// This file is meant to be linted against this repo's own
+// rpglint.json (templates/part08-project/.vscode/rpglint.json). Run
+// rpglint against it yourself and read the output - that is the point
+// of the 08-03 exercise. See solutions/08-03/f0803s.rpgle for a model
+// answer afterward, not before.
 //
 // STATUS: CONFIRMED - compiles as one whole program on real hardware
 // (verify/part08-02-testpf, 2026-09-29, Highest Severity 00) and runs
-// without error. See docs/probes.md's Part 8 08-03 section for the
-// full verification history (which real rpglint findings this file
-// produces, and the real compile bug an earlier draft had and fixed) -
-// deliberately not repeated here so this header doesn't hand the
-// exercise's answer to whoever opens the file.
+// without error.
 //
 // PUB400 placeholders: <lib> stands for the learner's own library; no
 // real PUB400 user or library name appears in this file.
