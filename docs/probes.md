@@ -2792,6 +2792,15 @@ Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・�
 
 同じ接続に追加した`makei`のqsh直接呼び出し/bash経由呼び出しの比較テスト(`MAKEICHECK`)は、シェル・スクリプトの`&&`連鎖の書き方に不備があり、1つ目(qsh直接呼び出し)が非ゼロ終了コードを返した時点で2つ目(bash経由)が実行されなかった。qsh直接呼び出しの結果は従来どおり失敗(`python3.9 is not installed or not in your system PATH.`)。bash経由での比較は次回接続以降の課題として持ち越す——`makei`自体は引き続き「一般知識、この環境での挙動は未確認」の扱いのままとする。
 
+## 第8部`part08-07-services`: `OBJECT_PRIVILEGES`/`PROGRAM_INFO`が初回で成功、`RVKOBJAUT`の実バグを発見(確認日2026-09-29)
+
+08-07(IBM iサービスと権限)の実機確認。1回目の接続で、`collect`型ステップの4本のSELECT文はすべて成功した:
+
+- `OBJECT_STATISTICS`・`USER_STORAGE`(P01で既に確認済みの形をそのまま`&LIB`に対して再確認、想定どおり成功)。
+- **`OBJECT_PRIVILEGES`・`PROGRAM_INFO`(一次資料に列定義の記載が一切無く、一般的なDb2 for i知識に基づく最初の推測だった)がどちらも一発で成功した。** `OBJECT_PRIVILEGES`は`OBJECT_SCHEMA`/`OBJECT_NAME`/`OBJECT_TYPE`/`AUTHORIZATION_NAME`/`OBJECT_AUTHORITY`という列で、`JUCSRV`の`*MODULE`・`*SRVPGM`それぞれについて`*PUBLIC`=`*EXCLUDE`・所有者=`*ALL`という行を返した。`PROGRAM_INFO`は`PROGRAM_LIBRARY`/`PROGRAM_NAME`/`PROGRAM_TYPE`(`OPM`/`ILE`の区別を正しく返す)/`PROGRAM_OWNER`という列で、`&LIB`内のプログラム一覧を返した。
+
+**一方、`GRTSELF`(`cl`型ステップ)自体はラッパーのコンパイルに失敗した**: `CPD0030`(severity 30)「Command REVOKE in library *LIBL not found.」。原因は単純な思い違いで、**`REVOKE`はSQL文のキーワードであり、CLコマンドとしては存在しない。** `GRTOBJAUT`(権限付与)に対応するCLコマンドは`RVKOBJAUT`(Revoke Object Authority)である(`cl_commands_75.txt`6522行目でGRTOBJAUTの対語として言及されているが、GRTOBJAUT/RVKOBJAUTともこの一次資料には独立したパラメーター表の節が無く、`OBJ`/`OBJTYPE`/`USER`/`AUT`という引数の形自体はGRTOBJAUTの確認済みの形からの類推)。ラッパー自体がコンパイルできなかったため、`GRTOBJAUT`も一度も実行されておらず、この接続の`OBJECT_PRIVILEGES`の結果(`*PUBLIC`=`*EXCLUDE`)は「付与→取り消しの往復をした結果」ではなく「一度も触っていない元の状態」だった。`REVOKE`→`RVKOBJAUT`に修正し、次回接続で再検証する。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
