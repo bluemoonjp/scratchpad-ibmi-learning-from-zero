@@ -20,7 +20,7 @@
                              ' in ' *CAT &LIBB)
                 RETURN
              ENDDO
-             SNDPGMMSG  MSG('TX10SAV: SAVF exists: ' *CAT &LIBB *CAT '/' +
+             SNDPGMMSG  MSG('TX10SAV: SAVF exists: ' *CAT &LIBB *TCAT '/' +
                           *CAT &SAVF)
              DSPSAVF    FILE(&LIBB/&SAVF) OUTPUT(*PRINT)
              MONMSG     MSGID(CPF0000) EXEC(SNDPGMMSG MSG('TX10SAV: +
