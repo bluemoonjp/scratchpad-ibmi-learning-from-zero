@@ -2801,6 +2801,12 @@ Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・�
 
 **一方、`GRTSELF`(`cl`型ステップ)自体はラッパーのコンパイルに失敗した**: `CPD0030`(severity 30)「Command REVOKE in library *LIBL not found.」。原因は単純な思い違いで、**`REVOKE`はSQL文のキーワードであり、CLコマンドとしては存在しない。** `GRTOBJAUT`(権限付与)に対応するCLコマンドは`RVKOBJAUT`(Revoke Object Authority)である(`cl_commands_75.txt`6522行目でGRTOBJAUTの対語として言及されているが、GRTOBJAUT/RVKOBJAUTともこの一次資料には独立したパラメーター表の節が無く、`OBJ`/`OBJTYPE`/`USER`/`AUT`という引数の形自体はGRTOBJAUTの確認済みの形からの類推)。ラッパー自体がコンパイルできなかったため、`GRTOBJAUT`も一度も実行されておらず、この接続の`OBJECT_PRIVILEGES`の結果(`*PUBLIC`=`*EXCLUDE`)は「付与→取り消しの往復をした結果」ではなく「一度も触っていない元の状態」だった。`REVOKE`→`RVKOBJAUT`に修正し、次回接続で再検証する。
 
+## 第8部`part08-07-services`最終確認: 2回目の接続でCONFIRMED SUCCESS(確認日2026-09-29)
+
+`RVKOBJAUT`修正を反映した2回目の接続で、`GRTOBJAUT`→`RVKOBJAUT`の往復が実際に成功した: ジョブ・ログに「Authority given to user *PUBLIC for object JUCSRV ... 」「Authority revoked from user *PUBLIC for object JUCSRV ...」という対の確認メッセージが記録された。同じ接続の`OBJECT_PRIVILEGES`は、往復後`*PUBLIC`=`*EXCLUDE`(元の状態)に戻っていることを示しており、**権限の付与・取り消しが実際に反映され、かつ正しく元に戻ることが確認できた。**
+
+**08-07(IBM iサービスと権限)のレッスンが必要とする実機確認事項(`OBJECT_STATISTICS`・`USER_STORAGE`・`OBJECT_PRIVILEGES`・`PROGRAM_INFO`・`GRTOBJAUT`/`RVKOBJAUT`)は、これで2回の接続を通じてすべてCONFIRMED SUCCESSとなった。** `JOBLOG_INFO`は既存のCLラッパー機構自体が既に何十回も実行してきたため、新たなプローブなしでV2として扱ってよい。`GRTOBJAUT`/`USRPRF(*OWNER)`の**拒否効果**そのもの(2つ目のユーザー・プロファイルが必要)は、design doc自身が明記するとおり、このPUB400アカウントの構成では実演できない——V3のまま。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
