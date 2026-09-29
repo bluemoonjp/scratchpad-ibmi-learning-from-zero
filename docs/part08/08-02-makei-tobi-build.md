@@ -239,7 +239,7 @@ warning: in the working copy of 'Rules.mk', CRLF will be replaced by LF the next
    git init --bare -b main $HOME/zaisrv-bare.git
    ```
 
-5. PC側に戻り、リモートを登録してpushします(`Host pub400`のエイリアスを設定済みなら`pub400:zaisrv-bare.git`、していなければ`ssh://<自分のユーザー名>@pub400.com:2222/~/zaisrv-bare.git`——08-01と同じ判断です。このURLの`~`はgit自身が解釈する記法で、リモート・シェルの`~`展開には頼っていません)。
+5. PC側に戻り、リモートを登録してpushします(`Host pub400`のエイリアスを設定済みなら`pub400:zaisrv-bare.git`、していなければ`ssh://<自分のユーザー名>@pub400.com:2222/~/zaisrv-bare.git`——08-01と同じ判断です。このURLの`~`はgit自身が解釈する記法で、リモート・シェルの`~`展開には頼っていません——**一般知識、要確認**。PUB400でこの経路自体を実機確認したわけではありません)。
 
    ```sh
    git remote add zaisrv pub400:zaisrv-bare.git
