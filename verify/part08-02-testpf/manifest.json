@@ -1,0 +1,60 @@
+{
+  "batch": "part08-02-testpf",
+  "description": "Bundled connection covering several remaining advisor-flagged gaps before writing the 08-02/08-03 lessons, all using the empty &LIB2 sandbox: (1) compile the FULL, current src/qrpglesrc/f0803s.rpgle seed and solutions/08-03/f0803s.rpgle solution (as whole, assembled files - not the isolated snippets part08-03-f0803-compile tested) and CALL both with a real customer code, (2) test the actual command a learner typing at a real PASE bsh login prompt would run (export PATH; makei --version) - every prior makei success used bash, never bsh, and P08 established bsh is the real default shell a learner lands in, (3) test 08-02's planned 'add a PF' exercise: a Rules.mk '.FILE: .pf' rule, delivered via python3 binary-mode writes (not heredoc) to avoid the established EBCDIC-corruption trap. Cleans up all created objects afterward.",
+  "library2": "*B",
+  "steps": [
+    { "type": "file", "localPath": "../../src/qrpglesrc/f0803s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0803SEED", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "../../solutions/08-03/f0803s.rpgle", "remoteSrcFile": "QRPGLESRC", "member": "F0803SOLN", "ensureSrcFile": { "recordLength": 112 } },
+    { "type": "file", "localPath": "testpf.pf", "remoteSrcFile": "QDDSSRC", "member": "TESTPF" },
+    {
+      "type": "sh",
+      "label": "BSHTEST",
+      "cmd": "ls -la /usr/bin/bsh /QOpenSys/usr/bin/bsh </dev/null 2>&1\necho ---BSH-DEFAULT-PATH---\n/usr/bin/bsh -c 'echo $PATH' </dev/null 2>&1\necho ---BSH-MAKEI-VERSION---\n/usr/bin/bsh -c 'export PATH=/QOpenSys/pkgs/bin:$PATH; echo PATH=$PATH; makei --version' </dev/null 2>&1\n"
+    },
+    {
+      "type": "sh",
+      "label": "PFEXERCISE",
+      "cmd": "rm -rf \"$HOME/mkpf\"\nmkdir -p \"$HOME/mkpf/z\"\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB2.LIB/QDDSSRC.FILE/TESTPF.MBR') TOSTMF('$HOME/mkpf/z/testpf.pf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\n/QOpenSys/pkgs/bin/python3 -c \"open('$HOME/mkpf/z/Rules.mk','wb').write(b'TESTPF.FILE: testpf.pf\\n')\"\n/QOpenSys/pkgs/bin/python3 -c \"open('$HOME/mkpf/z/iproj.json','wb').write(b'{\\\"version\\\":\\\"0.0.1\\\",\\\"objlib\\\":\\\"&LIB2\\\",\\\"curlib\\\":\\\"&LIB2\\\"}')\"\necho ---BUILD---\n/QOpenSys/pkgs/bin/bash -c 'cd \"$HOME/mkpf/z\" && export PATH=/QOpenSys/pkgs/bin:$PATH && /QOpenSys/pkgs/bin/makei build' </dev/null 2>&1\necho ---CLEANUP---\nsystem \"DLTF FILE(&LIB2/TESTPF)\" 2>&1\nrm -rf \"$HOME/mkpf\"\n"
+    },
+    {
+      "type": "cl",
+      "label": "COMPILESEED",
+      "cmd": "CRTBNDRPG PGM(&LIB2/F0803SEED) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0803SEED)",
+      "monmsg": ["CPF0000", "RNF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "COMPILESOLN",
+      "cmd": "CRTBNDRPG PGM(&LIB2/F0803SOLN) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0803SOLN)",
+      "monmsg": ["CPF0000", "RNF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "RUNSEED",
+      "cmd": "CALL PGM(&LIB2/F0803SEED) PARM('C00001')",
+      "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"]
+    },
+    {
+      "type": "cl",
+      "label": "RUNSOLN",
+      "cmd": "CALL PGM(&LIB2/F0803SOLN) PARM('C00001')",
+      "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CLEANUPPGMS",
+      "cmd": "DLTPGM PGM(&LIB2/F0803SEED)\nDLTPGM PGM(&LIB2/F0803SOLN)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJLIB FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB2', 'ALL')) X ORDER BY OBJNAME"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM QSYS2.SYSPARMS WHERE SPECIFIC_SCHEMA = 'QSYS2' AND SPECIFIC_NAME = 'GENERATE_SQL' ORDER BY ORDINAL_POSITION"
+    }
+  ]
+}
