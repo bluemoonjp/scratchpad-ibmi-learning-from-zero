@@ -1,0 +1,52 @@
+09-03 command sequence: generate PCML from ZAISRV (DRAFT, see handoff note)
+=========================================================================
+
+STATUS: draft. The exact output for a NOMAIN module (which procedures
+appear, which tags) is being probed by verify/part09-03-pcml (probe P26).
+Do not quote the result in the lesson until that probe has been read.
+
+Nothing here changes ZAISRV. The module for the probe gets its own name
+(ZAISRVP) so the real ZAISRV *MODULE and *SRVPGM stay untouched.
+
+Placeholders: <USER>1 = your dev library, <USER> = your user profile name.
+
+1. Make a directory in the IFS for the generated file (5250 or SSH):
+
+     MKDIR DIR('/home/<USER>/pcml')
+
+   (an SSH shell: mkdir -p ~/pcml). A CL command does not expand ~ or
+   $HOME, so write the full path.
+
+2. Compile the ZAISRV source again, under another module name, and ask
+   for PCML in a stream file (INFOSTMF is required for *STMF):
+
+     CRTRPGMOD MODULE(<USER>1/ZAISRVP) SRCFILE(<USER>1/QRPGLESRC)
+               SRCMBR(ZAISRV) PGMINFO(*PCML *STMF)
+               INFOSTMF('/home/<USER>/pcml/zaisrv.pcml')
+               REPLACE(*YES) TGTCCSID(*JOB)
+
+   PGMINFO and INFOSTMF are parameters of CRTRPGMOD (and CRTBNDRPG), not
+   of CRTSRVPGM.
+
+3. Look at the result (SSH shell, or WRKLNK / EDTF from 5250):
+
+     ls -lS /home/<USER>/pcml/zaisrv.pcml
+     cat /home/<USER>/pcml/zaisrv.pcml
+     grep -c "<program" /home/<USER>/pcml/zaisrv.pcml
+
+4. Clean up:
+
+     DLTMOD MODULE(<USER>1/ZAISRVP)
+     RMVLNK OBJLNK('/home/<USER>/pcml/zaisrv.pcml')
+
+What to read in the PCML (to be confirmed by the probe):
+  - one <program> element per exported procedure? (GET, RESERVE, RELEASE,
+    PINGZAISRV) or none for a NOMAIN module
+  - <data> elements: type, length, precision for each parameter
+  - usage="input" / "output" / "inputoutput" per parameter (const -> input)
+  - a returnvalue element for the procedure result
+
+Paper exercise (no code): design the order-registration API contract.
+Write the input data structure, the output data structure and the result
+code list on paper: fixed-length fields only, no pointers, and one result
+code that tells the caller what happened.

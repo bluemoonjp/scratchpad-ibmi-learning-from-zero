@@ -1,0 +1,130 @@
+{
+  "batch": "part09-03-pcml",
+  "library2": "*B",
+  "description": "Part 9 probe P26 (lesson 09-03): what does CRTRPGMOD ... PGMINFO(*PCML *STMF) INFOSTMF(path) emit for the NOMAIN module ZAISRV (solutions/08-08/zaisrv.rpgle, 4 exports GET/RESERVE/RELEASE/PINGZAISRV)? The real ZAISRV *MODULE/*SRVPGM and its source member are never touched: the source is transferred as member ZAISRVP and compiled to throw-away modules ZAISRVP/ZAISRVQ/ZAISRVN/PCMLTS/PCMLTC (all deleted at the end, as are the members and the /tmp files). Routes: (1) cl step (compiled wrapper, library list = &LIB first so ZAIKOM resolves there) with an absolute path under /tmp (no $HOME needed); (2) sh step with an INFOSTMF path built from $HOME, on a tiny file-less NOMAIN source (src/pcmlt.rpgle: 2 procedures, one takes a DS) because a bare system() job does not have &LIB in its library list (ZAIKOM would resolve through the profile's default list, possibly the private area); (3) PGMINFO(*PCML *MODULE) (PCML stored in the module: only its size can be compared); (4) a control compile without PGMINFO for the module size comparison. After each compile the file is inspected (ls -lS shows CCSID tag and size, wc -c, cat, od -c, grep counts of program/struct/data tags and entrypoint attributes). Outcome key: no file / CPF error in the log -> PGMINFO not usable on this module (message ID goes into the lesson); file with 0 program tags -> NOMAIN generates an empty or non-procedure PCML; program tags with entrypoint=GET/RESERVE/RELEASE/PINGZAISRV -> one <program> per exported procedure (what the lesson wants). Safety: CHGCURLIB to the dev library first (CURSET) and the library list is recorded into VFYCUR; nothing is created in the private area; nothing outside the dev library and /tmp/vfy0903 is written.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../solutions/08-08/zaisrv.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "ZAISRVP"
+    },
+    {
+      "type": "file",
+      "localPath": "src/pcmlt.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "PCMLT"
+    },
+    {
+      "type": "sh",
+      "label": "MKTMP",
+      "cmd": "mkdir -p /tmp/vfy0903 2>&1; rm -f /tmp/vfy0903/*.pcml 2>&1; ls -ld /tmp/vfy0903 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "SHTINY",
+      "cmd": "system \"CRTRPGMOD MODULE(&LIB/PCMLTS) SRCFILE(&LIB/QRPGLESRC) SRCMBR(PCMLT) PGMINFO(*PCML *STMF) INFOSTMF('$HOME/vfy/part09-03-pcml/pcmlts.pcml') REPLACE(*YES) TGTCCSID(*JOB)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "SHTINYV",
+      "cmd": "echo \"== tiny module, sh route, HOME path\"; ls -lS $HOME/vfy/part09-03-pcml/pcmlts.pcml 2>&1; wc -c $HOME/vfy/part09-03-pcml/pcmlts.pcml 2>&1; echo \"-- cat\"; cat $HOME/vfy/part09-03-pcml/pcmlts.pcml 2>&1 | head -150; echo \"-- od\"; od -c $HOME/vfy/part09-03-pcml/pcmlts.pcml 2>&1 | head -6; echo \"-- counts\"; echo \"program tags: $(grep -c '<program' $HOME/vfy/part09-03-pcml/pcmlts.pcml 2>&1)\"; echo \"struct tags: $(grep -c '<struct' $HOME/vfy/part09-03-pcml/pcmlts.pcml 2>&1)\"; echo \"data tags: $(grep -c '<data' $HOME/vfy/part09-03-pcml/pcmlts.pcml 2>&1)\"; echo \"-- entrypoints\"; grep -o 'entrypoint=\"[^\"]*\"' $HOME/vfy/part09-03-pcml/pcmlts.pcml 2>&1; grep -o '<program name=\"[^\"]*\"' $HOME/vfy/part09-03-pcml/pcmlts.pcml 2>&1"
+    },
+    {
+      "type": "cl",
+      "label": "CURSET",
+      "cmd": "CHGCURLIB CURLIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKCUR",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYCUR (TAG VARCHAR(40), ORD INT, LIB VARCHAR(20), TYPE VARCHAR(10))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "REC0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYCUR SELECT ''A0-AFTER-CHGCURLIB'', ORDINAL_POSITION, SCHEMA_NAME, TYPE FROM QSYS2.LIBRARY_LIST_INFO') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MODZ",
+      "cmd": "CRTRPGMOD MODULE(&LIB/ZAISRVP) SRCFILE(&LIB/QRPGLESRC) SRCMBR(ZAISRVP) PGMINFO(*PCML *STMF) INFOSTMF('/tmp/vfy0903/zaisrv.pcml') REPLACE(*YES) TGTCCSID(*JOB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MODT",
+      "cmd": "CRTRPGMOD MODULE(&LIB/PCMLTC) SRCFILE(&LIB/QRPGLESRC) SRCMBR(PCMLT) PGMINFO(*PCML *STMF) INFOSTMF('/tmp/vfy0903/pcmlt.pcml') REPLACE(*YES) TGTCCSID(*JOB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MODM",
+      "cmd": "CRTRPGMOD MODULE(&LIB/ZAISRVQ) SRCFILE(&LIB/QRPGLESRC) SRCMBR(ZAISRVP) PGMINFO(*PCML *MODULE) REPLACE(*YES) TGTCCSID(*JOB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MODN",
+      "cmd": "CRTRPGMOD MODULE(&LIB/ZAISRVN) SRCFILE(&LIB/QRPGLESRC) SRCMBR(ZAISRVP) REPLACE(*YES) TGTCCSID(*JOB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "sh",
+      "label": "VIEWZ",
+      "cmd": "echo \"== ZAISRV source, cl route, /tmp path\"; ls -lS /tmp/vfy0903/zaisrv.pcml 2>&1; wc -c /tmp/vfy0903/zaisrv.pcml 2>&1; echo \"-- cat\"; cat /tmp/vfy0903/zaisrv.pcml 2>&1 | head -150; echo \"-- od\"; od -c /tmp/vfy0903/zaisrv.pcml 2>&1 | head -6; echo \"-- counts\"; echo \"program tags: $(grep -c '<program' /tmp/vfy0903/zaisrv.pcml 2>&1)\"; echo \"struct tags: $(grep -c '<struct' /tmp/vfy0903/zaisrv.pcml 2>&1)\"; echo \"data tags: $(grep -c '<data' /tmp/vfy0903/zaisrv.pcml 2>&1)\"; echo \"-- entrypoints\"; grep -o 'entrypoint=\"[^\"]*\"' /tmp/vfy0903/zaisrv.pcml 2>&1; grep -o '<program name=\"[^\"]*\"' /tmp/vfy0903/zaisrv.pcml 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "VIEWT",
+      "cmd": "echo \"== tiny module, cl route, /tmp path\"; ls -lS /tmp/vfy0903/pcmlt.pcml 2>&1; wc -c /tmp/vfy0903/pcmlt.pcml 2>&1; echo \"-- cat\"; cat /tmp/vfy0903/pcmlt.pcml 2>&1 | head -150; echo \"-- od\"; od -c /tmp/vfy0903/pcmlt.pcml 2>&1 | head -6; echo \"-- counts\"; echo \"program tags: $(grep -c '<program' /tmp/vfy0903/pcmlt.pcml 2>&1)\"; echo \"struct tags: $(grep -c '<struct' /tmp/vfy0903/pcmlt.pcml 2>&1)\"; echo \"data tags: $(grep -c '<data' /tmp/vfy0903/pcmlt.pcml 2>&1)\"; echo \"-- entrypoints\"; grep -o 'entrypoint=\"[^\"]*\"' /tmp/vfy0903/pcmlt.pcml 2>&1; grep -o '<program name=\"[^\"]*\"' /tmp/vfy0903/pcmlt.pcml 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "LSDIR",
+      "cmd": "ls -lS /tmp/vfy0903 $HOME/vfy/part09-03-pcml 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "SIZES",
+      "cmd": "db2 \"SELECT OBJNAME, OBJTYPE, OBJSIZE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*MODULE')) X WHERE OBJNAME LIKE 'ZAISRV%' OR OBJNAME LIKE 'PCMLT%' ORDER BY OBJNAME\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "CLEAN",
+      "cmd": "for m in ZAISRVP ZAISRVQ ZAISRVN PCMLTS PCMLTC; do system \"DLTMOD MODULE(&LIB/$m)\" 2>&1; done; system \"RMVM FILE(&LIB/QRPGLESRC) MBR(ZAISRVP)\" 2>&1; system \"RMVM FILE(&LIB/QRPGLESRC) MBR(PCMLT)\" 2>&1; rm -f /tmp/vfy0903/*.pcml 2>&1; rmdir /tmp/vfy0903 2>&1; echo cleanup-done",
+      "after": true
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, ORD, LIB, TYPE FROM &LIB/VFYCUR ORDER BY TAG, ORD"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJSIZE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*ALL')) X WHERE OBJNAME IN ('ZAISRV', 'ZAISRVP', 'ZAISRVQ', 'ZAISRVN', 'PCMLTS', 'PCMLTC', 'PCMLT') ORDER BY OBJNAME, OBJTYPE"
+    }
+  ]
+}
