@@ -36,19 +36,21 @@
 // output is IDENTICAL to JU0300's own printed output, which is itself
 // IDENTICAL to golden-master.md's own recorded text.
 //
-// NOT YET RECOMPILED/RERUN since two later, static-review-only fixes
-// (found while writing this lesson's own prose, not by a real compile
-// or run): l2Break's array-bounds guard ("if ix <= 49", see that
-// procedure's own header note) and grandTotal's MISMATCH column (63,
-// not 62 - see that procedure's own header note). Neither changes this
-// file's own output against golden-master.md's actual data (6
-// customers never reach IX 49/50; XFOOT always matches, so MISMATCH
-// never prints) - the CONFIRMED byte-for-byte match above still holds
-// for what real data exercises - but this file has not been recompiled
-// with these two fixes in place. Rerun part08-05-f0805a to confirm the
-// fixes themselves compile and (for MISMATCH specifically) to decide
-// whether real hardware can ever be made to print it at all, since
-// db/data/load_v1.sql's own XFOOT is designed to always match.
+// The 5th connection (2026-09-29) recompiled and reran this file with
+// two later, static-review-only fixes in place (found while writing
+// this lesson's own prose, not by a real compile or run): l2Break's
+// array-bounds guard ("if ix <= 49", see that procedure's own header
+// note) and grandTotal's MISMATCH column (63, not 62 - see that
+// procedure's own header note). Both compiled cleanly (00 highest
+// severity) and the file's printed output remained byte-for-byte
+// identical to JU0300's, confirming neither fix broke anything. Note
+// what this DOES NOT confirm: db/data/load_v1.sql's 6 customers still
+// never reach IX 49/50, and XFOOT still always matches - so the *<=49
+// vs <>49 difference itself* and the MISMATCH branch specifically
+// remain unexercised by any real hardware run. Only "these two fixes
+// compile and don't break the exercised paths" is confirmed, not "IX
+// reaching exactly 50 stores correctly" or "MISMATCH prints at column
+// 63 correctly" as such.
 //
 // CONTROL-BREAK MODEL (the "characteristics testing" itself - same
 // business logic, explicit procedural form instead of the RPG cycle's
