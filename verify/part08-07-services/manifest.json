@@ -1,0 +1,32 @@
+{
+  "batch": "part08-07-services",
+  "description": "1st connection. 08-07 (IBM iサービスと権限) design doc requires: OBJECT_STATISTICS (already CONFIRMED syntax, P01/docs/probes.md lines 11-23) and USER_STORAGE WHERE AUTHORIZATION_NAME = CURRENT_USER (already CONFIRMED, P01/docs/probes.md lines 46-52) - both re-run here against &LIB to re-confirm the exact form this lesson will cite. New for this batch: OBJECT_PRIVILEGES and PROGRAM_INFO (design doc's own §9 notes these have ZERO real primary-source documentation in work/design/refs/ - only passing mentions in a permission matrix table of contents - so the SELECT below uses general IBM i Db2-for-i knowledge as a first candidate, not a primary-source-confirmed form; if it fails, the next connection tries alternate column names), and GRTOBJAUT + USRPRF(*OWNER) syntax (self-granting *USE on &LIB/JUCSRV to CURRENT_USER - this only tests that the GRANT syntax itself is accepted, NOT the actual denial effect, which design doc's own text says cannot be demonstrated without a 2nd user profile PUB400 does not provide). JOBLOG_INFO('*') needs no new probe here - every cl-type manifest's own generated wrapper already runs `INSERT INTO VFYLOG SELECT ... FROM TABLE(QSYS2.JOBLOG_INFO('*'))` in its DONE/FAILSAFE block (verify/lib/clgen.mjs), so this is already V2-confirmed across dozens of prior connections; cited here, not re-probed. All collect-step SELECTs filter to &LIB/CURRENT_USER only (docs/style-guide.md's own-scope-only discipline, per Issue #9's own explicit requirement for OBJECT_PRIVILEGES/PROGRAM_INFO/USER_STORAGE).",
+  "steps": [
+    {
+      "type": "cl",
+      "label": "GRTSELF",
+      "cmd": "GRTOBJAUT OBJ(&LIB/JUCSRV) OBJTYPE(*SRVPGM) USER(*PUBLIC) AUT(*USE)\nREVOKE OBJ(&LIB/JUCSRV) OBJTYPE(*SRVPGM) USER(*PUBLIC) AUT(*USE)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJOWNER FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB','*ALL')) X ORDER BY OBJNAME FETCH FIRST 10 ROWS ONLY"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT AUTHORIZATION_NAME, STORAGE_USED, MAXIMUM_STORAGE_ALLOWED FROM QSYS2.USER_STORAGE WHERE AUTHORIZATION_NAME = CURRENT_USER"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJECT_SCHEMA, OBJECT_NAME, OBJECT_TYPE, AUTHORIZATION_NAME, OBJECT_AUTHORITY FROM QSYS2.OBJECT_PRIVILEGES WHERE OBJECT_SCHEMA = '&LIB' AND OBJECT_NAME = 'JUCSRV'"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT PROGRAM_LIBRARY, PROGRAM_NAME, PROGRAM_TYPE, PROGRAM_OWNER FROM QSYS2.PROGRAM_INFO WHERE PROGRAM_LIBRARY = '&LIB' FETCH FIRST 10 ROWS ONLY"
+    }
+  ]
+}
