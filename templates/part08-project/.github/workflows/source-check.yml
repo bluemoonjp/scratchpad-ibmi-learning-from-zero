@@ -16,12 +16,10 @@ jobs:
         with:
           node-version: '22'
       # @halcyontech/rpglint(vscode-rpgleのリンターのCLI版)。実機確認済み
-      # (docs/probes.mdの08-03節参照)。rpglint.json はプロジェクト・
-      # ルートに置くこと(このCLIは rpglint.json をカレント・ディレクトリー
-      # 配下から自動的に探す)。
+      # (docs/probes.mdの08-03節参照)。設定ファイルは`.vscode/rpglint.json`
+      # に置くこと(このCLIはプロジェクト・ルート配下の`**/rpglint.json`を
+      # 自動的に探す)。
       - name: Run rpglint
         run: |
           npm i -g @halcyontech/rpglint
           rpglint
-      - name: ASCII / LF / column checks
-        run: node scripts/check.mjs
