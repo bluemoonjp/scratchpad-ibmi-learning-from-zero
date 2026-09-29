@@ -31,7 +31,7 @@
 // header for that citation trail. pingZaisrv's own compile + the
 // *PRV/DRIVER regression claim above are confirmed separately - see
 // docs/probes.md's part08-08-* sections and docs/part08/08-08-*.md's
-// own 実機メモ.
+// own "real-hardware notes" section.
 //
 // ====================================================================
 // WARNING: THIS SERVICE PROGRAM MUTATES THE SHARED ZAIKOM TABLE.
