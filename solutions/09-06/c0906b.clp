@@ -1,4 +1,6 @@
-/* C0906A - short-lived data queue worker (lesson 09-06).                */
+/* C0906B - exercise (b) of lesson 09-06: C0906A plus a PING request.    */
+/* NOT run on a real machine (unverified as of 2026-09-29). Compile it as */
+/* member and program C0906B, submit C0906B instead of C0906A.            */
 /*                                                                        */
 /* Reads requests from data queue Z0906A, answers on data queue Z0906B,   */
 /* writes one row per milestone into table W0906A and tells message queue  */
@@ -15,12 +17,10 @@
 /* It is submitted by hand, once. Never resident, never scheduled.        */
 /*                                                                        */
 /* Submit it (mylib = your development library):                          */
-/*   SBMJOB CMD(CALL PGM(mylib/C0906A) PARM('mylib')) JOB(C0906A) +       */
+/*   SBMJOB CMD(CALL PGM(mylib/C0906B) PARM('mylib')) JOB(C0906B) +       */
 /*            JOBQ(QGPL/QBATCH) CURLIB(mylib) INLLIBL(*JOBD) +          */
 /*            INQMSGRPY(*DFT) +                                          */
 /*            LOG(4 00 *SECLVL)                                           */
-/* Always give JOBQ: the default job queue (named like your user) did not  */
-/* start the job in the lesson's verification.                            */
 /* PARM: the library that holds the queues, the log table and ZAIKOM.     */
 /* No library name is written in this source.                             */
 /*                                                                        */
@@ -28,6 +28,7 @@
 /*   ECHO text     reply: ECHO text                                       */
 /*   EXIST name    reply: EXIST name FOUND, or EXIST name MISSING         */
 /*   STOCK pcode   logs the ZAIKOM quantity, reply: STOCK pcode LOGGED    */
+/*   PING          reply: PONG (exercise b)                               */
 /*   END           reply: BYE reason count, then the job ends             */
 /* Anything else is answered with UNKNOWN and the request text.           */
 /* No request may contain a single quote: every request is pasted into    */
@@ -131,6 +132,10 @@ FAILED:      IF         COND(&INERR) THEN(RETURN)
                 IF         COND(%SST(&DATA 1 4) *EQ 'ECHO') THEN(DO)
                    CHGVAR     VAR(&ARG) VALUE(%SST(&DATA 6 20))
                    CHGVAR     VAR(&REPLY) VALUE('ECHO' *BCAT &ARG)
+                ENDDO
+
+                IF         COND(%SST(&DATA 1 4) *EQ 'PING') THEN(DO)
+                   CHGVAR     VAR(&REPLY) VALUE('PONG')
                 ENDDO
 
                 IF         COND(%SST(&DATA 1 5) *EQ 'EXIST') THEN(DO)
