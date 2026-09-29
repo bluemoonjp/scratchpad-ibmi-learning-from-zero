@@ -3080,6 +3080,31 @@ advisorの再レビューで、02-04の修復手順が前提にしていた「`b
 
 同じ接続で、このプロジェクト自身のPUB400アカウントに残っていた実物の`$HOME/~`ディレクトリーを片付けた。`ls -laR`で中身を記録してから(`db/data/`という空のディレクトリー構造のみで、実データは無かった——2026-09-25の何らかの初期テストの副産物と見られる、実害の無い残骸)、`rm -r "$HOME/~"`で削除し、`ibmi-kyozai`・`db`(本物)・`.ssh`・`.vscode`等、`$HOME`本来の中身が無事であることを確認した。**このアカウントに`.profile`ファイル自体が(本物の場所にも`$HOME/~`の中にも)一度も存在しなかったことも、このついでに確認できた**——このセッションのすべての接続は`bash -c`での都度指定によりPATHを通しており、`.profile`への依存は一度も無かったため、これは想定どおりで問題ない。
 
+## 第8部08-06: `part08-06-generate-sql-catalog`——`QSYS2.GENERATE_SQL`の実引数一覧をCONFIRMED、`part08-06-ddl`の3回連続失敗の原因もほぼ特定(確認日2026-09-29)
+
+`part08-06-ddl`の3回の接続(1回目: 無効な引数名`DATABASE_FILE_TYPE`、2回目: `Conversion error`、3回目: `SQL0443`)で当て推量を打ち切っていたが、advisor提案の`QSYS2.SYSROUTINES`経由のカタログ照会(`ROUTINE_SCHEMA = 'QSYS2' AND ROUTINE_NAME = 'GENERATE_SQL'`で絞り込み、他利用者の同名プロシージャーが混ざらない設計)で、**`QSYS2.GENERATE_SQL`(内部の`SPECIFIC_NAME`は`QSQGENSQL`)の実引数37個すべてを、正式な列定義として確認できた。** `work/design/refs/`に一次資料が無いという事実(design doc §9)自体は変わらないが、**このシステム・カタログ自体は一次資料そのもの(IBM提供のQSYS2スキーマの列定義)であり、これでV3から実機確認済みへ格上げできる。**
+
+主な発見(全37引数のうち、08-06の本文が使う見込みが高いもの):
+
+| 位置 | 引数名 | 型 |
+|---|---|---|
+| 1 | `DATABASE_OBJECT_NAME` | `VARCHAR(258)` |
+| 2 | `DATABASE_OBJECT_LIBRARY_NAME` | `VARCHAR(258)` |
+| 3 | `DATABASE_OBJECT_TYPE` | `VARCHAR(10)` |
+| 4 | `DATABASE_SOURCE_FILE_NAME` | `VARCHAR(10)` |
+| 5 | `DATABASE_SOURCE_FILE_LIBRARY_NAME` | `VARCHAR(10)` |
+| 6 | `DATABASE_SOURCE_FILE_MEMBER` | `VARCHAR(10)` |
+| 8 | `REPLACE_OPTION` | `CHAR(1)` |
+| 27 | `CREATE_OR_REPLACE_OPTION` | `CHAR(1)` |
+
+**`part08-06-ddl`の3回の失敗を、この列定義に照らして再検証すると:**
+
+- 1回目の`DATABASE_FILE_TYPE`という引数名は、この37個の実在する引数名のどこにも無い——**存在しない引数名を指定していたこと自体が確定した**(推測どおり)。
+- 2回目は、1回目の失敗を受けて`DATABASE_SOURCE_FILE_NAME`を単純化(`'QSQLTEMP'`、これは実際の型`VARCHAR(10)`と整合——この修正は正しかった)すると同時に、`CREATE_OR_REPLACE_OPTION`の引用符を外して`1`(無引用符の整数リテラル)にしたが、**実際の型は`CHAR(1)`であり、`CREATE_OR_REPLACE_OPTION`は文字列でなければならない。** 引用符を外したこの修正が、2回目の`Conversion error on variable or parameter *N`の原因である可能性が高い(この接続のログからは`*N`がどの引数かまでは特定できておらず、断定はしない)。
+- 3回目は2回目の(誤った)修正を維持したまま別の変更を加えたため、`CREATE_OR_REPLACE_OPTION`の型不一致がおそらく残ったままだったと推測される。
+
+**次の一手**: `CREATE_OR_REPLACE_OPTION => '1'`(文字列として引用符付き)に戻し、1回目の`DATABASE_FILE_TYPE`(存在しない引数)を除いた形で、次回接続にて再試行する。この列定義を`src/sql/08-06-ddl.sql`・レッスン本文の一次資料として引用する。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
