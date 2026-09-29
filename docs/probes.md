@@ -2997,7 +2997,32 @@ advisorの指摘を受け、`f0803s.rpgle`が実際にコンパイルできる�
 1回目の2つの自作ミスを修正した2回目の接続で、以下が判明した。
 
 - **「PFを追加する」演習: CONFIRMED SUCCESS。** 正しいライブラリー(`&LIB`)から`CPYTOSTMF`した後、`Rules.mk`に`TESTPF.FILE: testpf.pf`という1行を追加しただけで、`makei build`は`=== Creating PF [testpf.pf] in <USER>B`→`crtfrmstmf`(DDSソースからPFを作る、TOBi自身のスクリプト)→`TESTPF.FILE was created successfully!`→`Objects: 0 failed 1 succeed 1 total, Build Successful!`で成功した。08-02の「PFを追加する」演習は、この形でそのまま実演できる。
-- **`bsh`の既定PATHには`/QOpenSys/pkgs/bin`が含まれないことを確認した**(`echo $PATH`の実測: `/QOpenSys/usr/bin:/usr/ccs/bin:/QOpenSys/usr/bin/X11:/usr/sbin:.:/usr/bin`)——P08の既存の知見と整合する。**しかし、`bsh -c 'export PATH=...; echo ...; makei --version'`という1つの`-c`引数にまとめた呼び出しは、`0402-026 The specified data is not a valid identifier.`という`bsh`自身のエラーで失敗した。** 原因はこの接続だけでは特定できていない(`bsh`固有の`export`構文の制約か、`-c`引数のクォーティングの問題か)。**これは2回目の失敗であり、これ以上この特定の呼び出し方を当て推量で直すのは打ち切る。** 08-02のレッスン本文では、この`bsh -c`一括呼び出し方式そのものを教えるのではなく、`makei`を呼ぶときは確実に成功する経路(`bash`を起動し、`export PATH=...`してから`makei build`を実行する、`part08-02-makei-probe`系のバッチで繰り返し確認済みの経路)を明示的に指示し、素の`bsh`プロンプトから直接`export`→`makei build`を対話的に行う経路自体はV3(未検証)として扱う。
+- **`bsh`の既定PATHには`/QOpenSys/pkgs/bin`が含まれないことを確認した**(`echo $PATH`の実測: `/QOpenSys/usr/bin:/usr/ccs/bin:/QOpenSys/usr/bin/X11:/usr/sbin:.:/usr/bin`)——P08の既存の知見と整合する。**しかし、`bsh -c 'export PATH=...; echo ...; makei --version'`という1つの`-c`引数にまとめた呼び出しは、`0402-026 The specified data is not a valid identifier.`という`bsh`自身のエラーで失敗した。** 原因はこの接続だけでは特定できていなかった。**→ `part08-02-bsh-export`(下記参照)で原因を特定した。02-04が学習者に指示している既存の構文そのものが、`bsh`では通らないコマンドだった(実機バグ、02-04自体を修正)。**
+
+## 第8部08-02(発端)→第2部02-04(本体の実バグ): `bsh`は`export PATH=...`という結合形を受け付けない——既に公開済みの02-04自体のバグ(確認日2026-09-29)
+
+`part08-02-bsh-export`(読み取り専用、`&LIB`/`&LIB2`いずれも不要)で、02-04(`docs/part02/02-04-ssh-git-clone.md`、mainブランチで既に公開済み)が学習者に一字一句指示している構文を、そのまま`bsh -c`経由で単独実行した。
+
+```text
+$ /QOpenSys/usr/bin/bsh -c 'export PATH=/QOpenSys/pkgs/bin:$PATH'
+/QOpenSys/usr/bin/bsh: PATH=/QOpenSys/pkgs/bin:...: 0402-026 The specified data is not a valid identifier.
+exit code: 1
+```
+
+**これは実機の実バグである。** `bsh`(本物のBourneシェル系、`ksh`/`bash`とは異なる)の`export`は、`変数名=値`という結合形を1つの引数として受け付けず、裸の変数名しか引数に取れない——`変数名=値`は`export`より前に別の代入文として実行し、その後で`export 変数名`(値を伴わない)という2段階の形にする必要がある。
+
+```text
+$ /QOpenSys/usr/bin/bsh -c 'PATH=/QOpenSys/pkgs/bin:$PATH; export PATH; echo PATH=$PATH'
+PATH=/QOpenSys/pkgs/bin:/QOpenSys/usr/bin:/usr/ccs/bin:/QOpenSys/usr/bin/X11:/usr/sbin:.:/usr/bin
+exit code: 0
+$ /QOpenSys/usr/bin/bsh -c 'PATH=/QOpenSys/pkgs/bin:$PATH; export PATH; makei --version'
+TOBi version 3.2.1
+exit code: 0
+```
+
+**この2段階形は正しく動き、`makei`も(`bash`を経由せず`bsh`から直接)成功することを確認した。** 02-04(SSH・PASEと教材のgit clone)は「実演」節・「片付け」節ともに、`echo 'export PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile` と `export PATH=/QOpenSys/pkgs/bin:$PATH` という結合形をそのまま学習者に打たせており、P08で確認済みのとおり学習者のSSHセッションは既定で`bsh`に入る——**つまり02-04に従うすべての学習者が、このコマンドで実際に失敗する。** `~/.profile`に書き込む行自体も結合形のままなので、たとえこの1回だけ手で回避しても、次回以降のログイン時に`.profile`が同じ理由で失敗し続ける。
+
+**対応**: `fix/part02-bsh-export`ブランチ(`fix/part03-rtvjoba`と同じ扱い)で、02-04の該当2箇所(実演の手順2、`.profile`の追記コマンドおよびその場でのexport)を2段階形に修正する。副産物として、08-02の`bsh`に関するV3の扱い(上記)も、この2段階形を使えば実際にmakeiが動くことが判明したため、V3から実機確認済みへ格上げできる。
 - **`GENERATE_SQL`のSYSPARMSカタログ調査は、意図した目的を果たせなかったため打ち切る。** `SPECIFIC_NAME LIKE '%GENERATE_SQL%'`で37件がヒットしたが、**`SPECIFIC_SCHEMA`の値はいずれもシステム・スキーマ(`QSYS2`等)ではなく、他の利用者自身のライブラリー名だった**——つまりヒットしたのは、他の利用者が自分のライブラリーに作った、たまたま同名(`GENERATE_SQL`・`GENERATE_SQL_FOR_DEPENDENTS`)の自作プロシージャーであり、**`QSYS2.GENERATE_SQL`というIBM提供の本物のシステム・プロシージャー自体はこのクエリーでは一度も見つからなかった。** これは`docs/probes.md`が既に確立している「システム全体を走査する照会は、フィルターを付けなければ他の利用者の情報を返しうる」という安全規律そのものの実例でもある——**この結果に含まれていた実在のライブラリー名・パラメーター詳細は、他の利用者自身の情報であるため、ここには一切記録しない。** `GENERATE_SQL`の正確な引数は、この教材の一次資料(`work/design/refs/`)でもこのSYSPARMSアプローチでも確定できなかったため、`part08-06-ddl`の3回目接続時点での決定(「一般知識、要確認」として扱う)を変更せず維持する。
 
 
