@@ -160,6 +160,8 @@ dcl-proc zaiApiGet export;
 
 2. **(SSH) ソースを取り込みます。** `ZAISRV`は、本物を変更しないように、別のメンバー名(`ZAISRVP`)に取り込みます。
 
+   (`solutions/`の下のファイルは、02-04のクローンには入っていません。まだなら、先に[扉ページ](index.md)の「解答ファイルの取得」を1回実行してください。未検証(2026-09-29時点)です。)
+
    ```sh
    system "CPYFRMSTMF FROMSTMF('/home/<自分のユーザー名>/ibmi-kyozai/solutions/08-08/zaisrv.rpgle') TOMBR('/QSYS.LIB/<自分のユーザー名>1.LIB/QRPGLESRC.FILE/ZAISRVP.MBR') MBROPT(*REPLACE) STMFCCSID(1208)"
    system "CPYFRMSTMF FROMSTMF('/home/<自分のユーザー名>/ibmi-kyozai/solutions/09-03/zaiapi.rpgle') TOMBR('/QSYS.LIB/<自分のユーザー名>1.LIB/QRPGLESRC.FILE/ZAIAPI.MBR') MBROPT(*REPLACE) STMFCCSID(1208)"
