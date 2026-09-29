@@ -256,7 +256,7 @@ warning: in the working copy of 'Rules.mk', CRLF will be replaced by LF the next
 
 ### B. 07-05のソースを、このクローンへ持ち込む
 
-1. **このクローンは、08-01の`~/pub400-clone`とは違い、ここから自分でコミット・pushします。** そのため、gitのユーザー名・メール・アドレスを、このクローンだけに設定してください(`--global`は付けません)。
+1. **このクローンは、08-01の`$HOME/pub400-clone`とは違い、ここから自分でコミット・pushします。** そのため、gitのユーザー名・メール・アドレスを、このクローンだけに設定してください(`--global`は付けません)。
 
    ```sh
    cd $HOME/zaisrv-clone
