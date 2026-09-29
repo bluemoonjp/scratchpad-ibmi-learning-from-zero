@@ -1,6 +1,6 @@
 {
   "batch": "part08-01-git-srcstmf",
-  "description": "5th connection. 4th connection's CPYTOSTMF fix CONFIRMED CORRECT (od -x showed genuine ASCII '**FREE\\n//====...' after CPYTOSTMF, after git clone, byte-for-byte - the CCSID puzzle is fully solved, see docs/probes.md). Compiling reached a NEW, deeper stage and hit a real, different bug: CRTRPGMOD ... SRCSTMF(...) failed with RNF2120 severity 40 ('External descriptions for file TOKUIM/JUCHUM not found; file is ignored') for BOTH externally-described files jucsrv.rpgle declares. Root cause: this manifest's BUILDMOD/BUILDSRV run as raw sh-type `system(...)` calls, which get NO auto-ADDLIBLE (unlike a cl-type step's generated wrapper, confirmed by CHECK702/CHECK703 both resolving JUCSRV correctly via the SAME auto-ADDLIBLE this connection's own wrapper emits) - so the compiling job's *LIBL never included &LIB, and TOKUIM/JUCHUM (both in &LIB) could not be found. A second `system(\"ADDLIBLE...\")` call cannot fix this (each system() call is its own separate job, so an ADDLIBLE done in one does not carry to the next) - the fix must put ADDLIBLE and CRTRPGMOD/CRTSRVPGM in ONE job. A `cl`-type step cannot be used directly either (advisor's own original point: $HOME does not expand inside a compiled CL wrapper, and the SRCSTMF path needs it) - so this connection generates a small, throwaway CL program ON THE FLY, via an UNQUOTED heredoc inside a `sh` step (so $HOME expands into the heredoc's own content before it is written), combining ADDLIBLE + DLTMOD + CRTRPGMOD + CRTSRVPGM in one compiled program, called once. This is the same 'small dedicated CL helper' pattern already established for verify/part05-13-tickets/src/za0500h.clp and verify/part08-05-f0805a/src/q0805bh.clp, just generated dynamically because the exact IFS path is only known at connection time.\n\nAlso fixed: ROUNDTRIP-EDIT's shell-redirection edit ({ head; echo; tail; } > file.tmp) silently RE-CORRUPTED the file back to genuine EBCDIC bytes (od -x confirmed - qsh's own text pipes appear to transcode into the DESTINATION file's own default CCSID, 273, when writing a brand-new file via `>`) - exactly the regression advisor warned to watch for. Fixed by editing the file in raw binary mode via a small python3 script (generated the same on-the-fly way, via a QUOTED heredoc this time so its own byte-string literals are not shell-interpreted), which never round-trips through any text/CCSID-aware layer at all.\n\nmakei's own wrapper source (read via head -60 in the 4th connection) shows check_dependencies() calling check_tool python3.9/bash/make and a separate check_path() substring-testing $PATH for /QOpenSys/pkgs/bin - all of which should have passed given this session's own confirmed PATH state, yet the tool still printed the failure text both times it was tried live. Likely explanation (unconfirmed, general knowledge): the script's own `#!/usr/bin/env bash` shebang may launch a shell whose OWN startup files reset PATH, undoing an exported PATH from the calling shell - left as a documented, unresolved environmental quirk rather than spending a further connection on it.",
+  "description": "6th connection. 5th connection's dynamically-generated CL helper (GENBUILDER, combining ADDLIBLE+DLTMOD+CRTRPGMOD+CRTSRVPGM in one job to fix RNF2120) itself failed to compile: CPIA083 'Stream file copied to object with truncated records', then CPD0014/CPD0013 ('A matching apostrophe/parenthesis not found') on the CRTRPGMOD/CRTSRVPGM lines. Root cause: this repo's own CL wrapper generator (verify/lib/clgen.mjs) wraps long CL statements at CL_MAX_COL=80, splitting only at whitespace between complete tokens - but a SRCSTMF('...') parameter's long absolute IFS path has no internal whitespace, so it cannot be split at all, and the full previous path (/home/<user>/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone/src/qrpglesrc/jucsrv.rpgle) was long enough by itself to overflow the physical CL source line and get silently truncated by CPYFRMSTMF, breaking the quote/paren matching. FIXED by shortening every IFS directory name this manifest creates: remoteDir overridden to 'v8' (was the auto-derived vfy/part08-01-git-srcstmf), bare repo 'b.git' (was pub400-bare.git), working copy 'p' (was pc-side), build clone 'c' (was pub400-clone) - the resulting SRCSTMF path is short enough to fit one physical line comfortably. Directory names are internal-only (never shown to a learner - the lesson prose uses descriptive names like 'pc-side'/'pub400-clone' regardless of what this harness's own IFS scratch space is named).",
   "steps": [
     {
       "type": "file",
@@ -19,32 +19,32 @@
     {
       "type": "sh",
       "label": "SETUP",
-      "cmd": "rm -rf \"$HOME/vfy/part08-01-git-srcstmf/rehearsal\"\nmkdir -p \"$HOME/vfy/part08-01-git-srcstmf/rehearsal\"\ncd \"$HOME/vfy/part08-01-git-srcstmf/rehearsal\" && /QOpenSys/pkgs/bin/git --version 2>&1"
+      "cmd": "rm -rf \"$HOME/v8\"\nmkdir -p \"$HOME/v8\"\ncd \"$HOME/v8\" && /QOpenSys/pkgs/bin/git --version 2>&1"
     },
     {
       "type": "sh",
       "label": "BARE",
-      "cmd": "cd \"$HOME/vfy/part08-01-git-srcstmf/rehearsal\" && /QOpenSys/pkgs/bin/git init -b main --bare pub400-bare.git 2>&1"
+      "cmd": "cd \"$HOME/v8\" && /QOpenSys/pkgs/bin/git init -b main --bare b.git 2>&1"
     },
     {
       "type": "sh",
       "label": "PCREPO",
-      "cmd": "cd \"$HOME/vfy/part08-01-git-srcstmf/rehearsal\" && mkdir -p pc-side/src/qrpglesrc pc-side/src/qsrvsrc && cd pc-side && /QOpenSys/pkgs/bin/git init -b main 2>&1 && /QOpenSys/pkgs/bin/git config user.name 'Learner (verify harness rehearsal)' 2>&1 && /QOpenSys/pkgs/bin/git config user.email 'learner-rehearsal-no-email' 2>&1 && system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGLESRC.FILE/JUCSRV.MBR') TOSTMF('$HOME/vfy/part08-01-git-srcstmf/rehearsal/pc-side/src/qrpglesrc/jucsrv.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1 && system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QSRVSRC.FILE/JUCSRV.MBR') TOSTMF('$HOME/vfy/part08-01-git-srcstmf/rehearsal/pc-side/src/qsrvsrc/jucsrv.bnd') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1 && echo ---SEED-CHECK--- && ls -S src/qrpglesrc/jucsrv.rpgle 2>&1 && od -x src/qrpglesrc/jucsrv.rpgle 2>&1 | head -2 && /QOpenSys/pkgs/bin/git add -A 2>&1 && /QOpenSys/pkgs/bin/git commit -m 'initial import: JUCSRV source' 2>&1"
+      "cmd": "cd \"$HOME/v8\" && mkdir -p p/src/qrpglesrc p/src/qsrvsrc && cd p && /QOpenSys/pkgs/bin/git init -b main 2>&1 && /QOpenSys/pkgs/bin/git config user.name 'Learner (verify harness rehearsal)' 2>&1 && /QOpenSys/pkgs/bin/git config user.email 'learner-rehearsal-no-email' 2>&1 && system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGLESRC.FILE/JUCSRV.MBR') TOSTMF('$HOME/v8/p/src/qrpglesrc/jucsrv.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1 && system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QSRVSRC.FILE/JUCSRV.MBR') TOSTMF('$HOME/v8/p/src/qsrvsrc/jucsrv.bnd') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1 && echo ---SEED-CHECK--- && ls -S src/qrpglesrc/jucsrv.rpgle 2>&1 && od -x src/qrpglesrc/jucsrv.rpgle 2>&1 | head -2 && /QOpenSys/pkgs/bin/git add -A 2>&1 && /QOpenSys/pkgs/bin/git commit -m 'initial import: JUCSRV source' 2>&1"
     },
     {
       "type": "sh",
       "label": "PUSH",
-      "cmd": "cd \"$HOME/vfy/part08-01-git-srcstmf/rehearsal/pc-side\" && /QOpenSys/pkgs/bin/git remote add origin \"$HOME/vfy/part08-01-git-srcstmf/rehearsal/pub400-bare.git\" 2>&1 && /QOpenSys/pkgs/bin/git --no-pager push origin main 2>&1"
+      "cmd": "cd \"$HOME/v8/p\" && /QOpenSys/pkgs/bin/git remote add origin \"$HOME/v8/b.git\" 2>&1 && /QOpenSys/pkgs/bin/git --no-pager push origin main 2>&1"
     },
     {
       "type": "sh",
       "label": "CLONE",
-      "cmd": "cd \"$HOME/vfy/part08-01-git-srcstmf/rehearsal\" && /QOpenSys/pkgs/bin/git clone pub400-bare.git pub400-clone 2>&1 && echo ---CLONE-CHECK--- && ls -S pub400-clone/src/qrpglesrc/jucsrv.rpgle 2>&1 && od -x pub400-clone/src/qrpglesrc/jucsrv.rpgle 2>&1 | head -2"
+      "cmd": "cd \"$HOME/v8\" && /QOpenSys/pkgs/bin/git clone b.git c 2>&1 && echo ---CLONE-CHECK--- && ls -S c/src/qrpglesrc/jucsrv.rpgle 2>&1 && od -x c/src/qrpglesrc/jucsrv.rpgle 2>&1 | head -2"
     },
     {
       "type": "sh",
       "label": "GENBUILDER",
-      "cmd": "cat > \"$HOME/vfy/part08-01-git-srcstmf/buildmod.clp\" <<CLEOF\n             PGM\n             MONMSG MSGID(CPF0000 RNF0000 MCH0000) EXEC(GOTO CMDLBL(FAILSAFE))\n             ADDLIBLE LIB(&LIB) POSITION(*FIRST)\n             MONMSG MSGID(CPF2103)\n             DLTMOD MODULE(&LIB/JUCSRV)\n             MONMSG MSGID(CPF0000)\n             CRTRPGMOD MODULE(&LIB/JUCSRV) SRCSTMF('$HOME/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone/src/qrpglesrc/jucsrv.rpgle') TGTCCSID(*JOB) REPLACE(*YES)\n             CRTSRVPGM SRVPGM(&LIB/JUCSRV) MODULE(&LIB/JUCSRV) EXPORT(*SRCFILE) SRCSTMF('$HOME/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone/src/qsrvsrc/jucsrv.bnd') ACTGRP(*CALLER) REPLACE(*YES)\n             RETURN\nFAILSAFE:    SNDPGMMSG MSG('BUILDMOD: stopped on an unexpected error.') MSGTYPE(*COMP)\nCLEOF\ncat \"$HOME/vfy/part08-01-git-srcstmf/buildmod.clp\"\nsystem \"CPYFRMSTMF FROMSTMF('$HOME/vfy/part08-01-git-srcstmf/buildmod.clp') TOMBR('/QSYS.LIB/&LIB.LIB/QCLSRC.FILE/BUILDMOD.MBR') MBROPT(*REPLACE)\" 2>&1\nsystem \"DLTPGM PGM(&LIB/BUILDMOD)\" 2>&1\nsystem \"CRTCLPGM PGM(&LIB/BUILDMOD) SRCFILE(&LIB/QCLSRC) SRCMBR(BUILDMOD) REPLACE(*YES)\" 2>&1"
+      "cmd": "cat > \"$HOME/v8/bm.clp\" <<CLEOF\n             PGM\n             MONMSG MSGID(CPF0000 RNF0000 MCH0000) EXEC(GOTO CMDLBL(FAILSAFE))\n             ADDLIBLE LIB(&LIB) POSITION(*FIRST)\n             MONMSG MSGID(CPF2103)\n             DLTMOD MODULE(&LIB/JUCSRV)\n             MONMSG MSGID(CPF0000)\n             CRTRPGMOD MODULE(&LIB/JUCSRV) +\n  SRCSTMF('$HOME/v8/c/src/qrpglesrc/jucsrv.rpgle') +\n  TGTCCSID(*JOB) REPLACE(*YES)\n             CRTSRVPGM SRVPGM(&LIB/JUCSRV) MODULE(&LIB/JUCSRV) +\n  EXPORT(*SRCFILE) +\n  SRCSTMF('$HOME/v8/c/src/qsrvsrc/jucsrv.bnd') +\n  ACTGRP(*CALLER) REPLACE(*YES)\n             RETURN\nFAILSAFE:    SNDPGMMSG MSG('BUILDMOD: unexpected error.') MSGTYPE(*COMP)\nCLEOF\nawk '{ print length, $0 }' \"$HOME/v8/bm.clp\"\nsystem \"CPYFRMSTMF FROMSTMF('$HOME/v8/bm.clp') TOMBR('/QSYS.LIB/&LIB.LIB/QCLSRC.FILE/BUILDMOD.MBR') MBROPT(*REPLACE)\" 2>&1\nsystem \"DLTPGM PGM(&LIB/BUILDMOD)\" 2>&1\nsystem \"CRTCLPGM PGM(&LIB/BUILDMOD) SRCFILE(&LIB/QCLSRC) SRCMBR(BUILDMOD) REPLACE(*YES)\" 2>&1"
     },
     {
       "type": "sh",
@@ -54,17 +54,17 @@
     {
       "type": "sh",
       "label": "GENEDITOR",
-      "cmd": "cat > \"$HOME/vfy/part08-01-git-srcstmf/edit.py\" <<'PYEOF'\npath = 'src/qrpglesrc/jucsrv.rpgle'\nwith open(path, 'rb') as f:\n    content = f.read()\nnl = content.find(b'\\n')\nmarker = b'// verify-rehearsal round-trip edit: this comment line only.\\n'\ncontent = content[:nl+1] + marker + content[nl+1:]\nwith open(path, 'wb') as f:\n    f.write(content)\nPYEOF\ncat \"$HOME/vfy/part08-01-git-srcstmf/edit.py\""
+      "cmd": "cat > \"$HOME/v8/ed.py\" <<'PYEOF'\npath = 'src/qrpglesrc/jucsrv.rpgle'\nwith open(path, 'rb') as f:\n    content = f.read()\nnl = content.find(b'\\n')\nmarker = b'// verify-rehearsal round-trip edit: this comment line only.\\n'\ncontent = content[:nl+1] + marker + content[nl+1:]\nwith open(path, 'wb') as f:\n    f.write(content)\nPYEOF\ncat \"$HOME/v8/ed.py\""
     },
     {
       "type": "sh",
       "label": "ROUNDTRIP-EDIT",
-      "cmd": "cd \"$HOME/vfy/part08-01-git-srcstmf/rehearsal/pc-side\" && /QOpenSys/pkgs/bin/python3 \"$HOME/vfy/part08-01-git-srcstmf/edit.py\" 2>&1 && echo ---EDIT-CHECK--- && ls -S src/qrpglesrc/jucsrv.rpgle 2>&1 && od -x src/qrpglesrc/jucsrv.rpgle 2>&1 | head -2 && /QOpenSys/pkgs/bin/git add -A 2>&1 && /QOpenSys/pkgs/bin/git commit -m 'round-trip rehearsal: add a comment line' 2>&1 && /QOpenSys/pkgs/bin/git --no-pager push origin main 2>&1"
+      "cmd": "cd \"$HOME/v8/p\" && /QOpenSys/pkgs/bin/python3 \"$HOME/v8/ed.py\" 2>&1 && echo ---EDIT-CHECK--- && ls -S src/qrpglesrc/jucsrv.rpgle 2>&1 && od -x src/qrpglesrc/jucsrv.rpgle 2>&1 | head -2 && /QOpenSys/pkgs/bin/git add -A 2>&1 && /QOpenSys/pkgs/bin/git commit -m 'round-trip rehearsal: add a comment line' 2>&1 && /QOpenSys/pkgs/bin/git --no-pager push origin main 2>&1"
     },
     {
       "type": "sh",
       "label": "ROUNDTRIP-PULL",
-      "cmd": "cd \"$HOME/vfy/part08-01-git-srcstmf/rehearsal/pub400-clone\" && /QOpenSys/pkgs/bin/git --no-pager pull 2>&1 && head -3 src/qrpglesrc/jucsrv.rpgle 2>&1"
+      "cmd": "cd \"$HOME/v8/c\" && /QOpenSys/pkgs/bin/git --no-pager pull 2>&1 && head -3 src/qrpglesrc/jucsrv.rpgle 2>&1"
     },
     {
       "type": "sh",
