@@ -15,11 +15,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      # rpglint(vscode-rpgleのリンター)の単体CLI呼び出し方は、この教材の
-      # 一次資料には無く未確認(08-03レッスン本文参照)。ここでは呼び出しの
-      # 位置だけを示す。
+      # @halcyontech/rpglint(vscode-rpgleのリンターのCLI版)。実機確認済み
+      # (docs/probes.mdの08-03節参照)。rpglint.json はプロジェクト・
+      # ルートに置くこと(このCLIは rpglint.json をカレント・ディレクトリー
+      # 配下から自動的に探す)。
       - name: Run rpglint
         run: |
-          echo "rpglint --config rpglint.json src/qrpgsrc/*.rpgle (要確認、08-03参照)"
+          npm i -g @halcyontech/rpglint
+          rpglint
       - name: ASCII / LF / column checks
         run: node scripts/check.mjs
