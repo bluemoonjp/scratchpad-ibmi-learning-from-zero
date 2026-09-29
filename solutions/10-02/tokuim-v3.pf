@@ -1,0 +1,17 @@
+     A*                                     TOKUIM (model answer, lesson 10-02):
+     A*                                     db/v1/tokuim.pf plus TOKYSN.
+     A*                                     TOKYSN = credit limit, 7S 0.
+     A*                                     No DFT: rows that exist before
+     A*                                     CHGPF get zero (checked by
+     A*                                     verify/part10-02-tokuim).
+     A*                                     Record format name stays
+     A*                                     TOKUIR, so TOKUIL1 (no field
+     A*                                     list) needs no source change.
+     A          R TOKUIR                    TEXT('Customer master')
+     A            TOKCD          6A         TEXT('Customer code')
+     A            TOKNM         30A         TEXT('Customer name')
+     A            TOKZIP         7A         TEXT('Zip code')
+     A            TOKTAN         6A         TEXT('Sales rep code')
+     A            TOKUPD         8S 0       TEXT('Updated date YYYYMMDD')
+     A            TOKYSN         7S 0       TEXT('Credit limit')
+     A          K TOKCD
