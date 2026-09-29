@@ -3105,6 +3105,16 @@ advisorの再レビューで、02-04の修復手順が前提にしていた「`b
 
 **次の一手**: `CREATE_OR_REPLACE_OPTION => '1'`(文字列として引用符付き)に戻し、1回目の`DATABASE_FILE_TYPE`(存在しない引数)を除いた形で、次回接続にて再試行する。この列定義を`src/sql/08-06-ddl.sql`・レッスン本文の一次資料として引用する。
 
+## 第8部08-06: `part08-06-generate-sql-retry`——引数を修正した`GENERATE_SQL`呼び出しも同じ`SQL0443`で失敗、この教材での実働例は打ち切り(確認日2026-09-29)
+
+`part08-06-generate-sql-catalog`で確定した実引数(`CREATE_OR_REPLACE_OPTION`を`CHAR(1)`として引用符付きの`'1'`にする、存在しない`DATABASE_FILE_TYPE`を外す、`DATABASE_SOURCE_FILE_LIBRARY_NAME => 'QTEMP'`を明示する)を反映して2回接続した。
+
+- **1回目は自作バグで空振り。** `SHOWGENSRC`ステップに`DSPPFM FILE(QTEMP/QSQLTEMP) MBR(QSQLTEMP) OUTPUT(*PRINT)`を書いたが、**`DSPPFM`に`OUTPUT`パラメーターは無く**(`CPD0043`)、CLプログラム自体がコンパイル時点で失敗(重大度30)し、`GENSQL`ステップは一度も実行されなかった。`SELECT SRCDTA FROM QTEMP.QSQLTEMP ORDER BY SRCSEQ`という、ソース物理ファイルの標準列(`SRCSEQ`・`SRCDTA`)を使うSQLに直して2回目を接続した。
+- **2回目は`GENSQL`まで到達したが、`part08-06-ddl`の3回目と同じ`SQL0443: Trigger program or external routine detected an error.`で再び失敗した。** ジョブ・ログを`QSYS2.JOBLOG_INFO('*')`で回収しても、この1行以上の詳細(第2レベル・テキスト等)は得られなかった。**修正した引数の型は今回正しいはずだが(カタログで確認済み)、それでも同じ汎用エラーで止まったことから、原因は引数の型・名前ではなく、他の要因(値の組み合わせ・権限・このプロシージャー内部の別の制約)にある可能性が高い。**
+- `ORIGLVLID`(`&LIB/TOKUIM`の`DSPFD TYPE(*RCDFMT)`)自体は正常に実行され、`TOKUIM`の現在の様式レベルID(`3B1ECB3196772`、`TOKUIR`様式、5フィールド、57バイト)を確認できた——これは08-06本文が「変換前後でレベルIDが変わらないこと」を示す際の比較対象として、そのまま使える。
+
+**打ち切りの判断**: `GENERATE_SQL`単体の呼び出しに、このセッションだけで合計5回の接続(`part08-06-ddl`3回+この2回)を費やし、**引数の型・名前という当初の仮説を実際に修正しても解消しなかった。** これ以上の当て推量は生産的でないと判断し、`GENERATE_SQL`の実働例をこの教材で確立することは打ち切る。ただし、`part08-06-generate-sql-catalog`で確定した37引数の実在する名前・型・順序(`QSYS2.SYSROUTINES`/`QSYS2.SYSPARMS`という一次資料そのもの)は確定済みの成果として残る——08-06本文は、この確定済みの引数一覧を「実際に呼び出して確認済みの動作」としてではなく、「実引数一覧はカタログで確認済み、実際に動く具体的な呼び出し方は学習者自身が試す」という形で提示する。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
