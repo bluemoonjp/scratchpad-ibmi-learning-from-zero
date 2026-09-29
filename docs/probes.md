@@ -2729,6 +2729,15 @@ Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・�
 
 次回接続(2回目)でJUCSRV復旧・CCSID修正・makei PATH修正の3点をまとめて検証する。
 
+## 第8部`part08-01-git-srcstmf`続報: CCSIDの根本原因を確定・修正、新たにRNF2120・ROUNDTRIP-EDITの実バグを発見(4回目の接続、確認日2026-09-28)
+
+3回目接続後、advisorとの相談で、種ファイル自体が本物のUTF-8/LF学習者ファイルを代表していなかったことが判明した(前節参照)。4回目の接続で`CPYTOSTMF`(`STMFCCSID(1208) ENDLINFMT(*LF)`、`docs/part03/03-10-outfile-qtemp-ovrdbf.md`のEXPSRC例と同じパラメーター形——あちらも未検証だったため、これがその初めての実機確認になった)による本物のUTF-8シード生成に切り替えたところ、以下が確認できた:
+
+- **CCSID問題は完全に解決した。** `od -x`で確認すると、`CPYTOSTMF`直後・`git clone`直後のどちらでも、種ファイルは本物のASCII/UTF-8バイト列(`2a2a 4652 4545 0a2f 2f3d...`=`**FREE\n//===...`、本物の改行0x0Aを含む)のままだった。`git commit`のサマリーも「2 files changed, 518 insertions(+)」と、行数として妥当な値になった(heredoc版は「2 insertions」のみだった)。
+- **新しい実バグ発見: `CRTRPGMOD ... SRCSTMF(...)`が`RNF2120`(severity 40、「External descriptions for file TOKUIM/JUCHUM not found; file is ignored.」)で失敗。** 原因: このマニフェストの`BUILDMOD`/`BUILDSRV`ステップは`sh`型ステップの生の`system(...)`呼び出しであり、`cl`型ステップの生成ラッパーが自動的に発行する`ADDLIBLE`の恩恵を受けない(同じ接続の`CHECK702`/`CHECK703`——`cl`型ステップ——はどちらも正しく`JUCSRV`を解決できており、ラッパー自動`ADDLIBLE`の効果を裏付けている)。そのため`&LIB`がコンパイル・ジョブの`*LIBL`に一切含まれておらず、`&LIB`に実在する`TOKUIM`/`JUCHUM`(外部記述ファイル)を解決できなかった。`system("ADDLIBLE...")`を別途挟んでも解決しない(別々の`system()`呼び出しは別ジョブになるため、前のジョブのライブラリー・リスト変更は次のジョブに引き継がれない)。**修正**: `ADDLIBLE`+`DLTMOD`+`CRTRPGMOD`+`CRTSRVPGM`を1つのジョブで行う必要があるため、`sh`型ステップ内で(引用符無しheredocを使い、`$HOME`をシェル側で展開させてから)小さな使い捨てCLプログラムをその場で生成・コンパイル・実行する方式に変更した(`verify/part05-13-tickets/src/za0500h.clp`・`verify/part08-05-f0805a/src/q0805bh.clp`と同じ「専用の小さなCLヘルパー」パターンを、IFSパスが接続時にしか決まらないため動的に生成する形)。次回接続で検証予定。
+- **もう1つの実バグ発見: `ROUNDTRIP-EDIT`のシェル・リダイレクト編集がファイルを再びEBCDICへ壊していた。** `{ head; echo; tail; } > file.tmp && mv file.tmp file`という手法(1行挿入をシミュレートする単純な手法)を使ったところ、`od -x`で確認すると編集後のファイルは本物のEBCDICバイト列(CCSIDタグも273)に戻っていた——qshの文字列パイプは、新規作成するリダイレクト先ファイルを、既定の(EBCDIC)CCSIDへ実際に変換して書き込むとみられる(advisor指摘、事前に警告されていた既知の懸念どおり)。**修正**: 編集を`python3`のバイナリー・モード(`open(path, 'rb')`/`'wb'`)で行うよう変更した——テキスト・CCSID変換を一切経由しないため、この種の再汚染が原理的に起こらない。次回接続で検証予定。
+- **`makei`のラッパー・スクリプト自体を`head -60`で読んだ**(`/QOpenSys/pkgs/bin/makei`、bashスクリプト)。`check_dependencies()`が`check_tool python3.9`/`check_tool bash`/`check_tool make`と、別途`check_path()`(`$PATH`に`/QOpenSys/pkgs/bin`が部分文字列として含まれるかを確認)を呼んでいる——このセッションで確認済みのPATH状態であれば、これらはすべて通るはずなのに、実際に2回とも(2回目・3回目接続)同じ失敗メッセージが出た。**推測(一般知識、未確認)**: `#!/usr/bin/env bash`というシバン行が起動するbashが、独自の起動ファイル(`.bashrc`等)で`$PATH`をリセットし、呼び出し元シェルの`export`を打ち消している可能性がある。これ以上の深追いはせず、08-02の一次資料としてはこの「PATHは合っているはずなのに同一の(見かけ上誤った)エラーが再現する」という事実そのものを使う。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
