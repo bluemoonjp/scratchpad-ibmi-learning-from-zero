@@ -2757,6 +2757,17 @@ Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・�
 
 唯一`ROUNDTRIP-EDIT`(PC側で1行編集→push→pull→再ビルド、という演習の後半)だけが新しい実バグで失敗した: 編集用の`python3`スクリプト(`ed.py`)自体をheredocで書き込んだところ、これも(seedファイル・CLヘルパーで2度確認済みの)heredoc書き込みの既定挙動どおりEBCDICバイト列になり、python3が`SyntaxError: Non-UTF-8 code ... but no encoding declared`で読み込めなかった。PEP 263の`# -*- coding: ... -*-`宣言では直せない(Pythonの先頭2行スキャン自体がASCII互換を前提にしており、EBCDICバイトではその宣言自体を認識できない)。**修正**: `ed.py`を(heredocではなく)このマニフェスト自身の`file`型ステップでQTXTSRC/EDPYという実在のメンバーとして転送し、`CPYTOSTMF`(`STMFCCSID(1208) ENDLINFMT(*LF)`、seedファイルで2度実証済みの同じレシピ)でIFSへ書き出す方式に変更した。次回接続で検証予定。
 
+## 第8部`part08-01-git-srcstmf`最終確認: 7回目の接続でCONFIRMED SUCCESS(確認日2026-09-29)
+
+`ed.py`をQTXTSRC/EDPYメンバー経由・`CPYTOSTMF`で書き出す修正を適用した7回目の接続で、**08-01の実演・演習の全経路が実機で確認できた**:
+
+- `ROUNDTRIP-EDIT`: `python3`(バイナリー・モード)による1行挿入が成功——`od -x`で本物のUTF-8バイト列(タグも1208のまま)を確認、`git commit`のサマリーも「1 file changed, 1 insertion(+)」という正しい差分。`push`も成功。
+- `ROUNDTRIP-PULL`: `pub400-clone`側の`git pull`がFast-forwardで成功、編集した行(`// verify-rehearsal round-trip edit: ...`)が正しく反映されていることを確認。
+- `ROUNDTRIP-REBUILD`: 編集後のソースを`CRTRPGMOD`/`CRTSRVPGM`(SRCSTMF経由)で再ビルドし、どちらも成功(モジュール・サービス・プログラムとも作成、既存`JUCSRV`を`QRPLOBJ`へ退避)。
+- `CHECK702`/`CHECK703`: 再ビルド後の`JUCSRV`に対しても`F0702A`/`F0703A`が正しく解決・動作(`getCustName`=`ACME TRADING CO`、`countCustOrders`の2連続呼び出しがどちらも`2`)——member経由の元のビルドと完全に同じ値。
+
+**08-01(gitプロジェクトとSRCSTMFビルド)のレッスンが要求する実機確認事項(bare/cloneリハーサル・SRCSTMFによる`JUCSRV`再構築・1往復のPC編集→push→pull→再ビルド)は、これですべてCONFIRMED SUCCESSとなった。** 7回の接続を要したが、途中で見つかった実バグ(CCSIDタグと実バイト列の不一致、`*LIBL`解決に必要な`ADDLIBLE`の欠落、CL行の切り詰め、heredoc書き込み経由のPythonスクリプト自体のEBCDIC化)はいずれも08-01のレッスン本文自体にとって価値ある教材(「gitでチェックアウトしたファイルがUTF-8である前提で書かれたコマンドが、実際にはEBCDIC化されたファイルに対して動かない」という、この教材の一貫したテーマ——CCSID・ライブラリー・リストへの注意——の具体例)になりうる。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
