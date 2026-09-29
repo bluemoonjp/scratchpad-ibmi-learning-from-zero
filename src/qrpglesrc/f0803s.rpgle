@@ -45,22 +45,41 @@
 //     banner style and are NOT PrettyComments-clean either - see
 //     docs/probes.md's 08-03 rpglint section.
 //
-// NOT a seeded rule violation, but still a legitimate design point:
-// the CHAIN below uses a resulting indicator variable (foundInd)
-// instead of %FOUND. This was originally meant to trigger a rule
-// called "NoIndicators" - that rule name does not exist in 0.27.0 (see
-// above), so this pattern is NOT flagged by rpglint at all. It is left
-// in as-is anyway since %FOUND-vs-indicator is still worth teaching,
-// just not as an rpglint finding.
+// REMOVED, real compile bug found on real hardware: this file used to
+// CHAIN into a plain `ind` resulting-indicator field (`foundInd`)
+// instead of %FOUND, originally meant to trigger a rule called
+// "NoIndicators" that turned out not to exist in 0.27.0 (see above) -
+// so it was kept anyway as "not an rpglint finding, but still a
+// legitimate design point". That framing was wrong. A real CRTBNDRPG
+// test (verify/part08-03-f0803-compile, 2026-09-29) showed this
+// pattern does NOT compile in free-form RPG at all: RNF5191 (severity
+// 30) "The Result-Field is not a data structure when Factor 2 is a
+// file name." - ilerpgref75.txt line 38795's own free-form CHAIN
+// syntax table already said the third operand is a data-structure,
+// not a resulting indicator; a plain `ind` field doesn't qualify. The
+// %FOUND-based form below was compiled in the same connection
+// (F0803CHKB, Highest Severity 00) and is what this file now uses.
 //
-// STATUS: CONFIRMED - actually run locally (@halcyontech/rpglint
-// 0.27.0, npm, zero PUB400 connection needed) against this exact file
-// with the corrected templates/part08-project/rpglint.json,
-// 2026-09-29. 13 total error lines reported, matching the 5 rules
-// listed above (see docs/probes.md's Part 8 08-03 rpglint section for
-// the full raw output and line numbers). rpglint itself is a real,
-// installable, locally runnable tool - no longer "general knowledge,
-// unconfirmed".
+// STATUS: CONFIRMED - the %FOUND-based CHAIN construct actually
+// compiled on real hardware (verify/part08-03-f0803-compile,
+// 2026-09-29, Highest Severity 00). The rest of this file (the
+// orderCount subroutine's JUCHUM loop, the %subst/WRITE QSYSPRT
+// block) has NOT been compiled as this whole, assembled file - each
+// individual pattern is already established elsewhere in this repo
+// (jucsrv.rpgle's countCustOrders uses the identical JUCHUM
+// close/open/read loop; Part 4/5's RPG III printer programs use the
+// same %subst/WRITE QSYSPRT shape), but that is not the same as
+// compiling this exact file.
+//
+// rpglint re-run locally against this exact, current file
+// (@halcyontech/rpglint 0.27.0, npm, zero PUB400 connection needed,
+// corrected templates/part08-project/rpglint.json, 2026-09-29): 13
+// errors - SpecificCasing x2 (lines 99, 104), NoGlobalSubroutines x3
+// (lines 110, 133, 146), StringLiteralDupe x3 (lines 107, 115, 118),
+// NoUnreferenced x1 (line 101), PrettyComments x4 (lines 2, 85, 125,
+// 132). Matches the 5 rules described above exactly. rpglint itself
+// is a real, installable, locally runnable tool - no longer "general
+// knowledge, unconfirmed".
 //
 // PUB400 placeholders: <lib> stands for the learner's own library; no
 // real PUB400 user or library name appears in this file.
@@ -81,10 +100,9 @@ dcl-ds line len(132) end-ds;
 DCL-S custName char(30);
 dcl-s orderCnt zoned(5:0) inz(0);
 dcl-s unusedFld char(10);
-dcl-s foundInd ind;
 
-chain (custCode) tokuim foundInd;
-IF foundInd;
+chain (custCode) tokuim;
+IF %found(tokuim);
   custName = toknm;
 ELSE;
   custName = 'NOTFOUND';
