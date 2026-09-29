@@ -13,28 +13,42 @@
 // K JUTOK then K JUDATE) and its XFOOT/UDS-FTOK-filter mechanics,
 // which this file ports rather than re-derives.
 //
-// STATUS: CONFIRMED (part08-05-f0805a, 4th connection, 2026-09-28).
-// JU0300's own golden master is CONFIRMED (verify/part08-05-legacy-
-// baseline, docs/probes.md - see golden-master.md). This file's 1st
-// compile attempt failed: RNF7064 severity 30, "The Factor 2 operand
-// LDADS of IN or OUT is not a data area" - the original draft wrote
-// DTAARA('*LDA') (a quoted string literal), which the compiler treats
-// as a data area LITERALLY NAMED "*LDA" (not a valid object name), not
-// as the reserved *LDA keyword. FIXED (verified against
-// ilerpgref75.txt's own worked example, lines 16345-16349: "DCL-DS
-// LDA_DS DTAARA(*LDA); SUBFLD CHAR(600); END-DS; IN LDA_DS;" - an
-// UNQUOTED *lda is the correct form). The 3rd connection compiled this
-// file cleanly (00 highest severity) and ran it, but its printed
-// output was found to be JU0300's own real output shifted exactly 1
-// column right on every line (byte-for-byte diff confirmed - see
-// docs/probes.md, part08-05-f0805a) - the column positions below were
-// FIXED (see printDetail's own header note). The 4th connection
-// recompiled and reran this file (00 highest severity) and confirmed,
-// via a strict byte-for-byte diff (no transform) of the same
-// connection's own captured output, that this file's printed output is
-// now IDENTICAL to JU0300's own printed output, which is itself
-// IDENTICAL to golden-master.md's own recorded text - "characteristics
-// testing" fully confirmed for this file.
+// STATUS: CONFIRMED as of the 4th connection (part08-05-f0805a,
+// 2026-09-28) for every code path db/data/load_v1.sql's real data
+// actually exercises. JU0300's own golden master is CONFIRMED
+// (verify/part08-05-legacy-baseline, docs/probes.md - see
+// golden-master.md). This file's 1st compile attempt failed: RNF7064
+// severity 30, "The Factor 2 operand LDADS of IN or OUT is not a data
+// area" - the original draft wrote DTAARA('*LDA') (a quoted string
+// literal), which the compiler treats as a data area LITERALLY NAMED
+// "*LDA" (not a valid object name), not as the reserved *LDA keyword.
+// FIXED (verified against ilerpgref75.txt's own worked example, lines
+// 16345-16349: "DCL-DS LDA_DS DTAARA(*LDA); SUBFLD CHAR(600); END-DS;
+// IN LDA_DS;" - an UNQUOTED *lda is the correct form). The 3rd
+// connection compiled this file cleanly (00 highest severity) and ran
+// it, but its printed output was found to be JU0300's own real output
+// shifted exactly 1 column right on every line (byte-for-byte diff
+// confirmed - see docs/probes.md, part08-05-f0805a) - the column
+// positions below were FIXED (see printDetail's own header note). The
+// 4th connection recompiled and reran this file (00 highest severity)
+// and confirmed, via a strict byte-for-byte diff (no transform) of the
+// same connection's own captured output, that this file's printed
+// output is IDENTICAL to JU0300's own printed output, which is itself
+// IDENTICAL to golden-master.md's own recorded text.
+//
+// NOT YET RECOMPILED/RERUN since two later, static-review-only fixes
+// (found while writing this lesson's own prose, not by a real compile
+// or run): l2Break's array-bounds guard ("if ix <= 49", see that
+// procedure's own header note) and grandTotal's MISMATCH column (63,
+// not 62 - see that procedure's own header note). Neither changes this
+// file's own output against golden-master.md's actual data (6
+// customers never reach IX 49/50; XFOOT always matches, so MISMATCH
+// never prints) - the CONFIRMED byte-for-byte match above still holds
+// for what real data exercises - but this file has not been recompiled
+// with these two fixes in place. Rerun part08-05-f0805a to confirm the
+// fixes themselves compile and (for MISMATCH specifically) to decide
+// whether real hardware can ever be made to print it at all, since
+// db/data/load_v1.sql's own XFOOT is designed to always match.
 //
 // CONTROL-BREAK MODEL (the "characteristics testing" itself - same
 // business logic, explicit procedural form instead of the RPG cycle's
@@ -274,9 +288,19 @@ end-proc;
 
 //=======================================================================
 // grandTotal - LR processing. Column positions (FIXED, see printDetail's
-// own note - same -1 correction): 'GRAND TOTAL'@10(11) GCNT@26(5, edit
-// code Z) 'XFOOT='@35(6) XTOT@46(5, edit code Z) 'OK'@59(2) or
-// 'MISMATCH'@62(8).
+// own note - same O-spec-derived-start rule, ju0300.rpg's own O-specs
+// for GTOT): 'GRAND TOTAL'@10(11) GCNT@26(5, edit code Z) 'XFOOT='@35(6)
+// XTOT@46(5, edit code Z) 'OK'@59(2, O-spec end col 60, indicator 93 on)
+// or 'MISMATCH'@63(8, O-spec end col 70, indicator N93). MISMATCH's own
+// position was originally miscalculated as 62 (off by one from the
+// correct 70-8+1=63) - found and fixed during this lesson's own
+// write-up, not by a real compile/run: db/data/load_v1.sql's XFOOT
+// always matches (xfootMatch stays *on), so the MISMATCH branch has
+// never actually printed on real hardware and this position remains
+// UNVERIFIED against real output (unlike every other position in this
+// file, which printDetail/l1Break/l2Break/the OK branch all did print
+// and were confirmed byte-for-byte against JU0300, part08-05-f0805a
+// 4th connection).
 //=======================================================================
 dcl-proc grandTotal;
   dcl-pi *n;
@@ -295,7 +319,7 @@ dcl-proc grandTotal;
   if xfootMatch;
     %subst(line:59:2) = 'OK';
   else;
-    %subst(line:62:8) = 'MISMATCH';
+    %subst(line:63:8) = 'MISMATCH';
   endif;
   write qsysprt line;
 end-proc;
