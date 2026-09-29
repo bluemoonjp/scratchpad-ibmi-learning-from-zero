@@ -48,11 +48,14 @@ PUB400 は共有の練習機です(00-02 参照)。SSH 接続では、次のこ�
 
 ### git が既定の PATH に入っていない
 
-PUB400 には git が入っていますが、**SSH でログインした直後の `PATH` には含まれていません。** 実行するには、フル・パス(`/QOpenSys/pkgs/bin/git`)を指定するか、次のように `~/.profile` に1行追加してください(最初の1回だけで済みます)。
+PUB400 には git が入っていますが、**SSH でログインした直後の `PATH` には含まれていません。** 実行するには、フル・パス(`/QOpenSys/pkgs/bin/git`)を指定するか、次のように `~/.profile` に追加してください(最初の1回だけで済みます)。
 
 ```sh
-echo 'export PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile
+echo 'PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile
+echo 'export PATH' >> ~/.profile
 ```
+
+**2行に分けて追加する理由**: SSH でログインした直後のシェルは `bsh`(本物の Bourne シェル系)で、`export 変数名=値` のように代入と `export` を1つにまとめた書き方を受け付けません(`0402-026 The specified data is not a valid identifier` というエラーになります)。`変数名=値` という代入と、`export 変数名`(値を書かない、裸の変数名だけ)という指定を、必ず別の行に分けてください。
 
 ## 実演
 
@@ -64,11 +67,13 @@ echo 'export PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile
 
    パスワードを尋ねられたら入力します。
 
-2. 接続できたら、まず PATH を通します(初回のみ)。
+2. 接続できたら、まず PATH を通します(初回のみ)。**代入と `export` は必ず別の行にしてください**(上の「説明」参照。1行にまとめると `bsh` がエラーで拒否します)。
 
    ```sh
-   echo 'export PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile
-   export PATH=/QOpenSys/pkgs/bin:$PATH
+   echo 'PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile
+   echo 'export PATH' >> ~/.profile
+   PATH=/QOpenSys/pkgs/bin:$PATH
+   export PATH
    ```
 
 3. この教材のリポジトリーを、必要なディレクトリーだけに絞って取り込みます(`--sparse` で、最初は最小限だけ取得します)。
@@ -124,6 +129,7 @@ echo 'export PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile
 
 ## 実機メモ
 
-- 確認日: 2026-09-25(`docs/probes.md` P08 関連)。SSH(2222番)での接続方法、git が `/QOpenSys/pkgs/bin/` にあるが既定 PATH には含まれないこと、`~/.profile` での対処は、著者が実機で確認済み。
+- 確認日: 2026-09-25(`docs/probes.md` P08 関連)。SSH(2222番)での接続方法、git が `/QOpenSys/pkgs/bin/` にあるが既定 PATH には含まれないことは、著者が実機で確認済み。
+- **実バグの発見・修正(確認日 2026-09-29、`docs/probes.md` の第8部 `part08-02-bsh-export` 節参照)**: 当初この課は `export PATH=/QOpenSys/pkgs/bin:$PATH` という代入と `export` を1行にまとめた形を指示していたが、これは実機の `bsh`(SSH ログイン直後の既定シェル)では `0402-026 The specified data is not a valid identifier` というエラーで失敗することが確認された。学習者が本文どおりに操作すると、初回の `export` も `~/.profile` への追記も両方失敗する(`.profile` は毎回のログインで実行されるため、直さない限りログインのたびに同じエラーが出続ける)。`PATH=/QOpenSys/pkgs/bin:$PATH` という代入と `export PATH`(裸の変数名)という指定を別の行に分ける2段階形に修正し、この2段階形が `bsh` で実際にエラー無く通ることを実機で確認した。
 - 接続数の上限に関する記述は、このセッション中に著者自身が実際に SSH 接続不能を経験したことに基づく(`docs/probes.md` の「接続数に関する注意」参照)。
 - `git clone` をこの教材自身のリポジトリー(学習者にとっての「相手」)に対して行う手順そのものは、このセッションでは実行していない(次回確認する)。
