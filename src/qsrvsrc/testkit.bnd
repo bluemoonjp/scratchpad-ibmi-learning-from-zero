@@ -1,0 +1,39 @@
+/* TESTKIT binder source (Part 8, lesson 08-04). See
+   src/qrpglesrc/testkit.sqlrpgle for the exported procedures'
+   implementation and full header (build recipe, why .sqlrpgle not
+   .rpgle, the *ESCAPE/callStackCtr design).
+
+   EXPORT SYMBOL names are QUOTED, mixed-case, and match testkit.sqlrpgle's
+   own dcl-proc names exactly - same reasoning as src/qsrvsrc/jucsrv.bnd's
+   header (every exported procedure below uses EXTPROC(*DCLCASE), which
+   pins the external name to the DCL-PROC spelling instead of the
+   compiler's upper-case default - work/design/refs/ileconcepts75.txt,
+   "Binder Language" section, quoted-symbol-keeps-case rule, lines
+   4043-4050).
+
+   Only one STRPGMEXP block, PGMLVL(*CURRENT) - this is TESTKIT's first
+   release, so there is no PGMLVL(*PRV) history to preserve yet (same
+   rule as solutions/07-05/zaisrv.bnd's own header:
+   work/design/refs/ileconcepts75.txt lines 3994-3999, "Only one
+   STRPGMEXP command can specify PGMLVL(*CURRENT)").
+
+   Intended member: QSRVSRC/TESTKIT (library resolved via *LIBL, per
+   docs/style-guide.md - never a hardcoded library name in source).
+
+   BUILD RECIPE (see testkit.sqlrpgle's own header for the full
+   citation trail):
+     CRTSQLRPGI OBJTYPE(*MODULE) OBJ(<lib>/TESTKIT)
+       SRCFILE(<lib>/QRPGLESRC) SRCMBR(TESTKIT)
+       COMMIT(*NONE) CLOSQLCSR(*ENDMOD)
+     CRTSRVPGM SRVPGM(<lib>/TESTKIT) MODULE(<lib>/TESTKIT)
+       EXPORT(*SRCFILE) SRCFILE(<lib>/QSRVSRC) SRCMBR(TESTKIT)
+       ACTGRP(*CALLER)
+   <lib> is a placeholder for the learner's own library - no real
+   PUB400 library or user name appears in this file. */
+
+STRPGMEXP PGMLVL(*CURRENT)
+   EXPORT SYMBOL('testInit')
+   EXPORT SYMBOL('assertEqualsChar')
+   EXPORT SYMBOL('assertEqualsNum')
+   EXPORT SYMBOL('assertTrue')
+ENDPGMEXP

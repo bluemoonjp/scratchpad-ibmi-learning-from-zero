@@ -80,7 +80,9 @@ command -v make
 - `/QOpenSys/pkgs/bin/tobi` という名前のコマンドは **無い**(TOBi への改称後も、コマンド名は `makei` のまま)。
 - `/QOpenSys/pkgs/bin/` には約 1.5GB 相当のパッケージ群がインストール済み(git・Python・GNU make・Ansible 等、多数)。
 
-**結論**: git・GNU make・makei・python3 はすべて使えるが、**既定の PATH には入っていない。** SSH 経由の自動化(02-04 の `git clone`、08-01/08-02 の `makei` ビルド)では、フルパスを使うか、`~/.profile` に `PATH=/QOpenSys/pkgs/bin:$PATH` の代入と `export PATH` を(**別々の行として**)追記する必要がある。**【2026-09-29 訂正】** ここで当初書いていた `export PATH=/QOpenSys/pkgs/bin:$PATH` という結合形は、実際には `bsh`(SSH ログイン直後の既定シェル)で `0402-026 The specified data is not a valid identifier` エラーになることが後日判明した(第8部 `part08-02-bsh-export` 接続、詳細は該当節参照)。02-04 は `fix/part02-bsh-export` で2段階形に修正済み。
+**結論**: git・GNU make・makei・python3 はすべて使えるが、**既定の PATH には入っていない。** SSH 経由の自動化(02-04 の `git clone`、08-01/08-02 の `makei` ビルド)では、フルパスを使うか、`$HOME/.profile` に `PATH=/QOpenSys/pkgs/bin:$PATH` の代入と `export PATH` を(**別々の行として**)追記する必要がある。**【2026-09-29 訂正】** ここで当初書いていた `export PATH=/QOpenSys/pkgs/bin:$PATH` という結合形は、実際には `bsh`(SSH ログイン直後の既定シェル)で `0402-026 The specified data is not a valid identifier` エラーになることが後日判明した(第8部 `part08-02-bsh-export` 接続、詳細は該当節参照)。02-04 は `fix/part02-bsh-export` で2段階形に修正済み。
+
+**【2026-09-29 追記: SSHログイン直後のシェルが本当に`bsh`かどうか、初めて直接確認した】** 上のP08自身の本来の確認(2026-09-24)は、SSHのremote commandとして`/usr/bin/qsh`を直接指定しており、**ログイン・シェルそのものは一度も経由していなかった**(このファイル自身の56行目が明記するとおり)。以後この教材が積み重ねてきた`part08-02-bsh-export`・`part02-bsh-tilde-redirect`等の「`bsh`固有のバグ」という確認も、すべて`/QOpenSys/usr/bin/bsh -c '...'`のように`bsh`を明示的に呼び出したものであり、「対話ログイン時に実際に`bsh`が起動する」こと自体は、advisorの指摘まで一度も直接確認されていなかった。この教材自身の検証ハーネス(`verify/lib/ssh.mjs`)も、常に`/usr/bin/qsh`をremote commandとして固定しており、同じ理由でログイン・シェルを観測できない。そこで、remote commandを指定しない生の`ssh`接続(標準入力からコマンドを渡す、台帳のゲートは通常どおり通す一時的なスクリプト)で直接確認したところ、`$SHELL=/QOpenSys/usr/bin/bsh`・`ps`が報告する実行中のコマンド名`bsh`・`$0`の値`-bsh`(先頭の`-`はログイン・シェルであることを示す慣例)のすべてが一致し、**「SSHの対話ログイン直後に実際に起動するシェルは`bsh`である」ことが、初めて直接確認できた。** これで、02-04・08-01・08-02の「既定シェルは`bsh`」という記述、およびそれに基づくすべての`bsh`固有バグの発見(結合`export`・語頭`~`非展開)の前提が、正しかったことが裏付けられた。
 
 **影響**: 02-04, 03-10, 08-01, 08-02。批評で確定した「中重大度」の修正(PATH の既定に関する項目)を、この実測で裏付けた。
 
@@ -2651,7 +2653,541 @@ ZAIKOM/SHOHIMへの書き込みは一切無いため、TXRESETは実施してい
 
 **副次的な確認(ハーネス自身の挙動)**: 今回のジョブ・ログの先頭は「Job 616906/QUSER/QP0ZSPWT started ... system CALL PGM(<USER>2/TPART06P43).」で始まっており、`docs/probes.md:113`(このファイル自身、TXSETUPの節)が指摘する「ADDLIBLEはsystem呼び出しを跨いで持続しない」の根拠を、この接続でも独立に再確認した——qshの個々の`system "..." 2>&1`呼び出しは、`cl`型ステップをまとめた1本のCLラッパー(`CALL PGM(...)`)も含め、それぞれ新規のジョブとして実行されるとみられる(clラッパー内部はもちろん1つのジョブ・1つの呼び出しレベルで完結しており、これが`SETWAIT`(`OVRDBF`)の効果が`RUNCHK`(同じラッパー内の後続ステップ)まで正しく持続した理由でもある)。
 
-06-11bのレッスン本文(`docs/part06/06-11b-maintenance-screen-locking.md`)を、この確認結果に合わせて更新する必要がある(「P43未実施」の記述・冒頭メタデータの依存プローブ欄を含む)。
+06-11bのレッスン本文(`docs/part06/06-11b-maintenance-screen-locking.md`)を、この確認結果に合わせて更新する必要がある(「P43未実施」の記述・冒頭メタデータの依存プローブ欄を含む)。**→この接続と同じPRで反映済み。**
+
+## 第8部`part08-04-testkit`: TESTKIT・TSTJUCSRV・TSTZAISRVを実機で初めて確認、CONFIRMED SUCCESS(確認日2026-09-28、2回の接続)
+
+Issue #9(第8部)着手の最初の実機接続。`TESTKIT`(自作テスト・アサーション用`*SRVPGM`、`src/qrpglesrc/testkit.sqlrpgle`)・`TSTJUCSRV`(JUCSRVの10ケース+意図的な1件の失敗ケース、`solutions/08-04/tstjucsrv.rpgle`)・`TSTZAISRV`(ZAISRVの境界値5ケース、`solutions/08-04/tstzaisrv.rpgle`)は、いずれもこの接続まで一度もコンパイル・実行されたことが無かった。
+
+**1回目の接続(15:39:57Z)**: 3本ともHighest Severity 00でコンパイル成功。設計時に懸念していた未確認の技術的判断がすべて実機で解決した:
+
+- **NOMAINモジュール内、全dcl-procの外(モジュール・スコープ)に置いた`EXEC SQL SET OPTION`は、そのままコンパイル可能だった。** モジュール・レベルのD仕様(`qmhsndpmMsgFile`/`qmhsndpmErrCode`/`qmhsndpm`プロトタイプ)より後、最初の`dcl-proc`より前という配置で、severity 30以上のエラーは無かった。
+- **`CHGCURLIB1`(`CHGCURLIB CURLIB(&LIB)`)により、`testInit()`の無修飾`CREATE TABLE`が`<USER>2`(`&LIB`)に作られることを確認**(ジョブ・ログに「Current library changed to `<USER>2`.」)。`docs/probes.md`の`part07-04-actgrp-cl`節が指摘した「ハーネスの既定ではCURLIBが`<USER>1`のまま」という罠を、この`CHGCURLIB1`ステップで正しく回避できている。
+- **`callStackCtr=2`での`QMHSNDPM(*ESCAPE)`とMONITORの組み合わせが設計どおりに動作**: 意図的に失敗させた`00-DELIBERATE-FAIL-DEMO`(期待値999、実際の`countCustOrders('C00001')`=2)がジョブ・ログに「TESTKIT: assertion failed - 00-DELIBERATE-FAIL-DEMO.」を記録した直後も、ラッパー自身の`RUNTSTJUCSRV`ステップに「FAILED」マーカーが一切出なかった——`CALL PGM(TSTJUCSRV)`自体は正常終了で返ってきたことを意味し、`MONITOR`がエスケープを捉え、`TSTJUCSRV`のメインラインが最後まで実行された強い状況証拠になった(2回目の接続で直接確認、後述)。
+- **TSTZAISRVの11件のアサーションが全てPASS**。特に境界値2件(`1-RESERVE-EXACT-OK`/`1B-STOCK-ZERO`)・`2B-STOCK-UNCHANGED`(値`7`)が、`db/data/load_v1.sql`の実際のP00001初期値`45`ではなく、`SEEDQTEMP`ステップで注入した`7`を見ていたことから、**`OVRDBF FILE(ZAIKOM) TOFILE(QTEMP/ZAIKOM) OVRSCOPE(*JOB)`が、`ACTGRP(*NEW)`の`TSTZAISRV`から`ACTGRP(*CALLER)`で活性化される`ZAISRV`内部の`dcl-f zaikom`のオープンまで正しく届いていたことを直接確認できた**(advisorが指摘した、P43のOVRDBFが同一活性化グループ内でしか確認されていないという懸念への回答)。
+- `shared-zaikom-check`collectは本物の`&LIB/ZAIKOM`のP00001を`45`のまま示した。**ただしこれ単独ではQTEMP分離が機能した証拠にはならない**——`TSTZAISRV`自身の5ケースは意図的にnet-zero設計(reserve/releaseが必ず対になっている)なので、万一`OVRDBF`が効かず本物の`ZAIKOM`を直接操作していたとしても、最終的には同じく`45`に戻っていたはずである。QTEMP分離が実際に機能したことを直接示す証拠は、上の行(`TESTRES`が`45`ではなく`7`/`10`/`7`を記録したこと)の方であり、この`shared-zaikom-check`はあくまで「(分離が機能したにせよしなかったにせよ)接続終了時点で本物のテーブルは初期値に戻っている」という補助的な確認にとどまる。
+
+**1回目の接続で見つけた実バグ(修正済み)**: `testInit()`が`CREATE TABLE`(存在すれば無視)に加えて`DELETE FROM TESTRES`も行う設計だった。`TSTJUCSRV`・`TSTZAISRV`はどちらも自分のメインラインの先頭で`testInit()`を呼ぶため、同じ接続内で`TSTJUCSRV`→`TSTZAISRV`の順に実行すると、**`TSTZAISRV`自身の`testInit()`が`TSTJUCSRV`の記録した11行を消してから自分の11行を書き込んでいた**(1回目のcollectが`TSTZAISRV`の11行だけを返した理由)。`testInit()`から`DELETE`を削除し(以後はテーブルの存在確認のみ)、マニフェスト側に明示的な`CLEARTESTRES`(`DELETE FROM &LIB/TESTRES`、VFYLOGと同じ「接続の先頭で1回だけ空にする」パターン)ステップを追加して2回目の接続で再検証した。
+
+**2回目の接続(15:55:29Z)**: 3本とも`REPLACE(*YES)`で再コンパイル(Highest Severity 00、実質無変更のため無害)。`CLEARTESTRES`で空にした`TESTRES`に、今度は`TSTJUCSRV`・`TSTZAISRV`両方の行が残った:
+
+- **`TSTJUCSRV`の実ケース12件(設計書の10項目、09・10がそれぞれ2アサーションに分かれるため実際は12件)が全てPASS**: `getCustName('C00001')`='ACME TRADING CO'、`getCustName('C00002')`='NORTH STAR LTD'、`getCustName('Z99999')`='NOTFOUND'、`countCustOrders('C00001')`=2、`countCustOrders('C00002')`=1、`countCustOrders('C00003')`=2、`countCustOrders('Z99999')`=0、`pingJucsrv()`=Y、`countCustOrders('C00001')`の同一活性化グループ内2連続呼び出し(JUCHUM再位置付け修正の検証)が両方とも2、`getCustName`→`countCustOrders`の呼び出し順序入れ替えも影響無し——**`db/data/load_v1.sql`の実データに基づく設計書の期待値が、すべて実機の値と一致した。**
+- **`00-DELIBERATE-FAIL-DEMO`はFAILのまま(期待999・実際2)**、かつ直後の`01-GETNAME-C00001`以降12件全てが記録されている——**MONITORによる継続実行を直接確認(1回目の状況証拠を裏付け)。**
+- **`TSTZAISRV`の11件も再度全てPASS**(QTEMPの再構築・再注入も再現性あり)。
+- `shared-zaikom-check`は今回も`45`のまま(上の注記のとおり、これ単独はQTEMP分離の証拠ではなく補助確認)。`TESTRES`側の`7`/`10`/`7`(今回も同じ値)が実質的な証拠であることに変わりない。`TXRESET`は不要。
+- 合計: `TESTRES` 24行(1 FAIL + 23 PASS)、`testres-summary`集計と一致。
+
+**結論**: `TESTKIT`・`TSTJUCSRV`・`TSTZAISRV`はCONFIRMED SUCCESS。08-04レッスン本文執筆時にそのまま使える実測値が揃った。
+
+## 第8部`part08-05-legacy-baseline`: JU0300を初めて実行、ZA0500/JU0900Cの印字内容も初めて記録、CONFIRMED SUCCESS(確認日2026-09-28)
+
+08-05(`F0805A`、`JU0300`の制御レベル処理の書き直し)・08-05b(`F0805B`/`Q0805B`、`ZA0500`のM1/MR処理のSQL書き換え)の前提となる、ゴールデン・マスター(基準出力)を確認する接続。`JU0300`はPart 5以来コンパイルのみ(`part05-legacy-probe`・`part05-txmigr-to2b`)で一度も**実行**されたことが無かった。`ZA0500`/`JU0900C`は05-13のticket 1修正版(`solutions/05-13/ju0900c-ticket1.clp`・`za0500-ticket3.rpg`、`part05-13-tickets`でCONFIRMED SUCCESS済みの組み合わせ)を採用し、Part 8設計(`work/design/part08-design-v1.md`§0.1・§2)が要求する「05-13完了後の状態」を満たした。
+
+- `TXRESET`実行後、`JU0300`・`ZA0500`・`JU0900C`ともHighest Severity 00でコンパイル成功。
+- `JU0300`(パラメーター無し、実行前に`*LDA`バイト11-16のFTOKフィルターを空白クリア)を実行し、8件の注文・6名の得意先の一覧・L1(日付)/L2(得意先)小計・グランド・トータル・XFOOT検算(`OK`)を印字内容として確認した。
+- `JU0900C`を`RUNMODE='*TEST'`で実行(`ZAIKOM`は一切書き換えない設計、実行前後の`SELECT`で6件とも完全同一であることを確認済み——`TXRESET`は不要)。`ZA0500`の印字が12行(OK10・SHORT2・NOTFOUND0)出力され、`part05-13-tickets`が手計算で予測していた内訳と完全に一致した(あちらは予測、これは初めての実機確認)。
+- 両方の実際の印字内容(生テキスト)は`verify/part08-05-legacy-baseline/expected/golden-master.md`に転記済み。`JU0300`・`ZA0500`はどちらもQSYSPRT印字のみでSQL `EXCEPT`できる表を持たず、`TXSNAP`はV3専用(`part05-ju0900c-baseline`で既に確認済み)のため、08-05/08-05bの「差分0」確認は、新しい版を同じ接続内で実行しこの生テキストとハーネスの外で突き合わせる方法を取る。
+
+## 第8部`part08-05-f0805a`: F0805Aの1回目の接続でコンパイル・エラーを発見・修正(確認日2026-09-28)
+
+`F0805A`(`JU0300`の自由形式書き換え)の初回コンパイルが`RNF7064`(severity 30、「Factor 2 operand LDADSはデータ域ではない」)で失敗した。原因は`*LDA`にアクセスするデータ構造の宣言で`DTAARA('*LDA')`(引用符付き文字列リテラル)と書いていたこと——コンパイラーはこれを「`*LDA`という名前のデータ域」を指す文字列リテラルとして扱い(実在しない不正なオブジェクト名)、予約語の`*LDA`としては解釈しない。`ilerpgref75.txt`16345-16349行目の実例(`DCL-DS LDA_DS DTAARA(*LDA); SUBFLD CHAR(600); END-DS; IN LDA_DS; OUT LDA_DS;`)で確認したとおり、正しくは**引用符無しの`*LDA`**(予約キーワード)。`solutions/08-05/f0805as.rpgle`を修正済み、次回接続で再コンパイル・`JU0300`との差分確認を行う。`JU0300`自体は同じ接続内で問題なく再コンパイル・再実行でき、`RNF7066`/`RNF7086`(severity 00、externally-describedファイルの様式名未参照・ブロック化に関する情報メッセージ)以外の診断は無かった。
+
+**2回目の接続(F0805A再検証+Q0805B初回)は、実際には何も実行されなかった**: 検証ハーネスのCLラッパー・プログラム自体が`CPD0043`(「Keyword DFTACTGRP/ACTGRPはこのコマンドに無効」)でコンパイル失敗していた。原因は`Q0805B`(`CRTSQLRPGI`でコンパイル)のマニフェスト・ステップに、`CRTBNDRPG`用の`DFTACTGRP(*NO) ACTGRP(*NEW)`をそのままコピーしてしまったこと——`CRTSQLRPGI`にはこれらのパラメーターが無く、活性化グループはソース・メンバー自身の`ctl-opt`行(`src/qrpglesrc/q0613s.sqlrpgle`の確立済みの前例どおり)で決まる。ラッパー自体が存在しなかったため、そのVFYLOG削除・挿入ロジックも一切走らず、この接続の`vfylog`/`run`セクションは1回目の接続の残留データをそのまま読んでいただけだった(ジョブ番号・タイムスタンプが1回目と完全に一致していたのはこのため——新規実行に見えて実は何も実行されていない、という紛らわしい結果だった)。`verify/part08-05-f0805a/manifest.json`のCPQ0805Bステップから`DFTACTGRP`/`ACTGRP`を削除して修正済み、次回接続で再度確認する。
+
+**3回目の接続(2026-09-28T22:33:08Z)**: `F0805A`・`Q0805B`ともHighest Severity 00で初めてコンパイル成功した。`JU0300`・`ZA0500`/`JU0900C`(`RUNCHAIN`)も同じ接続内で問題なく再コンパイル・再実行できた。ここで2つの実機事実が判明した(どちらも接続後にローカルで`work/verify/f0805a-run2.txt`を精査して発見、いずれもこの接続の時点では未修正):
+
+- **F0805Aの印字内容がJU0300の印字内容と1桁分ずれていた。** `work/verify/f0805a-run2.txt`の`run`セクション内、`JU0300`自身の出力ブロック(2567-2589行目)と`F0805A`の出力ブロック(2591-2613行目)を`diff`で突き合わせたところ、**JU0300側の全21行それぞれの先頭に半角空白を1つ追加すると、F0805A側の該当行と完全一致する**(`awk 'NR>=2567 && NR<=2589 {print " " $0}' | diff - <(F0805A側)`が差分ゼロ)ことを確認した。つまりF0805Aの印字は、JU0300の実際の印字を一律1桁右にずらしたものだった。
+  - 原因(advisor相談で特定・訂正): 当初「`golden-master.md`自身が既にこの+1のずれを記録している」と考えたが、これは誤りだった——`golden-master.md`は当時「列位置はO仕様のとおり」とだけ書いており、O仕様の終了桁から逆算した開始桁と、実際に観測された印字桁が1つずれることには一切触れていなかった(この事実は`golden-master.md`自身の**データ**(O仕様の終了桁の数字と、コード・ブロックの実際の印字)を独立に付き合わせれば導けるが、そのファイル自身の**注記としては存在していなかった**)。`golden-master.md`はこの接続後に、この+1のずれを明示する注記を追加する形で訂正済み。真の原因はこうである: `f0805as.rpgle`の`%subst`開始桁は、golden-master.mdの**観測済みの**桁をそのままF0805A自身の`%subst`位置として使えば同じ桁に印字されるはずだという想定で決めていたが、この想定自体が誤りだった——F0805A自身の出力でも、declareした`%subst`位置Nは実際には桁N+1に印字される(JU0300のO仕様終了桁からの逆算と実際の観測桁との間に見られるのと同じ+1のパターンが、F0805A自身の`%subst`位置についても独立に成立する)。「WRITEするデータ構造の先頭バイトが隠れた制御文字として扱われる」といった特定の技術的原因までは確定していない(advisorも「仕組みは未解明」とした)。
+  - 修正: `printDetail`/`l1Break`/`l2Break`/`grandTotal`の`%subst`開始桁をすべて-1し、F0805A自身の実際の印字がJU0300の実際の印字(golden-master.mdの観測値そのもの)と一致するようにした。`q0805bs.sqlrpgle`の`printLine`にも同種のずれが起きると判断し、実行前に先回りして同じ-1修正を適用した(ZA0500との比較で改めて確認予定)。
+- **`RUNQ0805B`が実行時エラーで失敗した**: `CALL PGM(&LIB/Q0805B) PARM('*TEST' 5)`が`MCH1202`(10進データ・エラー、`processLine`内`if avail < minqty;`、文番号440)で終了した。原因はCLの裸の数値リテラル`5`——OPM系CALLの`PARM()`に書いた数値リテラルは`*DEC(15 5)`(8バイト)として渡されるが、`Q0805B`の`dcl-pi`は`minqty`を`packed(5:0)`(3バイト)と宣言しているため、先頭3バイトだけを符号ニブル不正のまま読み込んでいた——`ju0900c-ticket1.clp`が05-13チケット1で修正した`&MINQTY`の型不一致と同じ種類の欠陥。修正: `verify/part08-05-f0805a/src/q0805bh.clp`(新規、`za0500h.clp`の前例に倣う)を追加し、`&MINQTY TYPE(*DEC) LEN(5 0) VALUE(5)`(値5は`ju0900c-ticket1.clp`自身の`CHGVAR`から確認)を正しくDCLしたCL変数として渡すようにした。マニフェストの`RUNQ0805B`ステップは`CALL PGM(&LIB/Q0805BH) PARM('&LIB')`に変更済み。
+
+3回目接続で得られた2つの修正(F0805A/Q0805Bの桁ずれ、Q0805BH経由の呼び出し)は、いずれもこの3回目接続の時点ではまだ実機で確認されていない。次回接続(4回目)で一括して検証する。
+
+**4回目の接続(2026-09-28T22:48:21Z)、CONFIRMED SUCCESS**: `JU0300`・`F0805A`・`ZA0500`・`JU0900C`・`Q0805B`・`Q0805BH`の6本すべてがHighest Severity 00でコンパイル成功し、VFYLOGに`FAILED`マーカーは1件も無かった(`RUNQ0805B`も含め全ステップ成功)。同じ接続の`run`セクションから4つの印字ブロック(`JU0300`本体・`F0805A`・`JU0900C`経由の`ZA0500`・`Q0805BH`経由の`Q0805B`)をそれぞれ切り出し、**変換無しの厳密な`diff`で3組を突き合わせた**:
+
+- `F0805A`の印字 == `JU0300`の印字(この接続内、完全一致、差分ゼロ)。
+- `Q0805B`(`Q0805BH`経由)の印字 == `ZA0500`(`JU0900C`経由)の印字(この接続内、完全一致、差分ゼロ)。
+- `JU0300`の印字 == `golden-master.md`のJU0300節の記録テキスト(完全一致、差分ゼロ)。
+- `ZA0500`の印字 == `golden-master.md`のZA0500節の記録テキスト(完全一致、差分ゼロ)。
+
+これにより、3回目接続で見つかった2つの欠陥がどちらも正しく修正されたことが実機で確認できた:
+
+1. **F0805A/Q0805Bの印字桁の1桁ずれ**(`printDetail`/`l1Break`/`l2Break`/`grandTotal`・`printLine`の`%subst`開始桁を-1した修正)。
+2. **Q0805Bの`MCH1202`**(`Q0805BH`が`&MINQTY`を`*DEC LEN(5 0)`のCL変数として正しく渡す修正)。
+
+08-05(`F0805A`)・08-05b(`Q0805B`)ともに「特性検定」(元の`JU0300`/`ZA0500`と出力が完全に一致する書き直し)が実機で確定した。`solutions/08-05/f0805as.rpgle`・`solutions/08-05/q0805bs.sqlrpgle`のヘッダーをCONFIRMEDに更新済み。**残る技術的原因の1点(golden-master.mdの「+1のずれ」自体の根本原因)は、advisorも「仕組みは未解明」としたとおり依然として未解明のままである**——実務上の対処(観測値から-1で調整する)は確定したが、レッスン本文でこの現象を扱う場合は「原因は未解明、経験的に-1で一致することを実機で確認済み」という誠実な書き方にすること。
+
+## 第8部`part08-01-git-srcstmf`: git bare/cloneリハーサル+SRCSTMFビルド、CCSIDの実バグを発見(確認日2026-09-28、3回の接続)
+
+08-01(gitプロジェクトとSRCSTMFビルド)の実機確認。qshの1セッション内でIFS上に擬似「PC側」(`pc-side`、通常の作業コピー)・「PUB400側」(`pub400-bare.git`、ベア・リポジトリ)・「ビルド用クローン」(`pub400-clone`)の3ディレクトリーを作り、`git init --bare`→`git push`→`git clone`という経路(P8-4決定どおり、`denyCurrentBranch=updateInstead`は使わない)をリハーサルしたうえで、`JUCSRV`(Part 7で確立済み、`part07-0203-srvpgm`でCONFIRMED SUCCESS)を、メンバー経由ではなく`git clone`したIFS上のソースから`CRTRPGMOD`/`CRTSRVPGM`の`SRCSTMF`パラメーターで作り直す。
+
+**1〜3回目の接続共通**: git本体の操作(`git --version`・`git init -b main --bare`・`git init -b main`+`git config`+`git commit`・`git remote add`+`git push`・`git clone`・1行編集→`push`→`pull`のラウンドトリップ)は**すべて成功した**(`sh`型ステップとして実行——`cl`型ステップの`system(...)`呼び出しは1回ごとに別ジョブになる既知の制約があるため、git操作はこの制約を受けない生のシェル・コマンドとして実行する設計にした)。
+
+- **実バグ発見: `CRTRPGMOD ... SRCSTMF(...)`が`RNS9380`で失敗**(「The source file CCSID 1208 is a Unicode CCSID which cannot be used with TGTCCSID(*SRC).」)。`git clone`でチェックアウトされたファイルは`ls -S`(先頭列がCCSID、`verify/lib/batch.mjs`のコメントで確立済みの確認方法)でCCSID 1208(UTF-8)とタグ付けされており、`CRTRPGMOD`の既定`TGTCCSID(*SRC)`は`cl_commands_75.txt`自身の記載どおりUnicode系CCSIDを一切受け付けない。2回目の接続で`TGTCCSID(*JOB)`を明示指定したところ、今度は`CPE3490`(「Conversion error.」)に変わった——単なる「タグの拒否」ではなく、実際に変換を試みて失敗している。
+- **advisor相談で根本原因が判明(3回目接続後)**: 3回目の接続で`git clone`直後のファイルに`od -x`を実行し、種ファイル(ハーネス自身がheredocで書き込んだもの)自身にも同じ`od -x`をかけて比較したところ、**両者のバイト列は完全に一致**していた(`5c5c c6d9 c5c5 2561 617e 7e7e...`——EBCDIC表現の`**FREE`+EBCDIC改行+`//`+`====`罫線)。**タグはCCSID 1208(UTF-8)に変わっても、実際のバイト列は最初から一貫して本物のEBCDICのままだった。** 真因は`git clone`側にあるのではなく、**種ファイル自体が「学習者が実際に持つはずのUTF-8/LF形式のソース」を代表していなかったこと**にある——このハーネスがqshのheredoc(`cat > file <<DELIM`)で書き込んだファイルは、`git add`時点の`git commit`が「2 files changed, 2 insertions(+)」としか報告しなかったことからも分かるとおり(本来なら数百行の挿入になるはず)、**改行バイト(0x0A)を1つも含まない、EBCDIC改行(0x25)区切りの単一論理行**として記録されていた。したがって`setccsid`や`TGTCCSID`の数値指定で「正しいCCSIDに読み替えさせる」という対処は誤り(advisor指摘)——本物の学習者のUTF-8/LFファイルに対してこの対処を適用すると、逆に正しいUTF-8ファイルをEBCDICとして誤変換して壊してしまう。**正しい対処**: 種ファイルそのものを、既にコンパイル済みのQRPGLESRC/QSRVSRCメンバーから`CPYTOSTMF`(`STMFCCSID(1208)`指定、03-10の`EXPSRC`前例と同じパラメーター形)で本物のUTF-8/LFストリーム・ファイルとして書き出し直す。次回接続で検証予定。
+- **誤りの訂正(2回目接続時の記録)**: 2回目接続時、`CLIENTCHECK`(`sh`型ステップ、`ADDLIBLE`無しで`system "CALL PGM(&LIB/F0702A) ..."`を実行)が`CPD0192`(「Service program JUCSRV not found.」)を返したことから、「`CRTSRVPGM`の`REPLACE(*YES)`が失敗時に既存の`JUCSRV`(*SRVPGM)自体を削除してしまった」と誤って結論づけ、**`&LIB/JUCSRV`が消失したという誤った記述をここに残していた。** 3回目の接続でVFYLOGを見直したところ、`RESTOREMEMBER`ステップ(メンバー経由の確実な再構築)の`CRTSRVPGM`が「Replaced object JUCSRV type \*SRVPGM was moved to QRPLOBJ.」(=既存の`JUCSRV`を正しく検出し、`QRPLOBJ`へ退避してから置き換えた)というメッセージを出しており、**この時点まで`JUCSRV`は実際には一度も消えていなかった**ことが確認できた(`QRPLOBJ`への退避は「置き換える既存オブジェクトが実在した」ことの直接証拠)。真因は`F0702A`/`F0703A`がJUCSRVを`*LIBL`経由で解決する設計(1回目接続のcollect結果、`BOUND_SERVICE_PROGRAM_LIBRARY = *LIBL`)であるのに対し、`CLIENTCHECK`(`sh`型)が`ADDLIBLE`を一切行っていなかったこと(`system(...)`呼び出しは1回ごとに別ジョブになるため、別の`system("ADDLIBLE ...")`を挟んでも次の`system("CALL ...")`には引き継がれない)——つまり`CPD0192`は**ライブラリー・リストの見せかけ上の問題であり、オブジェクトの実消失ではなかった。** このマニフェスト自身の「陳腐化オブジェクト防止」設計(`DLTMOD`を`CRTRPGMOD`より先に実行する)は、想定どおり正しく機能していた(`CRTRPGMOD`失敗時に`CPF5D02`という分かりやすい失敗を`CRTSRVPGM`に起こさせただけで、`*SRVPGM`自体には手を付けていない)。**教訓**: `*LIBL`解決に依存するプログラムを`sh`型ステップの生の`system(...)`から検証する場合は、`ADDLIBLE`+`CALL`を1つの`cl`型ステップ(1つのコンパイル済みCLラッパー、同一ジョブ)にまとめる必要がある——このマニフェストの`CLIENTCHECKCL`(`cl`型)はこの教訓を反映済み。
+- **`CLIENTCHECKCL`自身の実バグ(3回目の接続で発見)**: `ADDLIBLE LIB(&LIB) POSITION(*FIRST)`の直後に`MONMSG`を個別に置かず、2本の`CALL`と合わせて末尾に1つの`MONMSG`だけを置いていた。CLの`MONMSG`は**直前の1コマンドだけを監視する**規則があるため、この`MONMSG`は最後の`CALL PGM(F0703A)`しか監視しておらず、`ADDLIBLE`自身が返す`CPF2103`(「Library ... already exists in library list.」——このラッパー冒頭で自動的に発行される`ADDLIBLE`により、実際には無害な「既に追加済み」)が未監視のままラッパー全体のFAILSAFEへ伝播し、`CALL PGM(F0702A)`/`CALL PGM(F0703A)`が実行される前にプログラムが終了していた。加えて、このラッパーの`ADDLIBLE`自体もそもそも冗長だった(このハーネスの`cl`型ラッパーは、生成される全プログラムの冒頭で`ADDLIBLE LIB(&LIB)`+`MONMSG MSGID(CPF2103)`を自動的に発行済み)。次回接続で、冗長な`ADDLIBLE`を削除し、`F0702A`/`F0703A`の`CALL`をそれぞれ別の`cl`型ステップに分けて再検証する。
+- **`makei`の読み取り専用プローブが2回とも失敗**: フル・パス(`/QOpenSys/pkgs/bin/makei`)で呼んでも、また`export PATH=/QOpenSys/pkgs/bin:$PATH`を実行し`command -v python3.9`で実在を確認した直後でも、`makei`自身は「`/QOpenSys/pkgs/bin/`がPATHに入っていない」「`python3.9 is not installed or not in your system PATH.`」という同一の警告を出し続けた。**2回とも同一の(誤った)エラー文言が再現した**ことから、この警告メッセージ自体が実際の失敗原因を正しく診断できていない(PATHは実際には正しく設定されている)と判断できる。makeiに一次資料が無いことは設計時点で判明済み(work/design/part08-design-v1.md §9)——この「PATHは合っているのに誤診断され続ける」という事実自体を08-02の一次資料として扱う(次回接続では`head -60 /QOpenSys/pkgs/bin/makei`でラッパー自身の中身を読み、それ以上は深追いしない)。
+
+次回接続(2回目)でJUCSRV復旧・CCSID修正・makei PATH修正の3点をまとめて検証する。
+
+## 第8部`part08-01-git-srcstmf`続報: CCSIDの根本原因を確定・修正、新たにRNF2120・ROUNDTRIP-EDITの実バグを発見(4回目の接続、確認日2026-09-28)
+
+3回目接続後、advisorとの相談で、種ファイル自体が本物のUTF-8/LF学習者ファイルを代表していなかったことが判明した(前節参照)。4回目の接続で`CPYTOSTMF`(`STMFCCSID(1208) ENDLINFMT(*LF)`、`docs/part03/03-10-outfile-qtemp-ovrdbf.md`のEXPSRC例と同じパラメーター形——あちらも未検証だったため、これがその初めての実機確認になった)による本物のUTF-8シード生成に切り替えたところ、以下が確認できた:
+
+- **CCSID問題は完全に解決した。** `od -x`で確認すると、`CPYTOSTMF`直後・`git clone`直後のどちらでも、種ファイルは本物のASCII/UTF-8バイト列(`2a2a 4652 4545 0a2f 2f3d...`=`**FREE\n//===...`、本物の改行0x0Aを含む)のままだった。`git commit`のサマリーも「2 files changed, 518 insertions(+)」と、行数として妥当な値になった(heredoc版は「2 insertions」のみだった)。
+- **新しい実バグ発見: `CRTRPGMOD ... SRCSTMF(...)`が`RNF2120`(severity 40、「External descriptions for file TOKUIM/JUCHUM not found; file is ignored.」)で失敗。** 原因: このマニフェストの`BUILDMOD`/`BUILDSRV`ステップは`sh`型ステップの生の`system(...)`呼び出しであり、`cl`型ステップの生成ラッパーが自動的に発行する`ADDLIBLE`の恩恵を受けない(同じ接続の`CHECK702`/`CHECK703`——`cl`型ステップ——はどちらも正しく`JUCSRV`を解決できており、ラッパー自動`ADDLIBLE`の効果を裏付けている)。そのため`&LIB`がコンパイル・ジョブの`*LIBL`に一切含まれておらず、`&LIB`に実在する`TOKUIM`/`JUCHUM`(外部記述ファイル)を解決できなかった。`system("ADDLIBLE...")`を別途挟んでも解決しない(別々の`system()`呼び出しは別ジョブになるため、前のジョブのライブラリー・リスト変更は次のジョブに引き継がれない)。**修正**: `ADDLIBLE`+`DLTMOD`+`CRTRPGMOD`+`CRTSRVPGM`を1つのジョブで行う必要があるため、`sh`型ステップ内で(引用符無しheredocを使い、`$HOME`をシェル側で展開させてから)小さな使い捨てCLプログラムをその場で生成・コンパイル・実行する方式に変更した(`verify/part05-13-tickets/src/za0500h.clp`・`verify/part08-05-f0805a/src/q0805bh.clp`と同じ「専用の小さなCLヘルパー」パターンを、IFSパスが接続時にしか決まらないため動的に生成する形)。次回接続で検証予定。
+- **もう1つの実バグ発見: `ROUNDTRIP-EDIT`のシェル・リダイレクト編集がファイルを再びEBCDICへ壊していた。** `{ head; echo; tail; } > file.tmp && mv file.tmp file`という手法(1行挿入をシミュレートする単純な手法)を使ったところ、`od -x`で確認すると編集後のファイルは本物のEBCDICバイト列(CCSIDタグも273)に戻っていた——qshの文字列パイプは、新規作成するリダイレクト先ファイルを、既定の(EBCDIC)CCSIDへ実際に変換して書き込むとみられる(advisor指摘、事前に警告されていた既知の懸念どおり)。**修正**: 編集を`python3`のバイナリー・モード(`open(path, 'rb')`/`'wb'`)で行うよう変更した——テキスト・CCSID変換を一切経由しないため、この種の再汚染が原理的に起こらない。次回接続で検証予定。
+- **`makei`のラッパー・スクリプト自体を`head -60`で読んだ**(`/QOpenSys/pkgs/bin/makei`、bashスクリプト)。`check_dependencies()`が`check_tool python3.9`/`check_tool bash`/`check_tool make`と、別途`check_path()`(`$PATH`に`/QOpenSys/pkgs/bin`が部分文字列として含まれるかを確認)を呼んでいる——このセッションで確認済みのPATH状態であれば、これらはすべて通るはずなのに、実際に2回とも(2回目・3回目接続)同じ失敗メッセージが出た。**推測(一般知識、未確認)**: `#!/usr/bin/env bash`というシバン行が起動するbashが、独自の起動ファイル(`.bashrc`等)で`$PATH`をリセットし、呼び出し元シェルの`export`を打ち消している可能性がある。これ以上の深追いはせず、08-02の一次資料としてはこの「PATHは合っているはずなのに同一の(見かけ上誤った)エラーが再現する」という事実そのものを使う。
+
+## 第8部 08-05レッスン執筆時に見つかった実バグ2件(`f0805as.rpgle`、コンパイル・エラーではなく静的レビューで発見)
+
+08-05/08-05bレッスン本文をWorkflow(write→3観点反証→修正)で執筆する過程で、批評エージェントが`ju0300.rpg`のC仕様の桁位置を`rpg400ref.txt`と突き合わせて2件の実誤りを発見した。どちらも`db/data/load_v1.sql`の実データ(得意先6名)では発現しない潜在的なバグ・過大な主張であり、`golden-master.md`との差分ゼロという4回目接続の確認結果自体には影響しない。
+
+1. **`ix <> 49`ガードの誤り(実バグ、修正済み)**: `f0805as.rpgle`の`l2Break`は当初「JU0300自身の配列境界ガードを忠実に移植した結果、使用可能なスロットが49個に制限される(50番目は書き込まれない)——これは元のクセをそのまま継承したもの」と説明していたが、これは誤り。`ju0300.rpg`152行目`CL2 IX COMP 49 90`の桁位置を実際に数えると、標識`90`は54-55桁目に置かれている。`rpg400ref.txt`12559-12561行目・14515-14517行目によれば、COMP命令の結果標識は54-55桁目がHigh(Factor1>Factor2)・56-57桁目がLow・58-59桁目がEqualであり、54-55桁目は**High**を意味する——**Equal(本来58-59桁目)ではない。** つまり標識90は「IXが49より大きい(=50以上)」ときにONになる。続く`CL2N90`(標識90がOFF、すなわちIX<=49)のときだけ加算・格納するため、元のガードは「IXが49以下ならインクリメントしてよい」という意味であり、**IXが49→50への遷移を正しく許可し、50を使い切ったうえで51件目だけを防ぐ**設計だった(`ju0300.rpg`自身のヘッダー・コメント67-71行目「IX itself can never advance past 50」とも整合する)。`f0805as.rpgle`の`if ix <> 49;`という移植は、IX=49のときに加算をブロックしてしまう誤りで、50番目のスロットを永遠に使わせない(移植側だけの)実バグだった。`if ix <= 49;`に修正済み。
+2. **「free-form RPGにはUDS自動読み込みの相当機能が無い」という過大な主張(訂正済み)**: `ilerpgref75.txt`16326-16330行目は、`DCL-DS *N DTAARA(*AUTO); ...; END-DS;`(無名データ構造+`DTAARA(*AUTO)`)を、固定形式`D UDS`の自由形式での直接の相当形として明示している——`IN`/`OUT`が不要な自動読み込み形式が実際に存在する。`f0805as.rpgle`はこの`*AUTO`形ではなく、もう一方の明示`IN`/`OUT`形(`DTAARA(*LDA)`+`in ldaDs;`)を意図的に選んで使っているが、ヘッダー・コメントは「free-formにはUDS自動読み込みが無い」と誤って一般化していた。「`*AUTO`という選択肢自体はある。読み込みタイミングの一次資料での確証が明示`IN`ほど明確でないため、読み手にとって制御の流れが分かりやすい明示`IN`形をあえて選んだ」という設計判断として訂正済み。
+
+## 第8部`part08-01-git-srcstmf`続報: 中核演習(SRCSTMFビルド)がCONFIRMED SUCCESS(6回目の接続、確認日2026-09-29)
+
+5回目接続で見つかったCL行の切り詰め(`CRTRPGMOD`/`CRTSRVPGM`の`SRCSTMF('...')`パスが長すぎて`CPIA083`「Stream file copied to object with truncated records」で切り詰められ、`CPD0014`/`CPD0013`「引用符・かっこが対応しない」で失敗)を、IFSディレクトリー名の短縮(`v8`/`b.git`/`p`/`c`)と、CLの`+`継続行への分割(`verify/lib/clgen.mjs`自身の`CL_MAX_COL=80`規約に倣う)で修正し、6回目の接続で**このレッスンの中核演習(`JUCSRV`をgit clone+SRCSTMFで作り直す)が完全に成功した**:
+
+- `CRTRPGMOD MODULE(&LIB/JUCSRV) SRCSTMF(...) TGTCCSID(*JOB)`が「Module JUCSRV placed in library <USER>2. 10 highest severity.」で成功(`TOKUIM`/`JUCHUM`の外部記述も正しく解決——動的生成した`BUILDMOD`ヘルパーCLプログラム自身の`ADDLIBLE`が効いている)。
+- `CRTSRVPGM ... SRCSTMF(...)`も「Replaced object JUCSRV type \*SRVPGM was moved to QRPLOBJ.」「Service program JUCSRV created in library <USER>2.」で成功——既存のJUCSRVを正しく検出・退避してから置き換えた。
+- `CHECK702`/`CHECK703`(`cl`型ステップ、`ADDLIBLE`はラッパー自動発行分のみ)がどちらも成功: `getCustName(C00001) = ACME TRADING CO`・`countCustOrders(C00001)`の2連続呼び出しがどちらも`2`——member経由の従来ビルドと完全に同じ値。`QSYS2.OBJECT_STATISTICS`で`*MODULE`・`*SRVPGM`ともJUCSRVの実在を確認。
+
+**「同じ最終オブジェクトを別のビルド経路(SRCSTMF)で作る」という08-01のレッスンの核心そのものが、実機で確認できた。**
+
+唯一`ROUNDTRIP-EDIT`(PC側で1行編集→push→pull→再ビルド、という演習の後半)だけが新しい実バグで失敗した: 編集用の`python3`スクリプト(`ed.py`)自体をheredocで書き込んだところ、これも(seedファイル・CLヘルパーで2度確認済みの)heredoc書き込みの既定挙動どおりEBCDICバイト列になり、python3が`SyntaxError: Non-UTF-8 code ... but no encoding declared`で読み込めなかった。PEP 263の`# -*- coding: ... -*-`宣言では直せない(Pythonの先頭2行スキャン自体がASCII互換を前提にしており、EBCDICバイトではその宣言自体を認識できない)。**修正**: `ed.py`を(heredocではなく)このマニフェスト自身の`file`型ステップでQTXTSRC/EDPYという実在のメンバーとして転送し、`CPYTOSTMF`(`STMFCCSID(1208) ENDLINFMT(*LF)`、seedファイルで2度実証済みの同じレシピ)でIFSへ書き出す方式に変更した。次回接続で検証予定。
+
+## 第8部`part08-01-git-srcstmf`最終確認: 7回目の接続でCONFIRMED SUCCESS(確認日2026-09-29)
+
+`ed.py`をQTXTSRC/EDPYメンバー経由・`CPYTOSTMF`で書き出す修正を適用した7回目の接続で、**08-01の実演・演習の全経路が実機で確認できた**:
+
+- `ROUNDTRIP-EDIT`: `python3`(バイナリー・モード)による1行挿入が成功——`od -x`で本物のUTF-8バイト列(タグも1208のまま)を確認、`git commit`のサマリーも「1 file changed, 1 insertion(+)」という正しい差分。`push`も成功。
+- `ROUNDTRIP-PULL`: `pub400-clone`側の`git pull`がFast-forwardで成功、編集した行(`// verify-rehearsal round-trip edit: ...`)が正しく反映されていることを確認。
+- `ROUNDTRIP-REBUILD`: 編集後のソースを`CRTRPGMOD`/`CRTSRVPGM`(SRCSTMF経由)で再ビルドし、どちらも成功(モジュール・サービス・プログラムとも作成、既存`JUCSRV`を`QRPLOBJ`へ退避)。
+- `CHECK702`/`CHECK703`: 再ビルド後の`JUCSRV`に対しても`F0702A`/`F0703A`が正しく解決・動作(`getCustName`=`ACME TRADING CO`、`countCustOrders`の2連続呼び出しがどちらも`2`)——member経由の元のビルドと完全に同じ値。
+
+**このverifyハーネス自身が実行した範囲(qsh・非対話SSH経由でのbare/cloneリハーサル・SRCSTMFによる`JUCSRV`再構築・1往復のPC編集→push→pull→再ビルド)は、これですべてCONFIRMED SUCCESSとなった。** 7回の接続を要したが、途中で見つかった実バグ(CCSIDタグと実バイト列の不一致、`*LIBL`解決に必要な`ADDLIBLE`の欠落、CL行の切り詰め、heredoc書き込み経由のPythonスクリプト自体のEBCDIC化)はいずれも08-01のレッスン本文自体にとって価値ある教材(「gitでチェックアウトしたファイルがUTF-8である前提で書かれたコマンドが、実際にはEBCDIC化されたファイルに対して動かない」という、この教材の一貫したテーマ——CCSID・ライブラリー・リストへの注意——の具体例)になりうる。
+
+**ただし、これは08-01レッスン本文が学習者に要求するすべての確認事項を網羅したものではない。** 以下は今回のハーネス実行の範囲外で、依然としてV3(学習者自身の5250/実PC環境でのみ確認可能)のままである:
+
+- **本物のPC→PUB400へのgit push**(SSH経由、実際のPCのgitクライアントから)。今回はqshセッション内で「PC側」「PUB400側」の両方を擬似的に再現しただけで、本物のPC側からの接続は一度も行っていない。
+- **`~/.ssh/config`の`IdentitiesOnly yes`設定**(複数鍵の提示が認証失敗としてカウントされる、という一般知識に基づく対策)——このハーネス自身は既に確立済みの単一鍵接続を使っており、この設定の要否そのものを検証する構成になっていない。
+- **`.gitattributes`(LF強制)**——今回のリハーサルでは種ファイルを`CPYTOSTMF ENDLINFMT(*LF)`で直接LF化しており、`.gitattributes`によるgit自身の改行正規化は一度も経由していない。
+- **`INCDIR`**——`JUCSRV`は`/COPY`ディレクティブを持たないため、`CRTRPGMOD`の`INCDIR`パラメーターは一度も実際に使われていない。
+
+08-01のレッスン本文でこれらに触れる場合は、上記のハーネス実行結果ではなくV3として扱うこと。
+
+**また、harnessの実行環境(qsh、非対話SSH)と学習者の実行環境(02-04で確立済みのSSH接続によるPASEログイン・シェル、P08確認済みの`bsh`)は別物である。** ハーネス固有の回避策(`CPYTOSTMF`による種ファイル生成、動的生成した`BUILDMOD`ヘルパー、短縮したIFSパス`v8`/`b.git`/`p`/`c`、`ed.py`のQTXTSRC経由配送)は、いずれもこのverifyハーネス自身の非対話SSH実行という制約に対処するためのものであり、学習者向けのレッスン本文の手順に含めるべきではない。学習者にとって本当に関係があるのは次の2点だけである:
+
+1. **`TGTCCSID(*JOB)`(またはEBCDIC CCSIDの明示指定)が必要になりうること**——PASEのgitがチェックアウトするファイルはCCSID 1208(UTF-8)でタグ付けされ、`CRTRPGMOD`の既定`TGTCCSID(*SRC)`はUnicode系CCSIDを拒否する(`RNS9380`)。
+2. **コンパイル・ジョブの`*LIBL`に`<USER>1`が含まれている必要があること**——`TOKUIM`/`JUCHUM`の解決に必要。5250の対話ジョブでは通常問題にならないが、非対話的な実行経路(このハーネスのような)では明示的な`ADDLIBLE`が要る。
+
+「qshのリダイレクトがファイルを273へ再エンコードする」という現象は、**qsh固有の挙動であり、一般化しないこと**——同じ接続でPASEのgit自身は一貫して1208タグ付きファイルを作成しており、qshとPASEは異なる既定動作を持つ別々の実行環境である。
+
+## 第8部`part08-05-f0805a`続報: 5回目の接続で`ix<=49`/`MISMATCH`修正を再確認(確認日2026-09-29)
+
+08-05レッスン執筆中に見つかった`f0805as.rpgle`の2つの実バグ(`CT`配列ガードの`ix <> 49`→`ix <= 49`、`grandTotal`の`MISMATCH`列位置`62`→`63`)を反映して5回目の接続を実行した。`JU0300`・`F0805A`・`ZA0500`・`JU0900C`・`Q0805B`・`Q0805BH`のすべてがHighest Severity 00でコンパイル成功し、VFYLOGにFAILEDマーカーは無かった。同じ接続内の`F0805A`と`JU0300`、`Q0805B`(`Q0805BH`経由)と`ZA0500`(`JU0900C`経由)を、それぞれ`diff`で突き合わせたところ、どちらも完全一致(差分ゼロ)を維持していた。
+
+**確認できたのは「2つの修正がコンパイルを通り、既存の(6名データが通る)経路を壊さないこと」までである。** `IX`が49を超える経路(50人目以降の得意先)・`XFOOT`が不一致になる経路(`MISMATCH`分岐)は、`db/data/load_v1.sql`の6名データでは相変わらず一度も実行されていないため、この2つの修正が実際に正しく動くこと自体は依然として実機で確認できていない。`solutions/08-05/f0805as.rpgle`のSTATUSヘッダー・`docs/part08/08-05-control-level-refactor.md`とも、この区別(コンパイル確認 vs. 実際の分岐の動作確認)を明記する形に更新済み。
+
+同じ接続に追加した`makei`のqsh直接呼び出し/bash経由呼び出しの比較テスト(`MAKEICHECK`)は、シェル・スクリプトの`&&`連鎖の書き方に不備があり、1つ目(qsh直接呼び出し)が非ゼロ終了コードを返した時点で2つ目(bash経由)が実行されなかった。qsh直接呼び出しの結果は従来どおり失敗(`python3.9 is not installed or not in your system PATH.`)。bash経由での比較は次回接続以降の課題として持ち越す——`makei`自体は引き続き「一般知識、この環境での挙動は未確認」の扱いのままとする。
+
+## 第8部`part08-02-makei-probe`: qsh直接呼び出しと`bash`経由呼び出しの比較が初めて成立し、`makei`(TOBi)が実際に動くことを確認(確認日2026-09-29)
+
+`part08-05-f0805a`の`MAKEICHECK`(2回)で`&&`連鎖の不備により未達成だった比較を、`;`区切り(両方の半分が相手の終了コードに関わらず必ず実行される)にした専用の1ステップ・マニフェスト(`verify/part08-02-makei-probe/manifest.json`)で1回目の接続にて実施した。読み取り専用(`makei --version`のみ、ビルドは試みていない)。
+
+- **qsh直接呼び出しは、従来どおり失敗する。** `export PATH=/QOpenSys/pkgs/bin:$PATH`を直前に実行し、実際`echo $PATH`は`/QOpenSys/pkgs/bin:/usr/bin:.:/QOpenSys/usr/bin`(`/QOpenSys/pkgs/bin`を含む)を返しているにもかかわらず、`makei --version`自身は「It looks like /QOpenSys/pkgs/bin/ is not currently in your system PATH.」「python3.9 is not installed or not in your system PATH.」という、PATHが通っていないという趣旨の(実際には誤った)診断を出し続けた。
+- **`bash -x /QOpenSys/pkgs/bin/makei --version`(bash経由呼び出し)は初めて成功した。** トレース出力によれば、`check_dependencies`→`check_path`→`return 0`(通過)、続く`check_tool python3.9`/`check_tool bash`/`check_tool make`もすべて`return 0`で通過し、最終的に`/QOpenSys/pkgs/bin/python3.9 /QOpenSys/pkgs/lib/tobi/src/makei/cli/makei_entry.py --version`が実行され、**`TOBi version 3.2.1`**という正常な出力が得られた。
+- **結論: `makei`(TOBi)自体は実在し、正しく動く。** 4回目接続時点の推測(「`#!/usr/bin/env bash`のシバン行が起動するbashが独自の起動ファイルでPATHをリセットしている可能性」)は誤りだったと判明した——もしそうなら`bash -x`経由の呼び出しも同じ理由で失敗するはずだが、実際には成功している。**真因はまだ一意に特定できていない(要ヘッジ)**。候補は少なくとも2つある: (1) `makei`のラッパー・スクリプト自身の`check_path()`(PATHの中に`/QOpenSys/pkgs/bin`が含まれるかを確認するロジック)が、qshから直接起動された場合にだけ誤って失敗と判定するという`makei`自身の実装上のクセ、(2) qshで`export`したPATHが、`makei`自身の子プロセス(`python3`等)へ正しく継承されていない、という環境変数の伝播側の問題。今回のトレースはどちらの候補とも矛盾しない(`bash -x`経由が成功したことは、check_pathの判定ロジックの違いでも、bashが子プロセスへの環境変数伝播を正しく行うことでも、同じように説明できる)ため、どちらか一方に決め打ちしない。08-02のレッスン本文で書けるのは「`makei`を呼ぶのと同じシェルの中で`PATH`をexportすること」という、この接続で実際に効いた対処だけである。
+- **`TOBi`のバージョンは`3.2.1`で確定した。** `work/design/part08-design-v1.md`§0.5(B2-27)が「PUB400のTOBiバージョンは3.2.1と報告されていたが、このリポジトリには一切の実測記録が無い」としていた未確認事項が、これで実測により解消した。
+- **08-02のレッスン設計への示唆**: 学習者が5250から`STRQSH`等でqshに入り、そこで直接`makei`を呼ぶと、PATHが正しく設定されていても失敗する(見かけ上の診断メッセージに惑わされる)可能性がある。02-04で確立した経路(SSHで直接ログインし、既定のPASE `bsh`シェルから`makei`を呼ぶ)であれば、この問題を踏まずに済む見込みが高い(`bash`経由の呼び出しが成功したのと同じ経路のため)——ただし`bsh`自体でこの回避が成立することを直接確認したわけではなく(今回確認したのは`bash -x`経由のみ)、この対応関係はV3(未検証)のまま扱う。`makei`のビルド動作そのもの(依存関係順の一括ビルド、`iproj.json`/`Rules.mk`の実際の効き方)は今回`--version`しか試していないため、引き続き未確認。
+
+## 第8部`part08-02-makei-probe2`: 1回目の接続は2つの自作エラーで失敗、実際のmakeiビルドはまだ未確認(確認日2026-09-29)
+
+`ZAISRV`(Part 7で確立済み)を`iproj.json`+`Rules.mk`で実際に`makei build`させ、(1)`makei build`がエンド・ツー・エンドで動くか、(2)`iproj.json`の`objlib`/`curlib`が実際に効くか(`work/design/part08-design-v1.md`§7項目2・§8項目6の未決事項)を確かめる専用マニフェスト`verify/part08-02-makei-probe2/manifest.json`の1回目の接続。**この接続はmakei自体について何も新しく確認できなかった**——2つとも、このマニフェスト自身の作り方の誤りが原因である:
+
+- **PASEの`sed`に`-i`オプションが無い。** `iproj.json`のプレースホルダー`YOURUSER2`を実ライブラリー名に置き換えるつもりで`sed -i "s/YOURUSER2/&LIB/g" iproj.json`を実行したが、stderrに`sed: 001-3036 usage: sed [-an] [-C ccsid] command file ... sed [-an] [-C ccsid] [-e command] [-f command_file] file ...`という使用法メッセージが記録されており、**置換は一度も成功していなかった**(`SETUP`ステップの`cat`出力でも`"objlib": "YOURUSER2"`のままなのが直接確認できる)。PASEの`sed`はGNU sedと違い、その場書き換え(`-i`)を持たない。
+- **`BUILD`ステップが`PATH`を一切exportしていなかった。** 各`sh`型ステップは別ジョブ(=別シェル)になるため、`SETUP`ステップで通したはずの`PATH`は`BUILD`ステップには引き継がれない。`BUILD`は`cd "$HOME/mk8/z" && /QOpenSys/pkgs/bin/bash /QOpenSys/pkgs/bin/makei build`という形で、`PATH`を一度もexportせずにいきなり`makei`(bash経由)を呼んでいた。結果は`part08-02-makei-probe`の1回目接続(qsh直接呼び出し)と同じ「It looks like /QOpenSys/pkgs/bin/ is not currently in your system PATH.」——**ただし今回はこの診断が事実として正しい**(本当に`PATH`に`/QOpenSys/pkgs/bin`が入っていなかった)。`bash`経由なら`PATH`の有無に関わらず動く、という単純な話ではなく、`bash`経由でも`PATH`をきちんと通す必要があることが分かる。
+- `collect`型のSELECT文が返した`ZAISRV *MODULE`/`*SRVPGM`(`&LIB`に存在)は、**`BUILD`が失敗して何も作らなかったため、Part 7の`part07-05-checkpoint`由来の既存オブジェクトがそのまま見えていただけ**で、今回のmakeiビルドの成果ではない。
+- 副次的に見つかったマニフェスト自身のバグ: `PROGRAM_INFO`のSELECT文に`QSYS2.PROGRAM_INFO('&LIB', 'ZAISRV')`という関数呼び出し構文を使っていたが、`part08-07-services`で確認済みの実際に動く形は`FROM QSYS2.PROGRAM_INFO WHERE PROGRAM_LIBRARY = '&LIB' ...`という素のビュー形式(かっこ無し)——`SQLSTATE 42601`(構文エラー)で失敗した。
+- **修正**: `iproj.json`の置換は、`part08-01-git-srcstmf`の`ed.py`と同じ安全な手段(`python3`のバイナリー・モード読み書き)に変更した(このハーネスのqshでは`>`によるリダイレクトがCCSID 273へ再エンコードしてしまう既知の問題があるため、`sed ... > tmp && mv tmp file`のような代替も避けた)。`BUILD`ステップは`bash -c 'cd ... && export PATH=/QOpenSys/pkgs/bin:$PATH && ... makei build'`という、`part08-02-makei-probe`で成功した形に`export`を明示的に含めるよう修正した。`PROGRAM_INFO`のSELECT文も素のビュー形式に修正した。次回接続で再試行する。
+
+## 第8部`part08-02-makei-probe2`続報: 2回目の接続で`makei build`は実際に走ったが「何もしない」と判定した(確認日2026-09-29)
+
+1回目の2つの自作バグ(`sed -i`・`PATH`未export)を修正した2回目の接続で、`iproj.json`の置換(`python3`バイナリー・モード)と`PATH`のexportはどちらも正しく機能した(`SETUP`の`cat`出力で`"objlib": "<USER>2"`への置換を確認、`BUILD`の`echo PATH=$PATH`で`/QOpenSys/pkgs/bin`を含むことを確認)。
+
+**`makei build`自体は今度こそ実際に走った**が、結果は次のとおり:
+
+```text
+> /QOpenSys/pkgs/bin/make -k BUILDVARSMKPATH="/tmp/..." -k TOBI_PATH="/QOpenSys/pkgs/lib/tobi" -f "/QOpenSys/pkgs/lib/tobi/src/mk/Makefile" all
+make: Nothing to be done for 'all'.
+Objects:            0 failed 0 succeed 0 total
+```
+
+**makeiは「何も作る必要が無い」と判定し、0件のオブジェクトで終わった。** `collect`型のSELECTが返した`ZAISRV *MODULE`/`*SRVPGM`(`&LIB`に存在)は、この判定のとおり**今回のビルドの成果ではなく**、Part 7由来の既存オブジェクトがそのまま見えているだけである可能性が高い(前回接続と同じ状況)。原因は2通り考えられ、この接続だけでは切り分けられない: (a) makeiが対象オブジェクト名(ここでは`ZAISRV`)が`objlib`に既に存在することだけを見て「最新」と判断している(ソースの内容や日時とは無関係)、(b) 何か別の理由(iproj.json/Rules.mkの記述不足、makei自身が期待する追加の初期化手順の欠落等)で、そもそも依存グラフに`ZAISRV`が1件も登録されていない。makei/Bob自体にこの教材の一次資料は無い(`work/design/part08-design-v1.md`§0.6)ため、これ以上は内部動作の推測に頼らざるを得ない。
+
+**次の一手**: この曖昧さを解消するため、`&LIB`(Part 7がZAISRVを既に持つライブラリー)ではなく、P01で確認済みの空のライブラリー`<USER>B`(`&LIB2`、このバッチのどの接続でもまだ一度も触れていない)を`objlib`/`curlib`に指定した3回目の接続を行う。**`<USER>B`は空なので、ここで実際にオブジェクトが作られれば(a)(b)の両方に同時に答えが出る**(makeiが本当にゼロから作れること、かつ`iproj.json`の`objlib`/`curlib`が実際に効くこと、の両方が一度に確認できる)。破壊的な操作は無い(`<USER>B`はこのバッチでも他のどのZAISRV関連接続でも触れていない)。
+
+## 第8部`part08-02-makei-probe2`続報: 3回目の接続、空ライブラリーでも変化なし(確認日2026-09-29、**結論は5回目接続後に訂正**)
+
+空の`<USER>B`(`&LIB2`)を`objlib`/`curlib`に指定した3回目の接続でも、結果は2回目と全く同じだった:「`make: Nothing to be done for 'all'. Objects: 0 failed 0 succeed 0 total`」、`collect`型の2本のSELECTともに**0件**(`<USER>B`にはZAISRVの`*MODULE`/`*SRVPGM`が1件も存在しないことを直接確認)。
+
+**【訂正、advisor指摘】当時この節は「これで(a)(対象ライブラリーに既存オブジェクトがあるからスキップされた)という仮説は完全に否定された」と結論づけていたが、これは誤りだった。** この3回目の接続の時点でも`Rules.mk`は依然として100%コメント(ターゲット宣言ゼロ)のままだった——5回目の接続で確定したとおり(下記参照)、ターゲット宣言が無ければmakeiはそもそも何もビルド対象として認識しない。つまり3回目の接続は、空ライブラリーでも結果が変わらないことを示しただけで、(a)(既存オブジェクトがあるからスキップされた)という仮説を検証できる状態にすらなっていなかった——`Rules.mk`にターゲットが1つも無い時点で、対象ライブラリーの中身が空だろうと既存オブジェクトがあろうと、結果は必然的に同じ(0件)になる。(a)の真偽は、正しいターゲット宣言を持つ`Rules.mk`を使い、**既にZAISRVが存在するライブラリー**(`&LIB`)を対象にした場合にmakeiが実際にリビルドするか、それとも「最新」と判断してスキップするかを見て初めて判定できる——これは6回目接続後もまだ実施していない(次回接続の課題、下記参照)。advisorに相談したところ、これ以上「`src/`をネストせず直接`qrpglesrc/`にすべきでは」のような当て推量を重ねるのではなく、**このリポジトリの一次資料には無いが、PUB400自身のホスト上に実在するTOBi自身のインストール済みファイル(`/QOpenSys/pkgs/lib/tobi/`)を直接読む**べきだという指摘を受けた——`head -60 makei`で得た知見(1回目の`part08-01`調査)と同じ考え方で、これも正真正銘の一次資料である。4回目の接続はこの読み取り専用調査に充てる。
+
+## 第8部`part08-02-makei-probe2`続報: 4回目の接続で、TOBi自身の完全なドキュメント一式とinit/cvtsrcpfサブコマンドを発見(確認日2026-09-29)
+
+読み取り専用の4回目の接続で、PUB400のホスト上に**`work/design/part08-design-v1.md`§0.6の想定(「makei/TOBi/iproj.jsonは一次資料ゼロ件」)を覆す事実**が見つかった——**`/QOpenSys/pkgs/lib/tobi/docs/`配下に、TOBi自身の完全なMarkdownドキュメント一式が実在する。** このリポジトリの`work/design/refs/`にこれが1つもミラーされていなかっただけで、ホスト上には最初から存在していた。見つかった主なファイル:
+
+```text
+/QOpenSys/pkgs/lib/tobi/docs/prepare-the-project/create-a-new-project.md
+/QOpenSys/pkgs/lib/tobi/docs/prepare-the-project/convert-source-code.md
+/QOpenSys/pkgs/lib/tobi/docs/prepare-the-project/iproj-json.md
+/QOpenSys/pkgs/lib/tobi/docs/prepare-the-project/rules.mk.md
+/QOpenSys/pkgs/lib/tobi/docs/getting-started/sample-build.md
+/QOpenSys/pkgs/lib/tobi/docs/reference/recipes.md
+/QOpenSys/pkgs/lib/tobi/tests/data/build_env/sample_project1/Rules.mk  (バンドル済みサンプル・プロジェクト)
+```
+
+さらに`makei --help`/`makei build --help`/`makei init --help`で、サブコマンド一覧と各オプションが判明した:
+
+```text
+makei init      set up a new or existing project (-f/--force, -o/--objlib OBJLIB, -c/--ccsid CCSID)
+makei info      get information about the current project
+makei compile   compile a single file
+makei build     build the whole project (-t/--target, -d/--subdir, -o/--make-options, --tobi-path, -e/--env)
+makei cvtsrcpf  convert source physical file members to UTF8 IFS files
+```
+
+**これは、これまで2〜3回目の接続で手作業(`CPYTOSTMF`+`iproj.json`の手書き)で試みてきたやり方が、そもそもTOBiが想定する使い方ではなかった可能性を示している。** 特に`makei cvtsrcpf`は、既存のソース物理ファイル・メンバー(今回の`ZAISRV`はまさに`QRPGLESRC`/`QSRVSRC`のメンバーとして実在する)をUTF-8のIFSファイルへ変換する専用サブコマンドであり、「手作業のCPYTOSTMF」の代わりに使うべきものだった可能性が高い。`makei init -o OBJLIB`も、`iproj.json`を手書きで用意する代わりに使うべき、正規の初期化手順だったと考えられる。
+
+**次の一手**: 5回目の接続で、上記のドキュメント(特に`iproj-json.md`・`rules.mk.md`・`create-a-new-project.md`・バンドル済み`sample_project1/Rules.mk`の中身)を実際に読み、正しいプロジェクトの用意の仕方(`makei init`→`makei cvtsrcpf`→`makei build`という手順が正しいかどうかを含め)を確認してから、必要なら再度ビルドを試みる。
+
+## 第8部`part08-02-makei-probe2`続報: 5回目の接続で真因が確定——`Rules.mk`自体がターゲット宣言ゼロだった(確認日2026-09-29)
+
+5回目の接続(読み取り専用)で、`iproj-json.md`・`rules.mk.md`・`create-a-new-project.md`・`convert-source-code.md`・`sample-build.md`、およびバンドル済みサンプル・プロジェクト(`tests/data/build_env/sample_project1`)の実物を読んだ。
+
+- **`iproj.json`側は最初から正しかった。** `objlib`/`curlib`/`includePath`/`preUsrlibl`/`postUsrlibl`は、`iproj-json.md`が説明する実際のフィールドと完全に一致しており、このバッチの`templates/part08-zaisrv/iproj.json`に誤りは無かった。
+- **真因が判明: `Rules.mk`はエッジケース専用の任意ファイルではなく、makeiに「何をビルドするか」を教える主たる仕組みそのものだった。** `rules.mk.md`は「`オブジェクト名.オブジェクト型: ソース・ファイル`」という形の行(例: `VATDEF.FILE: VATDEF.PF SAMREF.FILE`)を1つも書かなければ、対象オブジェクトが1つも登録されないと明記している。バンドル済みサンプル・プロジェクトの実際に動く`Rules.mk`も、同じ形で`HELLO.MODULE: HELLOP.RPGLE`という1行だけを持っていた。**このバッチが1〜4回目の接続でずっと使っていた`Rules.mk`(`templates/part08-zaisrv/Rules.mk`)は100%コメントで、ターゲット宣言が1つも無かった。** これが、対象ライブラリーが`&LIB`(既存オブジェクトあり)でも`&LIB2`(空)でも変わらず同じ「`Nothing to be done for 'all'`」になっていた理由である——ライブラリーの中身とは無関係に、そもそも依存グラフに何も登録されていなかった。
+- **`makei init`は対話式のウィザードだった。** `create-a-new-project.md`によれば、`makei init`は「descriptive application name」「git repository」「objlib」等を対話的に尋ねるプロンプト式のセットアップ・プログラムであり、非対話的にそのまま呼び出すと入力待ちで停止する(advisorが事前に警告した「プロンプトがスクリプトの残りを飲み込む」という懸念どおり)。
+- **`makei cvtsrcpf`は既存のソース物理ファイル・メンバーをIFSへ変換する専用サブコマンド**(`convert-source-code.md`)で、このバッチが手作業で行ってきた`CPYTOSTMF`の代わりに使うべき正規の道具だったと考えられる。
+- **修正**: `templates/part08-zaisrv/Rules.mk`を、実際にターゲットを宣言する形(`ZAISRV.MODULE: zaisrv.rpgle` / `ZAISRV.SRVPGM: ZAISRV.MODULE zaisrv.bnd`)に書き直した。従来のコメント(「通常このファイルへの追記は不要」)は誤りだったため削除した。6回目の接続で、この修正版`Rules.mk`を使い、引き続き空の`<USER>B`(`&LIB2`)を対象にビルドを再試行する。
+
+## 第8部`part08-02-makei-probe2`続報: 6回目の接続でmakeiビルドがCONFIRMED SUCCESS、ただし未決事項が残る(確認日2026-09-29)
+
+修正版`Rules.mk`(`ZAISRV.MODULE: zaisrv.rpgle` / `ZAISRV.SRVPGM: ZAISRV.MODULE zaisrv.bnd`)を使い、引き続き空の`<USER>B`(`&LIB2`)を対象にした6回目の接続で、**`makei build`が実際にゼロからZAISRVを作り上げることに初めて成功した**:
+
+```text
+> /QOpenSys/pkgs/bin/make -k BUILDVARSMKPATH="..." -k TOBI_PATH="/QOpenSys/pkgs/lib/tobi" -f "/QOpenSys/pkgs/lib/tobi/src/mk/Makefile" all
+=== Creating RPG module [zaisrv.rpgle]
+crtrpgmod module(<USER>B/ZAISRV) srcstmf('...') ... TGTCCSID(*JOB) ...
+✓ ZAISRV.MODULE was created successfully!
+
+=== Creating service program [ZAISRV] from modules [ZAISRV] and service programs []
+CRTSRVPGM srcstmf('...') SRVPGM(<USER>B/ZAISRV) MODULE(ZAISRV) ... ACTGRP(*CALLER) ...
+✓ ZAISRV.SRVPGM was created successfully!
+
+Objects:             0 failed 2 succeed 2 total
+Build Successful!
+```
+
+`collect`型の2本のSELECTで、`ZAISRV`の`*MODULE`・`*SRVPGM`がどちらも(それまで0件だった)`<USER>B`に実在することを直接確認した。`PROGRAM_INFO`の`PROGRAM_TYPE`も`ILE`を正しく返した。
+
+**これで`work/design/part08-design-v1.md`§7項目2・§8項目6の未決事項の両方に、同時に実機で答えが出た**: (1) `makei build`は(`Rules.mk`に正しいターゲット宣言さえあれば)実際にゼロからオブジェクトを作れる、(2) `iproj.json`の`objlib`/`curlib`は実際にビルド先ライブラリーを制御する(既定の`*CURLIB`ではなく、指定した`<USER>B`に作られた)。
+
+**副産物として分かったこと**: makeiが生成した実際の`CRTRPGMOD`は`TGTCCSID(*JOB)`を自動的に付けていた(08-01が学習者に教える対処と同じ)。`CRTSRVPGM`は`ACTGRP(*CALLER)`を使っており、Part 7がZAISRVに最初から与えていた設計と一致する。
+
+**この4〜6回目の接続(すべて読み取り専用または空ライブラリー限定)を通じて、08-02のレッスン設計にとって決定的に重要な事実が1つ確定した**: `templates/part08-zaisrv/Rules.mk`はエッジケース専用ファイルではなく必須ファイルであり、対象オブジェクトごとに`オブジェクト名.オブジェクト型: ソース・ファイル`という行を書かなければmakeiは何もビルドしない。08-02のレッスン本文はこの点を中核概念として明記する必要がある(従来の設計メモ・テンプレートのコメントはこの点で誤っていた)。`makei init`(対話式ウィザード)・`makei cvtsrcpf`(ソースPFのIFS変換)は、このバッチでは実際には使わず、代わりに08-01で確立済みの`CPYTOSTMF`手法をそのまま使った——どちらの経路でも最終的なビルド結果は同じはずだが、`makei init`/`cvtsrcpf`自体をこの教材で実機確認したわけではない(V3のまま)。
+
+**【advisor指摘、7回目の接続で一部解消】**: 6回目の接続は「空ライブラリーへの新規ビルド」しか確認しておらず、増分ビルド(2回目以降のmakei buildが本当にスキップするか)は未確認のままだった。7回目(このバッチ最後の接続)で、6回目からソースを一切変えず、同じ`$HOME/mk8/z`のまま`makei build`をもう一度実行したところ、**今度こそ正しい意味で「`make: Nothing to be done for 'all'. Objects: 0 failed 0 succeed 0 total`」が出た**——3回目の接続時とは違い、今回は`Rules.mk`に正しいターゲット宣言がある状態での結果であり、**makeiの依存グラフに基づく増分ビルド(変更が無いオブジェクトはスキップする)という中核概念(1)が、実機で確認できた。** 7回目の接続の最後に`DLTSRVPGM`/`DLTMOD`で`<USER>B`の`ZAISRV`を削除し、`collect`のSELECTが0件を返すことを確認して元の空の状態に戻した——このバッチが`<USER>B`に残したオブジェクトは無い。
+
+**まだ未検証のまま残っていた点、うち(1)は`part08-02-makei-probe3`で解消**: (1) ~~既にZAISRVが存在する`&LIB`に対して...リビルドするのかスキップするのか~~ → **`part08-02-makei-probe3`(空の`&LIB2`に伝統的な方法で作った`ZAISRV`を対象)で実機確認済み。正しくリビルドされる**(下記「`part08-02-makei-probe3`最終確認」参照)。(2) **08-01の学習者プロジェクトが使う`src/qrpglesrc/`・`src/qsrvsrc/`というネストした構成**(`rules.mk.md`によれば`SUBDIRS`宣言+各ディレクトリーごとの`Rules.mk`が要る)は依然として未検証のまま。08-02のレッスン設計では、このバッチで確認済みの**フラット構成**(`zaisrv.rpgle`・`zaisrv.bnd`がプロジェクト直下、TOBi自身のバンドル済みサンプルと同じ形)を採用することで、この未検証事項自体を回避できる——08-01と08-02は別々のPC側プロジェクトとして設計されているため、レイアウトを揃える必要は無い(ただし08-08のチェックポイントが両方のプロジェクトを前提にする場合は、どちらの構成を土台にするか08-02本文で明示すること)。
+
+## 第8部`part08-07-services`: `OBJECT_PRIVILEGES`/`PROGRAM_INFO`が初回で成功、`RVKOBJAUT`の実バグを発見(確認日2026-09-29)
+
+08-07(IBM iサービスと権限)の実機確認。1回目の接続で、`collect`型ステップの4本のSELECT文はすべて成功した:
+
+- `OBJECT_STATISTICS`・`USER_STORAGE`(P01で既に確認済みの形をそのまま`&LIB`に対して再確認、想定どおり成功)。
+- **`OBJECT_PRIVILEGES`・`PROGRAM_INFO`(一次資料に列定義の記載が一切無く、一般的なDb2 for i知識に基づく最初の推測だった)がどちらも一発で成功した。** `OBJECT_PRIVILEGES`は`OBJECT_SCHEMA`/`OBJECT_NAME`/`OBJECT_TYPE`/`AUTHORIZATION_NAME`/`OBJECT_AUTHORITY`という列で、`JUCSRV`の`*MODULE`・`*SRVPGM`それぞれについて`*PUBLIC`=`*EXCLUDE`・所有者=`*ALL`という行を返した。`PROGRAM_INFO`は`PROGRAM_LIBRARY`/`PROGRAM_NAME`/`PROGRAM_TYPE`(`OPM`/`ILE`の区別を正しく返す)/`PROGRAM_OWNER`という列で、`&LIB`内のプログラム一覧を返した。
+
+**一方、`GRTSELF`(`cl`型ステップ)自体はラッパーのコンパイルに失敗した**: `CPD0030`(severity 30)「Command REVOKE in library *LIBL not found.」。原因は単純な思い違いで、**`REVOKE`はSQL文のキーワードであり、CLコマンドとしては存在しない。** `GRTOBJAUT`(権限付与)に対応するCLコマンドは`RVKOBJAUT`(Revoke Object Authority)である(`cl_commands_75.txt`6522行目でGRTOBJAUTの対語として言及されているが、GRTOBJAUT/RVKOBJAUTともこの一次資料には独立したパラメーター表の節が無く、`OBJ`/`OBJTYPE`/`USER`/`AUT`という引数の形自体はGRTOBJAUTの確認済みの形からの類推)。ラッパー自体がコンパイルできなかったため、`GRTOBJAUT`も一度も実行されておらず、この接続の`OBJECT_PRIVILEGES`の結果(`*PUBLIC`=`*EXCLUDE`)は「付与→取り消しの往復をした結果」ではなく「一度も触っていない元の状態」だった。`REVOKE`→`RVKOBJAUT`に修正し、次回接続で再検証する。
+
+## 第8部`part08-07-services`最終確認: 2回目の接続でCONFIRMED SUCCESS(確認日2026-09-29)
+
+`RVKOBJAUT`修正を反映した2回目の接続で、`GRTOBJAUT`→`RVKOBJAUT`の往復が実際に成功した: ジョブ・ログに「Authority given to user \*PUBLIC for object JUCSRV ... 」「Authority revoked from user \*PUBLIC for object JUCSRV ...」という対の確認メッセージが記録された。同じ接続の`OBJECT_PRIVILEGES`は、往復後`*PUBLIC`=`*EXCLUDE`(元の状態)に戻っていることを示しており、**権限の付与・取り消しが実際に反映され、かつ正しく元に戻ることが確認できた。**
+
+**08-07(IBM iサービスと権限)のレッスンが必要とする実機確認事項(`OBJECT_STATISTICS`・`USER_STORAGE`・`OBJECT_PRIVILEGES`・`PROGRAM_INFO`・`GRTOBJAUT`/`RVKOBJAUT`)は、これで2回の接続を通じてすべてCONFIRMED SUCCESSとなった。** `JOBLOG_INFO`は既存のCLラッパー機構自体が既に何十回も実行してきたため、新たなプローブなしでV2として扱ってよい。`GRTOBJAUT`/`USRPRF(*OWNER)`の**拒否効果**そのもの(2つ目のユーザー・プロファイルが必要)は、design doc自身が明記するとおり、このPUB400アカウントの構成では実演できない——V3のまま。
+
+## 第8部`part08-06-ddl`: 1回目の接続で`GENERATE_SQL`の実引数エラーとマニフェスト自身のバグを発見(確認日2026-09-29)
+
+08-06(DDSからSQL DDLへ)の探索的な1回目の接続。`GENERATE_SQL`は一次資料に列定義・実例の記載が一切無いため、一般的なDb2 for i知識に基づく名前付き引数(`DATABASE_OBJECT_NAME`・`DATABASE_OBJECT_LIBRARY_NAME`・`DATABASE_SOURCE_FILE_NAME`・`DATABASE_OBJECT_TYPE`・`DATABASE_FILE_TYPE`・`CREATE_OR_REPLACE_OPTION`)を試した。
+
+- **実バグ発見: `DATABASE_FILE_TYPE`という引数名は無効。** `Named argument DATABASE_FILE_TYPE for routine GENERATE_SQL not valid for reason code 1.`——他の引数名(`DATABASE_OBJECT_NAME`等)はすべて通ったため、`GENERATE_SQL`プロシージャー自体は実在し、これら他の引数名は正しいと分かった。`DATABASE_FILE_TYPE`のみ削除して次回接続で再試行する。
+- **マニフェスト自身のバグ(発見・修正): `RUNSQL`(CALL文)の直後に`DSPFD`を置き、末尾に1つの`MONMSG`しか置いていなかったため、`verify/README.md`が既に指摘する「`MONMSG`は直前の1コマンドしか監視しない」という罠どおり、`RUNSQL`自身のエラー(`SQL9010`)が一切監視されず、`Function check`として異常終了した。** この結果、`FAILSAFE`ラベル自身の丁寧な処理(メッセージ送出等)にすら到達せず、`run`セクションには`DSPFD`の出力が何も現れなかった。`RUNSQL`の直後に専用の`MONMSG`を追加して修正済み。次回接続で再試行する。
+
+## 第8部`part08-06-ddl`続報: 2回目の接続で`Conversion error`(確認日2026-09-29)
+
+2回目の接続(`DATABASE_FILE_TYPE`削除・`MONMSG`修正後)では、マニフェスト自身は正しく`DONE`まで到達したが、`RUNSQL`自体が新しいエラーで失敗した:「Conversion error on variable or parameter *N.」。一次資料が無いため確証は無いが、2つの疑わしい箇所を同時に修正して3回目を試す——(1) `DATABASE_SOURCE_FILE_NAME`に`'QTEMP/QSQLTEMP'`という`/`区切りのライブラリー修飾パスを渡していたが、これは単純な名前(10文字以下)を期待するパラメーターである可能性が高く、`'QSQLTEMP'`に修正、(2) `CREATE_OR_REPLACE_OPTION`に引用符付きの文字列`'1'`を渡していたが、実際の型が数値であれば型変換エラーの原因になりうるため、引用符無しの`1`に修正。この2つの変更をどちらも一次資料で裏付けられないまま同時に適用するため、3回目でも失敗した場合は`GENERATE_SQL`の正確な引数の型・形を、この教材の一次資料だけでは確定できないと判断し、これ以上の当て推量は打ち切って「一般知識、要確認」という誠実な扱いに切り替える。
+
+## 第8部`part08-06-ddl`続報: 3回目も失敗、`GENERATE_SQL`の当て推量を打ち切り(確認日2026-09-29)
+
+3回目の接続(`DATABASE_SOURCE_FILE_NAME`の単純化・`CREATE_OR_REPLACE_OPTION`の引用符除去後)は、また別のエラーで失敗した:「`SQL0443`: Trigger program or external routine detected an error.」——これはCALL先の外部ルーチン(`GENERATE_SQL`自体)の内部で何らかのエラーが起きたことを示す汎用メッセージで、この接続で捕捉した`run`セクションのテキストには、その先の詳細(第2レベル・テキスト)が含まれていなかった。
+
+**3回連続で、修正するたびに別の種類のエラーに変わる(収束していない)ため、事前に宣言したとおりここで打ち切る。** `GENERATE_SQL`の正確な引数名・型・既定値は、この教材の一次資料(`work/design/refs/`)だけでは確定できないと判断する。08-06のレッスン設計は、`GENERATE_SQL`を「一般知識、要確認」として扱い(design doc自身の§9が既にこの想定をしていた)、本文で実際に使う具体的なSQL文を断定的に示すのではなく、学習者自身がIBM公式ドキュメント(`CALL QSYS2.GENERATE_SQL`)を参照しながら試す、という構成に倒す。三度の接続で得られた実際のエラー文言(`DATABASE_FILE_TYPE`は無効な引数名・`Conversion error`・`SQL0443`)は、いずれも「このプロシージャーは実在し呼び出しはできるが、正確な引数の組み合わせはこの接続からは特定できなかった」という誠実な記録として`docs/probes.md`に残す。**未実施のまま残っている一手(advisor提案)**: `SELECT * FROM QSYS2.SYSPARMS ... WHERE ROUTINE_NAME = 'GENERATE_SQL'`のようなDb2のシステム・カタログをSELECTする(読み取り専用、他ユーザーのデータには触れない)ことで、この一次資料ギャップを埋められる可能性がある——まだ試していない。
+
+**→ 後日`part08-06-lvlid-and-gensql`で解決(真因は`DATABASE_OBJECT_TYPE => '*FILE'`)。** この3回目の接続も`'*FILE'`のまま呼び出しており、実際に到達していた`GENERATE_SQL`本体からは同じ`SQL0443`が返っていた——引数名・型の当て推量ではなく、この値そのものが誤りだった。
+
+## 第8部08-03: `rpglint`はPCローカルで実際にインストール・実行できることを確認(`work/design/part08-design-v1.md`§0.6の想定を覆す、確認日2026-09-29、PUB400接続不要)
+
+前セッションまで、`rpglint`は「`work/design/refs/`に一次資料ゼロ件、ローカルで実行可能なCLIも見つからない」という前提で扱われていた。advisorの指摘(08-02のmakei/TOBiと同じ「ホスト自身に実在する一次資料を読む」という考え方)を受けてnpmを検索したところ、**`@halcyontech/rpglint`という実在の公開npmパッケージ(v0.27.0、2024-12-03公開、`vscode-rpgle`拡張機能の開発元によるCLI版、依存パッケージ0件)が見つかった。** PUB400への接続は一切不要(PCローカルのnpm/pnpmだけで完結)。
+
+`pnpm add @halcyontech/rpglint`でインストールし、`node node_modules/@halcyontech/rpglint/dist/index.js -d <ディレクトリー>`(そのディレクトリー配下に`rpglint.json`と対象の`.rpgle`が両方必要)として実際に実行できることを確認した。`-f`を指定すると`rpglint.json`が見つからなくなる事象を最初観測したが、**この節の最初の記録は誤りだった(advisor指摘、訂正)**——`dist/index.js`自身のコードを直接読むと、設定ファイルの探索は`"**/rpglint.json"`という固定のglob文字列であり、`-f`の値とは無関係だと確認できた。`-f`がなぜ最初の試行で失敗したのかは特定できておらず(検証手順自体に別の不備があった可能性が高い)、確実に動くやり方だけを記録する: `rpglint.json`と対象ソースを同じディレクトリーに置き、`-f`を指定せずに実行する。08-03のレッスンでは、READMEの正式な使い方(`.vscode/rpglint.json`に置き、プロジェクト・ルートで`rpglint`を無引数実行する)を採用すればこの論点自体を避けられる。
+
+**追加確認(2026-09-29、PCローカル): READMEの正式な使い方(`.vscode/rpglint.json`+プロジェクト・ルートで無引数実行)そのものを、`npx`・`pnpm dlx`の両方で実際に確認した。** `.vscode/rpglint.json`と対象の`.rpgle`をプロジェクト・ルート直下に置いた(祖先ディレクトリーに競合する`package.json`が無い、クリーンな)状態で、`npx --yes @halcyontech/rpglint`(引数無し)と`pnpm dlx @halcyontech/rpglint`(引数無し)のどちらも、正しく`.vscode/rpglint.json`を見つけて実行され、想定どおりのエラー件数を返した(`npx`は`npm`が祖先の`package.json`にある`"packageManager"`宣言と食い違うと`EBADDEVENGINES`で失敗する——学習者の新規プロジェクトには無関係だが、この教材自身の検証環境では祖先ディレクトリーを汚染しないよう注意が必要だった)。08-03のレッスン本文が案内する`npx --yes @halcyontech/rpglint`は、この確認済みの形と完全に一致する。
+
+**advisorの指摘で、`templates/part08-project/.vscode/rpglint.json`自体に実在する2つのバグを発見・修正した(このテンプレートは前セッション以前に一次資料の裏付け無く書かれていた):**
+
+1. **設定キー4つが、このバージョン(0.27.0)には存在しないルール名だった。** `dist/index.js`自身が持つルール名→メッセージ文言の辞書オブジェクトを直接読み、全キーを列挙して突き合わせたところ、`NoIndicators`・`NoSQLJoinInWhere`・`RequireBlockIf`・`IncludeComment`の4つは、このルール辞書のどこにも存在しなかった(`grep`でのヒット数が0件)——つまりこれらは黙って無視される、無効なキーだった。`NoSELECTAll`と対になる「SQL JOIN禁止」に相当する実在のルール名は`NoSQLJoins`(`NoSQLJoinInWhere`ではない)だと判明したため、そちらに直した。`NoIndicators`・`RequireBlockIf`・`IncludeComment`は対応する実在ルールが見つからず削除した。
+2. **`SpecificCasing`の`expected`値が、CLの特殊値形式(`*LOWER`/`*UPPER`、アスタリスク接頭辞つき)を要求していた。** `dist/index.js`の該当コードは`e.expected`を`.toUpperCase()`した上で`"*UPPER"`/`"*LOWER"`という文字列とだけ比較しており、一致しない場合は`expected`の値(例えば単なる文字列`"lower"`)がそのままトークンの期待値として使われてしまう。この場合`"if" !== "lower"`は常に真になるため、**大文字・小文字にかかわらず`if`/`dcl-s`のすべての出現が誤検出される**、という実バグだった(`dcl-s x ind;`のような明白な小文字ですら「Does not match required case.」として検出されていたのは、このバグのため)。`"expected": "*LOWER"`に修正し、小文字のトークンが誤検出されなくなり、大文字のトークン(`DCL-S`/`IF`)だけが正しく検出されることを、別途作った検証用スクラッチ・ファイルで確認した。
+
+**修正後の`templates/part08-project/.vscode/rpglint.json`で再実行した、正しい結果:**
+
+- **`src/qrpglesrc/f0803s.rpgle`(08-03演習用ファイル、ヘッダー修正済みの現行版): 13件のエラー**(以前記録した18件は、上記のバグが混入した誤ったルール構成での結果だったため無効。以下の内訳が正)。`SpecificCasing`2件(「Does not match required case.」——`IF`/`DCL-S`の大文字表記のみが検出され、想定どおり)、`NoGlobalSubroutines`3件(「Subroutines should not be defined in the global scope.」)、`StringLiteralDupe`3件(「Same string literal used more than once...」——`'NOTFOUND'`は実際には**3回**出現しており、ファイルのヘッダーが当初「2回」と書いていたのは誤りだった、修正済み)、`NoUnreferenced`1件(実際のメッセージは「No reference to definition.」)、`PrettyComments`4件(「Comments must be correctly formatted.」、当初は想定外だったが正当な5つ目の違反として確定)。`NoIndicators`は設定から削除したため対象外——`chain (custCode) tokuim foundInd;`という%FOUND代替パターン自体は、リント対象ではない読解用の教材として残す。
+- **`src/qrpglesrc/jucsrv.rpgle`(この教材がPart 6〜8で「お手本」として使い続けているソース): 12件のエラー、全件`PrettyComments`**(以前記録した「15件、うち4件がSpecificCasing」は誤り——`SpecificCasing`のバグを修正した結果、`JUCSRV`自身の`dcl-s`/`if`はすべて正しく小文字で書かれており、ケースの誤りは実在しなかったことが判明した)。12件はすべて`//===...===`という罫線コメントの書式に対する「Comments must be correctly formatted.」であり、`JUCSRV`の実体としての品質(命名・大文字小文字の規律)自体には問題が無いことも、あわせて確認できた。
+- **08-03のレッスン設計への示唆**: `rpglint`はもはや「一般知識、要確認」として扱う必要がない——PCローカルにインストールして実際に実行し、確認済みの出力を本文に使える。本文で使う`rpglint.json`は、このリポジトリの`templates/part08-project/.vscode/rpglint.json`(修正済み版)をそのまま使うこと——修正前の版に存在した2つのバグ(存在しないルール名・`SpecificCasing`の値形式の誤り)を再現しないよう注意する。`PrettyComments`が罫線コメント(`//===...===`)に反応する点は、このリポジトリの既存ソース(`JUCSRV`を含む)の大部分がこの様式を使っているため、レッスン設計・`f0803s.rpgle`のヘッダー・`JUCSRV`側の実演手順のいずれにも反映する必要がある。`JUCSRV`の実演(「警告を0にする」)は、罫線コメントを書き直すだけの比較的単純な修正で達成できる見込みが高い(大文字小文字の修正は不要と判明したため)。
+
+## 第8部`part08-02-makei-probe3`: 1回目の接続は2つの自作ミスで学習者シナリオを検証できず(確認日2026-09-29)
+
+既存の(makeiが作ったのではない、伝統的な`CRTRPGMOD`/`CRTSRVPGM`による)`ZAISRV`をmakeiが正しく再ビルドするか、という08-02の中核シナリオを確かめる接続。**この接続では2つの自作ミスにより、意図した検証手順そのものが成立しなかった**:
+
+1. **ステップの実行順序を見落とした。** このハーネスの`file`→`sh`→`cl`→`collect`という固定順序(マニフェストのJSON配列順とは無関係)を、このマニフェストを書いた時点で失念していた。`cl`型の`TRADBUILD`(伝統的な`CRTRPGMOD`/`CRTSRVPGM`)をJSON配列の先頭に置いていたが、実際には`sh`型の`SETUP`/`BUILD1`/`EDITSRC`/`BUILD2`/`CLEANUP`がすべて先に実行され、`TRADBUILD`はその**あと**(`cl`型)に実行された。結果、`CLEANUP`(`ZAISRV`を削除)が`TRADBUILD`(`ZAISRV`を作成)より**先に**走ってしまい、「Object ZAISRV in <USER>B ... not found」という(この時点では正しい)メッセージが出た。最終的な`collect`(常に最後に実行される)は、`TRADBUILD`だけが実行された後の状態を映しており、`<USER>B`には伝統的な方法で作られた`ZAISRV`(*MODULE・*SRVPGM)が残っている。
+2. **`Rules.mk`をheredoc(`cat > file <<'EOF'`)で書き込んでいた。** このハーネスのqshで確立済みの既知の問題(heredoc書き込みはEBCDIC化される)を、`iproj.json`側では`python3`のバイナリー書き込みで正しく回避していたのに、`Rules.mk`側では単純なheredocに戻してしまっていた。結果、`BUILD1`・`BUILD2`とも`makei`自身のPythonコードが`Rules.mk`を読もうとした時点で`UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe9 ...`で失敗し、ビルドの試行にすら至らなかった。
+
+**それでも得られた実機情報**: `TRADBUILD`自体(`CRTRPGMOD`→`CRTSRVPGM`、`&LIB`の`QRPGLESRC`/`QSRVSRC`メンバーから`&LIB2`へ)は問題なく成功した(`RNF7534`警告のみ、Highest Severity 10)。`<USER>B`には現在、伝統的な方法で作られた本物の`ZAISRV`(*MODULE・*SRVPGM)が存在する——次回接続でこれをそのまま使い、`Rules.mk`をpython3バイナリー書き込みに直した`SETUP`/`BUILD1`/`EDITSRC`/`BUILD2`/`CLEANUP`(すべて`sh`型に統一、`TRADBUILD`は再実行不要)だけを実行すれば、当初意図した検証(既存オブジェクトへのmakei再ビルド、ソース変更後の再ビルド)がやり直せる。
+
+## 第8部`part08-02-makei-probe3`最終確認: 2回目の接続で08-02の中核シナリオがCONFIRMED SUCCESS(確認日2026-09-29)
+
+2つの自作ミスを修正した2回目の接続で、当初意図した検証がすべて成功した。`Rules.mk`のpython3バイナリー書き込みは正しく機能し(`cat`で確認した中身も正しい)、`<USER>B`に1回目の接続が残した「伝統的な方法で作られた`ZAISRV`」がそのまま使えた。
+
+- **`BUILD1`(既存の、makei製ではない`ZAISRV`に対する`makei build`): 成功。** `crtrpgmod`→`ZAISRV.MODULE was created successfully!`→`CRTSRVPGM`→`ZAISRV.SRVPGM was created successfully!`→`Objects: 0 failed 2 succeed 2 total, Build Successful!`。**makeiは、自分が過去に作ったのではないオブジェクトに対しても、エラーなく正しく上書き・再作成できることが実機で確認できた。** `CRTRPGMOD`/`CRTSRVPGM`のいずれのコマンド行にも`REPLACE`パラメーターは表示されていない(makei自身が明示的に指定していないと見られる)にもかかわらず、既存オブジェクトへの上書きは問題なく成功した。**`REPLACE`の既定値は実際には`*YES`だと確認できる**——`part08-02-makei-probe3`の1回目の接続(`TRADBUILD`の`CRTRPGMOD`コンパイル・リスト、`run`セクション)自身が「Replace module . . . . . . . . . : *YES」と明示的に印字しており、`cl_commands_75.txt`側のパラメーター表(`*YES, *NO`という並び順だけでは既定値が読み取れなかった箇所)の曖昧さを、この実機の出力が解消している。
+- **`EDITSRC`→`BUILD2`(ソースを実際に変更した後の再ビルド): 成功、かつ「スキップ」ではなく本当に再ビルドされた。** `zaisrv.rpgle`に1行コメントを追記した直後の`makei build`は、`BUILD1`と同じく`crtrpgmod`→`CRTSRVPGM`のフル実行になった(「Nothing to be done」にはならなかった)。**これで、makeiの依存グラフに基づく増分ビルドが「変更が無ければスキップし、変更があれば実際に再ビルドする」という両方向で実機確認できた**(「変更が無ければスキップ」は`part08-02-makei-probe2`の7回目の接続で既に確認済み)。
+- **`CLEANUP`**: `DLTSRVPGM`/`DLTMOD`とも成功、最終`collect`は0件——`<USER>B`は元の空の状態に戻っている。
+
+**これで、`work/design/part08-design-v1.md`が08-02に求めるすべての中核シナリオが実機で確認できた**: `makei build`は正しく動く、`iproj.json`の`objlib`/`curlib`は実際にビルド先ライブラリーを制御する、既存の(makei製ではない)オブジェクトも正しくリビルドできる、依存グラフに基づく増分ビルド(変更なしはスキップ・変更ありは再ビルド)が両方向とも実機で確認できた。08-02のレッスン本文執筆に必要な実機的裏付けは、これで揃った。
+
+## 第8部08-03: `PrettyComments`ルールの正確な判定条件を特定、`jucsrv.rpgle`が0件に到達できることをPCローカルで確認(確認日2026-09-29、PUB400接続不要)
+
+`@halcyontech/rpglint`自身の`dist/index.js`で`PrettyComments`の実際の判定ロジックを直接読んだ(READMEには記載が無い一次資料)。判定は「コメント文字`//`の直後の1文字が空白でなく、かつ`/`でもない場合に違反」という単純な規則だった——言い換えると、**`//`の直後に半角スペース1つを置いて始まるか、`///`(スラッシュ3つ、内容の先頭が`/`)で始まるコメントだけが許される。** `//===...===`のような、スラッシュの直後に空白の無い罫線コメントは、内容の如何によらず必ず違反になる。
+
+PCローカルで、`sed`により`jucsrv.rpgle`の全ての`//`直後に半角スペースを1つ挿入した写しを作り、修正版`rpglint.json`でリントしたところ、**エラー0件になることを確認した**(`src/qrpglesrc/jucsrv.rpgle`自身は書き換えていない、検証のみ)。この置換はコメントの中身にのみ影響し、コンパイル結果には一切影響しない(コメントの意味的な内容は変わらないため)。08-03の「`JUCSRV`の警告を0にする」実演は、この機械的な置換(またはコメントを`///`形式に変える)だけで達成できることが確認できた。
+
+## 第8部08-03: `f0803s.rpgle`に実バグを発見——`CHAIN`+結果標識フィールドは自由形式ではコンパイルできない(確認日2026-09-29)
+
+advisorの指摘を受け、`f0803s.rpgle`が実際にコンパイルできるかを実機で確かめた(rpglintの構文解析は寛容で、この種のコンパイル・エラーを検出できない)。`chain (custCode) tokuim foundInd;`(`foundInd`は`dcl-s foundInd ind;`という素の標識フィールド)という、このファイルがずっと使ってきたパターンと、`chain (custCode) tokuim;`+`if %found(tokuim);`という代替パターンを、それぞれ最小の独立したテスト・プログラム(`F0803CHKA`・`F0803CHKB`)として、`&LIB`の本物の`TOKUIM`に対し空の`&LIB2`へ`CRTBNDRPG`した(`verify/part08-03-f0803-compile`)。
+
+- **`F0803CHKA`(`CHAIN`+標識フィールド)はコンパイルに失敗した。** `RNF5191`(severity 30)「The Result-Field is not a data structure when Factor 2 is a file name.」——`ilerpgref75.txt`38795行目の自由形式`CHAIN`構文表が最初から「第3引数はdata-structure」と明記していたとおり、素の`ind`フィールドは第3引数として使えない。
+- **`F0803CHKB`(`CHAIN`+`%FOUND`)はHighest Severity 00で成功した。**
+- **修正**: `src/qrpglesrc/f0803s.rpgle`を、`foundInd`を削除し`%found(tokuim)`を使う形に書き換えた。これにより、当初「`NoIndicators`ルールを狙うが実在しないルール名だったため意図的に残した設計」としていた説明は誤りだったと判明した——rpglintのルールとして存在しないだけでなく、**この構文自体が自由形式RPGとしてそもそも無効だった。** ファイルのヘッダーもこの経緯どおりに訂正した。修正後もrpglintの5件の意図した違反(`SpecificCasing`・`NoGlobalSubroutines`・`StringLiteralDupe`・`NoUnreferenced`・`PrettyComments`、13件のエラー行)は変わらず検出される(行番号だけがヘッダー修正に伴いずれた)。
+- **未確認のまま残っていた点は`part08-02-testpf`で解消**: `f0803s.rpgle`全体(`orderCount`サブルーチンのJUCHUMループ、`%subst`/`WRITE QSYSPRT`のブロックを含む、ひとまとまりの実ファイル)と、`solutions/08-03/f0803s.rpgle`(模範解答、`orderCount`をdcl-procに書き換えた版)を、どちらも空の`&LIB2`へ`CRTBNDRPG`した。**両方ともHighest Severity 00で成功し、`CALL PGM(...) PARM('C00001')`もどちらもエラーなく完了した。** これで、08-03の演習ファイル(見本・模範解答の両方)が実際にコンパイル・実行できることが確認できた。
+
+## 第8部08-02/08-03: `part08-02-testpf`の1回目の接続——コンパイル確認は成功、`bsh`パス・PF演習は自作ミスで未検証(確認日2026-09-29)
+
+同じ接続でまとめて試みた残り2項目は、どちらも自作ミスにより未検証のまま終わった:
+
+1. **`bsh`の実在パスを誤っていた。** `/usr/bin/bsh`ではなく`/QOpenSys/usr/bin/bsh`が正しいパスだった(`ls`の結果自身が「/QOpenSys/usr/bin/bsh -> ../../QIBM/ProdData/OS400/PASE/bin/bsh」というシンボリック・リンクの実在を示していたにもかかわらず、後続の`-c`呼び出しでは誤って`/usr/bin/bsh`のままにしていた)。「qsh: 001-0014 Command /usr/bin/bsh not found.」で2回とも失敗し、実際のbsh経由での`makei`呼び出しはまだ一度も確認できていない。
+2. **「PFを追加する」演習のテストは、`file`型ステップの仕様を誤解していた。** `file`型ステップ(`testpf.pf`を`QDDSSRC`メンバーとして配送する設定)は、このハーネスの実装上**常に`&LIB`(`library2`ではない)を対象にする**——`CPYTOSTMF`の`FROMMBR`を`&LIB2`のパスにしていたため、「Object not found」で失敗し、その後の`makei build`も`testpf.pf`自体が存在しないため「No rule to make target 'testpf.pf'」で失敗した。`FROMMBR`のライブラリー部分を`&LIB`に直せば解決する見込みが高い——次回接続で再試行する。
+
+## 第8部08-02/08-03: `part08-02-testpf`の2回目の接続——PF演習はCONFIRMED SUCCESS、`bsh`は部分的、`GENERATE_SQL`のSYSPARMS調査は打ち切り(確認日2026-09-29)
+
+1回目の2つの自作ミスを修正した2回目の接続で、以下が判明した。
+
+- **「PFを追加する」演習: CONFIRMED SUCCESS。** 正しいライブラリー(`&LIB`)から`CPYTOSTMF`した後、`Rules.mk`に`TESTPF.FILE: testpf.pf`という1行を追加しただけで、`makei build`は`=== Creating PF [testpf.pf] in <USER>B`→`crtfrmstmf`(DDSソースからPFを作る、TOBi自身のスクリプト)→`TESTPF.FILE was created successfully!`→`Objects: 0 failed 1 succeed 1 total, Build Successful!`で成功した。08-02の「PFを追加する」演習は、この形でそのまま実演できる。
+- **`bsh`の既定PATHには`/QOpenSys/pkgs/bin`が含まれないことを確認した**(`echo $PATH`の実測: `/QOpenSys/usr/bin:/usr/ccs/bin:/QOpenSys/usr/bin/X11:/usr/sbin:.:/usr/bin`)——P08の既存の知見と整合する。**しかし、`bsh -c 'export PATH=...; echo ...; makei --version'`という1つの`-c`引数にまとめた呼び出しは、`0402-026 The specified data is not a valid identifier.`という`bsh`自身のエラーで失敗した。** 原因はこの接続だけでは特定できていなかった。**→ `part08-02-bsh-export`(下記参照)で原因を特定した。02-04が学習者に指示している既存の構文そのものが、`bsh`では通らないコマンドだった(実機バグ、02-04自体を修正)。**
+
+## 第8部08-02(発端)→第2部02-04(本体の実バグ): `bsh`は`export PATH=...`という結合形を受け付けない——既に公開済みの02-04自体のバグ(確認日2026-09-29)
+
+`part08-02-bsh-export`(読み取り専用、`&LIB`/`&LIB2`いずれも不要)で、02-04(`docs/part02/02-04-ssh-git-clone.md`、mainブランチで既に公開済み)が学習者に一字一句指示している構文を、そのまま`bsh -c`経由で単独実行した。
+
+```text
+$ /QOpenSys/usr/bin/bsh -c 'export PATH=/QOpenSys/pkgs/bin:$PATH'
+/QOpenSys/usr/bin/bsh: PATH=/QOpenSys/pkgs/bin:...: 0402-026 The specified data is not a valid identifier.
+exit code: 1
+```
+
+**これは実機の実バグである。** `bsh`(本物のBourneシェル系、`ksh`/`bash`とは異なる)の`export`は、`変数名=値`という結合形を1つの引数として受け付けず、裸の変数名しか引数に取れない——`変数名=値`は`export`より前に別の代入文として実行し、その後で`export 変数名`(値を伴わない)という2段階の形にする必要がある。
+
+```text
+$ /QOpenSys/usr/bin/bsh -c 'PATH=/QOpenSys/pkgs/bin:$PATH; export PATH; echo PATH=$PATH'
+PATH=/QOpenSys/pkgs/bin:/QOpenSys/usr/bin:/usr/ccs/bin:/QOpenSys/usr/bin/X11:/usr/sbin:.:/usr/bin
+exit code: 0
+$ /QOpenSys/usr/bin/bsh -c 'PATH=/QOpenSys/pkgs/bin:$PATH; export PATH; makei --version'
+TOBi version 3.2.1
+exit code: 0
+```
+
+**この2段階形は正しく動き、`makei`も(`bash`を経由せず`bsh`から直接)成功することを確認した。** 02-04(SSH・PASEと教材のgit clone)は「実演」節・「片付け」節ともに、`echo 'export PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile` と `export PATH=/QOpenSys/pkgs/bin:$PATH` という結合形をそのまま学習者に打たせており、P08で確認済みのとおり学習者のSSHセッションは既定で`bsh`に入る——**つまり02-04に従うすべての学習者が、このコマンドで実際に失敗する。** `~/.profile`に書き込む行自体も結合形のままなので、たとえこの1回だけ手で回避しても、次回以降のログイン時に`.profile`が同じ理由で失敗し続ける。
+
+**対応**: `fix/part02-bsh-export`ブランチ(`fix/part03-rtvjoba`と同じ扱い)で、02-04の該当2箇所(実演の手順2、`.profile`の追記コマンドおよびその場でのexport、あわせて02-05のウォームアップの復習解答)を2段階形に修正し、**PR #19としてmainへマージ済み(2026-09-29、CI green)。** 副産物として、08-02の`bsh`に関するV3の扱い(上記)も、この2段階形を使えば実際にmakeiが動くことが判明したため、V3から実機確認済みへ格上げできる。
+
+- **`GENERATE_SQL`のSYSPARMSカタログ調査は、意図した目的を果たせなかったため打ち切る。** `SPECIFIC_NAME LIKE '%GENERATE_SQL%'`で37件がヒットしたが、**`SPECIFIC_SCHEMA`の値はいずれもシステム・スキーマ(`QSYS2`等)ではなく、他の利用者自身のライブラリー名だった**——つまりヒットしたのは、他の利用者が自分のライブラリーに作った、たまたま同名(`GENERATE_SQL`・`GENERATE_SQL_FOR_DEPENDENTS`)の自作プロシージャーであり、**`QSYS2.GENERATE_SQL`というIBM提供の本物のシステム・プロシージャー自体はこのクエリーでは一度も見つからなかった。** これは`docs/probes.md`が既に確立している「システム全体を走査する照会は、フィルターを付けなければ他の利用者の情報を返しうる」という安全規律そのものの実例でもある——**この結果に含まれていた実在のライブラリー名・パラメーター詳細は、他の利用者自身の情報であるため、ここには一切記録しない。** `GENERATE_SQL`の正確な引数は、この教材の一次資料(`work/design/refs/`)でもこのSYSPARMSアプローチでも確定できなかったため、`part08-06-ddl`の3回目接続時点での決定(「一般知識、要確認」として扱う)を変更せず維持する。
+
+## 第8部08-03: `f0803s.rpgle`のヘッダーが演習の答えを丸ごと公開していた——設計そのものの欠陥を修正(確認日2026-09-29)
+
+08-03のレッスン本文をWorkflow(write→3観点反証→修正)で執筆する過程で、教え方観点の反証エージェントが重大な設計上の欠陥を発見した。`src/qrpglesrc/f0803s.rpgle`(演習の配布見本)自身のヘッダー・コメントに、5つの違反ルール名・正確な件数内訳(「13 errors - SpecificCasing x2, ...」)がすべて書かれていた。ファイルの設計意図(「`the lesson text should not spoil`」)は**レッスン本文**を対象にしていたが、**学習者がコピーして直接開くファイル自身**が答えを丸ごと公開しているのでは、本文がどれだけ注意深く「明かさない」よう書かれていても意味がない——本文執筆時に初めて気づいた、設計段階からの見落としだった。
+
+**修正**: `f0803s.rpgle`のヘッダーから、違反ルール名・件数・行番号の列挙を全て削除し、「`rpglint`を自分で実行して確認してください」という最小限の案内だけを残した。`orderCount`サブルーチン内の「deliberately a global subroutine...to seed a NoGlobalSubroutines violation」という、違反箇所そのものに付いていた直接的なネタバレ・コメントも削除した。詳細な違反内訳・実機確認の経緯は、学習者が能動的に探しに行かない限り目に触れにくい`docs/probes.md`側(このファイル)にのみ残す。
+
+**副作用**: 2つ目の罫線コメント・ブロック(`orderCount`前の見出し)も普通のコメントに書き換えたため、`PrettyComments`の検出件数が4件→2件に減り、**合計のエラー件数は13件→11件になった**(内訳: `SpecificCasing`2件・`NoGlobalSubroutines`3件・`StringLiteralDupe`3件・`NoUnreferenced`1件・`PrettyComments`2件)。5種類のルールが全て検出される、という演習の要件そのものは変わらず満たしている。ヘッダーから正確な件数の記述自体を無くしたため、今後ファイルを微修正しても数字がずれて陳腐化する心配もなくなった。ローカルで再リントし、0件(修正) / 11件(未修正)の両方を確認済み。
+
+**もう1つの実バグ、`RequiresParameter`の説明**: `solutions/08-03/f0803s.rpgle`の当初のヘッダーは「`RequiresParameter`ルールが`exsr`(大域呼び出し)を咎めるので、`dcl-proc`+括弧呼び出しへの書き換えが必要」と断定していたが、**この教材自身が実測した13件の内訳に`RequiresParameter`は1件も含まれていなかった**(`exsr orderCount;`を含む見本ファイルに対する実測)。技術反証エージェントがこの矛盾を発見し、レッスン本文の該当ルール表・模範解答のヘッダーの両方を、「一般的な推測にとどまり、実測はこれに反する」という正直な記述に修正した。
+
+## 第8部08-02: `part08-02-makei`——08-02のレッスン本文用の本番マニフェスト、git配送経路のCRLF正規化と実ライブラリーでの再ビルドをCONFIRMED SUCCESS(確認日2026-09-29)
+
+`part08-02-makei-probe`/`-probe2`/`-probe3`はmakeiビルドの仕組み自体を確認したが、いずれも`Rules.mk`/`iproj.json`をpython3のバイナリー書き込みで直接置き、対象ライブラリーも使い捨ての`<USER>B`だった——**08-01が学習者に教えるgit経由の配送(PC側で作成→push→IBM i側でclone)を経た`Rules.mk`/`iproj.json`に対してmakeiビルドを試した接続は、それまで1つも無かった。** さらに`templates/part08-project/`から`templates/part08-zaisrv/`への分割(本セッション)で、後者に`.gitattributes`が無いまま残っていた——advisorレビューでこの2点が指摘され、本番用の新規マニフェスト`verify/part08-02-makei/manifest.json`で1回の接続により両方を同時に解消した。
+
+- **`templates/part08-zaisrv/.gitattributes`を新規に用意した**(`templates/part08-project/.gitattributes`と同内容——`* text=auto eol=lf`が拡張子非依存の既定行のため、`.mk`ファイルも含め全ファイルに効く)。
+- **CRLF正規化を実際に確認した。** 08-01と同じ手順(ベア・リポジトリー→PC側リポジトリー役→push→clone、いずれもこのハーネスのIFS上で実演)で、`Rules.mk`だけは意図的にCRLF(`\r\n`)で書き込んでから`git add`/`git commit`した。コミット時に`warning: in the working copy of 'Rules.mk', CRLF will be replaced by LF the next time Git touches it`というgit自身の警告が出て(`.gitattributes`が効いている証拠)、`git clone`後の`Rules.mk`を`od -c`で確認すると、コミット前にあった`\r`バイトが無くなり、LFのみになっていた。**`.gitattributes`が無ければ学習者のgit設定次第でCRLFのまま`Rules.mk`が届きうる、という懸念が、対策込みで実機決着した。**
+- **既存の(makei以外で作った)実オブジェクトの再ビルドを、使い捨てライブラリーではなく実際の開発ライブラリーで確認した。** `&LIB`(このハーネスの既定開発ライブラリー、`verify/lib/config.mjs`の`resolveLibrary()`——`part07-05-checkpoint`が`ZAISRV`を実際に作った先と同じライブラリー)を対象に、git clone後のプロジェクトで`makei build`を実行したところ、`crtrpgmod`→`CRTSRVPGM`のフル実行で成功した(`Objects: 0 failed 2 succeed 2 total, Build Successful!`)。これは`part08-02-makei-probe3`が使い捨ての`<USER>B`で確認した「既存オブジェクトの再ビルド」シナリオを、実際にPart 7由来の本物の`ZAISRV`が存在するライブラリーで再現したものであり、08-02のレッスン本文がそのまま使える形になった。
+- **「PFを追加する」演習も同じプロジェクトでCONFIRMED SUCCESS。** `part08-02-testpf`と同じ`TESTPF.FILE: testpf.pf`という1行追加で、`makei build`が`TESTPF.FILE was created successfully!`まで成功。後片付け(`DLTF`)も正常。
+- **プロジェクトの配置はフラット(サブディレクトリー無し)。** `zaisrv.rpgle`・`zaisrv.bnd`・`Rules.mk`・`iproj.json`をすべてプロジェクトのルート直下に置く形で確認した。08-01の`myproject`(`src/qrpglesrc/`・`src/qsrvsrc/`のサブディレクトリー構成)とは異なる構成であり、08-02の本文では「`myproject`とは別の新しいプロジェクトで、フラットな配置」と明記する必要がある。
+- **起動方法は`bash -c 'cd ... && export PATH=... && makei build'`(bash経由)で確認した。** `bsh`の2段階export形(P08/02-04修正で確立済み)と組み合わせてmakeiを実際に動かした接続はまだ無い——08-02本文では、この`bash -c`形をそのまま使うか、`bsh`形を使うかのどちらか一方に絞り、未確認の組み合わせを「確認済み」と書かないこと。
+- **小さな新発見: PASEの`find`に`-maxdepth`オプションが無い**(`find: 001-2187 The option -maxdepth is not valid.`)。このマニフェスト自身の確認用コマンド(`find "$HOME/mk10/c" -maxdepth 1 -type f`)が失敗しただけで、ビルド結果には影響しない。08-02本文で`find`を使う場合はこのオプションを避ける。
+- **レッスン本文の紙上の置き換え規則(`<自分のユーザー名>1`等)と、このハーネスの`&LIB`(既定で`<実ユーザー名>2`に解決)は、別々の命名である。** 07-05は学習者に`<自分のユーザー名>1`という置き換え済みライブラリーを使わせているが、これは本文の説明用プレースホルダーであり、このハーネス自身の`&LIB`という内部規約(`<ユーザー名>2`が既定)とは無関係——08-02本文は07-05と同じ`<自分のユーザー名>1`という表記をそのまま踏襲すればよく、このハーネスの`&LIB`という記号を本文に持ち込む必要はない。
+
+## 第8部08-02: `part08-02-driver-bsh`——makei再ビルド後のDRIVER再実行がCONFIRMED SUCCESS、`~`展開のテストは判別不能だったと判明(確認日2026-09-29)
+
+08-02のレッスン草稿をadvisorがレビューし、2点の未確認事項を指摘した。1回の接続で試したが、片方は判別できないテストだったとadvisorの再レビューで判明した。
+
+- **`bsh`の`~`展開テストは、テストの作り方自体に不備があり、判別できていない。** `/QOpenSys/usr/bin/bsh -c 'echo A=~ ; echo B=~/x ; echo H=$HOME'`を実行し、`A=~`・`B=~/x`とそのまま印字された(`$HOME`だけは正しく展開)ことから「`~`は展開されない」と結論したが、**これは誤りだった。** POSIXのチルダ展開は「語の先頭」でのみ起こる規則であり、`A=~`・`B=~/x`はいずれも`echo`の引数であって語の先頭は`A`・`B`であるため、チルダ展開を正しく備えたシェルで実行しても同じ`A=~`という出力になる(advisor指摘)。**つまりこのテストでは、bshが語頭の`~`(`cd ~/x`・`>> ~/.profile`・`git clone … ~/x`のような、実際に問題になる形)を展開するかどうかは何も分かっていない。** 判明したのは「`$HOME`は正しく展開される」ことだけである。改めて語頭の`~`を試す接続(`part02-bsh-tilde-redirect`)を別途行う。**08-01・08-02に加えた`$HOME`化そのものは、`$HOME`が正しく展開されることは確認済みなので、そのまま残す**(`~`のままでも動く可能性はあるが、`$HOME`は少なくとも常に正しい)。ただし「`~`を展開しません(実機確認済み)」という、未確認のまま書いてしまった文言は両レッスンから削除した。
+- **makei再ビルド後の`DRIVER`再実行がCONFIRMED SUCCESS。** `part08-02-makei`がmakei経由で再ビルドした`<USER>2`の`ZAISRV`に対し、`TXRESET`→`CALL PGM(DRIVER)`→`TXRESET`を実際に実行した。`DRIVER`の出力(`0-BASELINE`〜`7-NOTFOUND-RSV`の10行)は、07-05自身の実機メモに記録された値と1文字も違わず一致した——「makei経由で作り直したZAISRVが、07-05の手作業ビルドのときとまったく同じに振る舞う」という08-02-2の核心が、出力比較という動作レベルで確認できた。この接続(08:00開始)以降、`ZAISRV`に触れた接続は無いため、この一致は確かにmakei再ビルド後のオブジェクトに対するものである。
+  - **副次的な発見**: 07-05自身の確認済みレシピ(`CPYSPLF FILE(QSYSPRT) ... JOB(*)`でDRIVERの印字出力をスプール・ファイルとして回収する)が、この接続では`CPF3303`(このジョブに`QSYSPRT`という名前の保存済みスプール・ファイルが無い)で失敗した。実際には、`DRIVER`の印字内容は(コンパイル・リストと同様に)このハーネスのSSH接続が捕捉する生のジョブ出力にそのまま現れており、`CPYSPLF`を経由せずそのまま読み取れた。これはこのハーネスのジョブ種別(`QP0ZSPWT`、PASEの`system()`呼び出しが生成する一種の疑似対話ジョブ)固有の挙動と見られ、5250で`WRKSPLF`を使う実際の学習者には無関係(5250の対話ジョブは通常どおりスプール・ファイルを生成する)。
+
+## 第2部02-04・第8部08-01/08-02: `part02-bsh-tilde-redirect`——`bsh`は語頭の`~`を展開しない、02-04自体の実バグと確定(確認日2026-09-29)
+
+`part08-02-driver-bsh`のチルダ・テストがadvisorレビューで「判別不能だった」と判明したのを受け、語頭の`~`を正しく試す接続を行った。
+
+- **`echo ~`・`echo ~/x`は、どちらも展開されずそのまま`~`・`~/x`と印字された。**
+- **決定的な証拠: `cd ~/vfy && pwd`が`~/vfy: A file or directory in the path name does not exist.`で失敗した。** `$HOME/vfy`はこのハーネス自身が毎回作るディレクトリーで確実に存在するため、この失敗は`~`が展開されず、文字どおり「`~`という名前のオブジェクト」の下の`vfy`を探しにいった結果である。**これで、`bsh`(学習者のSSH接続の既定シェル)が語頭の`~`を一切展開しないことが確定した。**
+- **02-04自体の実バグと確定**: 02-04(`docs/part02/02-04-ssh-git-clone.md`、既にmain公開済み)の`echo 'export PATH=/QOpenSys/pkgs/bin:$PATH' >> ~/.profile`(説明・実演手順2の両方)、`git clone ... ~/ibmi-kyozai`、`cd ~/ibmi-kyozai`、`du -sh ~/ibmi-kyozai`(実演手順3・4)、`cd ~/ibmi-kyozai && git pull`(「同じ手順を別の対象で」)は、いずれも語頭の`~`を含む——**学習者がこの教材どおりに打つと、`.profile`への追記もgit cloneの行き先も、意図した場所には実際に届かない。** 特に深刻なのは`>> ~/.profile`で、これが黙って失敗する(エラーメッセージが出ないか、出ても見落としやすい)ため、次回ログイン時にもPATHが通らないまま気づかれにくい。
+- **02-05以降への影響**: `TXSETUP`/`TXRESET`(`tools/qclsrc/txreset.clp`)は`~`に頼らず`/home/' *TCAT %TRIM(&USRPRF) *TCAT '/ibmi-kyozai'`という形で実際のホーム・ディレクトリーを組み立てて`db/data/*.sql`を探すため、学習者の`git clone`が(`~`が展開されず)別の場所に落ちていた場合、02-05の`TXSETUP`実行時に`db/data/reset_v1.sql`等が見つからず失敗する可能性が高い。
+- **副次的な発見: このPUB400アカウントの`$HOME`直下に、文字どおり`~`という名前の実在ディレクトリーが以前から存在していた(advisorの再レビューで判明、訂正)。** `TILDEREDIRECT`ステップの`ls -la ./~`の出力を仔細に読むと、`..`エントリーの内容(サイズ・リンク数)が`$HOME`自身と一致する一方、`.`(`./~`自身)は別の実体(8192バイト、リンク数3)であり、シンボリック・リンクではなく**独立したディレクトリー**であることが分かる。中身は`db`(2026-09-25作成)と、この接続の`bsh`リダイレクトが作った`vfytilde-scratch.txt`の2件だけで、`$HOME`本来の中身(`ibmi-kyozai`・`vfy`等)は含まれていない——**つまり`>> ~/vfytilde-scratch.txt`は、`cd $HOME`後の相対パスとして`$HOME/~/vfytilde-scratch.txt`に書き込んでいた。** `ls -la $HOME/vfytilde-scratch.txt`が「存在しない」を返したことも、この読みと整合する。`db`の作成日(2026-09-25)は、02-04自体の実機メモの確認日と一致しており、**このディレクトリー自体が、今回発見した`~`非展開バグを2026-09-25の検証作業で既に一度踏んでいた結果である可能性が高い。**
+  - **`PRECHECK`(`ls -la $HOME | grep -F '~'`)がこれを見逃した原因も判明した。** 実際のコマンド文字列は`ls -la $HOME </dev/null | grep -F '~' </dev/null`で、`grep`側に付けた`</dev/null`がパイプからの入力を上書きしてしまい、`grep`は常に空の標準入力を読んでいた(このハーネスの他の多くのコマンドが安全策として`</dev/null`を付ける習慣そのものが、パイプの直後では逆効果になる好例)。`verify/part02-bsh-tilde-redirect/manifest.json`のPRECHECKは修正済み(次回以降の再実行に備える)。
+  - **後片付け($CLEANUP)も、この読み違いにより不完全だった。** `rm -f $HOME/vfytilde-scratch.txt ./~`は、存在しない`$HOME/vfytilde-scratch.txt`を消そうとしただけで、実際にファイルがある`$HOME/~/vfytilde-scratch.txt`にも、`rm -f`単体では消せない`$HOME/~`ディレクトリー自体にも触れていない。**`$HOME/~`ディレクトリーとその中身(`vfytilde-scratch.txt`を含む)は、この接続終了時点でまだ残っている。** 次にこのアカウントへ接続する際は、まず`ls -laR "$HOME/~"`で中身を記録してから、`rm -r "$HOME/~"`(引用符で囲むこと。`~`を展開するシェルで`rm -rf ~`と打つとホーム・ディレクトリー全体を消しかねないため、この形は絶対に使わない)で片付けること。破壊的な操作は、この接続では一切行っていない。
+- **対応**: `fix/part02-bsh-tilde`ブランチ(`fix/part02-bsh-export`と同じ扱い)で、02-04の該当箇所を`$HOME`を使う形に修正し、既に壊れた状態(`.profile`未設定・`ibmi-kyozai`が誤った場所にある等)からの復旧手順も追加した。**PR #21としてmainへマージ済み(2026-09-29、CI green)。** advisorレビューで見つかった2つの抜け(`.profile`確認が`ibmi-kyozai`発見時にスキップされてしまう分岐、どちらの場所にも無い場合の分岐)は、続けて`fix/part02-bsh-tilde-followup`ブランチで修正し、**PR #22としてmainへマージ済み(2026-09-29、CI green)。**
+
+## 第2部02-04: `part02-bsh-tilde-cleanup`——`git clone`が`~`を親ディレクトリーとして自動作成することをCONFIRMED、実アカウントの`$HOME/~`debrisを片付け(確認日2026-09-29)
+
+advisorの再レビューで、02-04の修復手順が前提にしていた「`bsh`で`git clone ... ~/ibmi-kyozai`を実行すると、gitが`~`を親ディレクトリーとして自動的に作り、その中へ黙って書き込む」という挙動が未確認だと指摘された。使い捨てのディレクトリー(`$HOME/vfy/tc`)で、実際に`git clone`を`~/cl`という行き先で実行したところ、**gitはエラーを一切出さず`Cloning into '~/cl'...`→`done.`まで成功し、`$HOME/vfy/tc/~/cl`という場所(`~`という名前の親ディレクトリーがgit自身により自動作成された中)にクローンが作られた。** 本物の`$HOME/cl`は作られていない(`ls`で「存在しない」を確認)。**これで、02-04の修復手順の前提が正しいことがCONFIRMEDされた。**
+
+同じ接続で、このプロジェクト自身のPUB400アカウントに残っていた実物の`$HOME/~`ディレクトリーを片付けた。`ls -laR`で中身を記録してから(`db/data/`という空のディレクトリー構造のみで、実データは無かった——2026-09-25の何らかの初期テストの副産物と見られる、実害の無い残骸)、`rm -r "$HOME/~"`で削除し、`ibmi-kyozai`・`db`(本物)・`.ssh`・`.vscode`等、`$HOME`本来の中身が無事であることを確認した。**このアカウントに`.profile`ファイル自体が(本物の場所にも`$HOME/~`の中にも)一度も存在しなかったことも、このついでに確認できた**——このセッションのすべての接続は`bash -c`での都度指定によりPATHを通しており、`.profile`への依存は一度も無かったため、これは想定どおりで問題ない。
+
+## 第8部08-06: `part08-06-generate-sql-catalog`——`QSYS2.GENERATE_SQL`の実引数一覧をCONFIRMED、`part08-06-ddl`の3回連続失敗の原因もほぼ特定(確認日2026-09-29)
+
+`part08-06-ddl`の3回の接続(1回目: 無効な引数名`DATABASE_FILE_TYPE`、2回目: `Conversion error`、3回目: `SQL0443`)で当て推量を打ち切っていたが、advisor提案の`QSYS2.SYSROUTINES`経由のカタログ照会(`ROUTINE_SCHEMA = 'QSYS2' AND ROUTINE_NAME = 'GENERATE_SQL'`で絞り込み、他利用者の同名プロシージャーが混ざらない設計)で、**`QSYS2.GENERATE_SQL`(内部の`SPECIFIC_NAME`は`QSQGENSQL`)の実引数37個すべてを、正式な列定義として確認できた。** `work/design/refs/`に一次資料が無いという事実(design doc §9)自体は変わらないが、**このシステム・カタログ自体は一次資料そのもの(IBM提供のQSYS2スキーマの列定義)であり、これでV3から実機確認済みへ格上げできる。**
+
+主な発見(全37引数のうち、08-06の本文が使う見込みが高いもの):
+
+| 位置 | 引数名 | 型 |
+|---|---|---|
+| 1 | `DATABASE_OBJECT_NAME` | `VARCHAR(258)` |
+| 2 | `DATABASE_OBJECT_LIBRARY_NAME` | `VARCHAR(258)` |
+| 3 | `DATABASE_OBJECT_TYPE` | `VARCHAR(10)` |
+| 4 | `DATABASE_SOURCE_FILE_NAME` | `VARCHAR(10)` |
+| 5 | `DATABASE_SOURCE_FILE_LIBRARY_NAME` | `VARCHAR(10)` |
+| 6 | `DATABASE_SOURCE_FILE_MEMBER` | `VARCHAR(10)` |
+| 8 | `REPLACE_OPTION` | `CHAR(1)` |
+| 27 | `CREATE_OR_REPLACE_OPTION` | `CHAR(1)` |
+
+**`part08-06-ddl`の3回の失敗を、この列定義に照らして再検証すると:**
+
+- 1回目の`DATABASE_FILE_TYPE`という引数名は、この37個の実在する引数名のどこにも無い——**存在しない引数名を指定していたこと自体が確定した**(推測どおり)。
+- 2回目は、1回目の失敗を受けて`DATABASE_SOURCE_FILE_NAME`を単純化(`'QSQLTEMP'`、これは実際の型`VARCHAR(10)`と整合——この修正は正しかった)すると同時に、`CREATE_OR_REPLACE_OPTION`の引用符を外して`1`(無引用符の整数リテラル)にしたが、**実際の型は`CHAR(1)`であり、`CREATE_OR_REPLACE_OPTION`は文字列でなければならない。** 引用符を外したこの修正が、2回目の`Conversion error on variable or parameter *N`の原因である可能性が高い(この接続のログからは`*N`がどの引数かまでは特定できておらず、断定はしない)。
+- 3回目は2回目の(誤った)修正を維持したまま別の変更を加えたため、`CREATE_OR_REPLACE_OPTION`の型不一致がおそらく残ったままだったと推測される。
+
+**次の一手**: `CREATE_OR_REPLACE_OPTION => '1'`(文字列として引用符付き)に戻し、1回目の`DATABASE_FILE_TYPE`(存在しない引数)を除いた形で、次回接続にて再試行する。この列定義を`src/sql/08-06-ddl.sql`・レッスン本文の一次資料として引用する。
+
+## 第8部08-06: `part08-06-generate-sql-retry`——引数を修正した`GENERATE_SQL`呼び出しも同じ`SQL0443`で失敗、この教材での実働例は打ち切り(確認日2026-09-29)
+
+`part08-06-generate-sql-catalog`で確定した実引数(`CREATE_OR_REPLACE_OPTION`を`CHAR(1)`として引用符付きの`'1'`にする、存在しない`DATABASE_FILE_TYPE`を外す、`DATABASE_SOURCE_FILE_LIBRARY_NAME => 'QTEMP'`を明示する)を反映して2回接続した。
+
+- **1回目は自作バグで空振り。** `SHOWGENSRC`ステップに`DSPPFM FILE(QTEMP/QSQLTEMP) MBR(QSQLTEMP) OUTPUT(*PRINT)`を書いたが、**`DSPPFM`に`OUTPUT`パラメーターは無く**(`CPD0043`)、CLプログラム自体がコンパイル時点で失敗(重大度30)し、`GENSQL`ステップは一度も実行されなかった。`SELECT SRCDTA FROM QTEMP.QSQLTEMP ORDER BY SRCSEQ`という、ソース物理ファイルの標準列(`SRCSEQ`・`SRCDTA`)を使うSQLに直して2回目を接続した。
+- **2回目は`GENSQL`まで到達したが、`part08-06-ddl`の3回目と同じ`SQL0443: Trigger program or external routine detected an error.`で再び失敗した。** ジョブ・ログを`QSYS2.JOBLOG_INFO('*')`で回収しても、この1行以上の詳細(第2レベル・テキスト等)は得られなかった。**修正した引数の型は今回正しいはずだが(カタログで確認済み)、それでも同じ汎用エラーで止まったことから、原因は引数の型・名前ではなく、他の要因(値の組み合わせ・権限・このプロシージャー内部の別の制約)にある可能性が高い。**
+- `ORIGLVLID`(`&LIB/TOKUIM`の`DSPFD TYPE(*RCDFMT)`)自体は正常に実行され、`TOKUIM`の現在の様式レベルID(`3B1ECB3196772`、`TOKUIR`様式、5フィールド、57バイト)を確認できた——これは08-06本文が「変換前後でレベルIDが変わらないこと」を示す際の比較対象として、そのまま使える。
+
+**打ち切りの判断**: `GENERATE_SQL`単体の呼び出しに、このセッションだけで合計5回の接続(`part08-06-ddl`3回+この2回)を費やし、**引数の型・名前という当初の仮説を実際に修正しても解消しなかった。** これ以上の当て推量は生産的でないと判断し、`GENERATE_SQL`の実働例をこの教材で確立することは打ち切る。ただし、`part08-06-generate-sql-catalog`で確定した37引数の実在する名前・型・順序(`QSYS2.SYSROUTINES`/`QSYS2.SYSPARMS`という一次資料そのもの)は確定済みの成果として残る——08-06本文は、この確定済みの引数一覧を「実際に呼び出して確認済みの動作」としてではなく、「実引数一覧はカタログで確認済み、実際に動く具体的な呼び出し方は学習者自身が試す」という形で提示する。
+
+**→ 後日`part08-06-lvlid-and-gensql`で解決(真因は`DATABASE_OBJECT_TYPE => '*FILE'`)。** この2回目の接続も`'*FILE'`のまま呼び出しており、真因はこの値そのものだった——引数の型・名前という仮説自体が的外れだった。
+
+## 第8部08-06: `part08-06-lvlid-and-gensql`——`GENERATE_SQL`がついにCONFIRMED SUCCESS、真因は`DATABASE_OBJECT_TYPE`の値そのものだった(確認日2026-09-29)
+
+advisorの指摘どおり、**これまでの5回の接続のうち、`DATABASE_OBJECT_TYPE => '*FILE'`のまま実際に`GENERATE_SQL`本体まで到達していたのは3回目(`part08-06-ddl`)と5回目(`part08-06-generate-sql-retry`の2回目)の2回で、どちらも`'*FILE'`を疑わずに使い続けていたことが真因だった可能性が高い**(残り3回──1回目は存在しない引数名、2回目は`CREATE_OR_REPLACE_OPTION`の型不一致、4回目はこの教材自身のCLラッパーのバグ──は別々の原因である)。この接続で`db2` CLIから直接、最小限の3引数(オブジェクト名・ライブラリー・型)だけで2通り試したところ:
+
+- **`DATABASE_OBJECT_TYPE => 'TABLE'`: 成功。** `SQLSTATE: 0100C`(クラス`01`=警告であり、エラーではない)は「`1 result sets are available from procedure GENERATE_SQL`」という情報にすぎない。**`TOKUIM`の完全な生成済みDDLが結果セットとして実際に返ってきた**(下記)。
+- **`DATABASE_OBJECT_TYPE => '*FILE'`: `SQLSTATE 22023`、`DATABASE_OBJECT_TYPE NOT VALID`——`*FILE`は最初から有効な値ではなかった。** `part08-06-ddl`の3回・`part08-06-generate-sql-retry`の2回、合計5回の失敗はすべてこれが原因だった可能性が高い(引数の型・名前という当初の仮説は的外れだった)。
+
+**`TOKUIM`に対して実際に生成されたDDL(`&LIB`はライブラリー名に読み替え):**
+
+```sql
+CREATE TABLE &LIB.TOKUIM (
+    TOKCD CHAR(6) CCSID 273 NOT NULL DEFAULT '' ,
+    TOKNM CHAR(30) CCSID 273 NOT NULL DEFAULT '' ,
+    TOKZIP CHAR(7) CCSID 273 NOT NULL DEFAULT '' ,
+    TOKTAN CHAR(6) CCSID 273 NOT NULL DEFAULT '' ,
+    TOKUPD NUMERIC(8, 0) NOT NULL DEFAULT 0 )
+    RCDFMT TOKUIR ;
+
+LABEL ON TABLE &LIB.TOKUIM IS 'Customer master' ;
+LABEL ON COLUMN &LIB.TOKUIM
+( TOKCD TEXT IS 'Customer code' ,
+    TOKNM TEXT IS 'Customer name' ,
+    TOKZIP TEXT IS 'Zip code' ,
+    TOKTAN TEXT IS 'Sales rep code' ,
+    TOKUPD TEXT IS 'Updated date YYYYMMDD' ) ;
+
+GRANT ALTER, DELETE, INDEX, INSERT, REFERENCES, SELECT, UPDATE
+ON &LIB.TOKUIM TO <学習者のユーザー> WITH GRANT OPTION ;
+```
+
+生成コメントの中に、IBM自身の警告メッセージが2件そのまま埋め込まれていた: `SQL150B: REUSEDLT(*NO) in table TOKUIM ignored`・`SQL1506: Key or attribute for TOKUIM ignored`——**DDSの`K TOKCD`(キー付きアクセス経路)は、この変換ではSQL側の制約(`PRIMARY KEY`等)には変換されず、そのまま無視されることが実機で確認できた。** これは08-06の本文にとって重要な限界であり、「レベルIDが一致した」ことと「そのままキー・アクセス(`CHAIN`等)の代替になる」ことは別問題だと明記する必要がある(advisor指摘)。
+
+**副産物**: `TOKUPD NUMERIC(8,0)`(ゾーン10進数)・各列`NOT NULL DEFAULT`・`RCDFMT TOKUIR`という生成結果は、advisorが指摘して修正した手書きDDL案の想定(`DECIMAL`ではなく`NUMERIC`、`NOT NULL WITH DEFAULT`が必要)と完全に一致していた——手書き版は書き方自体の実機確認(`FOR COLUMN`句の位置)がまだ済んでいないため(下記)、このIBM生成版をそのまま一次資料として使う。
+
+**この接続の自作ミス(致命的ではない、次回で修正)**: `LVLIDTEST`ステップの手書きDDL案は`TOKCD FOR COLUMN TOKCD CHAR(6)`のように`FOR COLUMN`句を型宣言の**前**に書いてしまい、`SQL0612`(列名の重複)で3パターンとも失敗した。正しい構文は`TOKCD CHAR(6) FOR COLUMN TOKCD`(型宣言の**後**)。**ただしGENERATE_SQLが実際に動いたことで、この手書きDDL案自体がもう不要になった**——次回接続では、この自作ミスを直した版を試す代わりに、上のIBM生成DDLをそのまま`QTEMP`に実行し、`&LIB/TOKUIM`とのレベルID一致を直接確認する。
+
+## 第8部08-06: `part08-06-lvlid-confirm`——GENERATE_SQL生成DDLとDDS原本のレベルID完全一致をCONFIRMED SUCCESS(確認日2026-09-29)
+
+`part08-06-lvlid-and-gensql`で得た`TOKUIM`の生成済みDDL(`CREATE TABLE`部分のみ、`LABEL ON`/`GRANT`は含めず)を、実際に`QTEMP.TOKUIM`として実行し、`&LIB/TOKUIM`(本物のDDS原本)と様式レベルIDを直接比較した。
+
+- **`QTEMP.TOKUIM`(GENERATE_SQLの生成DDLから作成): `3B1ECB3196772`**
+- **`&LIB/TOKUIM`(DDS原本): `3B1ECB3196772`**
+- **完全一致。08-06の中核概念(2)「様式レベルIDは形が変わったかどうかの機械判定」を、実際に「GENERATE_SQLで生成したSQL表が、DDS原本と同じ様式として認識される」という具体例で、実機の最初から最後まで確認できた。**
+
+副次的な確認: `DSPFFD`のフィールド一覧も、型(`CHAR`×4・`ZONED 8,0`)・バッファー長・位置まで`TOKUIM`原本と完全に一致した。`TEXT`(見出し)は今回`LABEL ON TABLE`を実行しなかったため空欄のままだったが、これは様式レベルIDには影響しない(IBM文書どおり、レベルIDの算出対象にTEXT記述は含まれない)。
+
+**これで08-06の実機的な裏付けがすべて揃った**: `GENERATE_SQL`の実引数(37個、確認済み)、正しい`DATABASE_OBJECT_TYPE`の値(`'TABLE'`、`'*FILE'`は無効)、`TOKUIM`への実際の生成DDL(確認済み)、そのDDLを実行した結果が原本とレベルID完全一致すること(確認済み)。唯一の限界は、DDSの`K TOKCD`(キー付きアクセス経路)が生成DDLには反映されない(`SQL1506`警告で無視される)ことで、08-06本文はこの点を「レベルID一致=そのままキー・アクセスの代替になる、ではない」という限界として明記する。
+
+## 第8部08-08: `part08-08-checkpoint`——昇格→*PRV機能追加→再昇格→切り戻しの全体像がCONFIRMED SUCCESS、TXCHECKの実バグも1件発見(確認日2026-09-29)
+
+advisorレビューで4件の実バグ(未修飾`TXCHECK`呼び出しによるコンパイル時失敗・存在しない`CRTPF`の`REPLACE`パラメーター・`QTEMP`バックアップの命名衝突・`CLNDEV`の単一障害点)を事前に修正した1回の接続で、08-08が必要とする中核シナリオがほぼ完全にCONFIRMED SUCCESSした。
+
+**確認できたこと(すべて実機、この接続で直接確認)**:
+
+- **`ZAISRV`への初めての`*PRV`適用が成功。** `pingZaisrv`を追加した新版(`solutions/08-08/zaisrv.rpgle`・`zaisrv.bnd`)を`&LIB`でコンパイルし直した直後(`DEVREGR`)、`DRIVER`(再コンパイルしていない)を実行したところ、07-05のベースラインと1文字も違わない10行が出力された——`*PRV`が3手続きシグネチャーへの旧来のバインドを正しく保っていることの、`ZAISRV`では初めての実機確認。
+- **`CRTDUPOBJ`による`*SRVPGM`の昇格→再昇格→切り戻しが、シグネチャー数で完全に裏付けられた。** `DSPSRVPGM DETAIL(*SIGNATURE)`の`Number of signatures`の値が、期待どおりの順で変化した: ベースライン昇格後`1`(3手続き)→新版promote後`2`(4手続き)→切り戻し後`1`(3手続き)→`&LIB`自体の最終復元後`1`(3手続き)。`Number of program procedure exports`も`3`→`4`→`3`→`3`と対応して変化した。
+- **本番役複製(`&LIB2`)でも`*PRV`が効くことを、`DSPLIBL`の実出力で直接確認した。** `PRODREGR`ステップで`ADDLIBLE LIB(&LIB2) POSITION(*FIRST)`した直後の`DSPLIBL OUTPUT(*PRINT)`が、`<USER>B`(`&LIB2`)が`<USER>2`(`&LIB`)より前に来ていることを実際に示しており、この状態で`DRIVER`を実行してもベースラインと同じ10行が出た。**執筆後レビューで、この証拠には2つの穴が無いか検討し、両方とも実際に埋まっていることを確認した。** (1) 現行ライブラリー(`DSPLIBL`の`CUR`欄)は`&LIB`とも`&LIB2`とも異なる第三のライブラリー(`<USER>1`として表記)であり、01-05既習のとおり現行ライブラリーは常にユーザー部より先に検索されるため、もしこの第三のライブラリーが独自の`ZAISRV`を持っていれば`ADDLIBLE`による並び替えは無意味になる——`part08-08-curlib-confirm`という追加接続(読み取り専用、`QSYS2.OBJECT_STATISTICS('*CURLIB','*ALL')`。`*CURLIB`はIBM Docsで確認済みの実在する特殊値)で直接検索した結果、この現行ライブラリーには`ZAISRV`・`DRIVER`・`JUCSRV`・`ZAISRVBD`のいずれも存在しない(0件)ことを確認した(内容はこの教材のPart 5以降とは無関係な、著者の初期の探索的なオブジェクトのみ——P01が2026-09-24〔`ZAISRV`概念が存在する前〕に記録した内容と整合する。個々のオブジェクト名はP01自身の表記に合わせ記録しない)。同じ接続で`DSPPGM PGM(&LIB/DRIVER) DETAIL(*SRVPGM) OUTPUT(*PRINT)`(`*SRVPGM`もIBM Docsで確認済み)も実行し、`ZAISRV`の`Library`欄が実際に`*LIBL`であることを直接確認した(これで`DSPPGM DETAIL(*SRVPGM)`自体のV3扱いも解消)。(2) `DRIVER`(`solutions/07-05/driver.rpgle`)は`ctl-opt dftactgrp(*no) actgrp(*new) bnddir('ZAISRVBD')`で、モジュール・バインドを1ステップの`CRTBNDRPG`で行うため、このctl-optが権威を持つ(`work/design/part07-design-v1.md`の07-01エントリーが確立した、別ステップの`CRTPGM`ではctl-optの活動グループ指定が無視されるという知見の裏返し)。`ACTGRP(*NEW)`はシステム命名の活動グループを毎回新規作成するため(`work/design/refs/ileconcepts75.txt`1657-1801行)、`DEVREGR`・`PRODREGR`・`ROLLREGR`の`CALL PGM(&LIB/DRIVER)`はそれぞれ独立した活動グループで`ZAISRV`を新規に`*LIBL`解決しており、前の`CALL`の活動化を引きずる余地は無い。**この2点により、「本番へ複製したコピーでも`*PRV`が機能する」ことは、この検証ハーネスのシナリオに関する限りCONFIRMED SUCCESSとして扱ってよい。** ただし学習者自身の現行ライブラリーは`<自分のユーザー名>1`(開発用)そのものであり必ず`ZAISRV`が存在するため、この結果をそのまま当てはめることはできず、学習者向けの具体的な`SETENV *PRD`手順自体は05-12の実機メモが記録するとおりこの教材ではまだ一度も`CALL`されていない(V3)。詳細は`docs/part08/08-08-checkpoint-promote-rollback.md`の「説明」・「実機メモ」、`verify/part08-08-curlib-confirm/manifest.json`を参照。
+- **`CRTDUPOBJ`の`NEWOBJ`パラメーターが実際に機能した。** IBM Docsから直接確認した`NEWOBJ`(`CRTDUPOBJ OBJ(ZAISRV) ... TOLIB(QTEMP) NEWOBJ(ZAISRVBK)`)により、`QTEMP`のバックアップが`ZAISRV`本来の名前と衝突せずに保存・復元できた。
+- **`CLNDEV`(ソース・メンバーからの完全な巻き戻し)も成功。** `ZAISRV75`という別名で07-05原本のソースを送り込み、`CPYF`で本来の`ZAISRV`メンバーへ書き戻してから再コンパイルする経路が、`QTEMP`のオブジェクト・バックアップに頼らず独立して機能した。
+
+**新たに発見した実バグ: TXCHECKは同じジョブ内で2回目の呼び出しに失敗する。**
+
+1回目の呼び出し(`CHKBASE`、`CALL PGM(&LIB/TXCHECK) PARM('08-08' '&LIB2')`)は正常に完了し、`TXCHECK PASS: JUCSRV promoted to production`・`TXCHECK PASS: ZAISRV promoted to production`・`TXCHECK: lesson 08-08 - 2 passed, 0 failed.`という、期待どおりの結果が得られた。ところが**2回目の呼び出し(`CHKNEW`、新版promote後の再確認)は、`CPF4174: OPNID(TXCKM) for file TXCKM already exists.`で`OVRDBF`が失敗し、`TXCHECK: could not query the manifest for lesson 08-08.`という、PASS/FAILのどちらでもない「確認不能」状態で終わった。**
+
+- `tools/qclsrc/txcheck.clp`自身の`TXCLOF`ラベルは`CLOSE OPNID(*NONE)`→`DLTOVR FILE(TXCKM)`という後片付けを行っているが、この接続の証拠を見る限り、**同じジョブ内で2回目に`CALL`されたときには、この後片付けが(理由は特定できていないが)有効に効いていない。**
+- **このエラーはCLの`*ESCAPE`にはならず(`RETURN`で正常終了)、呼び出し元の`MONMSG MSGID(CPF0000)`も反応しなかった**——つまりこの接続の他のどの手順もこれによって連鎖的に壊れてはいない(`SIGNEW`〔`DSPSRVPGM`による直接確認〕・`PRODREGR`〔`DRIVER`再実行〕・`ROLLBACK`以降はすべて正常に完了・確認できている)。壊れたのは「TXCHECKの2回目の実行結果」というただ1点のみ。
+- **原因はこの接続だけでは特定できていない。** `SHARE(*YES)`の`OVRDBF`(`txcheck.clp`のコメントが説明する、`OPNQRYF`との共有ODPのための指定)が、ジョブ・レベルのオーバーライド解除と実際のクローズの間で何らかの食い違いを起こしている可能性はあるが、推測にとどまる。
+- **この接続自体の設計(1つのCLラッパー・ジョブの中でTXCHECKを2回呼ぶ)が、このバグを踏んだ直接の原因である可能性が高い。** 実際の学習者は5250から`TXCHECK`コマンドを対話的に打つため、この教材の他のどの接続もこれまで「同じジョブ内でTXCHECKを2回呼ぶ」という組み合わせを試したことが無かった(`part05-txcheck-probe`は1回だけの呼び出し)。**5250の対話式ジョブ1本を、複数回のコマンド入力にわたって使い続けた場合にも同じバグが起きるかどうかは未確認。**
+- **08-08のレッスン設計への示唆**: 本文の実演では、TXCHECKを1回のCLラッパー・ジョブの中で連続して2回呼ぶ構成を避け、`5250のコマンド行から都度手で打つ`という素直な操作に留める(学習者が実際に行う操作そのものであり、かつこのバグを踏む可能性を下げる)。もし本文が「昇格直後に確認→機能追加→再昇格後にもう一度確認」という2回のTXCHECK呼び出しを求めるなら、**この既知の制限(同一ジョブでの連続呼び出しは未確認)を実機メモに明記し、「PASS/FAILが返らず`could not query`になった場合は、SSHを一度切って入り直してから再試行してください」という対処を演習に添える。**
 
 ## 未実施のプローブ
 
@@ -2659,3 +3195,4 @@ P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)�
 
 - 破壊的な操作を伴うもの(P05, P06, P10, P22 等)は、TX ツール実装(フェーズ2)と合わせて慎重に実施する。**P19(TXMIGR TO(2)実行)は`part05-txmigr-to2`/`-to2b`で、P23(SAVF証拠)・P44(CRTDUPOBJ複製後のソース情報)は`part05-promote-rollback`で、P20(不正な10進数データ)は`part05-lesson-decimal`で、P43(ロック診断)は`part06-p43-lockdiag`で、それぞれ実機解決済み(上記の各節参照)。**
 - 新規アカウントが必要なもの(P02, P41)は、ベータ・テスターの協力を得るか、一次資料 + 私的な既存実測(匿名化)で代替する。
+- **【2026-09-29追記】第8部の作業に伴い、P16(08-01/08-02で解消)・P28(`makei --version`・RPGLE/SRVPGMビルドが実機確認済み、`part08-02-makei-probe`等)・P29(`GENERATE_SQL`の実引数・生成DDL・レベルID一致が`part08-06-lvlid-and-gensql`・`part08-06-lvlid-confirm`で解決)も実機解決済み。この一覧はP15/P17/P24/P25/P30/P42等、第8部の他レッスンで解決済みの項目も含め、全体としては更新しきれていない——各レッスンの「依存するプローブ」欄と、対応する`docs/probes.md`節見出しを個別に参照すること。

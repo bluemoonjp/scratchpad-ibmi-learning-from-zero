@@ -1,0 +1,167 @@
+{
+  "batch": "part08-05-f0805a",
+  "description": "5th connection. 4th connection CONFIRMED SUCCESS: F0805A's output byte-for-byte identical to JU0300's, Q0805B's (via Q0805BH) byte-for-byte identical to ZA0500's, both also matching golden-master.md. This connection re-verifies F0805A/Q0805B after two further static-review-only fixes (found while writing the 08-05 lesson prose, not by a real compile/run, neither changes output against this repo's own 6-customer data): f0805as.rpgle's l2Break array-bounds guard (`if ix <= 49`, was incorrectly `if ix <> 49` - ju0300.rpg's own COMP 49 sets resulting indicator 90 at C-spec columns 54-55, which rpg400ref.txt confirms is the HIGH condition not EQUAL, so the guard's real meaning allows all 50 CT slots, not 49) and grandTotal's MISMATCH column (63, was 62 - ju0300.rpg's own O-spec end column for MISMATCH is 70, length 8, so 70-8+1=63, matching the same end-col-minus-length+1 rule every other field in this file follows). Neither fix is exercised by db/data/load_v1.sql's 6-customer data (never reaches IX 49/50, XFOOT always matches so MISMATCH never prints) - this connection can only confirm they still COMPILE cleanly, not that the fixed behavior is correct on real hardware (that would need >48 or =50 customers, or a deliberately mismatched XFOOT, neither of which this repo's own data provides). Also appends a read-only makei re-probe (MAKEICHECK, per advisor: check_dependencies() in makei's own script, read via head -60 in a prior connection, does a plain PATH substring test that this session's own exports satisfy - the 'startup files reset PATH' theory doesn't fit population the script's own logic - so this tests whether invoking makei from within an actual bash process, rather than from qsh directly, changes the result, which would show a qsh-vs-PASE-shell environment split matching every other finding in this part).",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/ju0300.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "JU0300"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/08-05/f0805as.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "F0805A",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/05-13/za0500-ticket3.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "ZA0500"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/05-13/ju0900c-ticket1.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "JU0900C"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/08-05/q0805bs.sqlrpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "Q0805B",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "src/q0805bh.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "Q0805BH"
+    },
+    {
+      "type": "cl",
+      "label": "RUNTXRESET",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPJU03",
+      "cmd": "DLTPGM PGM(&LIB/JU0300)\nMONMSG MSGID(CPF0000)\nCRTRPGPGM PGM(&LIB/JU0300) SRCFILE(&LIB/QRPGSRC) SRCMBR(JU0300) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPF0805A",
+      "cmd": "DLTPGM PGM(&LIB/F0805A)\nMONMSG MSGID(CPF0000)\nCRTBNDRPG PGM(&LIB/F0805A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0805A) DFTACTGRP(*NO) ACTGRP(*NEW) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPZA05",
+      "cmd": "DLTPGM PGM(&LIB/ZA0500)\nMONMSG MSGID(CPF0000)\nCRTRPGPGM PGM(&LIB/ZA0500) SRCFILE(&LIB/QRPGSRC) SRCMBR(ZA0500) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPJU09",
+      "cmd": "DLTPGM PGM(&LIB/JU0900C)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/JU0900C) SRCFILE(&LIB/QCLSRC) SRCMBR(JU0900C) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPQ0805B",
+      "cmd": "DLTPGM PGM(&LIB/Q0805B)\nMONMSG MSGID(CPF0000)\nCRTSQLRPGI OBJ(&LIB/Q0805B) SRCFILE(&LIB/QRPGLESRC) SRCMBR(Q0805B) OBJTYPE(*PGM) COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "SQL0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPQ0805BH",
+      "cmd": "DLTPGM PGM(&LIB/Q0805BH)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/Q0805BH) SRCFILE(&LIB/QCLSRC) SRCMBR(Q0805BH) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLRFTOK",
+      "cmd": "CHGDTAARA DTAARA(*LDA (11 6)) VALUE('      ')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNJU0300",
+      "cmd": "CALL PGM(&LIB/JU0300)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNF0805A",
+      "cmd": "CALL PGM(&LIB/F0805A)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNCHAIN",
+      "cmd": "CALL PGM(&LIB/JU0900C) PARM('*TEST' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNQ0805B",
+      "cmd": "CALL PGM(&LIB/Q0805BH) PARM('&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "sh",
+      "label": "MAKEICHECK",
+      "cmd": "echo ---VIA-QSH--- && export PATH=/QOpenSys/pkgs/bin:$PATH && makei --version 2>&1 && echo ---VIA-BASH--- && /QOpenSys/pkgs/bin/bash -c 'export PATH=/QOpenSys/pkgs/bin:$PATH; echo PATH=$PATH; makei --version' 2>&1"
+    }
+  ]
+}

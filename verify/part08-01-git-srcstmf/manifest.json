@@ -1,0 +1,104 @@
+{
+  "batch": "part08-01-git-srcstmf",
+  "description": "7th connection. 6th connection CONFIRMED SUCCESS for the core exercise: JUCSRV rebuilt end-to-end via git clone + CRTRPGMOD/CRTSRVPGM SRCSTMF (Module JUCSRV placed, 10 highest severity; Service program JUCSRV created, old object correctly moved to QRPLOBJ; CHECK702/CHECK703 both resolved and ran it correctly via *LIBL - same values as the member-based build). The CL line-length fix (shortened v8/b.git/p/c paths, +-continued CRTRPGMOD/CRTSRVPGM statements) and the ADDLIBLE-in-one-job fix (dynamically generated BUILDMOD CL helper) both worked as designed.\n\nOnly ROUNDTRIP-EDIT failed, on a NEW instance of the same class of bug already fixed twice elsewhere in this manifest: the heredoc-written ed.py python script was itself written as EBCDIC bytes (this harness's own well-established heredoc-write default), so python3 refused to parse it (SyntaxError: non-UTF-8 code, no encoding declared). A PEP 263 coding-declaration comment cannot fix this - Python's own bootstrap scan for that comment assumes the first two lines are already ASCII-compatible, which EBCDIC bytes are not. Fixed the same way the jucsrv.rpgle/jucsrv.bnd seed was fixed: ed.py is now a real source member (QTXTSRC/EDPY, added via this manifest's own file-type step, so CPYFRMSTMF - proven safe for EBCDIC-native member content) exported to the IFS via CPYTOSTMF (STMFCCSID(1208) ENDLINFMT(*LF), the same already-twice-proven recipe), instead of ever going through a heredoc write for this specific file.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/jucsrv.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "JUCSRV",
+      "ensureSrcFile": { "recordLength": 112 }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qsrvsrc/jucsrv.bnd",
+      "remoteSrcFile": "QSRVSRC",
+      "member": "JUCSRV",
+      "ensureSrcFile": { "recordLength": 112 }
+    },
+    {
+      "type": "file",
+      "localPath": "scratch/ed.py",
+      "remoteSrcFile": "QTXTSRC",
+      "member": "EDPY",
+      "ensureSrcFile": { "recordLength": 112 }
+    },
+    {
+      "type": "sh",
+      "label": "SETUP",
+      "cmd": "rm -rf \"$HOME/v8\"\nmkdir -p \"$HOME/v8\"\ncd \"$HOME/v8\" && /QOpenSys/pkgs/bin/git --version 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "BARE",
+      "cmd": "cd \"$HOME/v8\" && /QOpenSys/pkgs/bin/git init -b main --bare b.git 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PCREPO",
+      "cmd": "cd \"$HOME/v8\" && mkdir -p p/src/qrpglesrc p/src/qsrvsrc && cd p && /QOpenSys/pkgs/bin/git init -b main 2>&1 && /QOpenSys/pkgs/bin/git config user.name 'Learner (verify harness rehearsal)' 2>&1 && /QOpenSys/pkgs/bin/git config user.email 'learner-rehearsal-no-email' 2>&1 && system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGLESRC.FILE/JUCSRV.MBR') TOSTMF('$HOME/v8/p/src/qrpglesrc/jucsrv.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1 && system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QSRVSRC.FILE/JUCSRV.MBR') TOSTMF('$HOME/v8/p/src/qsrvsrc/jucsrv.bnd') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1 && echo ---SEED-CHECK--- && ls -S src/qrpglesrc/jucsrv.rpgle 2>&1 && od -x src/qrpglesrc/jucsrv.rpgle 2>&1 | head -2 && /QOpenSys/pkgs/bin/git add -A 2>&1 && /QOpenSys/pkgs/bin/git commit -m 'initial import: JUCSRV source' 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PUSH",
+      "cmd": "cd \"$HOME/v8/p\" && /QOpenSys/pkgs/bin/git remote add origin \"$HOME/v8/b.git\" 2>&1 && /QOpenSys/pkgs/bin/git --no-pager push origin main 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "CLONE",
+      "cmd": "cd \"$HOME/v8\" && /QOpenSys/pkgs/bin/git clone b.git c 2>&1 && echo ---CLONE-CHECK--- && ls -S c/src/qrpglesrc/jucsrv.rpgle 2>&1 && od -x c/src/qrpglesrc/jucsrv.rpgle 2>&1 | head -2"
+    },
+    {
+      "type": "sh",
+      "label": "GENBUILDER",
+      "cmd": "cat > \"$HOME/v8/bm.clp\" <<CLEOF\n             PGM\n             MONMSG MSGID(CPF0000 RNF0000 MCH0000) EXEC(GOTO CMDLBL(FAILSAFE))\n             ADDLIBLE LIB(&LIB) POSITION(*FIRST)\n             MONMSG MSGID(CPF2103)\n             DLTMOD MODULE(&LIB/JUCSRV)\n             MONMSG MSGID(CPF0000)\n             CRTRPGMOD MODULE(&LIB/JUCSRV) +\n  SRCSTMF('$HOME/v8/c/src/qrpglesrc/jucsrv.rpgle') +\n  TGTCCSID(*JOB) REPLACE(*YES)\n             CRTSRVPGM SRVPGM(&LIB/JUCSRV) MODULE(&LIB/JUCSRV) +\n  EXPORT(*SRCFILE) +\n  SRCSTMF('$HOME/v8/c/src/qsrvsrc/jucsrv.bnd') +\n  ACTGRP(*CALLER) REPLACE(*YES)\n             RETURN\nFAILSAFE:    SNDPGMMSG MSG('BUILDMOD: unexpected error.') MSGTYPE(*COMP)\nCLEOF\nawk '{ print length, $0 }' \"$HOME/v8/bm.clp\"\nsystem \"CPYFRMSTMF FROMSTMF('$HOME/v8/bm.clp') TOMBR('/QSYS.LIB/&LIB.LIB/QCLSRC.FILE/BUILDMOD.MBR') MBROPT(*REPLACE)\" 2>&1\nsystem \"DLTPGM PGM(&LIB/BUILDMOD)\" 2>&1\nsystem \"CRTCLPGM PGM(&LIB/BUILDMOD) SRCFILE(&LIB/QCLSRC) SRCMBR(BUILDMOD) REPLACE(*YES)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "BUILDMOD",
+      "cmd": "system \"CALL PGM(&LIB/BUILDMOD)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "GENEDITOR",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QTXTSRC.FILE/EDPY.MBR') TOSTMF('$HOME/v8/ed.py') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\ncat \"$HOME/v8/ed.py\""
+    },
+    {
+      "type": "sh",
+      "label": "ROUNDTRIP-EDIT",
+      "cmd": "cd \"$HOME/v8/p\" && /QOpenSys/pkgs/bin/python3 \"$HOME/v8/ed.py\" 2>&1 && echo ---EDIT-CHECK--- && ls -S src/qrpglesrc/jucsrv.rpgle 2>&1 && od -x src/qrpglesrc/jucsrv.rpgle 2>&1 | head -2 && /QOpenSys/pkgs/bin/git add -A 2>&1 && /QOpenSys/pkgs/bin/git commit -m 'round-trip rehearsal: add a comment line' 2>&1 && /QOpenSys/pkgs/bin/git --no-pager push origin main 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "ROUNDTRIP-PULL",
+      "cmd": "cd \"$HOME/v8/c\" && /QOpenSys/pkgs/bin/git --no-pager pull 2>&1 && head -3 src/qrpglesrc/jucsrv.rpgle 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "ROUNDTRIP-REBUILD",
+      "cmd": "system \"CALL PGM(&LIB/BUILDMOD)\" 2>&1"
+    },
+    {
+      "type": "cl",
+      "label": "CHECK702",
+      "cmd": "CALL PGM(&LIB/F0702A) PARM('C00001')",
+      "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CHECK703",
+      "cmd": "CALL PGM(&LIB/F0703A) PARM('C00001')",
+      "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJLIB FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', 'ALL')) X WHERE OBJNAME = 'JUCSRV' ORDER BY OBJTYPE"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT PROGRAM_NAME, BOUND_SERVICE_PROGRAM_LIBRARY, BOUND_SERVICE_PROGRAM, BOUND_SERVICE_PROGRAM_ACTIVATION FROM QSYS2.BOUND_SRVPGM_INFO WHERE PROGRAM_LIBRARY = '&LIB' AND PROGRAM_NAME IN ('F0702A', 'F0703A') ORDER BY PROGRAM_NAME"
+    }
+  ]
+}

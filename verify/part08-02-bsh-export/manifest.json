@@ -1,0 +1,11 @@
+{
+  "batch": "part08-02-bsh-export",
+  "description": "Read-only, no library2 needed. part08-02-testpf's bsh test failed with bsh's own error: '0402-026 The specified data is not a valid identifier.' Per advisor review, this is very likely bsh (a real Bourne shell, not bash/ksh) rejecting the combined 'export NAME=value' form - traditional Bourne export only accepts bare names, requiring the two-step 'NAME=value; export NAME' form instead. This matters far beyond 08-02: the ALREADY-PUBLISHED 02-04 lesson (docs/part02/02-04-ssh-git-clone.md, main branch) has every learner run exactly the combined form ('export PATH=/QOpenSys/pkgs/bin:$PATH', both to append to ~/.profile and to apply immediately) inside what P08 already confirmed is a bsh login session. If bsh really rejects this, 02-04 is broken for every learner and this needs a separate fix branch (like fix/part03-rtvjoba), not just an 08-02 workaround. This connection isolates exactly the 02-04 command (verbatim) via bsh -c, and separately confirms the two-step form works as a fix, plus re-tests makei through it.",
+  "steps": [
+    {
+      "type": "sh",
+      "label": "BSHEXPORT",
+      "cmd": "echo SHELL=$SHELL </dev/null 2>&1\necho ---02-04-EXACT-COMMAND-VIA-BSH---\n/QOpenSys/usr/bin/bsh -c 'export PATH=/QOpenSys/pkgs/bin:$PATH' </dev/null 2>&1\necho \"exit code: $?\"\necho ---TWO-STEP-FORM-VIA-BSH---\n/QOpenSys/usr/bin/bsh -c 'PATH=/QOpenSys/pkgs/bin:$PATH; export PATH; echo PATH=$PATH' </dev/null 2>&1\necho \"exit code: $?\"\necho ---TWO-STEP-FORM-PLUS-MAKEI---\n/QOpenSys/usr/bin/bsh -c 'PATH=/QOpenSys/pkgs/bin:$PATH; export PATH; makei --version' </dev/null 2>&1\necho \"exit code: $?\"\n"
+    }
+  ]
+}

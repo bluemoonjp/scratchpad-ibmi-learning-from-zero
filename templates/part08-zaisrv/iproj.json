@@ -1,0 +1,9 @@
+{
+  "version": "0.0.1",
+  "description": "ZAISRV (Part 8 makei rebuild) - objlib/curlib both set to the learner's own dev library",
+  "objlib": "YOURUSER1",
+  "curlib": "YOURUSER1",
+  "includePath": [],
+  "preUsrlibl": [],
+  "postUsrlibl": []
+}

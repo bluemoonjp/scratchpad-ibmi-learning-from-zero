@@ -1,0 +1,40 @@
+{
+  "batch": "part08-02-driver-bsh",
+  "description": "1st connection. Two independent checks flagged by advisor review of the 08-02 lesson draft before publish. (1) 08-02's PC-project-setup commands (A4/A6/B1/C6/C7/E3) use bare `~/...` paths, but every prior verified connection in this repo always wrote `\"$HOME/...\"` instead - tilde expansion under bsh (the learner's default SSH shell per P08) has never actually been tested, and this repo already found one real bsh syntax gap (the combined `export NAME=value` form, fixed in main PR #19/#20). (2) 08-02's lesson text asks the learner to re-run part07-05-checkpoint's DRIVER program against the ZAISRV that makei just rebuilt (in the part08-02-makei connection) and compare against 07-05's original 10-line output - this exact re-run was never actually done in this repo, so the lesson currently marks it V3. This reuses part07-05-checkpoint's own proven CALL/CPYSPLF/collect recipe (RUNDRIVER/CAPDRIVER steps) against the SAME &LIB DRIVER/ZAISRV/ZAISRVBD that 07-05 explicitly told the learner to keep (\"ZAISRV・ZAISRVBD・DRIVERはそのまま残してください。第8部(08-02)が、このZAISRV一式をそのまま再利用します\").",
+  "steps": [
+    {
+      "type": "sh",
+      "label": "BSHTILDE",
+      "cmd": "/QOpenSys/usr/bin/bsh -c 'echo A=~ ; echo B=~/x ; echo H=$HOME' </dev/null 2>&1\n"
+    },
+    {
+      "type": "cl",
+      "label": "RESET1",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "RUNDRIVER",
+      "cmd": "CALL PGM(&LIB/DRIVER)",
+      "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CAPDRIVER",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*REPLACE)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "RESET2",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYSPL"
+    }
+  ]
+}

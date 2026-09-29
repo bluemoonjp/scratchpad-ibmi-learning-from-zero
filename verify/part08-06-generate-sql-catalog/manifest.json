@@ -1,0 +1,16 @@
+{
+  "batch": "part08-06-generate-sql-catalog",
+  "description": "1st connection. Follow-up to part08-06-ddl's 3 non-converging guess-and-check attempts (docs/probes.md). Advisor suggestion: instead of a schema-unfiltered SYSPARMS LIKE query (which part08-02-testpf already tried and got only other users' own same-named procedures, never the real QSYS2.GENERATE_SQL), go through QSYS2.SYSROUTINES first, filtered directly by ROUTINE_SCHEMA='QSYS2' AND ROUTINE_NAME='GENERATE_SQL' - this can only ever return the genuine system routine (or nothing), never another user's private library, since it's filtered by schema from the start. Read-only. GETSPECIFIC finds the routine's real SPECIFIC_NAME (its internal overload identifier); GETPARMS uses that exact SPECIFIC_NAME to list GENERATE_SQL's real parameter names/types/order from SYSPARMS, scoped to SPECIFIC_SCHEMA='QSYS2' as a second safety filter.",
+  "steps": [
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT ROUTINE_SCHEMA, ROUTINE_NAME, SPECIFIC_NAME, ROUTINE_TYPE, RESULT_SETS, LANGUAGE, ROUTINE_DEFINER FROM QSYS2.SYSROUTINES WHERE ROUTINE_SCHEMA = 'QSYS2' AND ROUTINE_NAME = 'GENERATE_SQL'"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT SPECIFIC_NAME, ORDINAL_POSITION, PARAMETER_MODE, PARAMETER_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, IS_NULLABLE FROM QSYS2.SYSPARMS WHERE SPECIFIC_SCHEMA = 'QSYS2' AND SPECIFIC_NAME IN (SELECT SPECIFIC_NAME FROM QSYS2.SYSROUTINES WHERE ROUTINE_SCHEMA = 'QSYS2' AND ROUTINE_NAME = 'GENERATE_SQL') ORDER BY SPECIFIC_NAME, ORDINAL_POSITION"
+    }
+  ]
+}

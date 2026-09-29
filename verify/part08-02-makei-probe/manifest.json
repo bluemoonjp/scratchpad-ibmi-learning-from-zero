@@ -1,0 +1,11 @@
+{
+  "batch": "part08-02-makei-probe",
+  "description": "1st connection, read-only probe for 08-02 (makei/TOBiビルド). part08-05-f0805a's own MAKEICHECK step (2 attempts) never actually compared qsh-direct vs. bash-invoked makei, because its `&&` chain stopped after the qsh-direct call's own non-zero exit code, so the bash half never ran. This standalone manifest fixes that with `;` separators (not `&&`) so both halves always run regardless of each other's exit code, and adds `bash -x` tracing per advisor's own suggestion so the actual PATH makei's own child process sees is visible directly, rather than inferred. Purely read-only (--version/--help, no build attempted) - per advisor's explicit guidance not to spend a connection on a blind makei build with zero primary-source backing.",
+  "steps": [
+    {
+      "type": "sh",
+      "label": "MAKEICOMPARE",
+      "cmd": "echo ---VIA-QSH-DIRECT---; export PATH=/QOpenSys/pkgs/bin:$PATH; echo PATH=$PATH; makei --version 2>&1; echo ---VIA-BASH-TRACE---; /QOpenSys/pkgs/bin/bash -c 'export PATH=/QOpenSys/pkgs/bin:$PATH; echo PATH=$PATH; bash -x /QOpenSys/pkgs/bin/makei --version' 2>&1 | head -60"
+    }
+  ]
+}

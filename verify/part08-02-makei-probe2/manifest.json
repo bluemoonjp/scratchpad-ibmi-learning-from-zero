@@ -1,0 +1,22 @@
+{
+  "batch": "part08-02-makei-probe2",
+  "description": "7th (final) connection of this batch. 6th connection built ZAISRV from scratch into the empty &LIB2 (<USER>B) via a corrected Rules.mk. That IFS project directory ($HOME/mk8/z) is real filesystem state that persists across SSH connections, so this connection re-runs `makei build` in the SAME unchanged directory (no source edits, same objects already present) to test the still-open question from part08-design-v1.md's core concept (1) - does makei's dependency tracking actually skip a build when the target is genuinely up to date, or does it always rebuild unconditionally? This is a safe way to test the incremental-build/staleness-check mechanism without touching Part 7's real ZAISRV in &LIB (per advisor review: the 3rd connection's earlier 'Nothing to be done' didn't test this at all, since Rules.mk had zero targets at that point - this connection is the first real test). After the check, DLTSRVPGM/DLTMOD clean up &LIB2 back to empty, since that library isn't otherwise used by this repo's harness.",
+  "library2": "*B",
+  "steps": [
+    {
+      "type": "sh",
+      "label": "REBUILD",
+      "cmd": "/QOpenSys/pkgs/bin/bash -c 'cd \"$HOME/mk8/z\" && export PATH=/QOpenSys/pkgs/bin:$PATH && echo PATH=$PATH && ls -la && echo ---BUILD-AGAIN--- && /QOpenSys/pkgs/bin/makei build' </dev/null 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "CLEANUP",
+      "cmd": "system \"DLTSRVPGM SRVPGM(&LIB2/ZAISRV)\" 2>&1\nsystem \"DLTMOD MODULE(&LIB2/ZAISRV)\" 2>&1\nrm -rf \"$HOME/mk8\"\n"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJLIB FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB2', 'ALL')) X WHERE OBJNAME = 'ZAISRV' ORDER BY OBJTYPE"
+    }
+  ]
+}

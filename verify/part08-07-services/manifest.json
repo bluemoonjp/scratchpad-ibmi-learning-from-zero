@@ -1,0 +1,32 @@
+{
+  "batch": "part08-07-services",
+  "description": "2nd connection. 1st connection: all 4 collect-step SELECTs succeeded on the FIRST TRY (OBJECT_STATISTICS/USER_STORAGE were already-proven forms; OBJECT_PRIVILEGES and PROGRAM_INFO were first-candidate general-knowledge guesses with zero primary-source backing, and both worked exactly as written - CONFIRMED). OBJECT_PRIVILEGES showed JUCSRV's *MODULE/*SRVPGM both currently *PUBLIC *EXCLUDE (the real, never-yet-granted state). PROGRAM_INFO showed PROGRAM_TYPE distinguishing OPM vs ILE programs correctly. But the GRTSELF cl step's own wrapper FAILED TO COMPILE: CPD0030 severity 30, 'Command REVOKE in library *LIBL not found' - REVOKE is a SQL statement keyword, not a CL command; the real CL command symmetric to GRTOBJAUT is RVKOBJAUT (cl_commands_75.txt line 6522 confirms RVKOBJAUT exists as GRTOBJAUT's counterpart, though neither command has its own full parameter-table section in this repo's primary sources - the OBJ/OBJTYPE/USER/AUT parameter shape is assumed symmetric with GRTOBJAUT's own, documented, shape). Because the wrapper never compiled, GRTOBJAUT itself never ran either (both were in the same failed step) - this connection's OBJECT_PRIVILEGES result reflects the untouched original state, not a real grant/revoke round trip. Fixed: REVOKE -> RVKOBJAUT. This connection re-tests the fixed GRTOBJAUT+RVKOBJAUT pair and re-runs all 4 collect SELECTs once more (now expecting to see the round trip leave *PUBLIC back at *EXCLUDE, same as before, but this time via an actual GRANT-then-REVOKE rather than an accident of the wrapper never running).",
+  "steps": [
+    {
+      "type": "cl",
+      "label": "GRTSELF",
+      "cmd": "GRTOBJAUT OBJ(&LIB/JUCSRV) OBJTYPE(*SRVPGM) USER(*PUBLIC) AUT(*USE)\nRVKOBJAUT OBJ(&LIB/JUCSRV) OBJTYPE(*SRVPGM) USER(*PUBLIC) AUT(*USE)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJOWNER FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB','*ALL')) X ORDER BY OBJNAME FETCH FIRST 10 ROWS ONLY"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT AUTHORIZATION_NAME, STORAGE_USED, MAXIMUM_STORAGE_ALLOWED FROM QSYS2.USER_STORAGE WHERE AUTHORIZATION_NAME = CURRENT_USER"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJECT_SCHEMA, OBJECT_NAME, OBJECT_TYPE, AUTHORIZATION_NAME, OBJECT_AUTHORITY FROM QSYS2.OBJECT_PRIVILEGES WHERE OBJECT_SCHEMA = '&LIB' AND OBJECT_NAME = 'JUCSRV'"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT PROGRAM_LIBRARY, PROGRAM_NAME, PROGRAM_TYPE, PROGRAM_OWNER FROM QSYS2.PROGRAM_INFO WHERE PROGRAM_LIBRARY = '&LIB' FETCH FIRST 10 ROWS ONLY"
+    }
+  ]
+}
