@@ -39,3 +39,15 @@
   `work/verify/handoff-10-00.md`の「戻し方」を読むこと。**
 - `TXMIGR`のStep 2(LFの再作成、DLTFなしのCRTLF)は`JUCHUL1`が既にあるので
   失敗する見込み(`part05-txmigr-to2b`の結論)。このバッチは`DLTJUL1`/`CRTJUL1`で作り直す。
+
+## 実機結果 2026-09-29(part10-00b-dbver2-2026-09-29T23-09-48-930Z.json)
+
+手計算どおり全ステップ合格。(a) 列指定INSERT・JUDLV省略はDBv2でも成功し、JUDLVは
+`CURRENT_DATE`(SYSCOLUMNSのCOLUMN_DEFAULT、NOT NULL)が入る(`JUDLV=<2026-09-29>`。SQL0407は出ない)。
+(b) 明示INSERTも成功。TXRESET(v2)は8/12/6行、全JUCHUM行のJUDLVは投入日。JU0900C(v2)は
+12行(OK 10、SHORT 2)。ZAIKOMの合計は392のまま。`ST2LIB2`は`DBVER=1`(TXMIGRはTXSTATEを書かない)。
+`TXMIGR: done. DBVER=0000000002`という完了メッセージは列の有無から出るだけで、TXSTATEの値ではない。
+注意: `VFY10CNT`のMK10*が`CREATE OR REPLACE`だけだと前回(part10-00-probe)の行が残った
+(P0-*/P3-*/P5-*タグの行が混ざる)ため、`ON REPLACE DELETE ROWS`を付けた。ZA0500はTXMIGRのStep 3で
+v2のJUCHUMに対して再コンパイルされた後の結果である(v1でコンパイルしたままでは試していない)。
+再実行時は`B9-AFTER`行(RUNV2後のZAIKOM合計とJUCHUM行数)も出る。

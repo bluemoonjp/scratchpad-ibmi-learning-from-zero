@@ -66,3 +66,12 @@ vfylog: `TXCHECK PASS:` x4 (TXCAPFL flag exists, ZA0500 program exists, JU0900C 
 ## 8. Cleanup (end state)
 
 collect: SENTINEL_LEFT = 0, TXCKM_1001_LEFT = 0; VFY10 `Z-CLEAN` all 0; TXCAPFL no longer listed in the OBJECT_STATISTICS collect. Left in place on purpose: JU0900C compiled from the ticket-1 solution, VFY10 / VFYJ10 evidence tables, TXCHECK / TXCKM / TXCHKRUN / TXLEGACY / TXCAPST / helper programs, backup SAVF LG<date> in the B library written by TXLEGACY FORCE(*YES).
+
+## 9. Corrections after the first real run (2026-09-30, read of the 2026-09-29 result)
+
+- Print line counts: CPYSPLF into a 133-byte file returns the application lines PLUS one PUB400 footer record `-=* http://pub400.com *=-`. Baseline: 13 records = 12 application lines + footer. Count application lines (rows before the footer). The same footer will be in every copy.
+- Section 5 (fix and resubmit) failed for the wrong reason in run 1: RPG1031 "JUCHUM match field is out of sequence". ZA0500 reads JUCHUM in arrival order, and J00000 was appended after J00008. TXCAPST now empties JUCHUM (CLRPFM), inserts J00000 first and puts the other headers back in JUNO order. New checks: VFY10 `B-PLANT JUCHUM-RRN` rows list JUNO by relative record number, J00000 must be first (RRN 1). Expected after the fix (UNVERIFIED until re-run): no RPG1031, 13 application lines (J00000 P00001 00001 OK first, then the 12 golden master lines), 14 CPYSPLF records with the footer, a `FIXD` job log without `ended abnormally`.
+- Section 3: the failing job leaves no QSYSPRT (CPF3309 "No files named QSYSPRT are active") when the decimal error is on the first JUCHUD read. That stays the case with the fix.
+- Section 7 P15: compare only the CURRENT and USER rows. The wrapper (started from qsh) also has a `QSHELL PRODUCT` row that the submitted job does not have, so W-BEFORE never equals J-BEFORE literally.
+- PRECLEAN FAILED in vfylog is expected when TXCAPFL does not exist yet (harness prints FAILED for any monitored message). OB5 FAILED at DBVER 1 is expected (JUDLV absent, SQL0206).
+- JOB_INFO collect (COMPLETION_STATUS) returned 0 rows in run 1; do not rely on it. Normal end is read from the in-job log copy (RETURN reached).
