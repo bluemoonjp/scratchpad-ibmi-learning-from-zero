@@ -1,0 +1,300 @@
+{
+  "batch": "part05-12-libref-probe",
+  "library2": "*B",
+  "description": "Issue #27: real-hardware check of 05-12 steps 12-13, marked unverified since PR #26. Probe A: DSPPGMREF (*OUTFILE and *PRINT) on TK0100 before/after CRTDUPOBJ (library column, LASTCD row); DSPPGM DETAIL(*SRVPGM) on the OPM program (message ID if it fails); FNDSTRPDM variants (OPTION/CASE) through qsh system(), a DSPCMD listing of its keywords, and a qsh grep fallback over QRPGSRC/QDDSSRC members. Probe B (P0512B, runs in the wrapper job): RMVLIBLE of the private library while it is still the current library, then SETENV *PRD followed by RMVLIBLE, recording the library list into VFYCUR at each stage; an unqualified RTVOBJD *LIBL/TK0100D afterwards shows where the display file resolves. A non-interactive CALL of TK0100 is deliberately NOT attempted (display file in a batch job; an unanswered inquiry would hang the whole connection and lose the results) - that part stays V3. Also self-tests the new 'after' sh step (verify/lib/batch.mjs): RUNSQLSTM SRCSTMF('$HOME/...') from qsh with DFTRDBCOL. Safety: CHGCURLIB to the dev library first (CURSET); the only changes made in the private library area are job attributes (current library, library list), no object is created/changed/deleted there; all objects go to &LIB/&LIB2; TK0100/TK0100D copies in &LIB2 are removed at the end.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/tk0100d.dspf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "TK0100D"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/tk0100.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "TK0100"
+    },
+    {
+      "type": "file",
+      "localPath": "src/p0512b.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "P0512B"
+    },
+    {
+      "type": "file",
+      "localPath": "src/selftest.sql"
+    },
+    {
+      "type": "sh",
+      "label": "FND1",
+      "cmd": "system \"FNDSTRPDM FILE(&LIB/QRPGSRC) MBR(*ALL) STRING('TOKUIM') OPTION(*NONE)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "FND2",
+      "cmd": "system \"FNDSTRPDM FILE(&LIB/QRPGSRC) MBR(*ALL) STRING('tokuim') OPTION(*NONE) CASE(*IGNORE)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "FND3",
+      "cmd": "system \"FNDSTRPDM FILE(&LIB/QRPGSRC) MBR(*ALL) STRING('TOKUIM') OPTION(*PRINT)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "GREP1",
+      "cmd": "grep -il 'TOKUIM' /QSYS.LIB/&LIB.LIB/QRPGSRC.FILE/*.MBR 2>&1 | head -20"
+    },
+    {
+      "type": "sh",
+      "label": "GREP2",
+      "cmd": "grep -in 'LASTCD' /QSYS.LIB/&LIB.LIB/QRPGSRC.FILE/TK0100.MBR 2>&1 | head -20"
+    },
+    {
+      "type": "sh",
+      "label": "GREP3",
+      "cmd": "grep -il '&LIB' /QSYS.LIB/&LIB.LIB/QRPGSRC.FILE/*.MBR /QSYS.LIB/&LIB.LIB/QDDSSRC.FILE/*.MBR 2>&1 | head -20"
+    },
+    {
+      "type": "cl",
+      "label": "CURSET",
+      "cmd": "CHGCURLIB CURLIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKCUR",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYCUR (TAG VARCHAR(40), ORD INT, LIB VARCHAR(20), TYPE VARCHAR(10))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "REC0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYCUR SELECT ''A0-AFTER-CHGCURLIB'', ORDINAL_POSITION, SCHEMA_NAME, TYPE FROM QSYS2.LIBRARY_LIST_INFO') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTK0100D",
+      "cmd": "CRTDSPF FILE(&LIB/TK0100D) SRCFILE(&LIB/QDDSSRC) SRCMBR(TK0100D) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTK0100",
+      "cmd": "CRTRPGPGM PGM(&LIB/TK0100) SRCFILE(&LIB/QRPGSRC) SRCMBR(TK0100) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKLASTCD",
+      "cmd": "CHKOBJ OBJ(&LIB/LASTCD) OBJTYPE(*DTAARA)\nMONMSG MSGID(CPF9801) EXEC(CRTDTAARA DTAARA(&LIB/LASTCD) TYPE(*CHAR) LEN(6) VALUE('C00000') TEXT('verify harness 05-12 probe'))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "VSPLPF",
+      "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('verify harness spooled-file text capture'))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLN1",
+      "cmd": "DLTF FILE(&LIB2/TK0100D)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLN2",
+      "cmd": "DLTPGM PGM(&LIB2/TK0100)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "REFB4",
+      "cmd": "DSPPGMREF PGM(&LIB/TK0100) OUTPUT(*OUTFILE) OUTFILE(&LIB/PRFBEF) OUTMBR(*FIRST *REPLACE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DUPF",
+      "cmd": "CRTDUPOBJ OBJ(TK0100D) FROMLIB(&LIB) OBJTYPE(*FILE) TOLIB(&LIB2)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DUPP",
+      "cmd": "CRTDUPOBJ OBJ(TK0100) FROMLIB(&LIB) OBJTYPE(*PGM) TOLIB(&LIB2)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "REFAFT",
+      "cmd": "DSPPGMREF PGM(&LIB2/TK0100) OUTPUT(*OUTFILE) OUTFILE(&LIB/PRFAFT) OUTMBR(*FIRST *REPLACE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MK1",
+      "cmd": "SNDPGMMSG MSG('MARK REFPRT: DSPPGMREF *PRINT on the duplicate')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "REFPRT",
+      "cmd": "DSPPGMREF PGM(&LIB2/TK0100) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAP1",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MK2",
+      "cmd": "SNDPGMMSG MSG('MARK SRVPGM: DSPPGM DETAIL(*SRVPGM) on the OPM duplicate')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SRVPGM",
+      "cmd": "DSPPGM PGM(&LIB2/TK0100) DETAIL(*SRVPGM) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MK3",
+      "cmd": "SNDPGMMSG MSG('MARK DSPCMD: DSPCMD FNDSTRPDM listing')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSPCMD",
+      "cmd": "DSPCMD CMD(FNDSTRPDM) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAP2",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPPRBB",
+      "cmd": "CRTCLPGM PGM(&LIB/P0512B) SRCFILE(&LIB/QCLSRC) SRCMBR(P0512B) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALLB",
+      "cmd": "CALL PGM(&LIB/P0512B) PARM('&LIB')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLN3",
+      "cmd": "DLTF FILE(&LIB2/TK0100D)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLN4",
+      "cmd": "DLTPGM PGM(&LIB2/TK0100)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "sh",
+      "label": "IFSTEST",
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part05-12-libref-probe/selftest.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, ORD, LIB, TYPE FROM &LIB/VFYCUR ORDER BY TAG, ORD"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/PRFBEF"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/PRFAFT"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYSPL FETCH FIRST 400 ROWS ONLY"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYIFS"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB2', '*ALL')) X WHERE OBJNAME IN ('TK0100','TK0100D','LASTCD') ORDER BY OBJNAME"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJATTRIBUTE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*ALL')) X WHERE OBJNAME IN ('TK0100','TK0100D','LASTCD','P0512B') ORDER BY OBJNAME"
+    }
+  ]
+}

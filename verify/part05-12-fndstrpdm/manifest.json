@@ -1,0 +1,65 @@
+{
+  "batch": "part05-12-fndstrpdm",
+  "library2": "*B",
+  "description": "Issue #27 follow-up: FNDSTRPDM with the real keywords (IBM Docs: OPTION *NONE needs PRTMBRLIST(*YES)/PRTRCDS; CASE *IGNORE/*MATCH) run non-interactively in the wrapper job; copies QSYSPRT to VFYSPL if that is the spool name, and lists the author's own spool entries to learn the actual printer file name. Read-only against the source members; only VFYSPL in &LIB is written.",
+  "steps": [
+    {
+      "type": "cl",
+      "label": "CURSET",
+      "cmd": "CHGCURLIB CURLIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "VSPLPF",
+      "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('verify harness spooled-file text capture'))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FND1",
+      "cmd": "FNDSTRPDM FILE(&LIB/QRPGSRC) MBR(*ALL) STRING('tokuim') OPTION(*NONE) PRTMBRLIST(*YES) PRTRCDS(*ALL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAP1",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FND2",
+      "cmd": "FNDSTRPDM FILE(&LIB/QRPGSRC) MBR(*ALL) STRING('tokuim') OPTION(*NONE) CASE(*MATCH) PRTMBRLIST(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAP2",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYSPL FETCH FIRST 150 ROWS ONLY"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT SPOOLED_FILE_NAME, JOB_NAME, FILE_NUMBER, TOTAL_PAGES, CREATE_TIMESTAMP FROM QSYS2.OUTPUT_QUEUE_ENTRIES WHERE USER_NAME = CURRENT_USER ORDER BY CREATE_TIMESTAMP DESC FETCH FIRST 12 ROWS ONLY"
+    }
+  ]
+}
