@@ -2858,9 +2858,19 @@ makei build     build the whole project (-t/--target, -d/--subdir, -o/--make-opt
 makei cvtsrcpf  convert source physical file members to UTF8 IFS files
 ```
 
-**これは、これまで2〜3回目の接続で手作業(`CPYTOSTMF`+`iproj.json`の手書き)で試みてきたやり方が、そもそもTOBiが想定する使い方ではなかった可能性を示している。** 特に`makei cvtsrcpf`は、既存のソース物理ファイル・メンバー(今回の`ZAISRV`はまさに`QRPGLESRC`/`QSRVSRC`のメンバーとして実在する)をUTF-8のIFSファイルへ変換する専用サブコマンドであり、「手作業のCPYTOSTMF」の代わりに使うべきものだった可能性が高い。`makei init -o OBJLIB`も、`iproj.json`を手書きで用意する代わりに使うべき、正規の初期化手順だったと考えられる。また`Makefile`自身(`/QOpenSys/pkgs/lib/tobi/src/mk/Makefile`)は`include $(TOP)/.Rules.mk.build`という、プロジェクト側が用意する別ファイル(`Rules.mk`そのものではなく`.Rules.mk.build`という生成物らしきファイル)を読み込んでおり、**このバッチの`Rules.mk`(コメントのみ、ターゲット宣言ゼロ)が「何もすることが無い」と判定された直接の原因は、makei自身の`init`相当の初期化手順(`.Rules.mk.build`等の生成)を一度も経ていないことである可能性が高い。**
+**これは、これまで2〜3回目の接続で手作業(`CPYTOSTMF`+`iproj.json`の手書き)で試みてきたやり方が、そもそもTOBiが想定する使い方ではなかった可能性を示している。** 特に`makei cvtsrcpf`は、既存のソース物理ファイル・メンバー(今回の`ZAISRV`はまさに`QRPGLESRC`/`QSRVSRC`のメンバーとして実在する)をUTF-8のIFSファイルへ変換する専用サブコマンドであり、「手作業のCPYTOSTMF」の代わりに使うべきものだった可能性が高い。`makei init -o OBJLIB`も、`iproj.json`を手書きで用意する代わりに使うべき、正規の初期化手順だったと考えられる。
 
 **次の一手**: 5回目の接続で、上記のドキュメント(特に`iproj-json.md`・`rules.mk.md`・`create-a-new-project.md`・バンドル済み`sample_project1/Rules.mk`の中身)を実際に読み、正しいプロジェクトの用意の仕方(`makei init`→`makei cvtsrcpf`→`makei build`という手順が正しいかどうかを含め)を確認してから、必要なら再度ビルドを試みる。
+
+## 第8部`part08-02-makei-probe2`続報: 5回目の接続で真因が確定——`Rules.mk`自体がターゲット宣言ゼロだった(確認日2026-09-29)
+
+5回目の接続(読み取り専用)で、`iproj-json.md`・`rules.mk.md`・`create-a-new-project.md`・`convert-source-code.md`・`sample-build.md`、およびバンドル済みサンプル・プロジェクト(`tests/data/build_env/sample_project1`)の実物を読んだ。
+
+- **`iproj.json`側は最初から正しかった。** `objlib`/`curlib`/`includePath`/`preUsrlibl`/`postUsrlibl`は、`iproj-json.md`が説明する実際のフィールドと完全に一致しており、このバッチの`templates/part08-project/iproj.json`に誤りは無かった。
+- **真因が判明: `Rules.mk`はエッジケース専用の任意ファイルではなく、makeiに「何をビルドするか」を教える主たる仕組みそのものだった。** `rules.mk.md`は「`オブジェクト名.オブジェクト型: ソース・ファイル`」という形の行(例: `VATDEF.FILE: VATDEF.PF SAMREF.FILE`)を1つも書かなければ、対象オブジェクトが1つも登録されないと明記している。バンドル済みサンプル・プロジェクトの実際に動く`Rules.mk`も、同じ形で`HELLO.MODULE: HELLOP.RPGLE`という1行だけを持っていた。**このバッチが1〜4回目の接続でずっと使っていた`Rules.mk`(`templates/part08-project/Rules.mk`)は100%コメントで、ターゲット宣言が1つも無かった。** これが、対象ライブラリーが`&LIB`(既存オブジェクトあり)でも`&LIB2`(空)でも変わらず同じ「`Nothing to be done for 'all'`」になっていた理由である——ライブラリーの中身とは無関係に、そもそも依存グラフに何も登録されていなかった。
+- **`makei init`は対話式のウィザードだった。** `create-a-new-project.md`によれば、`makei init`は「descriptive application name」「git repository」「objlib」等を対話的に尋ねるプロンプト式のセットアップ・プログラムであり、非対話的にそのまま呼び出すと入力待ちで停止する(advisorが事前に警告した「プロンプトがスクリプトの残りを飲み込む」という懸念どおり)。
+- **`makei cvtsrcpf`は既存のソース物理ファイル・メンバーをIFSへ変換する専用サブコマンド**(`convert-source-code.md`)で、このバッチが手作業で行ってきた`CPYTOSTMF`の代わりに使うべき正規の道具だったと考えられる。
+- **修正**: `templates/part08-project/Rules.mk`を、実際にターゲットを宣言する形(`ZAISRV.MODULE: zaisrv.rpgle` / `ZAISRV.SRVPGM: ZAISRV.MODULE zaisrv.bnd`)に書き直した。従来のコメント(「通常このファイルへの追記は不要」)は誤りだったため削除した。6回目の接続で、この修正版`Rules.mk`を使い、引き続き空の`<USER>B`(`&LIB2`)を対象にビルドを再試行する。
 
 ## 第8部`part08-07-services`: `OBJECT_PRIVILEGES`/`PROGRAM_INFO`が初回で成功、`RVKOBJAUT`の実バグを発見(確認日2026-09-29)
 
