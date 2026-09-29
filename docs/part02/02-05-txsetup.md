@@ -46,7 +46,7 @@
 
 ## 実演
 
-1. SSH で接続し、`~/ibmi-kyozai` が最新であることを確認する(`git pull`)。`exit` で 5250 に戻る。
+1. SSH で接続し、`$HOME/ibmi-kyozai` が最新であることを確認する(`cd $HOME/ibmi-kyozai && git pull`——`bsh`は語頭の`~`を展開しないため`$HOME`を使います。02-04参照)。`exit` で 5250 に戻る。
 2. 5250 のコマンド行に `ADDPFM FILE(<自分のユーザー名>1/QCLSRC) MBR(TXSETUP) SRCTYPE(CLP) TEXT('Build sample DB')` と打ち、Enter を押す。
 3. `ADDPFM FILE(<自分のユーザー名>1/QCLSRC) MBR(TXSTATUS) SRCTYPE(CLP) TEXT('Show DB version')` を実行する。
 4. `ADDPFM FILE(<自分のユーザー名>1/QCLSRC) MBR(TXRESET) SRCTYPE(CLP) TEXT('Reset DB data')` を実行する。
