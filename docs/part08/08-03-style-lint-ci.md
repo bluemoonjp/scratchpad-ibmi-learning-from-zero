@@ -85,12 +85,12 @@
 | `NoGlobalSubroutines` | 大域スコープのサブルーチン(`BEGSR`/`ENDSR`)を禁止する。 | **確認済み**。実際のメッセージ:「Subroutines should not be defined in the global scope.」 |
 | `NoUnreferenced` | 宣言したのに一度も参照されないフィールドを禁止する。 | **確認済み**。実際のメッセージ:「No reference to definition.」 |
 | `NoCTDATA` | RPG IIIのコンパイル時配列(`CTDATA`)を禁止する。 | 一般知識、要確認 |
-| `RequiresParameter` | ルール名からの一般的な推測は「プロシージャー呼び出しに、括弧を使う明示的な呼び出し構文を要求する(`exsr`のような大域呼び出しではなく)」というものですが、この推測を裏付ける実測はできていません——本文中で扱う`exsr`呼び出しを含むソースに対する実測でも、このルールの指摘は確認できていません。正確な判定条件は不明なままです。 | 一般知識、推測に反する観測あり・要確認 |
+| `RequiresParameter` | `dcl-proc`で宣言された**プロシージャー**を、括弧を付けずに呼び出すと指摘する(実際のメッセージ:「Procedure calls require brackets.」)。`exsr`によるサブルーチン呼び出しは、そもそもプロシージャーの呼び出しではないため対象外——本文中で扱う`exsr`呼び出しに対してこのルールの指摘が出ないのは、ルールが効いていないのではなく、対象外の構文だから、という判定条件どおりの結果です(`dist/index.js`自身のコードを直接読んで確認)。 | **確認済み** |
 | `StringLiteralDupe` | 同じ文字列リテラルが複数回書かれているのを禁止する(定数化を促す)。 | **確認済み**。実際のメッセージ:「Same string literal used more than once. Consider using a constant instead.」 |
 | `PrettyComments` | コメント(`//`)の書式を統一する。判定条件は下で詳しく扱います。 | **確認済み** |
 | `SpecificCasing` | `if`・`dcl-s`・`dcl-pr`の大文字・小文字を指定どおりに統一する(ここでは全部小文字)。 | **確認済み**。実際のメッセージ:「Does not match required case.」 |
 
-「確認済み」と付けた5つは、このリポジトリの実ソースに対して実際に`rpglint`をPCローカルで実行し、確認したメッセージです。残り(`indent`・`NoOCCURS`・`NoSELECTAll`・`NoSQLJoins`・`NoCTDATA`・`RequiresParameter`)は、`rpglint`の一次資料(README自身にもルールごとの詳しい説明が無い)にルールの完全な一覧・判定条件が見つからず、ルール名からの一般的な推測にとどまります——気になる場合は、インストールした`node_modules/@halcyontech/rpglint/dist/index.js`自身を読めば、正確な判定条件を追えます。
+「確認済み」と付けた6つ(`RequiresParameter`を含む)は、`dist/index.js`自身のコードを直接読み、判定条件・実際のメッセージ文言を確認したものです。残り(`indent`・`NoOCCURS`・`NoSELECTAll`・`NoSQLJoins`・`NoCTDATA`)は、`rpglint`の一次資料(README自身にもルールごとの詳しい説明が無い)にルールの完全な一覧・判定条件が見つからず、ルール名からの一般的な推測にとどまります——気になる場合は、インストールした`node_modules/@halcyontech/rpglint/dist/index.js`自身を読めば、正確な判定条件を追えます。
 
 **設定ファイルを書くときの実際の落とし穴(この教材自身が踏んだ経験)。** `templates/part08-project/.vscode/rpglint.json`の最初のバージョンには、実は2つのバグがありました。(1) `NoIndicators`・`NoSQLJoinInWhere`・`RequireBlockIf`・`IncludeComment`という4つのキーは、このバージョン(0.27.0)には存在しないルール名でした——`rpglint`は、知らないキーを黙って無視します(エラーにも警告にもなりません)。`NoSELECTAll`と対になる「SQLのJOINを禁止する」ルールの正しい名前は`NoSQLJoins`でした。(2) `SpecificCasing`の`expected`値も、最初は`"lower"`のような裸の文字列でしたが、これはCLの特殊値の書式(`*LOWER`のようにアスタリスクを付ける)が必要で、そうでない場合は大文字・小文字を問わずすべての出現が誤検出される、という実バグがありました。**どちらも、このリポジトリの`templates/part08-project/.vscode/rpglint.json`では既に修正済みです**——このレッスンでは、この修正済みのファイルをそのまま使ってください。自分で設定ファイルを一から書く場合は、バージョンが変わればルール名も変わりうる(黙って無視されるだけで、教えてはくれません)ことを覚えておいてください。
 
@@ -108,7 +108,7 @@
 npx --yes @halcyontech/rpglint
 ```
 
-`.vscode/rpglint.json`を置いたプロジェクトのルートで、このコマンドを引数なしで実行します。**`rpglint`は、カレント・ディレクトリー配下の`**/rpglint.json`という形のファイルを自動的に探します。** そのため、設定ファイルの置き場所は1箇所に絞ってください——複数箇所に置くと、どれが使われるのか探索が曖昧になります。このレッスンでは、正式な置き場所である`.vscode/rpglint.json`だけを使います。(pnpmを使っている場合は`pnpm dlx @halcyontech/rpglint`が相当する形です。この`npx --yes`・`pnpm dlx`という具体的な起動のされ方そのものの確認状況は、下の「実機メモ」を参照してください。)
+`.vscode/rpglint.json`を置いたプロジェクトのルートで、このコマンドを引数なしで実行します。**`rpglint`は、カレント・ディレクトリー配下の`**/rpglint.json`という形のファイルを自動的に探します。** そのため、設定ファイルの置き場所は1箇所に絞ってください——複数箇所に置くと、どれが使われるのか探索が曖昧になります。このレッスンでは、正式な置き場所である`.vscode/rpglint.json`だけを使います。(pnpmを使っている場合は`pnpm dlx @halcyontech/rpglint`でも同じ結果になることを確認済みです。)
 
 ### 「0にする」の基準と、リンターがコンパイラーの代わりにはならないこと
 
@@ -140,10 +140,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      # @halcyontech/rpglint(vscode-rpgleのリンターのCLI版)。実機確認済み
-      # (docs/probes.mdの08-03節参照)。設定ファイルは`.vscode/rpglint.json`
-      # に置くこと(このCLIはプロジェクト・ルート配下の`**/rpglint.json`を
-      # 自動的に探す)。
+      # @halcyontech/rpglint(vscode-rpgleのリンターのCLI版)。設定ファイルは
+      # `.vscode/rpglint.json`に置くこと(このCLIはプロジェクト・ルート配下の
+      # `**/rpglint.json`を自動的に探す)。`npx --yes`/`pnpm dlx`での無引数
+      # 実行はPCローカルで実際に確認済み(docs/probes.mdの08-03節参照)。この
+      # `npm i -g`によるグローバル・インストール後の`rpglint`単体呼び出しと
+      # いう組み合わせ自体は、bin用のシバン行(`#!/usr/bin/env node`)を
+      # 確認しただけで、CI上で実際に動かして確認したわけではない。
       - name: Run rpglint
         run: |
           npm i -g @halcyontech/rpglint
@@ -216,7 +219,19 @@ GitHub Actionsは、GitHubに備わっているCI(継続的インテグレーシ
 
 4. すべての指摘が0件になったら完了です。自分の答えを、`solutions/08-03/f0803s.rpgle`(模範解答)と見比べてください。
 
-5. **発展(任意)**: 5250で、直す前の元のコピー(`git diff`で差分を確認できます)と、直した後の`f0803s.rpgle`の両方を、それぞれ実際に`CRTBNDRPG PGM(<自分のユーザー名>1/F0803S) ...`でコンパイルし、`CALL PGM(<自分のユーザー名>1/F0803S) PARM('C00001')`で実行してみてください(`f0803s.rpgle`は`JUCSRV`のような`*SRVPGM`ではなく独立した`*PGM`なので、08-01が教える`CRTRPGMOD`+`CRTSRVPGM`の2段階ではなく`CRTBNDRPG`を使います——`CRTBNDRPG`自体は08-01では扱っていない、別のコマンドです)。直す前・直した後のどちらもコンパイルが通り、`CALL`も問題なく実行できるはずです。直す前のコピー(リント指摘が複数残ったままのもの)もコンパイルが通ることから、リント指摘とコンパイル・エラーが別物であることを自分の手でも確かめられます(このレッスンの必須手順ではありません)。この手順を行った場合はPUB400上にオブジェクトが1つ作られるので、片付けとして`DLTPGM PGM(<自分のユーザー名>1/F0803S)`を忘れずに実行してください。
+5. **発展(任意)**: リント指摘が複数残ったまま(修正**前**)の`f0803s.rpgle`でも、実はコンパイルは通ることを自分の手でも確かめられます。5250で、`~/ibmi-kyozai`(02-04で取り込み済みの、この教材自身のクローン)の`src/qrpglesrc/f0803s.rpgle`を、08-01と同じ形でSRCSTMFから直接コンパイルしてください(IFS上のパスはSSHで別途入る必要はなく、5250のコマンド行から`SRCSTMF()`パラメーターで直接指定できます——08-01の「実演C」参照)。
+
+   ```text
+   CRTBNDRPG PGM(<自分のユーザー名>1/F0803S) SRCSTMF('/home/<自分のユーザー名>/ibmi-kyozai/src/qrpglesrc/f0803s.rpgle') TGTCCSID(*JOB)
+   ```
+
+   **`TGTCCSID(*JOB)`を忘れないでください**(08-01で確認したとおり、`git clone`直後のファイルはCCSID 1208〔UTF-8〕タグ付きで、これを指定しないと`RNS9380`になります)。コンパイルが通ったら、実行してみてください。
+
+   ```text
+   CALL PGM(<自分のユーザー名>1/F0803S) PARM('C00001')
+   ```
+
+   リント指摘が複数残ったままのファイルでも、コンパイル・実行の両方が問題なく成功するはずです——これが「リント指摘とコンパイル・エラーは別物」という中核概念(2)の、自分の手で確かめる実演です(このレッスンの必須手順ではありません)。この手順を行った場合はPUB400上にオブジェクトが1つ作られるので、片付けとして`DLTPGM PGM(<自分のユーザー名>1/F0803S)`を忘れずに実行してください。
 
 ## セルフチェック
 
@@ -247,10 +262,10 @@ GitHub Actionsは、GitHubに備わっているCI(継続的インテグレーシ
 
 **このレッスンの必須手順はPUB400に一切接続しません(演習5の発展〔任意〕を除く)。** 以下はすべてPCローカルでの確認であり、実機(IBM iハードウェア)の確認段階(V1/V2/V3)の対象ではありません。
 
-- **確認日: 2026-09-29。PCローカル、PUB400への接続なし。** `@halcyontech/rpglint`(npm、v0.27.0、2024-12-03公開、vscode-rpgle拡張機能の開発元によるCLI版、依存パッケージ0件)が実在し、PCローカルのnpm/pnpmだけでインストール・実行できることを確認済みです。**ただし、実際にPCローカルで走らせて確認したのは、`pnpm add`でインストールした上で`node node_modules/@halcyontech/rpglint/dist/index.js -d <ディレクトリー>`(設定ファイルと対象の`.rpgle`を同じディレクトリーに置く構成)として直接実行する形です。** 学習者向けの本文が案内する`npx --yes @halcyontech/rpglint`(プロジェクト・ルートで、`.vscode/rpglint.json`と`src/qrpglesrc/`を分けたまま引数無しで実行)という、この具体的な起動のされ方そのものは、別途は確認していません。この形は`rpglint`自身の一次資料(README)が説明する正式な使い方で、設定ファイルの探索が`dist/index.js`自身に書かれた`**/rpglint.json`という固定globパターンであること(これはソースを直接読んで確認済みです)から、プロジェクト・ルート配下のどこに`rpglint.json`を置いても見つかるはずだと推測できますが、この推測自体の実行確認はできていません。同様に`pnpm dlx @halcyontech/rpglint`という対応する形も未確認です。
+- **確認日: 2026-09-29。PCローカル、PUB400への接続なし。** `@halcyontech/rpglint`(npm、v0.27.0、2024-12-03公開、vscode-rpgle拡張機能の開発元によるCLI版、依存パッケージ0件)が実在し、PCローカルのnpm/pnpmだけでインストール・実行できることを確認済みです。学習者向けの本文が案内する`npx --yes @halcyontech/rpglint`(プロジェクト・ルートで、`.vscode/rpglint.json`を置いて引数無しで実行)という、この具体的な起動のされ方そのものを、実際にこの形で(祖先ディレクトリーに競合する`package.json`が無い、クリーンな状態で)確認済みです。`pnpm dlx @halcyontech/rpglint`という対応する形も同様に確認済みです。
 - **`PrettyComments`の判定条件**: `rpglint`自身のソース(`dist/index.js`)を直接読んで確認しました(READMEには記載がありません)。「`//`の直後の1文字が半角スペースでも`/`でもない場合に違反」という条件で、`jucsrv.rpgle`の全ての`//`直後に半角スペースを1つ挿入した写しを作って実際にリントし、エラー0件に到達できることをPCローカルで確認済みです(`src/qrpglesrc/jucsrv.rpgle`自身は書き換えていません)。
 - **`jucsrv.rpgle`のリント結果**: 修正済みの`rpglint.json`でリントすると12件のエラーが出て、**その全件が`PrettyComments`**です。`SpecificCasing`(大文字・小文字)の違反は1件もありません——`jucsrv.rpgle`の`dcl-s`/`if`はすべて既に小文字で書かれています。
 - **`F0803S`(見本・模範解答)**: PCローカルで実際に`rpglint`を実行して確認済みです。具体的な違反の個数・内訳は、演習の性質上ここには書きません——学習者自身が`rpglint`を実行して確認してください。模範解答(`solutions/08-03/f0803s.rpgle`)は指摘0件を確認済みです。見本・模範解答とも、(このレッスンとは別に)実際にPUB400で`CRTBNDRPG`によりHighest Severity 00でコンパイルでき、`CALL`で正しく実行できることも確認済みですが、印字結果そのものをバイト単位で見本と模範解答とで比較検証したわけではありません(未検証のまま)。
 - **`rpglint.json`自体に見つかった2つの実バグ**: (1) `NoIndicators`・`NoSQLJoinInWhere`・`RequireBlockIf`・`IncludeComment`という4つのキーは、`rpglint` 0.27.0には存在しないルール名でした(`dist/index.js`自身のルール名辞書を直接読んで確認)。存在しないキーは黙って無視されます。`NoSQLJoinInWhere`の正しい名前は`NoSQLJoins`です。(2) `SpecificCasing`の`expected`値は、CLの特殊値形式(`*LOWER`/`*UPPER`)が必要で、`"lower"`のような裸の文字列を渡すと、大文字・小文字を問わず常にすべての出現が誤検出されます。どちらも`templates/part08-project/.vscode/rpglint.json`では既に修正済みで、本文はこの修正済みのファイルをそのまま使います。
-- **一次資料ギャップ**: `rpglint`自体(ルールの完全な一覧・挙動の詳細)には、このリポジトリの`work/design/refs/`に一次資料がありません。今回PCローカルに実際にインストール・実行し、`dist/index.js`自身を直接読んで確認した内容(上記の`PrettyComments`の判定条件・`SpecificCasing`の値の書式・存在しないルール名の扱い・5つのルールの実際のメッセージ文言)だけが確認済みであり、それ以外(`indent`・`NoOCCURS`・`NoSELECTAll`・`NoSQLJoins`・`NoCTDATA`・`RequiresParameter`の詳しい判定条件)は「一般知識、要確認」として扱っています。
+- **一次資料ギャップ**: `rpglint`自体(ルールの完全な一覧・挙動の詳細)には、このリポジトリの`work/design/refs/`に一次資料がありません。今回PCローカルに実際にインストール・実行し、`dist/index.js`自身を直接読んで確認した内容(上記の`PrettyComments`・`RequiresParameter`の判定条件・`SpecificCasing`の値の書式・存在しないルール名の扱い・6つのルールの実際のメッセージ文言)だけが確認済みであり、それ以外(`indent`・`NoOCCURS`・`NoSELECTAll`・`NoSQLJoins`・`NoCTDATA`の詳しい判定条件)は「一般知識、要確認」として扱っています。
 - 食い違いに気づいたら [Issue](https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero/issues) で教えてください。
