@@ -2834,6 +2834,34 @@ Objects:            0 failed 0 succeed 0 total
 
 **これで(a)(対象ライブラリーに既存オブジェクトがあるからスキップされた)という仮説は完全に否定された。** 空のライブラリーを対象にしても、makeiは`ZAISRV`をビルド対象として一件も認識していない。原因は(b)——`iproj.json`/`Rules.mk`の書き方か、プロジェクトのディレクトリー構成か、あるいは他の初期化手順の欠落——のどれかにある。advisorに相談したところ、これ以上「`src/`をネストせず直接`qrpglesrc/`にすべきでは」のような当て推量を重ねるのではなく、**このリポジトリの一次資料には無いが、PUB400自身のホスト上に実在するTOBi自身のインストール済みファイル(`/QOpenSys/pkgs/lib/tobi/`)を直接読む**べきだという指摘を受けた——`head -60 makei`で得た知見(1回目の`part08-01`調査)と同じ考え方で、これも正真正銘の一次資料である。4回目の接続はこの読み取り専用調査に充てる。
 
+## 第8部`part08-02-makei-probe2`続報: 4回目の接続で、TOBi自身の完全なドキュメント一式とinit/cvtsrcpfサブコマンドを発見(確認日2026-09-29)
+
+読み取り専用の4回目の接続で、PUB400のホスト上に**`work/design/part08-design-v1.md`§0.6の想定(「makei/TOBi/iproj.jsonは一次資料ゼロ件」)を覆す事実**が見つかった——**`/QOpenSys/pkgs/lib/tobi/docs/`配下に、TOBi自身の完全なMarkdownドキュメント一式が実在する。** このリポジトリの`work/design/refs/`にこれが1つもミラーされていなかっただけで、ホスト上には最初から存在していた。見つかった主なファイル:
+
+```text
+/QOpenSys/pkgs/lib/tobi/docs/prepare-the-project/create-a-new-project.md
+/QOpenSys/pkgs/lib/tobi/docs/prepare-the-project/convert-source-code.md
+/QOpenSys/pkgs/lib/tobi/docs/prepare-the-project/iproj-json.md
+/QOpenSys/pkgs/lib/tobi/docs/prepare-the-project/rules.mk.md
+/QOpenSys/pkgs/lib/tobi/docs/getting-started/sample-build.md
+/QOpenSys/pkgs/lib/tobi/docs/reference/recipes.md
+/QOpenSys/pkgs/lib/tobi/tests/data/build_env/sample_project1/Rules.mk  (バンドル済みサンプル・プロジェクト)
+```
+
+さらに`makei --help`/`makei build --help`/`makei init --help`で、サブコマンド一覧と各オプションが判明した:
+
+```text
+makei init      set up a new or existing project (-f/--force, -o/--objlib OBJLIB, -c/--ccsid CCSID)
+makei info      get information about the current project
+makei compile   compile a single file
+makei build     build the whole project (-t/--target, -d/--subdir, -o/--make-options, --tobi-path, -e/--env)
+makei cvtsrcpf  convert source physical file members to UTF8 IFS files
+```
+
+**これは、これまで2〜3回目の接続で手作業(`CPYTOSTMF`+`iproj.json`の手書き)で試みてきたやり方が、そもそもTOBiが想定する使い方ではなかった可能性を示している。** 特に`makei cvtsrcpf`は、既存のソース物理ファイル・メンバー(今回の`ZAISRV`はまさに`QRPGLESRC`/`QSRVSRC`のメンバーとして実在する)をUTF-8のIFSファイルへ変換する専用サブコマンドであり、「手作業のCPYTOSTMF」の代わりに使うべきものだった可能性が高い。`makei init -o OBJLIB`も、`iproj.json`を手書きで用意する代わりに使うべき、正規の初期化手順だったと考えられる。また`Makefile`自身(`/QOpenSys/pkgs/lib/tobi/src/mk/Makefile`)は`include $(TOP)/.Rules.mk.build`という、プロジェクト側が用意する別ファイル(`Rules.mk`そのものではなく`.Rules.mk.build`という生成物らしきファイル)を読み込んでおり、**このバッチの`Rules.mk`(コメントのみ、ターゲット宣言ゼロ)が「何もすることが無い」と判定された直接の原因は、makei自身の`init`相当の初期化手順(`.Rules.mk.build`等の生成)を一度も経ていないことである可能性が高い。**
+
+**次の一手**: 5回目の接続で、上記のドキュメント(特に`iproj-json.md`・`rules.mk.md`・`create-a-new-project.md`・バンドル済み`sample_project1/Rules.mk`の中身)を実際に読み、正しいプロジェクトの用意の仕方(`makei init`→`makei cvtsrcpf`→`makei build`という手順が正しいかどうかを含め)を確認してから、必要なら再度ビルドを試みる。
+
 ## 第8部`part08-07-services`: `OBJECT_PRIVILEGES`/`PROGRAM_INFO`が初回で成功、`RVKOBJAUT`の実バグを発見(確認日2026-09-29)
 
 08-07(IBM iサービスと権限)の実機確認。1回目の接続で、`collect`型ステップの4本のSELECT文はすべて成功した:
