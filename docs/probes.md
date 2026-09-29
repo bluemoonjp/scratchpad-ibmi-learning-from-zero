@@ -2960,6 +2960,16 @@ Build Successful!
 
 **それでも得られた実機情報**: `TRADBUILD`自体(`CRTRPGMOD`→`CRTSRVPGM`、`&LIB`の`QRPGLESRC`/`QSRVSRC`メンバーから`&LIB2`へ)は問題なく成功した(`RNF7534`警告のみ、Highest Severity 10)。`<USER>B`には現在、伝統的な方法で作られた本物の`ZAISRV`(*MODULE・*SRVPGM)が存在する——次回接続でこれをそのまま使い、`Rules.mk`をpython3バイナリー書き込みに直した`SETUP`/`BUILD1`/`EDITSRC`/`BUILD2`/`CLEANUP`(すべて`sh`型に統一、`TRADBUILD`は再実行不要)だけを実行すれば、当初意図した検証(既存オブジェクトへのmakei再ビルド、ソース変更後の再ビルド)がやり直せる。
 
+## 第8部`part08-02-makei-probe3`最終確認: 2回目の接続で08-02の中核シナリオがCONFIRMED SUCCESS(確認日2026-09-29)
+
+2つの自作ミスを修正した2回目の接続で、当初意図した検証がすべて成功した。`Rules.mk`のpython3バイナリー書き込みは正しく機能し(`cat`で確認した中身も正しい)、`<USER>B`に1回目の接続が残した「伝統的な方法で作られた`ZAISRV`」がそのまま使えた。
+
+- **`BUILD1`(既存の、makei製ではない`ZAISRV`に対する`makei build`): 成功。** `crtrpgmod`→`ZAISRV.MODULE was created successfully!`→`CRTSRVPGM`→`ZAISRV.SRVPGM was created successfully!`→`Objects: 0 failed 2 succeed 2 total, Build Successful!`。**makeiは、自分が過去に作ったのではないオブジェクトに対しても、エラーなく正しく上書き・再作成できることが実機で確認できた。** `CRTRPGMOD`/`CRTSRVPGM`のいずれのコマンド行にも`REPLACE`パラメーターは表示されていない(makei自身が明示的に指定していないと見られる)にもかかわらず、既存オブジェクトへの上書きは問題なく成功した——`REPLACE`の既定値がどちらであっても、この具体的なシナリオ(同名・同型のオブジェクトへの上書き)では実害が無いことが、実機の結果として確認できた。
+- **`EDITSRC`→`BUILD2`(ソースを実際に変更した後の再ビルド): 成功、かつ「スキップ」ではなく本当に再ビルドされた。** `zaisrv.rpgle`に1行コメントを追記した直後の`makei build`は、`BUILD1`と同じく`crtrpgmod`→`CRTSRVPGM`のフル実行になった(「Nothing to be done」にはならなかった)。**これで、makeiの依存グラフに基づく増分ビルドが「変更が無ければスキップし、変更があれば実際に再ビルドする」という両方向で実機確認できた**(「変更が無ければスキップ」は`part08-02-makei-probe2`の7回目の接続で既に確認済み)。
+- **`CLEANUP`**: `DLTSRVPGM`/`DLTMOD`とも成功、最終`collect`は0件——`<USER>B`は元の空の状態に戻っている。
+
+**これで、`work/design/part08-design-v1.md`が08-02に求めるすべての中核シナリオが実機で確認できた**: `makei build`は正しく動く、`iproj.json`の`objlib`/`curlib`は実際にビルド先ライブラリーを制御する、既存の(makei製ではない)オブジェクトも正しくリビルドできる、依存グラフに基づく増分ビルド(変更なしはスキップ・変更ありは再ビルド)が両方向とも実機で確認できた。08-02のレッスン本文執筆に必要な実機的裏付けは、これで揃った。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
