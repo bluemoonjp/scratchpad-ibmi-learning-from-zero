@@ -3167,6 +3167,28 @@ ON &LIB.TOKUIM TO <学習者のユーザー> WITH GRANT OPTION ;
 
 **これで08-06の実機的な裏付けがすべて揃った**: `GENERATE_SQL`の実引数(37個、確認済み)、正しい`DATABASE_OBJECT_TYPE`の値(`'TABLE'`、`'*FILE'`は無効)、`TOKUIM`への実際の生成DDL(確認済み)、そのDDLを実行した結果が原本とレベルID完全一致すること(確認済み)。唯一の限界は、DDSの`K TOKCD`(キー付きアクセス経路)が生成DDLには反映されない(`SQL1506`警告で無視される)ことで、08-06本文はこの点を「レベルID一致=そのままキー・アクセスの代替になる、ではない」という限界として明記する。
 
+## 第8部08-08: `part08-08-checkpoint`——昇格→*PRV機能追加→再昇格→切り戻しの全体像がCONFIRMED SUCCESS、TXCHECKの実バグも1件発見(確認日2026-09-29)
+
+advisorレビューで4件の実バグ(未修飾`TXCHECK`呼び出しによるコンパイル時失敗・存在しない`CRTPF`の`REPLACE`パラメーター・`QTEMP`バックアップの命名衝突・`CLNDEV`の単一障害点)を事前に修正した1回の接続で、08-08が必要とする中核シナリオがほぼ完全にCONFIRMED SUCCESSした。
+
+**確認できたこと(すべて実機、この接続で直接確認)**:
+
+- **`ZAISRV`への初めての`*PRV`適用が成功。** `pingZaisrv`を追加した新版(`solutions/08-08/zaisrv.rpgle`・`zaisrv.bnd`)を`&LIB`でコンパイルし直した直後(`DEVREGR`)、`DRIVER`(再コンパイルしていない)を実行したところ、07-05のベースラインと1文字も違わない10行が出力された——`*PRV`が3手続きシグネチャーへの旧来のバインドを正しく保っていることの、`ZAISRV`では初めての実機確認。
+- **`CRTDUPOBJ`による`*SRVPGM`の昇格→再昇格→切り戻しが、シグネチャー数で完全に裏付けられた。** `DSPSRVPGM DETAIL(*SIGNATURE)`の`Number of signatures`の値が、期待どおりの順で変化した: ベースライン昇格後`1`(3手続き)→新版promote後`2`(4手続き)→切り戻し後`1`(3手続き)→`&LIB`自体の最終復元後`1`(3手続き)。`Number of program procedure exports`も`3`→`4`→`3`→`3`と対応して変化した。
+- **本番役複製(`&LIB2`)でも`*PRV`が効くことを、`DSPLIBL`の実出力で直接確認した。** `PRODREGR`ステップで`ADDLIBLE LIB(&LIB2) POSITION(*FIRST)`した直後の`DSPLIBL OUTPUT(*PRINT)`が、`<USER>B`(`&LIB2`)が`<USER>2`(`&LIB`)より前に来ていることを実際に示しており(advisorが要求した「DSPLIBLの証拠が無ければこの主張を書くな」という条件を満たす)、この状態で`DRIVER`を実行してもベースラインと同じ10行が出た——**本番へ複製したコピーでも`*PRV`が機能する**ことの、推測ではなく直接証拠。
+- **`CRTDUPOBJ`の`NEWOBJ`パラメーターが実際に機能した。** IBM Docsから直接確認した`NEWOBJ`(`CRTDUPOBJ OBJ(ZAISRV) ... TOLIB(QTEMP) NEWOBJ(ZAISRVBK)`)により、`QTEMP`のバックアップが`ZAISRV`本来の名前と衝突せずに保存・復元できた。
+- **`CLNDEV`(ソース・メンバーからの完全な巻き戻し)も成功。** `ZAISRV75`という別名で07-05原本のソースを送り込み、`CPYF`で本来の`ZAISRV`メンバーへ書き戻してから再コンパイルする経路が、`QTEMP`のオブジェクト・バックアップに頼らず独立して機能した。
+
+**新たに発見した実バグ: TXCHECKは同じジョブ内で2回目の呼び出しに失敗する。**
+
+1回目の呼び出し(`CHKBASE`、`CALL PGM(&LIB/TXCHECK) PARM('08-08' '&LIB2')`)は正常に完了し、`TXCHECK PASS: JUCSRV promoted to production`・`TXCHECK PASS: ZAISRV promoted to production`・`TXCHECK: lesson 08-08 - 2 passed, 0 failed.`という、期待どおりの結果が得られた。ところが**2回目の呼び出し(`CHKNEW`、新版promote後の再確認)は、`CPF4174: OPNID(TXCKM) for file TXCKM already exists.`で`OVRDBF`が失敗し、`TXCHECK: could not query the manifest for lesson 08-08.`という、PASS/FAILのどちらでもない「確認不能」状態で終わった。**
+
+- `tools/qclsrc/txcheck.clp`自身の`TXCLOF`ラベルは`CLOSE OPNID(*NONE)`→`DLTOVR FILE(TXCKM)`という後片付けを行っているが、この接続の証拠を見る限り、**同じジョブ内で2回目に`CALL`されたときには、この後片付けが(理由は特定できていないが)有効に効いていない。**
+- **このエラーはCLの`*ESCAPE`にはならず(`RETURN`で正常終了)、呼び出し元の`MONMSG MSGID(CPF0000)`も反応しなかった**——つまりこの接続の他のどの手順もこれによって連鎖的に壊れてはいない(`SIGNEW`〔`DSPSRVPGM`による直接確認〕・`PRODREGR`〔`DRIVER`再実行〕・`ROLLBACK`以降はすべて正常に完了・確認できている)。壊れたのは「TXCHECKの2回目の実行結果」というただ1点のみ。
+- **原因はこの接続だけでは特定できていない。** `SHARE(*YES)`の`OVRDBF`(`txcheck.clp`のコメントが説明する、`OPNQRYF`との共有ODPのための指定)が、ジョブ・レベルのオーバーライド解除と実際のクローズの間で何らかの食い違いを起こしている可能性はあるが、推測にとどまる。
+- **この接続自体の設計(1つのCLラッパー・ジョブの中でTXCHECKを2回呼ぶ)が、このバグを踏んだ直接の原因である可能性が高い。** 実際の学習者は5250から`TXCHECK`コマンドを対話的に打つため、この教材の他のどの接続もこれまで「同じジョブ内でTXCHECKを2回呼ぶ」という組み合わせを試したことが無かった(`part05-txcheck-probe`は1回だけの呼び出し)。**5250の対話式ジョブ1本を、複数回のコマンド入力にわたって使い続けた場合にも同じバグが起きるかどうかは未確認。**
+- **08-08のレッスン設計への示唆**: 本文の実演では、TXCHECKを1回のCLラッパー・ジョブの中で連続して2回呼ぶ構成を避け、`5250のコマンド行から都度手で打つ`という素直な操作に留める(学習者が実際に行う操作そのものであり、かつこのバグを踏む可能性を下げる)。もし本文が「昇格直後に確認→機能追加→再昇格後にもう一度確認」という2回のTXCHECK呼び出しを求めるなら、**この既知の制限(同一ジョブでの連続呼び出しは未確認)を実機メモに明記し、「PASS/FAILが返らず`could not query`になった場合は、SSHを一度切って入り直してから再試行してください」という対処を演習に添える。**
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
