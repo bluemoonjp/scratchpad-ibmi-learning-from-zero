@@ -1,0 +1,5 @@
+     A                                      UNIQUE
+     A          R TESTPFR
+     A            TPKEY          6A         TEXT('Test key')
+     A            TPVAL         10A         TEXT('Test value')
+     A          K TPKEY
