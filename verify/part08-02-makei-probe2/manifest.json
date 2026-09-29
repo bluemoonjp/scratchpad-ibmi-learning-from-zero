@@ -1,6 +1,7 @@
 {
   "batch": "part08-02-makei-probe2",
-  "description": "2nd connection of this batch. 1st connection failed for two mundane, self-inflicted reasons rather than answering the real question: (1) PASE's sed has no -i flag (`sed: 001-3036 usage: ...`, confirmed in stderr) - iproj.json's YOURUSER2 placeholder was never actually substituted. (2) The BUILD step never exported PATH before invoking bash/makei (each sh-type step is a fresh job, so the SETUP step's environment doesn't carry over) - makei's own check_path() correctly (this time) reported PATH as missing /QOpenSys/pkgs/bin, since it genuinely was. The ZAISRV *MODULE/*SRVPGM rows the 1st connection's OBJECT_STATISTICS collect returned were just Part 7's pre-existing objects, untouched - the BUILD step never got far enough to rebuild anything. Also fixed an invalid PROGRAM_INFO query (used function-call syntax; the confirmed-working form from part08-07-services is a plain WHERE-filtered view, no parentheses). Fixes: iproj.json substitution now goes through python3 binary-mode read/replace/write (same safe recipe as part08-01's ed.py) instead of sed -i or any `>` redirect (which part08-01 already established re-encodes to EBCDIC under this harness's qsh); the BUILD step now explicitly exports PATH inside the same bash -c invocation that calls makei.",
+  "description": "3rd connection of this batch. 2nd connection fixed both self-inflicted bugs (sed -i / missing PATH export) and makei build actually ran this time - it invoked `/QOpenSys/pkgs/bin/make -k ... -f /QOpenSys/pkgs/lib/tobi/src/mk/Makefile all`, but the result was `make: Nothing to be done for 'all'. Objects: 0 failed 0 succeed 0 total` - makei decided there was nothing to build. This is ambiguous: it could mean makei considers ZAISRV up to date because *MODULE/*SRVPGM objects with that name already exist in &LIB (Part 7's pre-existing ones, untouched by any of this batch's connections so far), independent of source content/dates - or it could mean something else entirely (no primary source for makei's own dependency-decision logic exists in this repo). This connection targets a library with zero pre-existing objects instead (&LIB2 = &LIB's sibling 'B' library, confirmed empty per docs/probes.md P01) via iproj.json's objlib/curlib, to get an unambiguous answer to both open questions at once: does `makei build` ever actually create objects from a clean slate, and does iproj.json's objlib/curlib genuinely control the target library. Non-destructive - &LIB2 has never been touched by this repo's harness for anything ZAISRV-related, so a failed or a successful build here can't damage anything Part 7 established in &LIB.",
+  "library2": "*B",
   "steps": [
     {
       "type": "file",
@@ -19,7 +20,7 @@
     {
       "type": "sh",
       "label": "SETUP",
-      "cmd": "rm -rf \"$HOME/mk8\"\nmkdir -p \"$HOME/mk8/z/src/qrpglesrc\" \"$HOME/mk8/z/src/qsrvsrc\"\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGLESRC.FILE/ZAISRV.MBR') TOSTMF('$HOME/mk8/z/src/qrpglesrc/zaisrv.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QSRVSRC.FILE/ZAISRV.MBR') TOSTMF('$HOME/mk8/z/src/qsrvsrc/zaisrv.bnd') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QTXTSRC.FILE/IPROJJSN.MBR') TOSTMF('$HOME/mk8/z/iproj.json') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QTXTSRC.FILE/RULESMK.MBR') TOSTMF('$HOME/mk8/z/Rules.mk') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\n/QOpenSys/pkgs/bin/python3 -c \"p='$HOME/mk8/z/iproj.json'; d=open(p,'rb').read(); open(p,'wb').write(d.replace(b'YOURUSER2', b'&LIB'))\"\necho ---IPROJ-JSON---\ncat \"$HOME/mk8/z/iproj.json\"\necho ---TREE---\nfind \"$HOME/mk8/z\" -type f\n"
+      "cmd": "rm -rf \"$HOME/mk8\"\nmkdir -p \"$HOME/mk8/z/src/qrpglesrc\" \"$HOME/mk8/z/src/qsrvsrc\"\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGLESRC.FILE/ZAISRV.MBR') TOSTMF('$HOME/mk8/z/src/qrpglesrc/zaisrv.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QSRVSRC.FILE/ZAISRV.MBR') TOSTMF('$HOME/mk8/z/src/qsrvsrc/zaisrv.bnd') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QTXTSRC.FILE/IPROJJSN.MBR') TOSTMF('$HOME/mk8/z/iproj.json') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QTXTSRC.FILE/RULESMK.MBR') TOSTMF('$HOME/mk8/z/Rules.mk') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\n/QOpenSys/pkgs/bin/python3 -c \"p='$HOME/mk8/z/iproj.json'; d=open(p,'rb').read(); open(p,'wb').write(d.replace(b'YOURUSER2', b'&LIB2'))\"\necho ---IPROJ-JSON---\ncat \"$HOME/mk8/z/iproj.json\"\necho ---TREE---\nfind \"$HOME/mk8/z\" -type f\n"
     },
     {
       "type": "sh",
@@ -29,12 +30,12 @@
     {
       "type": "collect",
       "kind": "sql",
-      "sql": "SELECT OBJNAME, OBJTYPE, OBJLIB, OBJTEXT FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', 'ALL')) X WHERE OBJNAME = 'ZAISRV' ORDER BY OBJTYPE"
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJLIB, OBJTEXT FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB2', 'ALL')) X WHERE OBJNAME = 'ZAISRV' ORDER BY OBJTYPE"
     },
     {
       "type": "collect",
       "kind": "sql",
-      "sql": "SELECT PROGRAM_LIBRARY, PROGRAM_NAME, PROGRAM_TYPE, PROGRAM_OWNER FROM QSYS2.PROGRAM_INFO WHERE PROGRAM_LIBRARY = '&LIB' AND PROGRAM_NAME = 'ZAISRV'"
+      "sql": "SELECT PROGRAM_LIBRARY, PROGRAM_NAME, PROGRAM_TYPE, PROGRAM_OWNER FROM QSYS2.PROGRAM_INFO WHERE PROGRAM_LIBRARY = '&LIB2' AND PROGRAM_NAME = 'ZAISRV'"
     }
   ]
 }
