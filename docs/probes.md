@@ -2949,8 +2949,16 @@ Build Successful!
 
 - **`src/qrpglesrc/f0803s.rpgle`(08-03演習用ファイル、ヘッダー修正済みの現行版): 13件のエラー**(以前記録した18件は、上記のバグが混入した誤ったルール構成での結果だったため無効。以下の内訳が正)。`SpecificCasing`2件(「Does not match required case.」——`IF`/`DCL-S`の大文字表記のみが検出され、想定どおり)、`NoGlobalSubroutines`3件(「Subroutines should not be defined in the global scope.」)、`StringLiteralDupe`3件(「Same string literal used more than once...」——`'NOTFOUND'`は実際には**3回**出現しており、ファイルのヘッダーが当初「2回」と書いていたのは誤りだった、修正済み)、`NoUnreferenced`1件(実際のメッセージは「No reference to definition.」)、`PrettyComments`4件(「Comments must be correctly formatted.」、当初は想定外だったが正当な5つ目の違反として確定)。`NoIndicators`は設定から削除したため対象外——`chain (custCode) tokuim foundInd;`という%FOUND代替パターン自体は、リント対象ではない読解用の教材として残す。
 - **`src/qrpglesrc/jucsrv.rpgle`(この教材がPart 6〜8で「お手本」として使い続けているソース): 12件のエラー、全件`PrettyComments`**(以前記録した「15件、うち4件がSpecificCasing」は誤り——`SpecificCasing`のバグを修正した結果、`JUCSRV`自身の`dcl-s`/`if`はすべて正しく小文字で書かれており、ケースの誤りは実在しなかったことが判明した)。12件はすべて`//===...===`という罫線コメントの書式に対する「Comments must be correctly formatted.」であり、`JUCSRV`の実体としての品質(命名・大文字小文字の規律)自体には問題が無いことも、あわせて確認できた。
-- **08-03のレッスン設計への示唆**: `rpglint`はPCローカルで実際に動く、確認済みの道具として扱える。ただし本文で使う`rpglint.json`は、このリポジトリの`templates/part08-project/rpglint.json`(修正済み版)をそのまま使うこと——修正前の版に存在した2つのバグ(存在しないルール名・`SpecificCasing`の値形式の誤り)を再現しないよう注意する。`JUCSRV`の実演(「警告を0にする」)は、罫線コメントを`PrettyComments`が要求する形に書き直すだけの、比較的単純な修正で達成できる見込みが高い(大文字小文字の修正は不要と判明したため)。
-- **08-03のレッスン設計への示唆**: `rpglint`はもはや「一般知識、要確認」として扱う必要がない——PCローカルにインストールして実際に実行し、確認済みの出力を本文に使えることが分かった。ただし`NoIndicators`が期待どおり反応しない点と、`PrettyComments`が罫線コメントに反応する点(このリポジトリの既存ソース〔`JUCSRV`を含む〕の大部分がこの罫線コメント様式を使っている)は、レッスン設計・`f0803s.rpgle`のヘッダー・`JUCSRV`側の実演手順のいずれにも反映する必要がある。
+- **08-03のレッスン設計への示唆**: `rpglint`はもはや「一般知識、要確認」として扱う必要がない——PCローカルにインストールして実際に実行し、確認済みの出力を本文に使える。本文で使う`rpglint.json`は、このリポジトリの`templates/part08-project/rpglint.json`(修正済み版)をそのまま使うこと——修正前の版に存在した2つのバグ(存在しないルール名・`SpecificCasing`の値形式の誤り)を再現しないよう注意する。`PrettyComments`が罫線コメント(`//===...===`)に反応する点は、このリポジトリの既存ソース(`JUCSRV`を含む)の大部分がこの様式を使っているため、レッスン設計・`f0803s.rpgle`のヘッダー・`JUCSRV`側の実演手順のいずれにも反映する必要がある。`JUCSRV`の実演(「警告を0にする」)は、罫線コメントを書き直すだけの比較的単純な修正で達成できる見込みが高い(大文字小文字の修正は不要と判明したため)。
+
+## 第8部`part08-02-makei-probe3`: 1回目の接続は2つの自作ミスで学習者シナリオを検証できず(確認日2026-09-29)
+
+既存の(makeiが作ったのではない、伝統的な`CRTRPGMOD`/`CRTSRVPGM`による)`ZAISRV`をmakeiが正しく再ビルドするか、という08-02の中核シナリオを確かめる接続。**この接続では2つの自作ミスにより、意図した検証手順そのものが成立しなかった**:
+
+1. **ステップの実行順序を見落とした。** このハーネスの`file`→`sh`→`cl`→`collect`という固定順序(マニフェストのJSON配列順とは無関係)を、このマニフェストを書いた時点で失念していた。`cl`型の`TRADBUILD`(伝統的な`CRTRPGMOD`/`CRTSRVPGM`)をJSON配列の先頭に置いていたが、実際には`sh`型の`SETUP`/`BUILD1`/`EDITSRC`/`BUILD2`/`CLEANUP`がすべて先に実行され、`TRADBUILD`はその**あと**(`cl`型)に実行された。結果、`CLEANUP`(`ZAISRV`を削除)が`TRADBUILD`(`ZAISRV`を作成)より**先に**走ってしまい、「Object ZAISRV in <USER>B ... not found」という(この時点では正しい)メッセージが出た。最終的な`collect`(常に最後に実行される)は、`TRADBUILD`だけが実行された後の状態を映しており、`<USER>B`には伝統的な方法で作られた`ZAISRV`(*MODULE・*SRVPGM)が残っている。
+2. **`Rules.mk`をheredoc(`cat > file <<'EOF'`)で書き込んでいた。** このハーネスのqshで確立済みの既知の問題(heredoc書き込みはEBCDIC化される)を、`iproj.json`側では`python3`のバイナリー書き込みで正しく回避していたのに、`Rules.mk`側では単純なheredocに戻してしまっていた。結果、`BUILD1`・`BUILD2`とも`makei`自身のPythonコードが`Rules.mk`を読もうとした時点で`UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe9 ...`で失敗し、ビルドの試行にすら至らなかった。
+
+**それでも得られた実機情報**: `TRADBUILD`自体(`CRTRPGMOD`→`CRTSRVPGM`、`&LIB`の`QRPGLESRC`/`QSRVSRC`メンバーから`&LIB2`へ)は問題なく成功した(`RNF7534`警告のみ、Highest Severity 10)。`<USER>B`には現在、伝統的な方法で作られた本物の`ZAISRV`(*MODULE・*SRVPGM)が存在する——次回接続でこれをそのまま使い、`Rules.mk`をpython3バイナリー書き込みに直した`SETUP`/`BUILD1`/`EDITSRC`/`BUILD2`/`CLEANUP`(すべて`sh`型に統一、`TRADBUILD`は再実行不要)だけを実行すれば、当初意図した検証(既存オブジェクトへのmakei再ビルド、ソース変更後の再ビルド)がやり直せる。
 
 ## 未実施のプローブ
 
