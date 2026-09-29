@@ -1,0 +1,710 @@
+{
+  "batch": "part10-04-checkpoint",
+  "description": "Part 10 lesson 10-04 checkpoint (issue #11, design part10-design-v3 H4). Everything is created in the dev library and removed again; the private library is never touched. Order of the harness: file, sh (before), ONE cl wrapper job, sh (after), collect. BEFORE: precondition check that JUCSRV and ZAISRV exist in the dev library (CHKOBJ, the 09-04 routines register them by name); the 09-04 routine script src/sql/09-04-routines.sql, db/mock/apimock.sql and solutions/10-04/lowstock-alert.sql are run with RUNSQLSTM SRCSTMF NAMING(*SQL) DFTRDBCOL (the route verified in 09-04/09-05, no iconv). RUNLOWALQ (review addition): if lowstock-alert.sql left no LOWALERT view (for example SQL0204 on the unqualified LOW_STOCK call at CREATE time), the same view is created through db2 with the library written out, and the marker LOWALERT-missing-running-qualified-fallback shows in the output, so the later steps still run; the outcome of the unqualified file is then read from the RUNLOWAL print. The promotion sub-step deletes a service program in the dev library only when its backup copy in the backup library exists (CHKOBJ, otherwise skip to the copy-back). WRAPPER (one job, all names qualified): counts before; JUCHU_INQUIRY_JSON for J00001 (and for a missing order) into VFY1004; LOW_STOCK rows (expect P00002 and P00005); the LOWALERT view from the same job, and the empty case as a WHERE 1 = 0 copy (records whether items is null or an empty array, UNVERIFIED); JUHTTPSV compile and the five mock calls 1000001 OK, 9999999 OK/results null, 9999504 HTTPERR, 9999404 HTTPERR, 1234567 NOMOCK, snapshot of APILOG; promotion sub-step: CRTDUPOBJ of ZAISRV and JUCSRV to the backup library (ZAISRVP, JUCSRVP), DLTSRVPGM in the dev library, CRTDUPOBJ back (delete first, CRTDUPOBJ has no REPLACE), CHKOBJ with a copy-back fallback (the design says promote from the dev source; this batch never reads the private library, so the round trip through the backup library stands in for it); TXCKM rows for lesson 10-04 (JUHTTPSV *PGM, APIMOCK *FILE, ZAISRV *SRVPGM, JUCSRV *SRVPGM) and ONE TXCHECK run via TXCHKRUN (CPF4174 on a second call in the same job, 08-08). No RPG-backed SQL function is called in the wrapper (only SQL routines and the adapter). AFTER (each system or db2 call is its own job): JUCHU_REGISTER with J09901 as ONE text literal (no JSON_OBJECT with numbers), round trip through JUCHU_INQUIRY_JSON, the duplicate call (expect SQLSTATE 75001 and header/detail counts unchanged); parse-zip.sql then validate-zip.sql (ZIPCHECK over APIMOCK, ZIPCHKLOG over APILOG + APIZIP), snapshots; export-json.sql (literal LINE with a relative path, looked for in the home directory; procedure EXPORT_LOWSTOCK with a variable read from the LOWALERT column), the procedure called with an absolute path, IFS_READ_UTF8 read back and parsed with JSON_TABLE in collect, a JSON literal round trip, a scalar subselect directly as LINE, and LINE lengths 3000 and 20000 (UNVERIFIED, results decide the lesson text); SYSROUTINES and OBJECT_STATISTICS before cleanup; cleanup by SPECIFIC name (routines, views, tables APILOG/APIMOCK/APICFG, JUHTTPSV and its source member), J09901..J09903 rows, the TXCKM rows of lesson 10-04 (TXCKM, TXCHECK, TXCHKRUN are shared and stay), the backup copies ZAISRVP/JUCSRVP only if the copy-back object exists, the exported files. COLLECT: VFY1004 rows, JSON parsed back with JSON_TABLE, APILOG snapshot, verdict snapshots, IFS read-back, SYSROUTINES leftovers (expect 0 of the batch routines), objects left, row counts (expect JUCHUM 8, JUCHUD 12, ZAIKOM 6, no J099 rows), TXCKM rows left (expect 0). Nothing here is assumed: every UNVERIFIED item of the design is a step whose outcome is only recorded.",
+  "library2": "*B",
+  "sshTimeoutMs": 420000,
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../tools/qddssrc/txckm.pf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "TXCKM"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txcheck.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCHECK"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qcmdsrc/txcheck.cmd",
+      "remoteSrcFile": "QCMDSRC",
+      "member": "TXCHECK",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "src/txchkrun.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCHKRUN"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/juhttpsv.sqlrpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "JUHTTPSV",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/sql/09-04-routines.sql"
+    },
+    {
+      "type": "file",
+      "localPath": "../../db/mock/apimock.sql"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/09-05/parse-zip.sql"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/10-04/lowstock-alert.sql"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/10-04/validate-zip.sql"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/10-04/export-json.sql"
+    },
+    {
+      "type": "sh",
+      "label": "PRE1",
+      "cmd": "system \"CHKOBJ OBJ(&LIB/JUCSRV) OBJTYPE(*SRVPGM)\" 2>&1; system \"CHKOBJ OBJ(&LIB/ZAISRV) OBJTYPE(*SRVPGM)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "RUNROUT",
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part10-04-checkpoint/09-04-routines.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40) OUTPUT(*PRINT)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "RUNMOCK",
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part10-04-checkpoint/apimock.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40) OUTPUT(*PRINT)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "RUNLOWAL",
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part10-04-checkpoint/lowstock-alert.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40) OUTPUT(*PRINT)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "RUNLOWALQ",
+      "cmd": "if system \"CHKOBJ OBJ(&LIB/LOWALERT) OBJTYPE(*FILE)\" >/dev/null 2>&1; then echo LOWALERT-present; else echo LOWALERT-missing-running-qualified-fallback; db2 \"CREATE OR REPLACE VIEW &LIB.LOWALERT (ALERT_JSON) AS SELECT CAST(JSON_OBJECT('alert': 'LOW_STOCK', 'count': (SELECT COUNT(*) FROM TABLE(&LIB.LOW_STOCK()) L), 'items': (SELECT JSON_ARRAYAGG(JSON_OBJECT('product': L.PRODUCT_CODE, 'name': TRIM(L.PRODUCT_NAME), 'stock': L.STOCK_QTY, 'reorderPoint': L.REORDER_POINT) ORDER BY L.PRODUCT_CODE) FROM TABLE(&LIB.LOW_STOCK()) L) FORMAT JSON) AS VARCHAR(4000) CCSID 1208) FROM SYSIBM.SYSDUMMY1\" 2>&1; fi"
+    },
+    {
+      "type": "cl",
+      "label": "CURSET",
+      "cmd": "CHGCURLIB CURLIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKCUR",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYCUR (TAG VARCHAR(40), ORD INT, LIB VARCHAR(20), TYPE VARCHAR(10))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "REC0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYCUR SELECT ''A0-AFTER-CHGCURLIB'', ORDINAL_POSITION, SCHEMA_NAME, TYPE FROM QSYS2.LIBRARY_LIST_INFO') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRES",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFY1004 (SEQ INT GENERATED ALWAYS AS IDENTITY, TAG VARCHAR(40), VAL VARCHAR(4000) CCSID 1208)') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PREOBJ",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY1004 (TAG, VAL) SELECT ''PRE-OBJ'', OBJNAME CONCAT '' '' CONCAT OBJTYPE FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*ALL'')) X WHERE OBJNAME IN (''JUCSRV'', ''ZAISRV'', ''TXCKM'', ''TXCHECK'', ''LOWSTOCKT'', ''JUCHUINQJS'', ''JUCHUREGST'', ''EXPLOWJSN'', ''LOWALERT'', ''APIMOCK'', ''APILOG'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRECLEAN1",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/JUCHUD WHERE JUNO IN (''J09901'', ''J09902'', ''J09903'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRECLEAN2",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/JUCHUM WHERE JUNO IN (''J09901'', ''J09902'', ''J09903'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CNT0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY1004 (TAG, VAL) SELECT ''COUNTS-BEFORE'', ''JUCHUM='' CONCAT CHAR((SELECT COUNT(*) FROM &LIB/JUCHUM)) CONCAT '' JUCHUD='' CONCAT CHAR((SELECT COUNT(*) FROM &LIB/JUCHUD)) CONCAT '' ZAIKOM='' CONCAT CHAR((SELECT COUNT(*) FROM &LIB/ZAIKOM)) FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "INQ1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY1004 (TAG, VAL) SELECT ''INQ-J00001'', &LIB.JUCHU_INQUIRY_JSON(''J00001'') FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "INQ0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY1004 (TAG, VAL) SELECT ''INQ-NONE'', COALESCE(&LIB.JUCHU_INQUIRY_JSON(''ZZZZZZ''), ''SQLNULL'') FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "LOWS",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY1004 (TAG, VAL) SELECT ''LOW_STOCK'', PRODUCT_CODE CONCAT '' '' CONCAT TRIM(PRODUCT_NAME) CONCAT '' stock='' CONCAT CHAR(STOCK_QTY) CONCAT '' point='' CONCAT CHAR(REORDER_POINT) FROM TABLE(&LIB.LOW_STOCK()) X ORDER BY PRODUCT_CODE') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ALERT",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY1004 (TAG, VAL) SELECT ''ALERT-JSON'', ALERT_JSON FROM &LIB.LOWALERT') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ALERT0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFY1004 (TAG, VAL) SELECT ''ALERT-EMPTY'', CAST(JSON_OBJECT(''count'': (SELECT COUNT(*) FROM TABLE(&LIB.LOW_STOCK()) L WHERE 1 = 0), ''items'': (SELECT JSON_ARRAYAGG(JSON_OBJECT(''product'': L.PRODUCT_CODE)) FROM TABLE(&LIB.LOW_STOCK()) L WHERE 1 = 0) FORMAT JSON) AS VARCHAR(4000) CCSID 1208) FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "VSPLPF",
+      "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 10 compile listing capture'))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "COMPILE",
+      "cmd": "CRTSQLRPGI OBJ(&LIB/JUHTTPSV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(JUHTTPSV) OBJTYPE(*PGM) COMMIT(*NONE) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "SQL0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPLST",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALLOK",
+      "cmd": "CALL PGM(&LIB/JUHTTPSV) PARM('1000001' '        ')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALLNF",
+      "cmd": "CALL PGM(&LIB/JUHTTPSV) PARM('9999999' '        ')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALL504",
+      "cmd": "CALL PGM(&LIB/JUHTTPSV) PARM('9999504' '        ')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALL404",
+      "cmd": "CALL PGM(&LIB/JUHTTPSV) PARM('9999404' '        ')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALLNM",
+      "cmd": "CALL PGM(&LIB/JUHTTPSV) PARM('1234567' '        ')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSNAPLOG",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYAPILOG') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNAPLOG",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYAPILOG AS (SELECT LOGID, APIMODE, ZIP, RC, HTTPST, RESPLEN, SQLST FROM &LIB/APILOG) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "BKZAI",
+      "cmd": "DLTSRVPGM SRVPGM(&LIB2/ZAISRVP)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPZAI",
+      "cmd": "CRTDUPOBJ OBJ(ZAISRV) FROMLIB(&LIB) OBJTYPE(*SRVPGM) TOLIB(&LIB2) NEWOBJ(ZAISRVP)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLZAI",
+      "cmd": "CHKOBJ OBJ(&LIB2/ZAISRVP) OBJTYPE(*SRVPGM)\nMONMSG MSGID(CPF9801) EXEC(GOTO CMDLBL(BAZAI))\nDLTSRVPGM SRVPGM(&LIB/ZAISRV)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "BAZAI",
+      "cmd": "CRTDUPOBJ OBJ(ZAISRVP) FROMLIB(&LIB2) OBJTYPE(*SRVPGM) TOLIB(&LIB) NEWOBJ(ZAISRV)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CKZAI",
+      "cmd": "CHKOBJ OBJ(&LIB/ZAISRV) OBJTYPE(*SRVPGM)\nMONMSG MSGID(CPF9801) EXEC(CRTDUPOBJ OBJ(ZAISRVP) FROMLIB(&LIB2) OBJTYPE(*SRVPGM) TOLIB(&LIB) NEWOBJ(ZAISRV))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "BKJUC",
+      "cmd": "DLTSRVPGM SRVPGM(&LIB2/JUCSRVP)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPJUC",
+      "cmd": "CRTDUPOBJ OBJ(JUCSRV) FROMLIB(&LIB) OBJTYPE(*SRVPGM) TOLIB(&LIB2) NEWOBJ(JUCSRVP)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLJUC",
+      "cmd": "CHKOBJ OBJ(&LIB2/JUCSRVP) OBJTYPE(*SRVPGM)\nMONMSG MSGID(CPF9801) EXEC(GOTO CMDLBL(BAJUC))\nDLTSRVPGM SRVPGM(&LIB/JUCSRV)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "BAJUC",
+      "cmd": "CRTDUPOBJ OBJ(JUCSRVP) FROMLIB(&LIB2) OBJTYPE(*SRVPGM) TOLIB(&LIB) NEWOBJ(JUCSRV)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CKJUC",
+      "cmd": "CHKOBJ OBJ(&LIB/JUCSRV) OBJTYPE(*SRVPGM)\nMONMSG MSGID(CPF9801) EXEC(CRTDUPOBJ OBJ(JUCSRVP) FROMLIB(&LIB2) OBJTYPE(*SRVPGM) TOLIB(&LIB) NEWOBJ(JUCSRV))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PROMOBJ",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY1004 (TAG, VAL) SELECT ''POST-PROMOTE'', OBJNAME CONCAT '' '' CONCAT OBJTYPE FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*ALL'')) X WHERE OBJNAME IN (''JUCSRV'', ''ZAISRV'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCKM",
+      "cmd": "CHKOBJ OBJ(&LIB/TXCKM) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/TXCKM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TXCKM))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHECK",
+      "cmd": "CHKOBJ OBJ(&LIB/TXCHECK) OBJTYPE(*PGM)\nMONMSG MSGID(CPF9801) EXEC(CRTCLPGM PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHECK))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHKCMD",
+      "cmd": "DLTCMD CMD(&LIB/TXCHECK)\nMONMSG MSGID(CPF0000)\nCRTCMD CMD(&LIB/TXCHECK) PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXCHECK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHKRUN",
+      "cmd": "CRTCLPGM PGM(&LIB/TXCHKRUN) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHKRUN) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEEDDEL",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/TXCKM WHERE LESSON = ''10-04''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEED1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-04'', 10, ''JUHTTPSV'', ''*PGM'', '' '', ''JUHTTPSV adapter exists'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEED2",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-04'', 20, ''APIMOCK'', ''*FILE'', '' '', ''APIMOCK mock table exists'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEED3",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-04'', 30, ''ZAISRV'', ''*SRVPGM'', '' '', ''ZAISRV service program exists'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEED4",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-04'', 40, ''JUCSRV'', ''*SRVPGM'', '' '', ''JUCSRV service program exists'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TXCHK1",
+      "cmd": "CALL PGM(&LIB/TXCHKRUN) PARM('10-04' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "sh",
+      "label": "REGCLN0",
+      "cmd": "db2 \"DELETE FROM &LIB.JUCHUD WHERE JUNO IN ('J09901', 'J09902', 'J09903')\" 2>&1; db2 \"DELETE FROM &LIB.JUCHUM WHERE JUNO IN ('J09901', 'J09902', 'J09903')\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "REG1",
+      "cmd": "db2 \"CALL &LIB.JUCHU_REGISTER('{\\\"orderNo\\\":\\\"J09901\\\",\\\"customer\\\":\\\"C00001\\\",\\\"orderDate\\\":20260930,\\\"salesRep\\\":\\\"T00001\\\",\\\"lines\\\":[{\\\"line\\\":1,\\\"product\\\":\\\"P00001\\\",\\\"qty\\\":2,\\\"unitPrice\\\":1580.00},{\\\"line\\\":2,\\\"product\\\":\\\"P00003\\\",\\\"qty\\\":5,\\\"unitPrice\\\":480.00}]}')\" 2>&1; db2 \"SELECT JUNO, JUTOK, JUDATE, JUTAN FROM &LIB.JUCHUM WHERE JUNO = 'J09901'\" 2>&1; db2 \"SELECT JUNO, JULINE, JUSHO, JUSU, JUTNK FROM &LIB.JUCHUD WHERE JUNO = 'J09901' ORDER BY JULINE\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "REG1RT",
+      "cmd": "db2 \"SELECT &LIB.JUCHU_INQUIRY_JSON('J09901') FROM SYSIBM.SYSDUMMY1\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "REG1DUP",
+      "cmd": "db2 \"CALL &LIB.JUCHU_REGISTER('{\\\"orderNo\\\":\\\"J09901\\\",\\\"customer\\\":\\\"C00001\\\",\\\"orderDate\\\":20260930,\\\"salesRep\\\":\\\"T00001\\\",\\\"lines\\\":[{\\\"line\\\":1,\\\"product\\\":\\\"P00001\\\",\\\"qty\\\":2,\\\"unitPrice\\\":1580.00},{\\\"line\\\":2,\\\"product\\\":\\\"P00003\\\",\\\"qty\\\":5,\\\"unitPrice\\\":480.00}]}')\" 2>&1; db2 \"SELECT COUNT(*) AS N FROM &LIB.JUCHUD WHERE JUNO = 'J09901'\" 2>&1; db2 \"SELECT COUNT(*) AS H FROM &LIB.JUCHUM WHERE JUNO = 'J09901'\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "RUNPZIP",
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part10-04-checkpoint/parse-zip.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40) OUTPUT(*PRINT)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "RUNVZIP",
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part10-04-checkpoint/validate-zip.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40) OUTPUT(*PRINT)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "VZIP1",
+      "cmd": "db2 \"SELECT ZIP, HTTPST, VERDICT FROM &LIB.ZIPCHECK ORDER BY ZIP\" 2>&1; db2 \"SELECT LOGID, ZIP, RC, VERDICT FROM &LIB.ZIPCHKLOG ORDER BY LOGID\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "SNAPZ",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/VFYZC1') COMMIT(*NONE)\" 2>&1; system \"RUNSQL SQL('CREATE TABLE &LIB/VFYZC1 AS (SELECT ZIP, HTTPST, VERDICT FROM &LIB/ZIPCHECK) WITH DATA') COMMIT(*NONE)\" 2>&1; system \"RUNSQL SQL('DROP TABLE &LIB/VFYZC2') COMMIT(*NONE)\" 2>&1; system \"RUNSQL SQL('CREATE TABLE &LIB/VFYZC2 AS (SELECT LOGID, ZIP, RC, VERDICT FROM &LIB/ZIPCHKLOG) WITH DATA') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "RUNEXP",
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part10-04-checkpoint/export-json.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40) OUTPUT(*PRINT)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "EXPREL",
+      "cmd": "ls -l $HOME/p1004lit.txt 2>&1; ls -l $HOME/vfy/part10-04-checkpoint/p1004lit.txt 2>&1; od -c $HOME/p1004lit.txt 2>&1 | head -3",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "EXPCOL",
+      "cmd": "db2 \"CALL &LIB.EXPORT_LOWSTOCK('$HOME/vfy/part10-04-checkpoint/lowstock.json')\" 2>&1; ls -l $HOME/vfy/part10-04-checkpoint/lowstock.json 2>&1; od -c $HOME/vfy/part10-04-checkpoint/lowstock.json 2>&1 | head -12",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "EXPRD",
+      "cmd": "db2 \"SELECT LINE_NUMBER, LINE FROM TABLE(QSYS2.IFS_READ_UTF8(PATH_NAME => '$HOME/vfy/part10-04-checkpoint/lowstock.json'))\" 2>&1 | head -12",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "EXPSNAP",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/VFYEXP') COMMIT(*NONE)\" 2>&1; system \"RUNSQL SQL('CREATE TABLE &LIB/VFYEXP AS (SELECT LINE_NUMBER, LINE FROM TABLE(QSYS2.IFS_READ_UTF8(PATH_NAME => ''$HOME/vfy/part10-04-checkpoint/lowstock.json'')) X) WITH DATA') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "EXPLIT",
+      "cmd": "db2 \"CALL QSYS2.IFS_WRITE_UTF8(PATH_NAME => '$HOME/vfy/part10-04-checkpoint/lit.json', LINE => '{\\\"orderNo\\\":\\\"J09901\\\",\\\"n\\\":1}', OVERWRITE => 'REPLACE', END_OF_LINE => 'NONE')\" 2>&1; ls -l $HOME/vfy/part10-04-checkpoint/lit.json 2>&1; db2 \"SELECT LINE_NUMBER, LINE FROM TABLE(QSYS2.IFS_READ_UTF8(PATH_NAME => '$HOME/vfy/part10-04-checkpoint/lit.json'))\" 2>&1 | head -6",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "EXPSUB",
+      "cmd": "db2 \"CALL QSYS2.IFS_WRITE_UTF8(PATH_NAME => '$HOME/vfy/part10-04-checkpoint/sub.json', LINE => (SELECT ALERT_JSON FROM &LIB.LOWALERT), OVERWRITE => 'REPLACE', END_OF_LINE => 'NONE')\" 2>&1; ls -l $HOME/vfy/part10-04-checkpoint/sub.json 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "EXPLEN",
+      "cmd": "db2 \"CALL QSYS2.IFS_WRITE_UTF8(PATH_NAME => '$HOME/vfy/part10-04-checkpoint/l3000.txt', LINE => REPEAT('A', 3000), OVERWRITE => 'REPLACE', END_OF_LINE => 'NONE')\" 2>&1; ls -l $HOME/vfy/part10-04-checkpoint/l3000.txt 2>&1; db2 \"CALL QSYS2.IFS_WRITE_UTF8(PATH_NAME => '$HOME/vfy/part10-04-checkpoint/l20000.txt', LINE => REPEAT('A', 20000), OVERWRITE => 'REPLACE', END_OF_LINE => 'NONE')\" 2>&1; ls -l $HOME/vfy/part10-04-checkpoint/l20000.txt 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "CATBEF",
+      "cmd": "db2 \"SELECT ROUTINE_NAME, SPECIFIC_NAME, ROUTINE_TYPE FROM QSYS2.SYSROUTINES WHERE ROUTINE_SCHEMA = '&LIB' ORDER BY ROUTINE_NAME\" 2>&1; db2 \"SELECT OBJNAME, OBJTYPE, OBJATTRIBUTE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*ALL')) X WHERE OBJNAME IN ('JUCHUINQJS', 'LOWSTOCKT', 'LOWSTOCKRS', 'JUCHUREGST', 'EXPLOWJSN', 'LOWALERT', 'ZIPCHECK', 'ZIPCHKLOG') ORDER BY OBJNAME\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DELJ",
+      "cmd": "db2 \"DELETE FROM &LIB.JUCHUD WHERE JUNO IN ('J09901', 'J09902', 'J09903')\" 2>&1; db2 \"DELETE FROM &LIB.JUCHUM WHERE JUNO IN ('J09901', 'J09902', 'J09903')\" 2>&1; db2 \"SELECT (SELECT COUNT(*) FROM &LIB.JUCHUM) AS M, (SELECT COUNT(*) FROM &LIB.JUCHUD) AS D, (SELECT COUNT(*) FROM &LIB.ZAIKOM) AS Z FROM SYSIBM.SYSDUMMY1\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DROPS",
+      "cmd": "echo \"DROP VIEW &LIB.ZIPCHKLOG\"; db2 \"DROP VIEW &LIB.ZIPCHKLOG\" 2>&1; echo \"DROP VIEW &LIB.ZIPCHECK\"; db2 \"DROP VIEW &LIB.ZIPCHECK\" 2>&1; echo \"DROP VIEW &LIB.APIZIP\"; db2 \"DROP VIEW &LIB.APIZIP\" 2>&1; echo \"DROP VIEW &LIB.LOWALERT\"; db2 \"DROP VIEW &LIB.LOWALERT\" 2>&1; echo \"DROP SPECIFIC PROCEDURE &LIB.EXPLOWJSN\"; db2 \"DROP SPECIFIC PROCEDURE &LIB.EXPLOWJSN\" 2>&1; echo \"DROP SPECIFIC PROCEDURE &LIB.JUCHUREGST\"; db2 \"DROP SPECIFIC PROCEDURE &LIB.JUCHUREGST\" 2>&1; echo \"DROP SPECIFIC PROCEDURE &LIB.LOWSTOCKRS\"; db2 \"DROP SPECIFIC PROCEDURE &LIB.LOWSTOCKRS\" 2>&1; echo \"DROP SPECIFIC FUNCTION &LIB.LOWSTOCKT\"; db2 \"DROP SPECIFIC FUNCTION &LIB.LOWSTOCKT\" 2>&1; echo \"DROP SPECIFIC FUNCTION &LIB.JUCHUINQJS\"; db2 \"DROP SPECIFIC FUNCTION &LIB.JUCHUINQJS\" 2>&1; echo \"DROP SPECIFIC FUNCTION &LIB.GETSTOCKQT\"; db2 \"DROP SPECIFIC FUNCTION &LIB.GETSTOCKQT\" 2>&1; echo \"DROP SPECIFIC FUNCTION &LIB.CNTCUSTORD\"; db2 \"DROP SPECIFIC FUNCTION &LIB.CNTCUSTORD\" 2>&1; echo \"DROP SPECIFIC FUNCTION &LIB.GETCUSTNM\"; db2 \"DROP SPECIFIC FUNCTION &LIB.GETCUSTNM\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DROPT",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/APILOG') COMMIT(*NONE)\" 2>&1; system \"RUNSQL SQL('DROP TABLE &LIB/APIMOCK') COMMIT(*NONE)\" 2>&1; system \"RUNSQL SQL('DROP TABLE &LIB/APICFG') COMMIT(*NONE)\" 2>&1; system \"DLTPGM PGM(&LIB/JUHTTPSV)\" 2>&1; system \"RMVM FILE(&LIB/QRPGLESRC) MBR(JUHTTPSV)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "CLNSEED",
+      "cmd": "system \"RUNSQL SQL('DELETE FROM &LIB/TXCKM WHERE LESSON = ''10-04''') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DLTBAK",
+      "cmd": "system \"CHKOBJ OBJ(&LIB/ZAISRV) OBJTYPE(*SRVPGM)\" 2>&1 && system \"DLTSRVPGM SRVPGM(&LIB2/ZAISRVP)\" 2>&1; system \"CHKOBJ OBJ(&LIB/JUCSRV) OBJTYPE(*SRVPGM)\" 2>&1 && system \"DLTSRVPGM SRVPGM(&LIB2/JUCSRVP)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "RMFILES",
+      "cmd": "rm -f $HOME/p1004lit.txt $HOME/vfy/part10-04-checkpoint/p1004lit.txt $HOME/vfy/part10-04-checkpoint/lowstock.json $HOME/vfy/part10-04-checkpoint/lit.json $HOME/vfy/part10-04-checkpoint/sub.json $HOME/vfy/part10-04-checkpoint/l3000.txt $HOME/vfy/part10-04-checkpoint/l20000.txt 2>&1; echo rm-exit=$?",
+      "after": true
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, ORD, LIB, TYPE FROM &LIB/VFYCUR ORDER BY TAG, ORD"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT SEQ, TAG, VAL FROM &LIB/VFY1004 ORDER BY SEQ"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT S.SEQ, T.ORDER_NO, T.LINE_NO, T.PRODUCT, T.QTY FROM &LIB/VFY1004 S, JSON_TABLE(CASE WHEN S.TAG = 'INQ-J00001' THEN S.VAL END, 'lax $' COLUMNS(ORDER_NO CHAR(6) PATH 'lax $.orderNo', NESTED PATH 'lax $.lines[*]' COLUMNS(LINE_NO INT PATH 'lax $.line', PRODUCT CHAR(6) PATH 'lax $.product', QTY INT PATH 'lax $.qty'))) AS T WHERE S.TAG = 'INQ-J00001' ORDER BY T.LINE_NO"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT S.SEQ, S.TAG, T.CNT, T.PRODUCT, T.STOCK, T.POINT FROM &LIB/VFY1004 S, JSON_TABLE(CASE WHEN S.TAG IN ('ALERT-JSON', 'ALERT-EMPTY') THEN S.VAL END, 'lax $' COLUMNS(CNT INT PATH 'lax $.count', NESTED PATH 'lax $.items[*]' COLUMNS(PRODUCT CHAR(6) PATH 'lax $.product', STOCK INT PATH 'lax $.stock', POINT INT PATH 'lax $.reorderPoint'))) AS T WHERE S.TAG IN ('ALERT-JSON', 'ALERT-EMPTY') ORDER BY S.SEQ, T.PRODUCT"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT LOGID, APIMODE, ZIP, RC, HTTPST, RESPLEN, SQLST FROM &LIB/VFYAPILOG ORDER BY LOGID"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT ZIP, HTTPST, VERDICT FROM &LIB/VFYZC1 ORDER BY ZIP"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT LOGID, ZIP, RC, VERDICT FROM &LIB/VFYZC2 ORDER BY LOGID"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT LINE_NUMBER, LENGTH(LINE) AS LEN, CAST(LINE AS VARCHAR(400) CCSID 1208) AS LINE_TXT FROM &LIB/VFYEXP ORDER BY LINE_NUMBER"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT S.LINE_NUMBER, T.CNT, T.PRODUCT FROM &LIB/VFYEXP S, JSON_TABLE(S.LINE, 'lax $' COLUMNS(CNT INT PATH 'lax $.count', NESTED PATH 'lax $.items[*]' COLUMNS(PRODUCT CHAR(6) PATH 'lax $.product'))) AS T ORDER BY T.PRODUCT"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COUNT(*) AS ROUTINES_LEFT FROM QSYS2.SYSROUTINES WHERE SPECIFIC_SCHEMA = '&LIB' AND SPECIFIC_NAME IN ('JUCHUINQJS', 'LOWSTOCKT', 'LOWSTOCKRS', 'JUCHUREGST', 'EXPLOWJSN', 'GETSTOCKQT', 'CNTCUSTORD', 'GETCUSTNM')"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT ROUTINE_NAME, SPECIFIC_NAME, ROUTINE_TYPE FROM QSYS2.SYSROUTINES WHERE SPECIFIC_SCHEMA = '&LIB' ORDER BY ROUTINE_NAME"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*ALL')) X WHERE OBJNAME IN ('JUCHUINQJS', 'LOWSTOCKT', 'LOWSTOCKRS', 'JUCHUREGST', 'EXPLOWJSN', 'LOWALERT', 'ZIPCHECK', 'ZIPCHKLOG', 'APIZIP', 'APIMOCK', 'APILOG', 'APICFG', 'JUHTTPSV') ORDER BY OBJNAME"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB2', '*ALL')) X WHERE OBJNAME IN ('ZAISRVP', 'JUCSRVP') ORDER BY OBJNAME"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJCREATED FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*ALL')) X WHERE OBJNAME IN ('ZAISRV', 'JUCSRV') ORDER BY OBJNAME"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COUNT(*) AS TXCKM_1004_LEFT FROM &LIB/TXCKM WHERE LESSON = '10-04'"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT 'JUCHUM' AS T, COUNT(*) AS N FROM &LIB/JUCHUM UNION ALL SELECT 'JUCHUD', COUNT(*) FROM &LIB/JUCHUD UNION ALL SELECT 'ZAIKOM', COUNT(*) FROM &LIB/ZAIKOM UNION ALL SELECT 'LEFTOVER-J099', COUNT(*) FROM &LIB/JUCHUM WHERE JUNO LIKE 'J099%'"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYSPL"
+    }
+  ]
+}

@@ -1,0 +1,1114 @@
+{
+  "batch": "part10-01-incident",
+  "sshTimeoutMs": 900000,
+  "description": "Part 10 lesson 10-01 (incident, design v3 B1/B2/B6/B7/D1/H1). ONE wrapper job runs the whole story: compile TXCKM/TXCHECK/TXCHKRUN, TXRESET, TXLEGACY (FORCE(*YES) via helper TXCAPRUN, commands called library-qualified), TXCAPST built with the lesson build-path lines (CRTCLPGM + CRTCMD, PGM(*LIBL/...) as 02-05), then bootstrap = TXLEGACY FORCE(*YES), TXRESET, ticket-1 fix (solutions/05-13/ju0900c-ticket1.clp compiled over JU0900C from member JU0900T1), baseline SBMJOB JU0900C PARM(*TEST lib) (expect the 12-line golden master), TXCAPST LIB(lib) (plants J00000 / HEX(JUSU) 4B4B4B4B4B / matching JUCHUM header, all in one job), failing SBMJOB (expect RPG0907 stmt 6400, RPG9001, CPF9999, JU0900C: ZA0500 ended abnormally, zero print lines, job ends normally), rerun refusal, FORCE replant (exactly one J00000 row each), UPDATE fix (FIXUPD, with FIXALT as a where-by-HEX fallback), resubmit (13 lines expected; UNVERIFIED, the actual count is recorded), TXCKM 10-01 rows + TXCHKRUN once, RTVMSG CPF9898 (TXCAPINF) and RTVOBJD (TXCAPOBJ, keyword names unverified) examples, and SBMJOB DSPLIBL before/after CHGCURLIB (SETENV-like; SETENV itself lives in the never-touched lib 1). Phase order of the harness (file, sh, ONE cl wrapper, sh after, collect) means: intermediate DB states are copied into VFY10 (TS, TAG, K1, K2, V) inside the wrapper; job logs of the submitted jobs are read three ways in sh(after) (SPOOLED_FILE_DATA joined to JOB_INFO, the same with shell-parsed job id, JOBLOG_INFO with a qualified job name; all UNVERIFIED) and, in the same job, by the helper TXCAPJOB (submitted for tags BASE, FAIL, FIXD), which runs JU0900C, copies its own QSYSPRT with CPYSPLF JOB(*) into VFYPBASE/VFYPFAIL/VFYPFIXD (record length 133, likely route, not proven) and copies its own job log into VFYJ10 with JOBLOG_INFO(*) (proven column form first, MESSAGE_ID variant as tag TAG-ID). The library list a submitted job inherits is read with QSYS2.LIBRARY_LIST_INFO by the wrapper (W-BEFORE/W-AFTER) and by helper TXCAPLIB in SBMJOBs before/after CHGCURLIB (J-BEFORE/J-AFTER) into VFYL10; DSPLIBL SBMJOBs are kept as a second look. Each SBMJOB uses JOBQ(QGPL/QBATCH), INQMSGRPY(*DFT), LOG(4 00 *SECLVL) and is followed by DLYJOB; job names TXC1BASE, TXC1BASED, TXC1FAIL, TXC1FAILD, TXC1FIXD, TXC1FIXDD, TXC1LIBA, TXC1LIBAH, TXC1LIBB, TXC1LIBBH. The clone tree under $HOME/ibmi-kyozai is only completed (test -f guard, CPYTOSTMF from the uploaded members) where a file is missing, a real clone is never overwritten. The private lib 1 is never touched. The library is left as after TXRESET with the ticket-1-fixed JU0900C; TXCAPFL, J00000/C05119 rows and TXCKM 10-01 rows are removed at the end. TXCKM, TXCHECK, TXCHKRUN, TXLEGACY are shared and kept. Pass criteria: expected/pass-criteria.md.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../tools/qddssrc/txckm.pf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "TXCKM"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txcheck.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCHECK"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qcmdsrc/txcheck.cmd",
+      "remoteSrcFile": "QCMDSRC",
+      "member": "TXCHECK",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "src/txchkrun.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCHKRUN"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txlegacy.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXLEGACY"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qcmdsrc/txlegacy.cmd",
+      "remoteSrcFile": "QCMDSRC",
+      "member": "TXLEGACY"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txreset.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXRESET"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qcmdsrc/txreset.cmd",
+      "remoteSrcFile": "QCMDSRC",
+      "member": "TXRESET"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txcapst.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCAPST"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qcmdsrc/txcapst.cmd",
+      "remoteSrcFile": "QCMDSRC",
+      "member": "TXCAPST"
+    },
+    {
+      "type": "file",
+      "localPath": "src/txcaprun.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCAPRUN"
+    },
+    {
+      "type": "file",
+      "localPath": "src/txcapjob.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCAPJOB"
+    },
+    {
+      "type": "file",
+      "localPath": "src/txcaplib.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCAPLIB"
+    },
+    {
+      "type": "file",
+      "localPath": "src/txcapinf.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCAPINF"
+    },
+    {
+      "type": "file",
+      "localPath": "src/txcapobj.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCAPOBJ"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/05-13/ju0900c-ticket1.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "JU0900T1"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/fldref.pf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "FLDREF",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/jubadd.pf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "JUBADD"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/tk0100d.dspf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "TK0100D"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/mn0000d.dspf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "MN0000D"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/fldrefr.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "FLDREFR",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/tk0100.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "TK0100"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/ju0300.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "JU0300"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/za0500.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "ZA0500"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qclsrc/ju0900c.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "JU0900C"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qclsrc/mn0000c.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "MN0000C"
+    },
+    {
+      "type": "file",
+      "localPath": "../../db/data/reset_v1.sql",
+      "remoteSrcFile": "QSQLSRC",
+      "member": "RESETV1",
+      "ensureSrcFile": {
+        "recordLength": 160
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../db/data/load_v1.sql",
+      "remoteSrcFile": "QSQLSRC",
+      "member": "LOADV1"
+    },
+    {
+      "type": "sh",
+      "label": "MKTREE",
+      "cmd": "ls -d \"$HOME/ibmi-kyozai/.git\" 2>&1\nmkdir -p \"$HOME/ibmi-kyozai/src/legacy/qddssrc\" 2>&1\nmkdir -p \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc\" 2>&1\nmkdir -p \"$HOME/ibmi-kyozai/src/legacy/qclsrc\" 2>&1\nmkdir -p \"$HOME/ibmi-kyozai/db/data\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "MKFILES",
+      "cmd": "if test -f \"$HOME/ibmi-kyozai/src/legacy/qddssrc/fldref.pf\"; then\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QDDSSRC.FILE/FLDREF.MBR') TOSTMF('$HOME/vfy/part10-01-incident/cmp.tmp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-KEEP src/legacy/qddssrc/fldref.pf\"\ncksum \"$HOME/ibmi-kyozai/src/legacy/qddssrc/fldref.pf\" \"$HOME/vfy/part10-01-incident/cmp.tmp\" 2>&1\nelse\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QDDSSRC.FILE/FLDREF.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/fldref.pf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-CREATED src/legacy/qddssrc/fldref.pf\"\nfi\nif test -f \"$HOME/ibmi-kyozai/src/legacy/qddssrc/jubadd.pf\"; then\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QDDSSRC.FILE/JUBADD.MBR') TOSTMF('$HOME/vfy/part10-01-incident/cmp.tmp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-KEEP src/legacy/qddssrc/jubadd.pf\"\ncksum \"$HOME/ibmi-kyozai/src/legacy/qddssrc/jubadd.pf\" \"$HOME/vfy/part10-01-incident/cmp.tmp\" 2>&1\nelse\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QDDSSRC.FILE/JUBADD.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/jubadd.pf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-CREATED src/legacy/qddssrc/jubadd.pf\"\nfi\nif test -f \"$HOME/ibmi-kyozai/src/legacy/qddssrc/tk0100d.dspf\"; then\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QDDSSRC.FILE/TK0100D.MBR') TOSTMF('$HOME/vfy/part10-01-incident/cmp.tmp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-KEEP src/legacy/qddssrc/tk0100d.dspf\"\ncksum \"$HOME/ibmi-kyozai/src/legacy/qddssrc/tk0100d.dspf\" \"$HOME/vfy/part10-01-incident/cmp.tmp\" 2>&1\nelse\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QDDSSRC.FILE/TK0100D.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/tk0100d.dspf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-CREATED src/legacy/qddssrc/tk0100d.dspf\"\nfi\nif test -f \"$HOME/ibmi-kyozai/src/legacy/qddssrc/mn0000d.dspf\"; then\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QDDSSRC.FILE/MN0000D.MBR') TOSTMF('$HOME/vfy/part10-01-incident/cmp.tmp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-KEEP src/legacy/qddssrc/mn0000d.dspf\"\ncksum \"$HOME/ibmi-kyozai/src/legacy/qddssrc/mn0000d.dspf\" \"$HOME/vfy/part10-01-incident/cmp.tmp\" 2>&1\nelse\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QDDSSRC.FILE/MN0000D.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/mn0000d.dspf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-CREATED src/legacy/qddssrc/mn0000d.dspf\"\nfi\nif test -f \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc/fldrefr.rpg\"; then\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGSRC.FILE/FLDREFR.MBR') TOSTMF('$HOME/vfy/part10-01-incident/cmp.tmp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-KEEP src/legacy/qrpgsrc/fldrefr.rpg\"\ncksum \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc/fldrefr.rpg\" \"$HOME/vfy/part10-01-incident/cmp.tmp\" 2>&1\nelse\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGSRC.FILE/FLDREFR.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/fldrefr.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-CREATED src/legacy/qrpgsrc/fldrefr.rpg\"\nfi\nif test -f \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc/tk0100.rpg\"; then\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGSRC.FILE/TK0100.MBR') TOSTMF('$HOME/vfy/part10-01-incident/cmp.tmp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-KEEP src/legacy/qrpgsrc/tk0100.rpg\"\ncksum \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc/tk0100.rpg\" \"$HOME/vfy/part10-01-incident/cmp.tmp\" 2>&1\nelse\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGSRC.FILE/TK0100.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/tk0100.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-CREATED src/legacy/qrpgsrc/tk0100.rpg\"\nfi\nif test -f \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc/ju0300.rpg\"; then\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGSRC.FILE/JU0300.MBR') TOSTMF('$HOME/vfy/part10-01-incident/cmp.tmp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-KEEP src/legacy/qrpgsrc/ju0300.rpg\"\ncksum \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc/ju0300.rpg\" \"$HOME/vfy/part10-01-incident/cmp.tmp\" 2>&1\nelse\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGSRC.FILE/JU0300.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/ju0300.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-CREATED src/legacy/qrpgsrc/ju0300.rpg\"\nfi\nif test -f \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc/za0500.rpg\"; then\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGSRC.FILE/ZA0500.MBR') TOSTMF('$HOME/vfy/part10-01-incident/cmp.tmp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-KEEP src/legacy/qrpgsrc/za0500.rpg\"\ncksum \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc/za0500.rpg\" \"$HOME/vfy/part10-01-incident/cmp.tmp\" 2>&1\nelse\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGSRC.FILE/ZA0500.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/za0500.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-CREATED src/legacy/qrpgsrc/za0500.rpg\"\nfi\nif test -f \"$HOME/ibmi-kyozai/src/legacy/qclsrc/ju0900c.clp\"; then\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QCLSRC.FILE/JU0900C.MBR') TOSTMF('$HOME/vfy/part10-01-incident/cmp.tmp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-KEEP src/legacy/qclsrc/ju0900c.clp\"\ncksum \"$HOME/ibmi-kyozai/src/legacy/qclsrc/ju0900c.clp\" \"$HOME/vfy/part10-01-incident/cmp.tmp\" 2>&1\nelse\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QCLSRC.FILE/JU0900C.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qclsrc/ju0900c.clp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-CREATED src/legacy/qclsrc/ju0900c.clp\"\nfi\nif test -f \"$HOME/ibmi-kyozai/src/legacy/qclsrc/mn0000c.clp\"; then\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QCLSRC.FILE/MN0000C.MBR') TOSTMF('$HOME/vfy/part10-01-incident/cmp.tmp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-KEEP src/legacy/qclsrc/mn0000c.clp\"\ncksum \"$HOME/ibmi-kyozai/src/legacy/qclsrc/mn0000c.clp\" \"$HOME/vfy/part10-01-incident/cmp.tmp\" 2>&1\nelse\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QCLSRC.FILE/MN0000C.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qclsrc/mn0000c.clp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-CREATED src/legacy/qclsrc/mn0000c.clp\"\nfi\nif test -f \"$HOME/ibmi-kyozai/db/data/reset_v1.sql\"; then\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QSQLSRC.FILE/RESETV1.MBR') TOSTMF('$HOME/vfy/part10-01-incident/cmp.tmp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-KEEP db/data/reset_v1.sql\"\ncksum \"$HOME/ibmi-kyozai/db/data/reset_v1.sql\" \"$HOME/vfy/part10-01-incident/cmp.tmp\" 2>&1\nelse\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QSQLSRC.FILE/RESETV1.MBR') TOSTMF('$HOME/ibmi-kyozai/db/data/reset_v1.sql') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-CREATED db/data/reset_v1.sql\"\nfi\nif test -f \"$HOME/ibmi-kyozai/db/data/load_v1.sql\"; then\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QSQLSRC.FILE/LOADV1.MBR') TOSTMF('$HOME/vfy/part10-01-incident/cmp.tmp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-KEEP db/data/load_v1.sql\"\ncksum \"$HOME/ibmi-kyozai/db/data/load_v1.sql\" \"$HOME/vfy/part10-01-incident/cmp.tmp\" 2>&1\nelse\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QSQLSRC.FILE/LOADV1.MBR') TOSTMF('$HOME/ibmi-kyozai/db/data/load_v1.sql') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho \"TREE-CREATED db/data/load_v1.sql\"\nfi"
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCKM",
+      "cmd": "CHKOBJ OBJ(&LIB/TXCKM) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/TXCKM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TXCKM))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHECK",
+      "cmd": "CHKOBJ OBJ(&LIB/TXCHECK) OBJTYPE(*PGM)\nMONMSG MSGID(CPF9801) EXEC(CRTCLPGM PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHECK))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHKCMD",
+      "cmd": "DLTCMD CMD(&LIB/TXCHECK)\nMONMSG MSGID(CPF0000)\nCRTCMD CMD(&LIB/TXCHECK) PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXCHECK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHKRUN",
+      "cmd": "CRTCLPGM PGM(&LIB/TXCHKRUN) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHKRUN) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPLEG",
+      "cmd": "CRTCLPGM PGM(&LIB/TXLEGACY) SRCFILE(&LIB/QCLSRC) SRCMBR(TXLEGACY) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPLEGCMD",
+      "cmd": "DLTCMD CMD(&LIB/TXLEGACY)\nMONMSG MSGID(CPF0000)\nCRTCMD CMD(&LIB/TXLEGACY) PGM(*LIBL/TXLEGACY) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXLEGACY)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPRST",
+      "cmd": "CRTCLPGM PGM(&LIB/TXRESET) SRCFILE(&LIB/QCLSRC) SRCMBR(TXRESET) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPRSTCMD",
+      "cmd": "DLTCMD CMD(&LIB/TXRESET)\nMONMSG MSGID(CPF0000)\nCRTCMD CMD(&LIB/TXRESET) PGM(&LIB/TXRESET) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXRESET)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPAPRUN",
+      "cmd": "DLTPGM PGM(&LIB/TXCAPRUN)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/TXCAPRUN) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCAPRUN) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPAPJOB",
+      "cmd": "DLTPGM PGM(&LIB/TXCAPJOB)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/TXCAPJOB) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCAPJOB) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPAPLIB",
+      "cmd": "DLTPGM PGM(&LIB/TXCAPLIB)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/TXCAPLIB) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCAPLIB) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPAPINF",
+      "cmd": "DLTPGM PGM(&LIB/TXCAPINF)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/TXCAPINF) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCAPINF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPAPOBJ",
+      "cmd": "DLTPGM PGM(&LIB/TXCAPOBJ)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/TXCAPOBJ) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCAPOBJ) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPCAPST",
+      "cmd": "DLTPGM PGM(&LIB/TXCAPST)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/TXCAPST) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCAPST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPCAPCMD",
+      "cmd": "DLTCMD CMD(&LIB/TXCAPST)\nMONMSG MSGID(CPF0000)\nCRTCMD CMD(&LIB/TXCAPST) PGM(*LIBL/TXCAPST) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXCAPST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CHKCAPCMD",
+      "cmd": "CHKOBJ OBJ(&LIB/TXCAPST) OBJTYPE(*CMD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CHKCAPPGM",
+      "cmd": "CHKOBJ OBJ(&LIB/TXCAPST) OBJTYPE(*PGM)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKV10",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFY10 (TS TIMESTAMP DEFAULT CURRENT TIMESTAMP, TAG VARCHAR(24), K1 VARCHAR(20), K2 VARCHAR(20), V VARCHAR(80))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKVJ10",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYJ10 (TAG VARCHAR(10), SEQ INTEGER, MID VARCHAR(10), TXT VARCHAR(200))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKVL10",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYL10 (TAG VARCHAR(10), ORD INTEGER, LIB VARCHAR(20), TYPE VARCHAR(10))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKPBASE",
+      "cmd": "DLTF FILE(&LIB/VFYPBASE)\nMONMSG MSGID(CPF0000)\nCRTPF FILE(&LIB/VFYPBASE) RCDLEN(133) TEXT('10-01 QSYSPRT copy BASE')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKPFAIL",
+      "cmd": "DLTF FILE(&LIB/VFYPFAIL)\nMONMSG MSGID(CPF0000)\nCRTPF FILE(&LIB/VFYPFAIL) RCDLEN(133) TEXT('10-01 QSYSPRT copy FAIL')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKPFIXD",
+      "cmd": "DLTF FILE(&LIB/VFYPFIXD)\nMONMSG MSGID(CPF0000)\nCRTPF FILE(&LIB/VFYPFIXD) RCDLEN(133) TEXT('10-01 QSYSPRT copy FIXD')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRECLEAN",
+      "cmd": "DLTDTAARA DTAARA(&LIB/TXCAPFL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "LEGBOOT",
+      "cmd": "CALL PGM(&LIB/TXCAPRUN) PARM('LEGACY' '&LIB' '*YES')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RESET",
+      "cmd": "CALL PGM(&LIB/TXCAPRUN) PARM('RESET' '&LIB' '*NO')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OA8",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''A-DBVER'', ''JUCHUM-COLS'', '' '', CHAR(COUNT(*)) FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''JUCHUM''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OA1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''A-RESET'', ''JUCHUM'', '' '', CHAR(COUNT(*)) FROM &LIB/JUCHUM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OA2",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''A-RESET'', ''JUCHUD'', '' '', CHAR(COUNT(*)) FROM &LIB/JUCHUD') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OA3",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''A-RESET'', ''ZAIKOM'', '' '', CHAR(COUNT(*)) FROM &LIB/ZAIKOM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OA4",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''A-RESET'', ''SENTINEL'', '' '', CHAR(COUNT(*)) FROM &LIB/JUCHUD WHERE JUNO IN (''J00000'', ''C05119'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OA5",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''A-RESET'', ''SENTINELM'', '' '', CHAR(COUNT(*)) FROM &LIB/JUCHUM WHERE JUNO IN (''J00000'', ''C05119'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FIX1",
+      "cmd": "DLTPGM PGM(&LIB/JU0900C)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/JU0900C) SRCFILE(&LIB/QCLSRC) SRCMBR(JU0900T1) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OA6",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''A-ZAI'', ''BEFORE-BASE'', '' '', CHAR(SUM(ZASU)) FROM &LIB/ZAIKOM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SBMBASE",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/JU0900C) PARM('*TEST' '&LIB')) JOB(TXC1BASE) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "WAITBASE",
+      "cmd": "DLYJOB DLY(30)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SBMBASED",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/TXCAPJOB) PARM('BASE' '&LIB')) JOB(TXC1BASED) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "WAITBASED",
+      "cmd": "DLYJOB DLY(30)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OA7",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''A-ZAI'', ''AFTER-BASE'', '' '', CHAR(SUM(ZASU)) FROM &LIB/ZAIKOM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNCAP",
+      "cmd": "CALL PGM(&LIB/TXCAPRUN) PARM('CAPST' '&LIB' '*NO')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OB1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''B-PLANT'', JUNO, CHAR(JULINE), HEX(JUSU) FROM &LIB/JUCHUD WHERE JUNO = ''J00000''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OB2",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''B-PLANT'', ''JUCHUM'', JUTOK, JUTAN CONCAT ''/'' CONCAT CHAR(JUDATE) FROM &LIB/JUCHUM WHERE JUNO = ''J00000''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OB3",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''B-PLANT'', ''CNT-D'', '' '', CHAR(COUNT(*)) FROM &LIB/JUCHUD WHERE JUNO = ''J00000''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OB4",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''B-PLANT'', ''CNT-M'', '' '', CHAR(COUNT(*)) FROM &LIB/JUCHUM WHERE JUNO = ''J00000''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OB5",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''B-PLANT'', ''JUDLV'', '' '', CHAR(JUDLV) FROM &LIB/JUCHUM WHERE JUNO = ''J00000''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SBMFAIL",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/JU0900C) PARM('*TEST' '&LIB')) JOB(TXC1FAIL) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "WAITFAIL",
+      "cmd": "DLYJOB DLY(30)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SBMFAILD",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/TXCAPJOB) PARM('FAIL' '&LIB')) JOB(TXC1FAILD) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "WAITFAILD",
+      "cmd": "DLYJOB DLY(30)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OC1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''C-AFTFAIL'', JUNO, CHAR(JULINE), HEX(JUSU) FROM &LIB/JUCHUD WHERE JUNO = ''J00000''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OC2",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''C-AFTFAIL'', ''ZAI-SUM'', '' '', CHAR(SUM(ZASU)) FROM &LIB/ZAIKOM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNREF",
+      "cmd": "CALL PGM(&LIB/TXCAPRUN) PARM('CAPST' '&LIB' '*NO')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OD1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''D-REFUSE'', ''CNT-D'', '' '', CHAR(COUNT(*)) FROM &LIB/JUCHUD WHERE JUNO = ''J00000''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNFRC",
+      "cmd": "CALL PGM(&LIB/TXCAPRUN) PARM('CAPST' '&LIB' '*YES')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OE1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''E-FORCE'', ''CNT-D'', '' '', CHAR(COUNT(*)) FROM &LIB/JUCHUD WHERE JUNO = ''J00000''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OE2",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''E-FORCE'', ''CNT-M'', '' '', CHAR(COUNT(*)) FROM &LIB/JUCHUM WHERE JUNO = ''J00000''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OE3",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''E-FORCE'', JUNO, CHAR(JULINE), HEX(JUSU) FROM &LIB/JUCHUD WHERE JUNO = ''J00000''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FIXUPD",
+      "cmd": "RUNSQL SQL('UPDATE &LIB/JUCHUD SET JUSU = 1 WHERE JUNO = ''J00000'' AND JULINE = 1') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FIXALT",
+      "cmd": "RUNSQL SQL('UPDATE &LIB/JUCHUD SET JUSU = 1 WHERE HEX(JUSU) = ''4B4B4B4B4B''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OF1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''F-FIX'', JUNO, CHAR(JULINE), HEX(JUSU) FROM &LIB/JUCHUD WHERE JUNO = ''J00000''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SBMFIXD",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/JU0900C) PARM('*TEST' '&LIB')) JOB(TXC1FIXD) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "WAITFIXD",
+      "cmd": "DLYJOB DLY(30)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SBMFIXDD",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/TXCAPJOB) PARM('FIXD' '&LIB')) JOB(TXC1FIXDD) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "WAITFIXDD",
+      "cmd": "DLYJOB DLY(30)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OG1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''G-ZAI'', ''AFTER-FIXD'', '' '', CHAR(SUM(ZASU)) FROM &LIB/ZAIKOM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEEDDEL",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/TXCKM WHERE LESSON = ''10-01''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEED1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-01'', 10, ''TXCAPFL'', ''*DTAARA'', '' '', ''TXCAPFL flag exists'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEED2",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-01'', 20, ''ZA0500'', ''*PGM'', '' '', ''ZA0500 program exists'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEED3",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-01'', 30, ''JU0900C'', ''*PGM'', '' '', ''JU0900C program exists'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEED4",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-01'', 40, ''JUCHUD'', ''*FILE'', '' '', ''JUCHUD file exists'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TXCHK1",
+      "cmd": "CALL PGM(&LIB/TXCHKRUN) PARM('10-01' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "INFMSG",
+      "cmd": "CALL PGM(&LIB/TXCAPINF)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "INFOBJD",
+      "cmd": "CALL PGM(&LIB/TXCAPOBJ) PARM('&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "LIBWA",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYL10 SELECT ''W-BEFORE'', ORDINAL_POSITION, SCHEMA_NAME, TYPE FROM QSYS2.LIBRARY_LIST_INFO') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SBMLIBA",
+      "cmd": "SBMJOB CMD(DSPLIBL OUTPUT(*PRINT)) JOB(TXC1LIBA) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SBMLIBAH",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/TXCAPLIB) PARM('J-BEFORE' '&LIB')) JOB(TXC1LIBAH) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CURSET",
+      "cmd": "CHGCURLIB CURLIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "LIBWB",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYL10 SELECT ''W-AFTER'', ORDINAL_POSITION, SCHEMA_NAME, TYPE FROM QSYS2.LIBRARY_LIST_INFO') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SBMLIBB",
+      "cmd": "SBMJOB CMD(DSPLIBL OUTPUT(*PRINT)) JOB(TXC1LIBB) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SBMLIBBH",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/TXCAPLIB) PARM('J-AFTER' '&LIB')) JOB(TXC1LIBBH) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "WAITLIB",
+      "cmd": "DLYJOB DLY(30)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLNM",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/JUCHUM WHERE JUNO IN (''J00000'', ''C05119'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLND",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/JUCHUD WHERE JUNO IN (''J00000'', ''C05119'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLNFLAG",
+      "cmd": "DLTDTAARA DTAARA(&LIB/TXCAPFL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLNCKM",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/TXCKM WHERE LESSON = ''10-01''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OZ1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''Z-CLEAN'', ''SENT-D'', '' '', CHAR(COUNT(*)) FROM &LIB/JUCHUD WHERE JUNO IN (''J00000'', ''C05119'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OZ2",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''Z-CLEAN'', ''SENT-M'', '' '', CHAR(COUNT(*)) FROM &LIB/JUCHUM WHERE JUNO IN (''J00000'', ''C05119'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "OZ3",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY10 (TAG, K1, K2, V) SELECT ''Z-CLEAN'', ''TXCKM-1001'', '' '', CHAR(COUNT(*)) FROM &LIB/TXCKM WHERE LESSON = ''10-01''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "sh",
+      "label": "SPLBASE",
+      "cmd": "db2 \"WITH J AS (SELECT JOB_NAME_SHORT, JOB_USER, JOB_NUMBER FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', JOB_USER_FILTER => CURRENT_USER)) X WHERE JOB_NAME_SHORT = 'TXC1BASE' ORDER BY JOB_ENTERED_SYSTEM_TIME DESC FETCH FIRST 1 ROW ONLY) SELECT S.ORDINAL_POSITION, SUBSTR(S.SPOOLED_DATA, 1, 130) AS LINE FROM J, TABLE(SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME => J.JOB_NAME_SHORT, JOB_USER => J.JOB_USER, JOB_NUMBER => J.JOB_NUMBER, SPOOLED_FILE_NAME => 'QSYSPRT', SPOOLED_FILE_NUMBER => -1)) S ORDER BY S.ORDINAL_POSITION FETCH FIRST 60 ROWS ONLY\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "SPLFAIL",
+      "cmd": "db2 \"WITH J AS (SELECT JOB_NAME_SHORT, JOB_USER, JOB_NUMBER FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', JOB_USER_FILTER => CURRENT_USER)) X WHERE JOB_NAME_SHORT = 'TXC1FAIL' ORDER BY JOB_ENTERED_SYSTEM_TIME DESC FETCH FIRST 1 ROW ONLY) SELECT S.ORDINAL_POSITION, SUBSTR(S.SPOOLED_DATA, 1, 130) AS LINE FROM J, TABLE(SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME => J.JOB_NAME_SHORT, JOB_USER => J.JOB_USER, JOB_NUMBER => J.JOB_NUMBER, SPOOLED_FILE_NAME => 'QSYSPRT', SPOOLED_FILE_NUMBER => -1)) S ORDER BY S.ORDINAL_POSITION FETCH FIRST 60 ROWS ONLY\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "SPLFAILD",
+      "cmd": "db2 \"WITH J AS (SELECT JOB_NAME_SHORT, JOB_USER, JOB_NUMBER FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', JOB_USER_FILTER => CURRENT_USER)) X WHERE JOB_NAME_SHORT = 'TXC1FAILD' ORDER BY JOB_ENTERED_SYSTEM_TIME DESC FETCH FIRST 1 ROW ONLY) SELECT S.ORDINAL_POSITION, SUBSTR(S.SPOOLED_DATA, 1, 130) AS LINE FROM J, TABLE(SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME => J.JOB_NAME_SHORT, JOB_USER => J.JOB_USER, JOB_NUMBER => J.JOB_NUMBER, SPOOLED_FILE_NAME => 'QSYSPRT', SPOOLED_FILE_NUMBER => -1)) S ORDER BY S.ORDINAL_POSITION FETCH FIRST 60 ROWS ONLY\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "SPLFIXD",
+      "cmd": "db2 \"WITH J AS (SELECT JOB_NAME_SHORT, JOB_USER, JOB_NUMBER FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', JOB_USER_FILTER => CURRENT_USER)) X WHERE JOB_NAME_SHORT = 'TXC1FIXD' ORDER BY JOB_ENTERED_SYSTEM_TIME DESC FETCH FIRST 1 ROW ONLY) SELECT S.ORDINAL_POSITION, SUBSTR(S.SPOOLED_DATA, 1, 130) AS LINE FROM J, TABLE(SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME => J.JOB_NAME_SHORT, JOB_USER => J.JOB_USER, JOB_NUMBER => J.JOB_NUMBER, SPOOLED_FILE_NAME => 'QSYSPRT', SPOOLED_FILE_NUMBER => -1)) S ORDER BY S.ORDINAL_POSITION FETCH FIRST 60 ROWS ONLY\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "SPLFIXDD",
+      "cmd": "db2 \"WITH J AS (SELECT JOB_NAME_SHORT, JOB_USER, JOB_NUMBER FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', JOB_USER_FILTER => CURRENT_USER)) X WHERE JOB_NAME_SHORT = 'TXC1FIXDD' ORDER BY JOB_ENTERED_SYSTEM_TIME DESC FETCH FIRST 1 ROW ONLY) SELECT S.ORDINAL_POSITION, SUBSTR(S.SPOOLED_DATA, 1, 130) AS LINE FROM J, TABLE(SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME => J.JOB_NAME_SHORT, JOB_USER => J.JOB_USER, JOB_NUMBER => J.JOB_NUMBER, SPOOLED_FILE_NAME => 'QSYSPRT', SPOOLED_FILE_NUMBER => -1)) S ORDER BY S.ORDINAL_POSITION FETCH FIRST 60 ROWS ONLY\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "LOGFAIL",
+      "cmd": "db2 \"WITH J AS (SELECT JOB_NAME_SHORT, JOB_USER, JOB_NUMBER FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', JOB_USER_FILTER => CURRENT_USER)) X WHERE JOB_NAME_SHORT = 'TXC1FAIL' ORDER BY JOB_ENTERED_SYSTEM_TIME DESC FETCH FIRST 1 ROW ONLY) SELECT S.ORDINAL_POSITION, SUBSTR(S.SPOOLED_DATA, 1, 130) AS LINE FROM J, TABLE(SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME => J.JOB_NAME_SHORT, JOB_USER => J.JOB_USER, JOB_NUMBER => J.JOB_NUMBER, SPOOLED_FILE_NAME => 'QPJOBLOG', SPOOLED_FILE_NUMBER => -1)) S ORDER BY S.ORDINAL_POSITION FETCH FIRST 400 ROWS ONLY\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "LOGFAILB",
+      "cmd": "JN=$(db2 \"SELECT JOB_NAME FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', JOB_USER_FILTER => CURRENT_USER)) X WHERE JOB_NAME_SHORT = 'TXC1FAIL' ORDER BY JOB_ENTERED_SYSTEM_TIME DESC FETCH FIRST 1 ROW ONLY\" 2>&1 | grep '/' | head -1 | tr -d ' ')\necho \"JN=$JN\"\nNUM=$(echo $JN | cut -d/ -f1); USR=$(echo $JN | cut -d/ -f2); NAM=$(echo $JN | cut -d/ -f3)\ndb2 \"SELECT ORDINAL_POSITION, SUBSTR(SPOOLED_DATA, 1, 130) AS LINE FROM TABLE(SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME => '$NAM', JOB_USER => '$USR', JOB_NUMBER => '$NUM', SPOOLED_FILE_NAME => 'QPJOBLOG', SPOOLED_FILE_NUMBER => -1)) X ORDER BY ORDINAL_POSITION FETCH FIRST 400 ROWS ONLY\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "LOGFAILC",
+      "cmd": "db2 \"WITH J AS (SELECT JOB_NAME_SHORT, JOB_USER, JOB_NUMBER FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', JOB_USER_FILTER => CURRENT_USER)) X WHERE JOB_NAME_SHORT = 'TXC1FAIL' ORDER BY JOB_ENTERED_SYSTEM_TIME DESC FETCH FIRST 1 ROW ONLY) SELECT L.ORDINAL_POSITION, L.MESSAGE_ID, SUBSTR(L.MESSAGE_TEXT, 1, 120) AS TXT FROM J, TABLE(QSYS2.JOBLOG_INFO(J.JOB_NUMBER CONCAT '/' CONCAT J.JOB_USER CONCAT '/' CONCAT J.JOB_NAME_SHORT)) L ORDER BY L.ORDINAL_POSITION\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "LOGFIXD",
+      "cmd": "db2 \"WITH J AS (SELECT JOB_NAME_SHORT, JOB_USER, JOB_NUMBER FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', JOB_USER_FILTER => CURRENT_USER)) X WHERE JOB_NAME_SHORT = 'TXC1FIXD' ORDER BY JOB_ENTERED_SYSTEM_TIME DESC FETCH FIRST 1 ROW ONLY) SELECT S.ORDINAL_POSITION, SUBSTR(S.SPOOLED_DATA, 1, 130) AS LINE FROM J, TABLE(SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME => J.JOB_NAME_SHORT, JOB_USER => J.JOB_USER, JOB_NUMBER => J.JOB_NUMBER, SPOOLED_FILE_NAME => 'QPJOBLOG', SPOOLED_FILE_NUMBER => -1)) S ORDER BY S.ORDINAL_POSITION FETCH FIRST 400 ROWS ONLY\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "LIBLA",
+      "cmd": "db2 \"WITH J AS (SELECT JOB_NAME_SHORT, JOB_USER, JOB_NUMBER FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', JOB_USER_FILTER => CURRENT_USER)) X WHERE JOB_NAME_SHORT = 'TXC1LIBA' ORDER BY JOB_ENTERED_SYSTEM_TIME DESC FETCH FIRST 1 ROW ONLY) SELECT S.ORDINAL_POSITION, SUBSTR(S.SPOOLED_DATA, 1, 130) AS LINE FROM J, TABLE(SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME => J.JOB_NAME_SHORT, JOB_USER => J.JOB_USER, JOB_NUMBER => J.JOB_NUMBER, SPOOLED_FILE_NAME => 'QPDSPLIB', SPOOLED_FILE_NUMBER => -1)) S ORDER BY S.ORDINAL_POSITION FETCH FIRST 80 ROWS ONLY\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "LIBLB",
+      "cmd": "db2 \"WITH J AS (SELECT JOB_NAME_SHORT, JOB_USER, JOB_NUMBER FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', JOB_USER_FILTER => CURRENT_USER)) X WHERE JOB_NAME_SHORT = 'TXC1LIBB' ORDER BY JOB_ENTERED_SYSTEM_TIME DESC FETCH FIRST 1 ROW ONLY) SELECT S.ORDINAL_POSITION, SUBSTR(S.SPOOLED_DATA, 1, 130) AS LINE FROM J, TABLE(SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME => J.JOB_NAME_SHORT, JOB_USER => J.JOB_USER, JOB_NUMBER => J.JOB_NUMBER, SPOOLED_FILE_NAME => 'QPDSPLIB', SPOOLED_FILE_NUMBER => -1)) S ORDER BY S.ORDINAL_POSITION FETCH FIRST 80 ROWS ONLY\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "SPLLIST",
+      "cmd": "db2 \"SELECT * FROM QSYS2.OUTPUT_QUEUE_ENTRIES WHERE USER_NAME = CURRENT_USER FETCH FIRST 40 ROWS ONLY\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TS, TAG, K1, K2, V FROM &LIB/VFY10 ORDER BY TS"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, SEQ, MID, SUBSTR(TXT, 1, 150) AS TXT FROM &LIB/VFYJ10 ORDER BY TAG, SEQ"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, ORD, LIB, TYPE FROM &LIB/VFYL10 ORDER BY TAG, ORD"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYPBASE"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYPFAIL"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYPFIXD"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT JOB_NAME, JOB_STATUS, JOB_QUEUE_NAME, JOB_ENTERED_SYSTEM_TIME, JOB_END_TIME, COMPLETION_STATUS FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', JOB_USER_FILTER => CURRENT_USER)) X WHERE JOB_NAME LIKE '%/TXC1%' ORDER BY JOB_ENTERED_SYSTEM_TIME"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJCREATED FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*ALL')) X WHERE OBJNAME IN ('TXCAPST', 'TXCAPRUN', 'TXCAPJOB', 'TXLEGACY', 'TXLEGST', 'TXCAPFL', 'ZA0500', 'JU0900C', 'JU0300') ORDER BY OBJNAME, OBJTYPE"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT DATA_AREA_LIBRARY, DATA_AREA_NAME, DATA_AREA_VALUE FROM TABLE(QSYS2.DATA_AREA_INFO(DATA_AREA_LIBRARY => '&LIB', DATA_AREA_NAME => 'TXSTATE')) X"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COUNT(*) AS SENTINEL_LEFT FROM &LIB/JUCHUD WHERE JUNO IN ('J00000', 'C05119')"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COUNT(*) AS TXCKM_1001_LEFT FROM &LIB/TXCKM WHERE LESSON = '10-01'"
+    }
+  ]
+}
