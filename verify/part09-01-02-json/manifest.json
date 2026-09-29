@@ -1,0 +1,213 @@
+{
+  "batch": "part09-01-02-json",
+  "library2": "*B",
+  "description": "Part 9 probe (design section 7 batches 1 and part of 2): JSON_OBJECT/JSON_ARRAYAGG(FORMAT JSON)/JSON_TABLE NESTED PATH both through db2 (collect) and through RUNSQLSTM SRCSTMF from the IFS using the new 'after' sh step ($HOME expanded by qsh); the IFS script is run twice, as written by the harness heredoc (CCSID 273 tag) and after iconv to UTF-8/CCSID 1208, to settle whether $ [ ] { } survive (P32); job CCSID (P03); IFS_WRITE_UTF8/IFS_READ_UTF8 (P35); 09-02b UX'..' -> CCSID 1208/1399/939/930 HEX round trips and a CHGJOB CCSID(1399) session (P39); loopback-only port responses for the ACS/Mapepire ports (P14/P40: exit code of a 3-second curl telnet:// connect to 127.0.0.1 on the PUB400 host itself, nothing else). Safety: CURSET first, everything created in &LIB with explicit qualification; the private library is never written.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../src/sql/09-02-json.sql"
+    },
+    {
+      "type": "file",
+      "localPath": "src/probe.sql"
+    },
+    {
+      "type": "file",
+      "localPath": "src/probe8.sql"
+    },
+    {
+      "type": "sh",
+      "label": "P8076",
+      "cmd": "/QOpenSys/pkgs/bin/curl -sS -m 3 telnet://127.0.0.1:8076 </dev/null >/dev/null 2>$HOME/vfy/part09-01-02-json/curl8076.txt; echo \"port 8076 curl-exit=$?\"; head -2 $HOME/vfy/part09-01-02-json/curl8076.txt"
+    },
+    {
+      "type": "sh",
+      "label": "P8471",
+      "cmd": "/QOpenSys/pkgs/bin/curl -sS -m 3 telnet://127.0.0.1:8471 </dev/null >/dev/null 2>$HOME/vfy/part09-01-02-json/curl8471.txt; echo \"port 8471 curl-exit=$?\"; head -2 $HOME/vfy/part09-01-02-json/curl8471.txt"
+    },
+    {
+      "type": "sh",
+      "label": "P446",
+      "cmd": "/QOpenSys/pkgs/bin/curl -sS -m 3 telnet://127.0.0.1:446 </dev/null >/dev/null 2>$HOME/vfy/part09-01-02-json/curl446.txt; echo \"port 446 curl-exit=$?\"; head -2 $HOME/vfy/part09-01-02-json/curl446.txt"
+    },
+    {
+      "type": "sh",
+      "label": "P8470",
+      "cmd": "/QOpenSys/pkgs/bin/curl -sS -m 3 telnet://127.0.0.1:8470 </dev/null >/dev/null 2>$HOME/vfy/part09-01-02-json/curl8470.txt; echo \"port 8470 curl-exit=$?\"; head -2 $HOME/vfy/part09-01-02-json/curl8470.txt"
+    },
+    {
+      "type": "cl",
+      "label": "CURSET",
+      "cmd": "CHGCURLIB CURLIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKCUR",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYCUR (TAG VARCHAR(40), ORD INT, LIB VARCHAR(20), TYPE VARCHAR(10))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "REC0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYCUR SELECT ''A0-AFTER-CHGCURLIB'', ORDINAL_POSITION, SCHEMA_NAME, TYPE FROM QSYS2.LIBRARY_LIST_INFO') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKJP",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYJP (LBL VARCHAR(30), VAL VARCHAR(200))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "JP0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYJP SELECT ''JOB-CCSID-273JOB'', HEX(CAST(UX''3042'' AS VARCHAR(10) CCSID 1208)) FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "JOBCC",
+      "cmd": "CHGJOB CCSID(1399)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "JP1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYJP SELECT ''JOB1399-U1208'', HEX(CAST(UX''3042'' AS VARCHAR(10) CCSID 1208)) FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "JP2",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYJP SELECT ''JOB1399-U1399'', HEX(CAST(UX''3042'' AS VARCHAR(10) CCSID 1399)) FROM SYSIBM.SYSDUMMY1') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "JP3",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYJP SELECT ''JOB1399-CCSID'', CHAR(CCSID) FROM TABLE(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => ''*'')) X') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "sh",
+      "label": "RUN1",
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part09-01-02-json/probe.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40)\" 2>&1; ls -S $HOME/vfy/part09-01-02-json/probe.sql 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "CONV",
+      "cmd": "iconv -f IBM-273 -t UTF-8 $HOME/vfy/part09-01-02-json/probe8.sql > $HOME/vfy/part09-01-02-json/probe8u.sql 2>&1; echo iconv-exit=$?; setccsid 1208 $HOME/vfy/part09-01-02-json/probe8u.sql; ls -S $HOME/vfy/part09-01-02-json/probe8.sql $HOME/vfy/part09-01-02-json/probe8u.sql 2>&1; od -x $HOME/vfy/part09-01-02-json/probe8u.sql | head -3",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "RUN2",
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part09-01-02-json/probe8u.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "RUNLESSON",
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part09-01-02-json/09-02-json.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40) OUTPUT(*PRINT)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "IFSW",
+      "cmd": "db2 \"CALL QSYS2.IFS_WRITE_UTF8(PATH_NAME => '$HOME/vfy/part09-01-02-json/w.json', LINE => '{\\\"a\\\":1}', OVERWRITE => 'REPLACE', END_OF_LINE => 'NONE')\" 2>&1; ls -S $HOME/vfy/part09-01-02-json/w.json 2>&1; od -c $HOME/vfy/part09-01-02-json/w.json 2>&1 | head -3",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "IFSR",
+      "cmd": "db2 \"SELECT * FROM TABLE(QSYS2.IFS_READ_UTF8(PATH_NAME => '$HOME/vfy/part09-01-02-json/w.json'))\" 2>&1 | head -8",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "IFSW2",
+      "cmd": "db2 \"CALL QSYS2.IFS_WRITE_UTF8(PATH_NAME => '$HOME/vfy/part09-01-02-json/w2.txt', LINE => UX'3042', OVERWRITE => 'REPLACE', END_OF_LINE => 'NONE')\" 2>&1; ls -S $HOME/vfy/part09-01-02-json/w2.txt 2>&1; od -x $HOME/vfy/part09-01-02-json/w2.txt 2>&1 | head -3",
+      "after": true
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, ORD, LIB, TYPE FROM &LIB/VFYCUR ORDER BY TAG, ORD"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYJSON ORDER BY TAG"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYJSON8 ORDER BY TAG"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYJP ORDER BY LBL"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "VALUES CURRENT_TIMESTAMP"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "VALUES JSON_OBJECT(KEY 'ok' VALUE 1)"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT CCSID, DEFAULT_CCSID FROM TABLE(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => '*')) X"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT JSON_OBJECT('orderNo': M.JUNO, 'orderDate': M.JUDATE, 'lines': (SELECT JSON_ARRAYAGG(JSON_OBJECT('line': D.JULINE, 'product': D.JUSHO, 'qty': D.JUSU, 'unitPrice': D.JUTNK) ORDER BY D.JULINE) FROM &LIB.JUCHUD D WHERE D.JUNO = M.JUNO) FORMAT JSON) AS ORDER_JSON FROM &LIB.JUCHUM M WHERE M.JUNO = 'J00001'"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "WITH DOCS AS (SELECT M.JUNO, JSON_OBJECT('orderNo': M.JUNO, 'lines': (SELECT JSON_ARRAYAGG(JSON_OBJECT('line': D.JULINE, 'product': D.JUSHO, 'qty': D.JUSU) ORDER BY D.JULINE) FROM &LIB.JUCHUD D WHERE D.JUNO = M.JUNO) FORMAT JSON) AS DOC FROM &LIB.JUCHUM M) SELECT X.JUNO, T.LINE_NO, T.PRODUCT, T.QTY FROM DOCS X, JSON_TABLE(X.DOC, 'lax $' COLUMNS(NESTED PATH 'lax $.lines[*]' COLUMNS(LINE_NO INT PATH 'lax $.line', PRODUCT CHAR(6) PATH 'lax $.product', QTY INT PATH 'lax $.qty'))) AS T ORDER BY X.JUNO, T.LINE_NO"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT HEX(CAST(UX'3042' AS VARCHAR(10) CCSID 1208)) AS U1208, HEX(CAST(UX'3042' AS VARCHAR(10) CCSID 1399)) AS U1399, HEX(CAST(UX'3042' AS VARCHAR(10) CCSID 939)) AS U939, HEX(CAST(UX'3042' AS VARCHAR(10) CCSID 930)) AS U930 FROM SYSIBM.SYSDUMMY1"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT HEX(CAST(X'E38182' AS VARCHAR(3) CCSID 1208)) AS X_AS_1208, HEX(CAST(CAST(X'E38182' AS VARCHAR(3) FOR BIT DATA) AS VARCHAR(3) CCSID 1208)) AS BITDATA_CAST, HEX(GX'0E30420F') AS GX_TRY FROM SYSIBM.SYSDUMMY1"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT HEX(CAST(UX'3042' AS GRAPHIC(1) CCSID 1200)) AS G1200, HEX(CAST(UX'3042' AS CHAR(1) CCSID 1399)) AS TRUNC1399 FROM SYSIBM.SYSDUMMY1"
+    }
+  ]
+}

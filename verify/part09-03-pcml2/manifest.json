@@ -1,0 +1,89 @@
+{
+  "batch": "part09-03-pcml2",
+  "library2": "*B",
+  "description": "P26 follow-up: an API-shaped NOMAIN module (int(10) return, output DS) compiled with PGMINFO(*PCML *STMF) succeeds and yields PCML without Error comments; also CRTSRVPGM + DSPSRVPGM. The first batch (part09-03-pcml) showed non-int return types make PGMINFO fail with RNF0319 severity 20. Only &LIB objects; cleaned at the end.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../solutions/09-03/zaiapi.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "ZAIAPI"
+    },
+    {
+      "type": "sh",
+      "label": "MKTMP",
+      "cmd": "mkdir -p /tmp/vfy0903b 2>&1; rm -f /tmp/vfy0903b/*.pcml 2>&1"
+    },
+    {
+      "type": "cl",
+      "label": "CURSET",
+      "cmd": "CHGCURLIB CURLIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKCUR",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYCUR (TAG VARCHAR(40), ORD INT, LIB VARCHAR(20), TYPE VARCHAR(10))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "REC0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYCUR SELECT ''A0-AFTER-CHGCURLIB'', ORDINAL_POSITION, SCHEMA_NAME, TYPE FROM QSYS2.LIBRARY_LIST_INFO') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MODA",
+      "cmd": "CRTRPGMOD MODULE(&LIB/ZAIAPI) SRCFILE(&LIB/QRPGLESRC) SRCMBR(ZAIAPI) PGMINFO(*PCML *STMF) INFOSTMF('/tmp/vfy0903b/zaiapi.pcml') REPLACE(*YES) TGTCCSID(*JOB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKBND",
+      "cmd": "CRTSRVPGM SRVPGM(&LIB/ZAIAPI) MODULE(&LIB/ZAIAPI) EXPORT(*ALL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSPEXP",
+      "cmd": "DSPSRVPGM SRVPGM(&LIB/ZAIAPI) DETAIL(*PROCEXP) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "sh",
+      "label": "VIEW",
+      "after": true,
+      "cmd": "ls -lS /tmp/vfy0903b/zaiapi.pcml 2>&1; cat /tmp/vfy0903b/zaiapi.pcml 2>&1 | head -60; echo \"programs: $(grep -c \"<program\" /tmp/vfy0903b/zaiapi.pcml)\"; grep -c \"Error\" /tmp/vfy0903b/zaiapi.pcml"
+    },
+    {
+      "type": "sh",
+      "label": "CALLIT",
+      "after": true,
+      "cmd": "db2 \"SELECT OBJNAME, OBJTYPE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*ALL')) X WHERE OBJNAME = 'ZAIAPI'\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "CLEAN",
+      "after": true,
+      "cmd": "system \"DLTSRVPGM SRVPGM(&LIB/ZAIAPI)\" 2>&1; system \"DLTMOD MODULE(&LIB/ZAIAPI)\" 2>&1; system \"RMVM FILE(&LIB/QRPGLESRC) MBR(ZAIAPI)\" 2>&1; rm -f /tmp/vfy0903b/*.pcml; rmdir /tmp/vfy0903b 2>&1; echo cleaned"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, ORD, LIB, TYPE FROM &LIB/VFYCUR WHERE TAG = 'A0-AFTER-CHGCURLIB' ORDER BY ORD"
+    }
+  ]
+}

@@ -1,0 +1,278 @@
+{
+  "batch": "part09-05-mock",
+  "library2": "*B",
+  "description": "Part 9 lesson 09-05, NO NETWORK: adapter JUHTTPSV in MOCK mode. Before the CL wrapper, an sh step (DDL) runs db/mock/apimock.sql via RUNSQLSTM SRCSTMF (DFTRDBCOL = dev library) to create APICFG/APIMOCK/APILOG; the canned JSON is built with JSON_OBJECT/JSON_ARRAY FORMAT JSON, so watch the DDL step output for SQL errors. The CL wrapper then does CURSET, records the library list (VFYCUR), snapshots the mock tables (VFYAPICFG, VFYAPIMOCK), compiles src/qrpglesrc/juhttpsv.sqlrpgle with CRTSQLRPGI (CLOB host variable declared with CCSID 1208; fallback if the precompiler rejects it: CCSID(*UTF8), or no CCSID keyword), captures the compile listing in VFYSPL, and calls the program for 1000001 (OK), 9999999 (not found, results null), 9999504 (mock HTTP 504), 9999404 (mock HTTP 404) and 1234567 (no mock row: NOMOCK). APILOG is snapshotted into VFYAPILOG (RESP kept as CLOB). After the wrapper, solutions/09-05/parse-zip.sql (view APIZIP over JSON_TABLE; dollar and square brackets in the path expressions) is run twice from the IFS via RUNSQLSTM: RUN1 with the default copy (CCSID 273 tag), RUN2 with an iconv-converted UTF-8 (setccsid 1208) copy; each result is snapshotted into VFYAPIZ1 / VFYAPIZ2. A third reading, JSON_TABLE over VFYAPILOG through the db2 collect route, is the reference. Finally the program, the source member and APICFG/APIMOCK/APILOG/APIZIP are removed (the VFYAPI* and VFYSPL snapshot tables stay so that collect can read them). Real requests in this manifest: 0. Safety: CURSET first, everything in &LIB, collect SQL fully qualified, the private library is never written.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/juhttpsv.sqlrpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "JUHTTPSV",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../db/mock/apimock.sql"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/09-05/parse-zip.sql"
+    },
+    {
+      "type": "sh",
+      "label": "DDL",
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part09-05-mock/apimock.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40)\" 2>&1"
+    },
+    {
+      "type": "cl",
+      "label": "CURSET",
+      "cmd": "CHGCURLIB CURLIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKCUR",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYCUR (TAG VARCHAR(40), ORD INT, LIB VARCHAR(20), TYPE VARCHAR(10))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "REC0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYCUR SELECT ''A0-AFTER-CHGCURLIB'', ORDINAL_POSITION, SCHEMA_NAME, TYPE FROM QSYS2.LIBRARY_LIST_INFO') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSNAPCFG",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYAPICFG') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNAPCFG",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYAPICFG AS (SELECT APIMODE, BASEURL FROM &LIB/APICFG) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSNAPMOCK",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYAPIMOCK') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNAPMOCK",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYAPIMOCK AS (SELECT ZIP, HTTPST, ZIPADR, LENGTH(BODY) AS BLEN, CAST(SUBSTR(BODY, 1, 400) AS VARCHAR(400)) AS BODYTXT FROM &LIB/APIMOCK) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "VSPLPF",
+      "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 9 compile listing capture'))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "COMPILE",
+      "cmd": "CRTSQLRPGI OBJ(&LIB/JUHTTPSV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(JUHTTPSV) OBJTYPE(*PGM) COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "SQL0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPLST",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALLOK",
+      "cmd": "CALL PGM(&LIB/JUHTTPSV) PARM('1000001' '        ')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALLNF",
+      "cmd": "CALL PGM(&LIB/JUHTTPSV) PARM('9999999' '        ')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALL504",
+      "cmd": "CALL PGM(&LIB/JUHTTPSV) PARM('9999504' '        ')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALL404",
+      "cmd": "CALL PGM(&LIB/JUHTTPSV) PARM('9999404' '        ')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALLNM",
+      "cmd": "CALL PGM(&LIB/JUHTTPSV) PARM('1234567' '        ')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSNAPLOG",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYAPILOG') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNAPLOG",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYAPILOG AS (SELECT LOGID, APIMODE, ZIP, URL, RC, HTTPST, RESPLEN, SQLST, RESP FROM &LIB/APILOG) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "sh",
+      "label": "RUN1",
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part09-05-mock/parse-zip.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40)\" 2>&1; ls -S $HOME/vfy/part09-05-mock/parse-zip.sql 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "SNAP1",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/VFYAPIZ1') COMMIT(*NONE)\" 2>&1; system \"RUNSQL SQL('CREATE TABLE &LIB/VFYAPIZ1 AS (SELECT * FROM &LIB/APIZIP) WITH DATA') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DROPV1",
+      "cmd": "system \"RUNSQL SQL('DROP VIEW &LIB/APIZIP') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DROPLOG",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/APILOG') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DROPMCK",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/APIMOCK') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DROPCFG",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/APICFG') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DLTPGM",
+      "cmd": "system \"DLTPGM PGM(&LIB/JUHTTPSV)\" 2>&1; system \"RMVM FILE(&LIB/QRPGLESRC) MBR(JUHTTPSV)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, ORD, LIB, TYPE FROM &LIB/VFYCUR ORDER BY TAG, ORD"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYAPICFG"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYAPIMOCK ORDER BY ZIP"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT LOGID, APIMODE, ZIP, RC, HTTPST, RESPLEN, SQLST, URL FROM &LIB/VFYAPILOG ORDER BY LOGID"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT LOGID, CAST(SUBSTR(RESP, 1, 400) AS VARCHAR(400)) AS RESPTXT FROM &LIB/VFYAPILOG ORDER BY LOGID"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT L.LOGID, L.ZIP, L.RC, T.STATUS, T.PREFCODE, T.ADDR1, T.ADDR2, T.ADDR3 FROM &LIB/VFYAPILOG L, JSON_TABLE(CASE WHEN L.RESPLEN > 0 THEN L.RESP END, 'lax $' COLUMNS (STATUS INT PATH 'lax $.status', NESTED PATH 'lax $.results[*]' COLUMNS (PREFCODE CHAR(2) PATH 'lax $.prefcode', ADDR1 VARCHAR(60) PATH 'lax $.address1', ADDR2 VARCHAR(60) PATH 'lax $.address2', ADDR3 VARCHAR(60) PATH 'lax $.address3'))) AS T ORDER BY L.LOGID"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYAPIZ1 ORDER BY LOGID"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYAPIZ2 ORDER BY LOGID"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYSPL"
+    }
+  ]
+}

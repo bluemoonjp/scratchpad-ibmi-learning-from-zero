@@ -1,0 +1,248 @@
+{
+  "batch": "part09-05-http",
+  "library2": "*B",
+  "sshTimeoutMs": 420000,
+  "description": "Part 9 lesson 09-05, REAL NETWORK (approved budget for this lesson only: at most 4 requests, no retries). Request count so far is annotated per step: R1 = curl (sh, -m 20, GET https zipcloud search for 1000001, writes zip.json), R2 = adapter JUHTTPSV in REAL mode (one QSYS2.HTTP_GET inside the CL wrapper, logged to APILOG with SQLSTATE), R3 = direct scalar VALUES QSYS2.HTTP_GET through the db2 utility (bare SQLSTATE/message text expected), R4 = SELECT * FROM TABLE(QSYS2.HTTP_GET_VERBOSE(...)) through db2. Running count: after R1 = 1, after R2 = 2, after R3 = 3, after R4 = 4 (final). Gate: the curl step is first; if its exit code is 6 (DNS), 7 (connect) or 28 (timeout) the qsh variable NETOK is set to 0, APICFG stays MOCK (the adapter then logs a mock call, no request) and R3/R4 are skipped, so a blocked network never causes hidden repeats or long hangs; any other exit code (0, or a TLS error such as 60) sets NETOK=1. The curl file is tagged CCSID 1208 (setccsid) and read back locally through QSYS2.IFS_READ_UTF8 and QSYS2.GET_CLOB_FROM_FILE (no network). The response holds Japanese text: JSON_TABLE over the stored responses is collected with HEX of address1 to see what the job CCSID 273 conversion does (P39). Objects: APICFG/APIMOCK/APILOG, program JUHTTPSV, view APIZIP in the dev library only; removed at the end (VFYAPI* snapshot tables stay for collect). Safety: CURSET first, collect SQL fully qualified, the private library is never written.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/juhttpsv.sqlrpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "JUHTTPSV",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../db/mock/apimock.sql"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/09-05/parse-zip.sql"
+    },
+    {
+      "type": "sh",
+      "label": "DDL",
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part09-05-http/apimock.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "R1CURL",
+      "cmd": "rm -f $HOME/vfy/part09-05-http/zip.json; /QOpenSys/pkgs/bin/curl -sS -m 20 -o $HOME/vfy/part09-05-http/zip.json 'https://zipcloud.ibsnet.co.jp/api/search?zipcode=1000001' 2>$HOME/vfy/part09-05-http/curl.err; CURLRC=$?; echo \"R1 curl-exit=$CURLRC (requests so far: 1)\"; head -3 $HOME/vfy/part09-05-http/curl.err; ls -l $HOME/vfy/part09-05-http/zip.json 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "GATE",
+      "cmd": "case $CURLRC in 6|7|28) NETOK=0;; *) NETOK=1;; esac; echo NETOK=$NETOK; if [ $NETOK = 1 ]; then db2 \"UPDATE &LIB.APICFG SET APIMODE = 'REAL'\" 2>&1; fi; setccsid 1208 $HOME/vfy/part09-05-http/zip.json 2>&1; od -c $HOME/vfy/part09-05-http/zip.json 2>&1 | head -4"
+    },
+    {
+      "type": "cl",
+      "label": "CURSET",
+      "cmd": "CHGCURLIB CURLIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKCUR",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYCUR (TAG VARCHAR(40), ORD INT, LIB VARCHAR(20), TYPE VARCHAR(10))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "REC0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYCUR SELECT ''A0-AFTER-CHGCURLIB'', ORDINAL_POSITION, SCHEMA_NAME, TYPE FROM QSYS2.LIBRARY_LIST_INFO') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "VSPLPF",
+      "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('Part 9 compile listing capture'))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "COMPILE",
+      "cmd": "CRTSQLRPGI OBJ(&LIB/JUHTTPSV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(JUHTTPSV) OBJTYPE(*PGM) COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "SQL0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPLST",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSNAPCFG",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYAPICFG') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNAPCFG",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYAPICFG AS (SELECT APIMODE, BASEURL FROM &LIB/APICFG) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "R2ADAPTER",
+      "cmd": "CALL PGM(&LIB/JUHTTPSV) PARM('1000001' '        ')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSNAPLOG",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYAPILOG') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNAPLOG",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYAPILOG AS (SELECT LOGID, APIMODE, ZIP, URL, RC, HTTPST, RESPLEN, SQLST, RESP FROM &LIB/APILOG) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "sh",
+      "label": "R3HTTPGET",
+      "cmd": "if [ \"$NETOK\" = 1 ]; then db2 \"VALUES QSYS2.HTTP_GET('https://zipcloud.ibsnet.co.jp/api/search?zipcode=1000001', '')\" > $HOME/vfy/part09-05-http/get1.txt 2>&1; echo \"R3 db2-exit=$? (requests so far: 3)\"; head -12 $HOME/vfy/part09-05-http/get1.txt; else echo \"R3 skipped (NETOK=0)\"; fi",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "R4VERBOSE",
+      "cmd": "if [ \"$NETOK\" = 1 ]; then db2 \"SELECT * FROM TABLE(QSYS2.HTTP_GET_VERBOSE('https://zipcloud.ibsnet.co.jp/api/search?zipcode=1000001', '')) X\" > $HOME/vfy/part09-05-http/verb.txt 2>&1; echo \"R4 db2-exit=$? (requests so far: 4)\"; head -20 $HOME/vfy/part09-05-http/verb.txt; else echo \"R4 skipped (NETOK=0)\"; fi",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "IFSR1",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/VFYAPIF1') COMMIT(*NONE)\" 2>&1; system \"RUNSQL SQL('CREATE TABLE &LIB/VFYAPIF1 AS (SELECT * FROM TABLE(QSYS2.IFS_READ_UTF8(PATH_NAME => ''$HOME/vfy/part09-05-http/zip.json'')) X) WITH DATA') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "IFSR2",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/VFYAPIF2') COMMIT(*NONE)\" 2>&1; system \"RUNSQL SQL('CREATE TABLE &LIB/VFYAPIF2 AS (SELECT QSYS2.GET_CLOB_FROM_FILE(''$HOME/vfy/part09-05-http/zip.json'') AS BODY FROM SYSIBM.SYSDUMMY1) WITH DATA') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "RUN1",
+      "cmd": "system \"RUNSQLSTM SRCSTMF('$HOME/vfy/part09-05-http/parse-zip.sql') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(&LIB) ERRLVL(40)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "SNAP1",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/VFYAPIZ1') COMMIT(*NONE)\" 2>&1; system \"RUNSQL SQL('CREATE TABLE &LIB/VFYAPIZ1 AS (SELECT Z.*, HEX(Z.ADDR1) AS ADDR1HEX FROM &LIB/APIZIP Z) WITH DATA') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DROPV1",
+      "cmd": "system \"RUNSQL SQL('DROP VIEW &LIB/APIZIP') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DROPLOG",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/APILOG') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DROPMCK",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/APIMOCK') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DROPCFG",
+      "cmd": "system \"RUNSQL SQL('DROP TABLE &LIB/APICFG') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "DLTPGM",
+      "cmd": "system \"DLTPGM PGM(&LIB/JUHTTPSV)\" 2>&1; system \"RMVM FILE(&LIB/QRPGLESRC) MBR(JUHTTPSV)\" 2>&1; rm -f $HOME/vfy/part09-05-http/zip.json $HOME/vfy/part09-05-http/get1.txt $HOME/vfy/part09-05-http/verb.txt $HOME/vfy/part09-05-http/curl.err",
+      "after": true
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, ORD, LIB, TYPE FROM &LIB/VFYCUR ORDER BY TAG, ORD"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYAPICFG"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT LOGID, APIMODE, ZIP, RC, HTTPST, RESPLEN, SQLST, URL FROM &LIB/VFYAPILOG ORDER BY LOGID"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT LOGID, CAST(SUBSTR(RESP, 1, 500) AS VARCHAR(500)) AS RESPTXT, HEX(CAST(SUBSTR(RESP, 1, 60) AS VARCHAR(60) CCSID 1208)) AS RESPHEX FROM &LIB/VFYAPILOG ORDER BY LOGID"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYAPIZ1 ORDER BY LOGID"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYAPIF1"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT LENGTH(BODY) AS BLEN, CAST(SUBSTR(BODY, 1, 500) AS VARCHAR(500)) AS BODYTXT FROM &LIB/VFYAPIF2"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT T.STATUS, T.PREFCODE, T.ADDR1, HEX(T.ADDR1) AS ADDR1HEX, T.ADDR3 FROM &LIB/VFYAPIF2 F, JSON_TABLE(F.BODY, 'lax $' COLUMNS (STATUS INT PATH 'lax $.status', NESTED PATH 'lax $.results[*]' COLUMNS (PREFCODE CHAR(2) PATH 'lax $.prefcode', ADDR1 VARCHAR(60) PATH 'lax $.address1', ADDR3 VARCHAR(60) PATH 'lax $.address3'))) AS T"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYSPL"
+    }
+  ]
+}

@@ -1,0 +1,579 @@
+{
+  "batch": "part09-06-dtaq",
+  "sshTimeoutMs": 420000,
+  "description": "Part 9 lesson 09-06 (data queues, P15/P34). Order of work: (1) pre-wrapper sh probes PRB0-PRB13 on a throw-away queue Z0906P and message queue Z0906Q: SEND_DATA_QUEUE named vs positional vs default library, RECEIVE_DATA_QUEUE named vs positional vs REMOVE => NO vs timeout on an empty queue, DATA_QUEUE_ENTRIES / DATA_QUEUE_INFO, MESSAGE_QUEUE_INFO view vs table function (db2 prints the real SQLSTATE, so errors are informative). (2) One CL wrapper job: CHGCURLIB, library-list record, DLTDTAQ->CRTDTAQ reset of Z0906A (request) and Z0906B (reply), CRTMSGQ Z0906C, compile worker C0906A (CRTCLPGM), queue 9 requests through SQL (named, positional, *LIBL forms; ECHO, EXIST, STOCK x2, EXIST NOSUCH, BOGUS, END x2), SBMJOB the worker (CURLIB and INLLIBL explicit, INQMSGRPY(*DFT), LOG(4 00 *SECLVL), worker lives 2 minutes at most), read the replies with RECEIVE_DATA_QUEUE WAIT_TIME 60/10 into VFYRC1-8 (CTAS keeps the real column types visible), wait 5 s, ACTIVE_JOB_INFO for the worker, DATA_QUEUE_ENTRIES leftovers, worker notices from the own message queue, copy the worker log table W0906A into VFYWLOG, then delete queues, msgq, worker program and W0906A. (3) collect only reads the persistent VFY tables plus catalog views. Safety: nothing outside &LIB is created or changed; no ADDJOBSCDE; the worker cannot loop forever (MAXMSG 10, MAXIDLE 6 x 20 s).",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../src/qclsrc/c0906a.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "C0906A"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/sql/09-06-dtaq.sql"
+    },
+    {
+      "type": "sh",
+      "label": "PRB0",
+      "cmd": "system \"DLTDTAQ DTAQ(&LIB/Z0906P)\" 2>&1; system \"CRTDTAQ DTAQ(&LIB/Z0906P) MAXLEN(128) SEQ(*FIFO) TEXT('09-06 probe queue')\" 2>&1; system \"DLTMSGQ MSGQ(&LIB/Z0906Q)\" 2>&1; system \"CRTMSGQ MSGQ(&LIB/Z0906Q) TEXT('09-06 probe msgq')\" 2>&1; system \"SNDMSG MSG('probe message') TOMSGQ(&LIB/Z0906Q)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PRB1NAMED",
+      "cmd": "db2 \"CALL QSYS2.SEND_DATA_QUEUE(MESSAGE_DATA => 'PROBE-NAMED', DATA_QUEUE => 'Z0906P', DATA_QUEUE_LIBRARY => '&LIB')\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PRB2POS",
+      "cmd": "db2 \"CALL QSYS2.SEND_DATA_QUEUE('PROBE-POS', 'Z0906P', '&LIB')\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PRB3DEFLIB",
+      "cmd": "db2 \"CALL QSYS2.SEND_DATA_QUEUE(MESSAGE_DATA => 'PROBE-DEFLIB', DATA_QUEUE => 'Z0906P')\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PRB4RCVN",
+      "cmd": "db2 \"SELECT * FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => 'Z0906P', DATA_QUEUE_LIBRARY => '&LIB', WAIT_TIME => 5)) X\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PRB5RCVP",
+      "cmd": "db2 \"SELECT * FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE('Z0906P', '&LIB', 5)) X\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PRB6ENTS",
+      "cmd": "db2 \"SELECT * FROM TABLE(QSYS2.DATA_QUEUE_ENTRIES(DATA_QUEUE => 'Z0906P', DATA_QUEUE_LIBRARY => '&LIB')) X\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PRB7INFO",
+      "cmd": "db2 \"SELECT * FROM QSYS2.DATA_QUEUE_INFO WHERE DATA_QUEUE_LIBRARY = '&LIB' AND DATA_QUEUE_NAME = 'Z0906P'\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PRB8PEEK",
+      "cmd": "db2 \"SELECT * FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => 'Z0906P', DATA_QUEUE_LIBRARY => '&LIB', WAIT_TIME => 2, REMOVE => 'NO')) X\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PRB9DRAIN",
+      "cmd": "db2 \"SELECT * FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => 'Z0906P', DATA_QUEUE_LIBRARY => '&LIB', WAIT_TIME => 2)) X\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PRB10EMPTY",
+      "cmd": "db2 \"SELECT * FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => 'Z0906P', DATA_QUEUE_LIBRARY => '&LIB', WAIT_TIME => 2)) X\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PRB11MQV",
+      "cmd": "db2 \"SELECT * FROM QSYS2.MESSAGE_QUEUE_INFO WHERE MESSAGE_QUEUE_LIBRARY = '&LIB' AND MESSAGE_QUEUE_NAME = 'Z0906Q'\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PRB12MQF",
+      "cmd": "db2 \"SELECT * FROM TABLE(QSYS2.MESSAGE_QUEUE_INFO(QUEUE_LIBRARY => '&LIB', QUEUE_NAME => 'Z0906Q')) X\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "PRB13DEL",
+      "cmd": "system \"DLTDTAQ DTAQ(&LIB/Z0906P)\" 2>&1; system \"DLTMSGQ MSGQ(&LIB/Z0906Q)\" 2>&1"
+    },
+    {
+      "type": "cl",
+      "label": "CURSET",
+      "cmd": "CHGCURLIB CURLIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKCUR",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYCUR (TAG VARCHAR(40), ORD INT, LIB VARCHAR(20), TYPE VARCHAR(10))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "REC0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYCUR SELECT ''A0-AFTER-CHGCURLIB'', ORDINAL_POSITION, SCHEMA_NAME, TYPE FROM QSYS2.LIBRARY_LIST_INFO') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRECLEAN",
+      "cmd": "DLTDTAQ DTAQ(&LIB/Z0906A)\nMONMSG MSGID(CPF0000)\nDLTDTAQ DTAQ(&LIB/Z0906B)\nMONMSG MSGID(CPF0000)\nDLTMSGQ MSGQ(&LIB/Z0906C)\nMONMSG MSGID(CPF0000)\nDLTPGM PGM(&LIB/C0906A)\nMONMSG MSGID(CPF0000)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKLOG",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/W0906A (SEQ INTEGER GENERATED ALWAYS AS IDENTITY, TS TIMESTAMP NOT NULL DEFAULT CURRENT TIMESTAMP, PHASE VARCHAR(8), MSG VARCHAR(100))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKWORK",
+      "cmd": "CRTCLPGM PGM(&LIB/C0906A) SRCFILE(&LIB/QCLSRC) SRCMBR(C0906A) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKQ",
+      "cmd": "CRTDTAQ DTAQ(&LIB/Z0906A) MAXLEN(128) SEQ(*FIFO) TEXT('09-06 request queue')\nCRTDTAQ DTAQ(&LIB/Z0906B) MAXLEN(128) SEQ(*FIFO) TEXT('09-06 reply queue')\nCRTMSGQ MSGQ(&LIB/Z0906C) TEXT('09-06 worker notices')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "S1NAMED",
+      "cmd": "RUNSQL SQL('CALL QSYS2.SEND_DATA_QUEUE(MESSAGE_DATA => ''ECHO HELLO-NAMED'', DATA_QUEUE => ''Z0906A'', DATA_QUEUE_LIBRARY => ''&LIB'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "S2POS",
+      "cmd": "RUNSQL SQL('CALL QSYS2.SEND_DATA_QUEUE(''EXIST ZAIKOM'', ''Z0906A'', ''&LIB'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "S3LIBL",
+      "cmd": "RUNSQL SQL('CALL QSYS2.SEND_DATA_QUEUE(MESSAGE_DATA => ''ECHO HELLO-LIBL'', DATA_QUEUE => ''Z0906A'', DATA_QUEUE_LIBRARY => ''*LIBL'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "S4STK2",
+      "cmd": "RUNSQL SQL('CALL QSYS2.SEND_DATA_QUEUE(MESSAGE_DATA => ''STOCK P00002'', DATA_QUEUE => ''Z0906A'', DATA_QUEUE_LIBRARY => ''&LIB'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "S5STK1",
+      "cmd": "RUNSQL SQL('CALL QSYS2.SEND_DATA_QUEUE(MESSAGE_DATA => ''STOCK P00001'', DATA_QUEUE => ''Z0906A'', DATA_QUEUE_LIBRARY => ''&LIB'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "S6NOEX",
+      "cmd": "RUNSQL SQL('CALL QSYS2.SEND_DATA_QUEUE(MESSAGE_DATA => ''EXIST NOSUCH'', DATA_QUEUE => ''Z0906A'', DATA_QUEUE_LIBRARY => ''&LIB'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "S7BOGUS",
+      "cmd": "RUNSQL SQL('CALL QSYS2.SEND_DATA_QUEUE(MESSAGE_DATA => ''BOGUS X'', DATA_QUEUE => ''Z0906A'', DATA_QUEUE_LIBRARY => ''&LIB'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "S8END",
+      "cmd": "RUNSQL SQL('CALL QSYS2.SEND_DATA_QUEUE(MESSAGE_DATA => ''END'', DATA_QUEUE => ''Z0906A'', DATA_QUEUE_LIBRARY => ''&LIB'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "S9END2",
+      "cmd": "RUNSQL SQL('CALL QSYS2.SEND_DATA_QUEUE(''END'', ''Z0906A'', ''&LIB'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SUBMIT",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/C0906A) PARM('&LIB')) JOB(C0906A) JOBQ(QGPL/QBATCH) CURLIB(&LIB) INLLIBL(*JOBD) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR1",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC1') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "R1",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC1 AS (SELECT * FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 60)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR2",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC2') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "R2",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC2 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR3",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC3') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "R3",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC3 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR4",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC4') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "R4",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC4 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR5",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC5') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "R5",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC5 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR6",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC6') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "R6",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC6 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR7",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC7') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "R7",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC7 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DR8",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYRC8') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "R8",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYRC8 AS (SELECT CAST(MESSAGE_DATA AS VARCHAR(200)) AS MSG FROM TABLE(QSYS2.RECEIVE_DATA_QUEUE(DATA_QUEUE => ''Z0906B'', DATA_QUEUE_LIBRARY => ''&LIB'', WAIT_TIME => 10)) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SETTLE",
+      "cmd": "DLYJOB DLY(5)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DJOB2",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYJOB2') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "JOB2",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYJOB2 AS (SELECT JOB_NAME, JOB_STATUS, SUBSYSTEM, AUTHORIZATION_NAME FROM TABLE(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => ''C0906A'')) X WHERE AUTHORIZATION_NAME = CURRENT_USER) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DENTS",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYENT') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ENTS",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYENT AS (SELECT * FROM TABLE(QSYS2.DATA_QUEUE_ENTRIES(DATA_QUEUE => ''Z0906A'', DATA_QUEUE_LIBRARY => ''&LIB'')) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DMSGA",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYMSGA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MSGA",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYMSGA AS (SELECT * FROM QSYS2.MESSAGE_QUEUE_INFO WHERE MESSAGE_QUEUE_LIBRARY = ''&LIB'' AND MESSAGE_QUEUE_NAME = ''Z0906C'') WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DMSGB",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYMSGB') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MSGB",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYMSGB AS (SELECT * FROM TABLE(QSYS2.MESSAGE_QUEUE_INFO(QUEUE_LIBRARY => ''&LIB'', QUEUE_NAME => ''Z0906C'')) X) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLOGCP",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYWLOG') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "LOGCP",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/VFYWLOG AS (SELECT SEQ, TS, PHASE, MSG FROM &LIB/W0906A) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLEAN",
+      "cmd": "DLTDTAQ DTAQ(&LIB/Z0906A)\nMONMSG MSGID(CPF0000)\nDLTDTAQ DTAQ(&LIB/Z0906B)\nMONMSG MSGID(CPF0000)\nDLTMSGQ MSGQ(&LIB/Z0906C)\nMONMSG MSGID(CPF0000)\nDLTPGM PGM(&LIB/C0906A)\nMONMSG MSGID(CPF0000)\nRUNSQL SQL('DROP TABLE &LIB/W0906A') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, ORD, LIB, TYPE FROM &LIB.VFYCUR ORDER BY TAG, ORD"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT SEQ, TS, PHASE, MSG FROM &LIB.VFYWLOG ORDER BY SEQ"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYRC1"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYRC2"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYRC3"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYRC4"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYRC5"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYRC6"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYRC7"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYRC8"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COLUMN_NAME, DATA_TYPE, LENGTH, CCSID FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = '&LIB' AND TABLE_NAME = 'VFYRC1' ORDER BY ORDINAL_POSITION"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYJOB2"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYENT"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYMSGA"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYMSGB"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*ALL')) X WHERE OBJNAME LIKE 'Z0906%' OR OBJNAME LIKE 'C0906%' OR OBJNAME LIKE 'W0906%' ORDER BY OBJNAME"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT JOB_NAME, JOB_STATUS FROM TABLE(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => 'C0906A')) X WHERE AUTHORIZATION_NAME = CURRENT_USER"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT SPECIFIC_NAME, ORDINAL_POSITION, PARAMETER_MODE, PARAMETER_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM QSYS2.SYSPARMS WHERE SPECIFIC_SCHEMA = 'QSYS2' AND SPECIFIC_NAME IN ('SEND_DATA_QUEUE', 'RECEIVE_DATA_QUEUE', 'DATA_QUEUE_ENTRIES', 'MESSAGE_QUEUE_INFO') ORDER BY SPECIFIC_NAME, ORDINAL_POSITION"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM QSYS2.SYSPARMS WHERE SPECIFIC_SCHEMA = 'QSYS2' AND SPECIFIC_NAME = 'RECEIVE_DATA_QUEUE' ORDER BY ORDINAL_POSITION"
+    }
+  ]
+}
