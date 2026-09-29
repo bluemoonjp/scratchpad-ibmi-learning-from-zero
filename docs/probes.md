@@ -3200,6 +3200,48 @@ PR #26 で「未検証」と書いた05-12の手順12(静的確認・grep確認)
 - **V3として残るもの**: `RMVLIBLE` 後の `CALL <USER>2/TK0100`。画面ファイルを開く対話操作で、非対話の接続では応答のない照会メッセージが接続全体を止める恐れがあるため、実行していない。
 - **ハーネス拡張の実機確認(第9部の前提)**: `sh` ステップに `"after": true` を付けると `cl` ステップの後に実行される(`verify/lib/batch.mjs`)。`system "RUNSQLSTM SRCSTMF('$HOME/vfy/<バッチ名>/x.sql') ..."` で qsh が `$HOME` を展開し、`DFTRDBCOL` に指定したライブラリーへ作成された(`CURRENT SCHEMA` はユーザー名のまま)。ハーネスの heredoc で書いた `.sql`(CCSID 273タグ)の中の `JSON_TABLE` の `lax $.a[*]` も、そのまま正しく実行された(P32の一部: この経路では `$`・`[`・`]`・`{`・`}` は壊れなかった)。`RUNSQLSTM` は「表がジャーナルされていない」(`SQL7905`、重大度20)でも後続の文を実行した。
 
+## 第9部: `part09-inventory`・`part09-01-02-json`——JSON・IFS・日本語の基礎と P03/P32/P35/P39 の一部がCONFIRMED SUCCESS(確認日2026-09-29)
+
+第9部の下調べを、検証ハーネスの2回の接続で行った(著者の検証用ライブラリーのみ。私的な `<USER>1` は書き換えていない)。
+
+- **環境**: IBM i V7R5M0。ジョブ CCSID は 273(P03)。QSYS2 に `HTTP_GET`・`HTTP_POST`・`IFS_WRITE`・`IFS_WRITE_UTF8`・`SEND_DATA_QUEUE`・`SEND_DATA_QUEUE_UTF8`・`RECEIVE_DATA_QUEUE`(関数)が存在した。`curl` は `/QOpenSys/pkgs/bin/curl` にあり PATH には無い(P08 の追加確認)。
+- **JSON(P32)**: コロン書式の `JSON_OBJECT('key': 値, ...)` が動く。入れ子の行配列は `JSON_ARRAYAGG(... ORDER BY ...)` を外側の `JSON_OBJECT` に **`FORMAT JSON` を付けて**入れると入れ子になり、付けないと `"lines":"[{\"line\":1}]"` のように文字列として二重エスケープされた。`JSON_TABLE(... 'lax $' COLUMNS(..., NESTED PATH 'lax $.lines[*]' COLUMNS(...)))` で親子を1回の呼び出しで行に戻せた(全12明細行)。
+- **`$ [ ] { }` の扱い(P32)**: db2 経由の SQL でも、ハーネスの qsh ヒアドキュメントで書いた `.sql`(CCSID 273 タグ)を `RUNSQLSTM SRCSTMF` で実行する経路でも、壊れずに動いた('lax $.a[*]{}' の HEX は 93 81 A7 40 5B 4B 81 63 5C FC 43 DC)。`iconv` で UTF-8(1208)にした `.sql` は SQL0330 で失敗した。`RUNSQLSTM` は `SELECT` 単独文を実行できない(SQL0084)。
+- **IFS(P35)**: `CALL QSYS2.IFS_WRITE_UTF8(PATH_NAME => ..., LINE => ..., OVERWRITE => 'REPLACE', END_OF_LINE => 'NONE')` は CCSID 1208 タグのファイルを書き、`LINE => UX'3042'` は E3 81 82 を書いた。`TABLE(QSYS2.IFS_READ_UTF8(PATH_NAME => ...))` で読み戻せた。
+- **日本語(P39、一部)**: `CAST(UX'3042' AS VARCHAR(10) CCSID 1208)` の HEX は E38182、CCSID 1399/939/930 は 0E44810F。`CHGJOB CCSID(1399)` のジョブでも同じだった。`GX'0E30420F'` は不正な16進定数(SQLSTATE 42606)。ジョブ CCSID を `ACTIVE_JOB_INFO` の CCSID 列から読むと NULL だった。
+- **ポート(P14/P40)は判定不能**: PUB400 自身の 127.0.0.1 への `curl telnet://` 3秒接続は 8076・8471・446・8470 のすべてが exit 28(タイムアウト)で、開閉の区別がつかなかった。ACS・VS Code(Mapepire)への接続は V3 のまま。
+- **ハーネス**: `sh` ステップの `"after": true`(cl ステップの後に実行)を第9部から使う(05-12 の節で確認)。
+
+## 第9部 09-03: `part09-03-pcml`・`part09-03-pcml2`——P26 がCONFIRMED SUCCESS、戻り値の型で PCML 生成が失敗する(確認日2026-09-29)
+
+- `CRTRPGMOD ... PGMINFO(*PCML *STMF) INFOSTMF('パス')` は CRTRPGMOD のパラメーター。NOMAIN モジュールでも、エクスポート手続きごとに `<program>` が出た(ZAISRV は GET・RELEASE・RESERVE・PINGZAISRV の4つ)。
+- **戻り値が int(10) 以外(ZAISRV の ind・packed)だと、PCML に「Error: return value must have type="int" and length="4"」が入り、RNF0319(重大度20)でモジュールが作られない**(PCML ファイルは書かれる)。`*MODULE` 指定は RNF0320(重大度30)。
+- 戻り値 int(10) と出力データ構造の `solutions/09-03/zaiapi.rpgle` は、モジュールもサービス・プログラムも作られ、PCML には struct ZAIREQ/ZAIRES と program ZAIAPIGET(returnvalue=integer、REQ は input、RES は inputoutput)が出た。
+- `INFOSTMF` は、qsh の `$HOME` 展開(ファイルを開かないモジュール)でも、CL からの `/tmp` の絶対パスでも書けた。本物の ZAISRV は無変更。
+
+## 第9部 09-04: `part09-04-sql-routines`——P31 がCONFIRMED SUCCESS、EXTERNAL NAME は無修飾でよい(確認日2026-09-29、3回の接続)
+
+- RPGLE の GENERAL 関数(getCustName → CHAR(30)、countCustOrders → NUMERIC(5,0)、ZAISRV の GET → DECIMAL(7,0))は登録でき、呼べた(NOTFOUND・-1・NULL 引数も想定どおり)。`EXTERNAL NAME` はライブラリー修飾あり・なしの両方が作成でき、無修飾は RUNSQLSTM(SQL 命名)で作ると `ライブラリー/名前(手続き)` に、RUNSQL(システム命名)で作ると `*LIBL/名前(手続き)` に記録されて、どちらも呼べた。エクスポート名の大文字小文字が違うと、作成はできても呼び出しが CPF426A / SQL0204(「サービス・プログラムが見つからない」)で失敗する。
+- LANGUAGE SQL の関数は `*SRVPGM`(SPECIFIC 名)、プロシージャーは `*PGM`(属性 CLE)が作られ、RPGLE の外部関数はオブジェクトを作らない(CHKOBJ で見えるのは SQL ルーチンだけ)。UDTF `LOW_STOCK` と結果セットを返すプロシージャー(db2 経由の CALL は SQLSTATE 0100C の後に2行表示)が動いた。
+- SQL 関数の本体から無修飾の関数を呼ぶと、別ジョブの実行で SQL0204(保存された SQL_PATH にライブラリーが無い)。db2 ユーティリティーでは `SPECIFIC` 名も修飾しないと SQL0455。RUNSQL(システム命名)の中の `ライブラリー/関数(...)` は SQL0206(除算と解釈)なので NAMING(*SQL) にする。
+- リテラルの数値を `JSON_OBJECT` に渡すと RUNSQL/RUNSQLSTM 内では数値が文字列("1580,00")になり、`JUCHU_REGISTER` の明細が失敗して注文ヘッダーだけが残った(COMMIT(*NONE) の原子性の欠如)。JSON を1つのテキスト・リテラルで渡すと、登録・往復・重複拒否(SQLSTATE 75001)が想定どおり動いた。データは最後に元の件数(8/12/6)へ戻した。
+- NOT FENCED の外部関数を呼んだジョブでは、その後の RUNSQL に CPD000D(multithreaded)の診断が出るが、処理は続いた。
+
+## 第9部 09-05: `part09-05-mock`・`part09-05-http`——アダプターとモックがCONFIRMED SUCCESS、実通信はP33の枠4回で確認(確認日2026-09-29)
+
+- JUHTTPSV(`sqltype(clob:32000) ccsid(1208)`)は、SQL 文の中で `:resp_len` を書くと SQL0312 になり、`LENGTH(RESP)` で後から UPDATE する形でコンパイル成功。モック経路の5件(OK / results が null / 504 / 404 / NOMOCK)が APILOG に記録され、`JSON_TABLE` のビュー(APIZIP)で読めた。`CREATE OR REPLACE TABLE ... AS (...) WITH DATA` は SQ20038 で、DROP して CREATE TABLE ... AS にする。
+- **実通信(合計4回、zipcloud)**: curl(exit 0、287バイト、`IFS_READ_UTF8` で読めた。`GET_CLOB_FROM_FILE` は SQL0443)、アダプターの REAL モード(HTTP_GET を1回、RESPLEN 287)、db2 の `VALUES QSYS2.HTTP_GET(URL, '')`、`HTTP_GET_VERBOSE`(RESPONSE_MESSAGE と RESPONSE_HTTP_HEADER が返る)がすべて成功した。この枠は使い切った。
+- **日本語(P39)**: 応答は CLOB(CCSID 1208)に UTF-8 のバイト列のまま入ったが、`JSON_TABLE` でジョブ CCSID の `VARCHAR(60)` に取り出すと HEX が 3F3F3F(代替文字)になった。`CCSID 1208` の列にすれば保てるはずだが未検証。db2 ユーティリティーの画面表示では日本語は空に見える。
+
+## 第9部 09-06: `part09-06-dtaq`——P15/P34 がCONFIRMED SUCCESS、既定のジョブ・キューではワーカーが動かなかった(確認日2026-09-29、3回の接続)
+
+- `SEND_DATA_QUEUE` は名前付き・位置引数とも成功したが、ライブラリーを省くと(SSH の db2 で)SQLSTATE 42704。バッチ・ジョブで `'*LIBL'` を明示した送信は成功した。db2 で `'*LIBL'` を明示した形は未試行。`RECEIVE_DATA_QUEUE` は表関数で、REMOVE は 'YES'/'NO'、空の待ち行列は WAIT_TIME のあと0行。`DATA_QUEUE_ENTRIES`・`DATA_QUEUE_INFO`・`MESSAGE_QUEUE_INFO` が読めた。
+- `SBMJOB` を既定のジョブ・キューに投入するとワーカーは動かず(メッセージ9件が残った)、`JOBQ(QGPL/QBATCH)` を付けると即座に動いた。ワーカー C0906A は8件を処理して END で終了し、ログ表 12行・自分の MSGQ への通知・応答用キューの応答(最後は `BYE END 00008`)がそろった。END の応答を `BYE` とログに記録する修正は再実行(19:37)で確認した。
+
+## 第9部 09-07: `part09-07-checkpoint`——受注サマリーAPIと TXCHECK がCONFIRMED SUCCESS(確認日2026-09-29)
+
+- `ORDER_SUMMARY_JSON(P_N)`(LANGUAGE SQL)は最新 N 件と lowStockCount を返した(N=3 で J00008・J00007・J00006 と 2)。作られる実体は `*SRVPGM ORDSUMJSN`。`TXCHECK LESSON('09-07')` は1回目に3件 PASS、同じジョブの2回目は CPF4174(08-08 で見つかった既知の不具合の再現)。
+
 ## 未実施のプローブ
 
 P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)以外は未実施。特に:
@@ -3208,3 +3250,4 @@ P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)�
 - 新規アカウントが必要なもの(P02, P41)は、ベータ・テスターの協力を得るか、一次資料 + 私的な既存実測(匿名化)で代替する。
 - **【2026-09-29追記】第8部の作業に伴い、P16(08-01/08-02で解消)・P28(`makei --version`・RPGLE/SRVPGMビルドが実機確認済み、`part08-02-makei-probe`等)・P29(`GENERATE_SQL`の実引数・生成DDL・レベルID一致が`part08-06-lvlid-and-gensql`・`part08-06-lvlid-confirm`で解決)も実機解決済み。この一覧はP15/P17/P24/P25/P30/P42等、第8部の他レッスンで解決済みの項目も含め、全体としては更新しきれていない——各レッスンの「依存するプローブ」欄と、対応する`docs/probes.md`節見出しを個別に参照すること。
 - **【2026-09-29追記・解決済み】Issue #25/#27(05-12 手順12・13)に伴うプローブは、上の「第5部05-12: `part05-12-libref-probe`・`part05-12-fndstrpdm`」で実機解決済み。** 残るのは、V3(`RMVLIBLE` 後の対話的な `CALL`)のみです。
+- **【2026-09-29追記】第9部の作業で、P03・P08(curl)・P15・P26・P31・P32・P33(枠内の4回)・P34・P35・P39(一部)を実機解決した(上の「第9部」の各節)。残るのは P14・P40(ACS・VS Code・Mapepire への接続。V3)、P39 の GUI 表示と `CCSID 1208` 列での日本語の保持の確認のみ。**

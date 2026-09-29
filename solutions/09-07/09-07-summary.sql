@@ -16,7 +16,9 @@
 -- JSON) and 09-04 (scalar function, VARCHAR ... CCSID 1208, SPECIFIC name).
 -- It works on the base tables only, so it needs no other 09-04 routine.
 -- When LOW_STOCK exists (09-04), the last entry can be written as
---    (SELECT COUNT(*) FROM TABLE(LOW_STOCK()) L)
+--    (SELECT COUNT(*) FROM TABLE(<your library>.LOW_STOCK()) L)
+-- Qualify the call: an unqualified call inside a function body gave SQL0204
+-- from another job in 09-04 (unverified for this exact form).
 -- and the order block can call JUCHU_INQUIRY_JSON instead; the result must
 -- stay the same (compare the two versions).
 
@@ -56,4 +58,4 @@ CREATE OR REPLACE FUNCTION ORDER_SUMMARY_JSON (P_N INTEGER)
 -- Try it (expected with the sample data: three orders J00008, J00007,
 -- J00006, and lowStockCount 2 because P00002 and P00005 are below their
 -- reorder point).
--- SELECT ORDER_SUMMARY_JSON(3) FROM SYSIBM.SYSDUMMY1;
+-- SELECT <your library>.ORDER_SUMMARY_JSON(3) FROM SYSIBM.SYSDUMMY1;
