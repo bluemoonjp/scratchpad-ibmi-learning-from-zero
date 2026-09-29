@@ -132,7 +132,7 @@ Host pub400
 
 ### pushが失敗したら: リモート側のPATH(一般知識、要確認)
 
-`git push`は、リモート側(PUB400)で`git-receive-pack`という補助プログラムを、SSH経由の**非対話コマンド**として直接実行します。P08(02-04で確認済み)のとおり、PUB400のSSHログイン直後の既定`PATH`には`/QOpenSys/pkgs/bin`(gitの実体がある場所)が含まれていません。02-04はこれを`~/.profile`への追記で解決しましたが、**`git push`が使うこの非対話コマンドの実行経路が`~/.profile`を必ず経由するとは限りません**——このリポジトリでは未検証です。
+`git push`は、リモート側(PUB400)で`git-receive-pack`という補助プログラムを、SSH経由の**非対話コマンド**として直接実行します。P08(02-04で確認済み)のとおり、PUB400のSSHログイン直後の既定`PATH`には`/QOpenSys/pkgs/bin`(gitの実体がある場所)が含まれていません。02-04はこれを`$HOME/.profile`への追記で解決しましたが、**`git push`が使うこの非対話コマンドの実行経路が`$HOME/.profile`を必ず経由するとは限りません**——このリポジトリでは未検証です。
 
 もし`git push`が`git-receive-pack: command not found`のようなメッセージで失敗したら、リモート側で実行するプログラムのパスを、gitの設定で直接教えてください(`git clone`/`git pull`側で同様の症状が出た場合は`uploadpack`も同様です)。
 
@@ -407,7 +407,7 @@ CPF9898:  F0703A: MATCH - both calls agree; JUCHUM repositioning is correct..
 ## 実機メモ
 
 - **確認日: 2026-09-28〜2026-09-29。接続`part08-01-git-srcstmf`(合計7回の接続)。** qshの1セッション内でIFS上に擬似「PC側」・「PUB400側(ベア)」・「ビルド用クローン」の3ディレクトリーを作り、`git init --bare`→`git push`→`git clone`という経路をリハーサルしたうえで、`JUCSRV`をメンバー経由ではなくSRCSTMF直接ビルドで作り直す、という実機確認を行いました。
-- **`bsh`は語頭の`~`を一切展開しません**(`part02-bsh-tilde-redirect`、確認日2026-09-29)。`echo ~`・`echo ~/x`はそのまま印字され、決定的な証拠として`cd ~/vfy && pwd`(`$HOME/vfy`はこのハーネスが毎回作る、確実に存在するディレクトリー)が「存在しない」というエラーで失敗しました。本文のIBM i側コマンドはすべて`~`ではなく`$HOME`を使っています。02-04の`export PATH=...`結合形バグと同じ種類の、bsh固有の実機バグです(詳細は`docs/probes.md`参照。02-04自体は別途`fix/part02-bsh-tilde`ブランチで修正します)。
+- **`bsh`は語頭の`~`を一切展開しません**(`part02-bsh-tilde-redirect`、確認日2026-09-29)。`echo ~`・`echo ~/x`はそのまま印字され、決定的な証拠として`cd ~/vfy && pwd`(`$HOME/vfy`はこのハーネスが毎回作る、確実に存在するディレクトリー)が「存在しない」というエラーで失敗しました。本文のIBM i側コマンドはすべて`~`ではなく`$HOME`を使っています。02-04の`export PATH=...`結合形バグと同じ種類の、bsh固有の実機バグです(詳細は`docs/probes.md`参照。02-04自体はPR #21・#22としてmainへマージ済み、2026-09-29、CI green)。
 - **V2で確認済み(このverifyハーネス自身がqsh経由で確認済み)**:
   - `git init --bare`→`git push`→`git clone`という経路そのもの。
   - `CRTRPGMOD MODULE(&LIB/JUCSRV) SRCSTMF(...) TGTCCSID(*JOB) REPLACE(*YES)`が、本物のUTF-8/LFの`git clone`済みファイルに対して成功すること(「Module JUCSRV placed in library \<USER\>2. 10 highest severity.」)。
