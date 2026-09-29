@@ -1,0 +1,18 @@
+{
+  "batch": "part08-06-lvlid-confirm",
+  "description": "1st connection. Closes the loop on part08-06-lvlid-and-gensql: GENERATE_SQL (DATABASE_OBJECT_TYPE => 'TABLE') returned TOKUIM's real generated DDL as a result set, but that text was never actually executed or compared against TOKUIM's real level ID (3B1ECB3196772, already confirmed). This connection runs that exact generated CREATE TABLE (library swapped to QTEMP, never touching the real shared TOKUIM) and compares DSPFD level IDs directly - the actual core teaching mechanism 08-06 needs to demonstrate.",
+  "steps": [
+    {
+      "type": "cl",
+      "label": "CREATEGEN",
+      "cmd": "RUNSQL SQL('CREATE TABLE QTEMP.TOKUIM (TOKCD CHAR(6) CCSID 273 NOT NULL DEFAULT '''', TOKNM CHAR(30) CCSID 273 NOT NULL DEFAULT '''', TOKZIP CHAR(7) CCSID 273 NOT NULL DEFAULT '''', TOKTAN CHAR(6) CCSID 273 NOT NULL DEFAULT '''', TOKUPD NUMERIC(8, 0) NOT NULL DEFAULT 0) RCDFMT TOKUIR') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000) EXEC(DO)\nSNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('CREATEGEN FAILED') TOPGMQ(*SAME) MSGTYPE(*INFO)\nGOTO CMDLBL(ORIGLVLID)\nENDDO\nDSPFD FILE(QTEMP/TOKUIM) TYPE(*RCDFMT) OUTPUT(*PRINT)\nDSPFFD FILE(QTEMP/TOKUIM) OUTPUT(*PRINT)",
+      "monmsg": ["CPF0000", "SQL0000"]
+    },
+    {
+      "type": "cl",
+      "label": "ORIGLVLID",
+      "cmd": "DSPFD FILE(&LIB/TOKUIM) TYPE(*RCDFMT) OUTPUT(*PRINT)",
+      "monmsg": ["CPF0000"]
+    }
+  ]
+}

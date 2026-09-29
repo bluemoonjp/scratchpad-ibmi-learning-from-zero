@@ -1,0 +1,22 @@
+{
+  "batch": "part08-08-curlib-confirm",
+  "description": "1st connection. Follow-up to part08-08-checkpoint's own post-write review (docs/probes.md's 2026-09-29 addendum under part08-08-checkpoint): that review found DEVREGR/PRODREGR/ROLLREGR's unqualified ZAISRV binding (via ZAISRVBD's *LIBL/ZAISRV entry) resolves through the connection's actual current library (CUR, shown in DSPLIBL as a THIRD library separate from &LIB=<USER>2/&LIB2=<USER>B), and that the review could not rule out a competing ZAISRV object in that CUR library confounding every DRIVER regression check in that connection (including DEVREGR's own 'first *PRV application to ZAISRV' claim, not just the production-copy claim it was written to downgrade). docs/probes.md's P01 (2026-09-24, before ZAISRV existed) already recorded that CUR (<USER>1) held '10+ objects, several programs' as the author's pre-existing private learning area, explicitly never touched by this curriculum's own verification work - strong indirect evidence against a same-named ZAISRV/DRIVER/JUCSRV collision, but not a direct check of those specific names. This connection settles it directly and cheaply, read-only, entirely within the account's own libraries (in scope): (1) does CUR actually contain ZAISRV/DRIVER/JUCSRV (QSYS2.OBJECT_STATISTICS('*CURLIB', ...), a real, IBM-Docs-confirmed special value for the schema parameter - fetched https://www.ibm.com/docs/en/i/7.5?topic=services-object-statistics-table-function this session); (2) an unfiltered listing of CUR's current full contents, extending P01's own FETCH FIRST 10 snapshot; (3) DSPPGM PGM(&LIB/DRIVER) DETAIL(*SRVPGM) OUTPUT(*PRINT) - confirms whether DRIVER's own binding to ZAISRV is genuinely *LIBL-based (as ZAISRVBD's 07-05-established ADDBNDDIRE OBJ((*LIBL/ZAISRV *SRVPGM)) design implies), retiring the V3 label this lesson currently carries on that specific claim (docs/part08/08-08-checkpoint-promote-rollback.md lines 37/103/327/488). DSPPGM DETAIL(*SRVPGM) itself confirmed as a real IBM Docs value (not *MODULE-only) via the same WebFetch this session. No writes, no object creation, no risk to any other lesson's state.",
+  "steps": [
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJOWNER, OBJTEXT FROM TABLE(QSYS2.OBJECT_STATISTICS('*CURLIB','*ALL')) X WHERE OBJNAME IN ('ZAISRV', 'DRIVER', 'JUCSRV', 'ZAISRVBD') ORDER BY OBJNAME"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJOWNER FROM TABLE(QSYS2.OBJECT_STATISTICS('*CURLIB','*ALL')) X ORDER BY OBJNAME FETCH FIRST 40 ROWS ONLY"
+    },
+    {
+      "type": "cl",
+      "label": "DRVBIND",
+      "cmd": "DSPPGM PGM(&LIB/DRIVER) DETAIL(*SRVPGM) OUTPUT(*PRINT)",
+      "monmsg": ["CPF0000"]
+    }
+  ]
+}

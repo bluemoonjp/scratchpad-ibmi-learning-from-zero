@@ -1,0 +1,56 @@
+{
+  "batch": "part08-03-f0803-compile",
+  "description": "1st connection. Advisor flagged a real risk: src/qrpglesrc/f0803s.rpgle uses `chain (custCode) tokuim foundInd;` with foundInd declared as a plain `ind` field, but ilerpgref75.txt line 38795's free-form CHAIN syntax table names the third operand a 'data-structure', not a resulting indicator - free-form RPG may not accept this the way fixed-form CHAIN's resulting-indicator column did. rpglint's own parser is lenient and won't catch a real compile error. This connection compiles two minimal isolated test programs against &LIB's real TOKUIM file into the empty &LIB2 sandbox: (A) the exact CHAIN/foundInd pattern f0803s.rpgle currently uses, and (B) the %FOUND-based alternative the file's own header claims is the 'fix'. Both are read-only against TOKUIM. Cleans up (DLTPGM) both test programs afterward.",
+  "library2": "*B",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "src/f0803chka.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "F0803CHKA",
+      "ensureSrcFile": { "recordLength": 112 }
+    },
+    {
+      "type": "file",
+      "localPath": "src/f0803chkb.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "F0803CHKB",
+      "ensureSrcFile": { "recordLength": 112 }
+    },
+    {
+      "type": "cl",
+      "label": "COMPILEA",
+      "cmd": "CRTBNDRPG PGM(&LIB2/F0803CHKA) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0803CHKA)",
+      "monmsg": ["CPF0000", "RNF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "COMPILEB",
+      "cmd": "CRTBNDRPG PGM(&LIB2/F0803CHKB) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0803CHKB)",
+      "monmsg": ["CPF0000", "RNF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "RUNA",
+      "cmd": "CALL PGM(&LIB2/F0803CHKA) PARM('C00001')",
+      "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"]
+    },
+    {
+      "type": "cl",
+      "label": "RUNB",
+      "cmd": "CALL PGM(&LIB2/F0803CHKB) PARM('C00001')",
+      "monmsg": ["CPF0000", "MCH0000", "RNQ0000", "CEE0000"]
+    },
+    {
+      "type": "cl",
+      "label": "CLEANUP",
+      "cmd": "DLTPGM PGM(&LIB2/F0803CHKA)\nDLTPGM PGM(&LIB2/F0803CHKB)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJLIB FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB2', 'ALL')) X WHERE OBJNAME LIKE 'F0803%' ORDER BY OBJNAME"
+    }
+  ]
+}

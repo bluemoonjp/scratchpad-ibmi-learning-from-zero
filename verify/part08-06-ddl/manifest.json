@@ -1,0 +1,18 @@
+{
+  "batch": "part08-06-ddl",
+  "description": "STOPPED after 3 connections. Each fix produced a DIFFERENT error rather than converging: 1st 'Named argument DATABASE_FILE_TYPE ... not valid'; 2nd 'Conversion error on variable or parameter *N'; 3rd SQL0443 'Trigger program or external routine detected an error' (a generic wrapper message, no further detail captured in this connection's own run section). With zero primary-source documentation for GENERATE_SQL's exact parameter names/types/defaults anywhere in work/design/refs/ (design doc's own §9 already anticipated this) and 3 non-converging attempts, further blind guessing is not productive - see docs/probes.md's own 'part08-06-ddl' entries for the full history. 08-06's lesson design now treats GENERATE_SQL as 'general knowledge, unconfirmed' (matching this repo's own established pattern for makei) rather than presenting a specific untested SQL statement as fact. This manifest is left as-is (not deleted) as a record of what was tried; a future session with access to IBM's own online Db2-for-i documentation (outside this repo's own offline refs) could resume from here.\n\nRESOLVED (2026-09-29): part08-06-generate-sql-catalog confirmed GENERATE_SQL's real 37-parameter signature via QSYS2.SYSROUTINES/SYSPARMS, and part08-06-lvlid-and-gensql found the actual root cause of this manifest's own 3rd-connection SQL0443 - DATABASE_OBJECT_TYPE must be 'TABLE', not the '*FILE' this manifest's GENSQL step still uses (confirmed invalid, SQLSTATE 22023). part08-06-lvlid-confirm then confirmed the generated DDL produces a table with an identical DSPFD level ID to the real TOKUIM. GENERATE_SQL is no longer 'general knowledge, unconfirmed' - see docs/part08/08-06-dds-to-sql-ddl.md and src/sql/08-06-ddl.sql.",
+  "steps": [
+    {
+      "type": "cl",
+      "label": "GENSQL",
+      "cmd": "RUNSQL SQL('CALL QSYS2.GENERATE_SQL(DATABASE_OBJECT_NAME => ''TOKUIM'', DATABASE_OBJECT_LIBRARY_NAME => ''&LIB'', DATABASE_SOURCE_FILE_NAME => ''QSQLTEMP'', DATABASE_OBJECT_TYPE => ''*FILE'', CREATE_OR_REPLACE_OPTION => 1)') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000) EXEC(GOTO CMDLBL(ORIGLVLID))\nDSPFD FILE(QTEMP/QSQLTEMP) TYPE(*MBRLIST) OUTPUT(*PRINT)",
+      "monmsg": ["CPF0000", "SQL0000"]
+    },
+    {
+      "type": "cl",
+      "label": "ORIGLVLID",
+      "cmd": "DSPFD FILE(&LIB/TOKUIM) TYPE(*RCDFMT) OUTPUT(*PRINT)",
+      "monmsg": ["CPF0000"]
+    }
+  ]
+}

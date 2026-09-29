@@ -116,6 +116,18 @@ ssh -i <鍵> -p 2222 -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterva
 
 `verify/harness-selftest/` は、この確認と「`CHGJOB INQMSGRPY(*DFT)` による RPG0102(OPM RPG III のゼロ除算照会。Part 5 が必要とするのもこちら)の自動応答」をまとめて行う、最初の実接続向けのバッチ。RPG III(`CRTRPGPGM`)を使っている。ILE(`CRTBNDRPG`)では `RNQ0102`/`RNX0102` になり別の話になるので注意。
 
+## `part08-01-git-srcstmf`(2026-09-29、7回の接続)で見つかった、マニフェスト設計全般の落とし穴
+
+git/SRCSTMF/動的CL生成を組み合わせた複雑なマニフェストを書く過程で、既存の「既知の未検証事項」に載っていない新しい落とし穴が複数見つかった。次に似た構成のマニフェストを書くときのために、まとめておく。
+
+- **`collect` ステップは、マニフェストでの記述位置に関わらず必ず最後に実行される。** 実際の生成順序は常に `file` → `sh` → `cl` → `collect`(`verify/lib/batch.mjs` の各ループの並び)。「先にオブジェクトの存在確認をしてから作業する」という意図で `collect` を配列の先頭に書いても、実際にはすべての `sh`/`cl` ステップの**あと**に実行される。事前チェックが必要な場合は `cl` ステップ(`CHKOBJ`等)を使うこと。
+- **`sh` ステップの `system(...)` 呼び出しは、`cl` ステップの生成ラッパーと違って `ADDLIBLE` が自動発行されない。** `cl` ステップは `verify/lib/clgen.mjs` が生成するラッパーの先頭で常に `ADDLIBLE LIB(&LIB)` + `MONMSG MSGID(CPF2103)` を発行するが、`sh` ステップの `system("CRTxxx ...")` は素のジョブとして走るため、`*LIBL` に `&LIB` が入っておらず、`&LIB` 内の他のオブジェクト(外部記述ファイル等)を無修飾で参照するソースのコンパイルが `RNF2120`(External descriptions ... not found)等で失敗しうる。`*LIBL` 解決が必要な処理は `cl` ステップにするか、`ADDLIBLE` を含む使い捨て CL プログラムを動的生成して `CALL` すること(1回の `system()` 呼び出し=1ジョブなので、`ADDLIBLE` と本体の処理は**同じ** `system()` 呼び出し、つまり同じコンパイル済みプログラムの中に入れる必要がある)。
+- **heredoc で qsh から書き込んだファイルは、常に EBCDIC(既定 CCSID 273)になる。** これは上の「解決済み」項目がすでに指摘しているとおりだが、影響範囲は「`CRTxxx` に渡すソース」だけではない——**heredoc で書いた `python3` スクリプト自身も EBCDIC になり、`python3` 自身がそれを解析できずに `SyntaxError: Non-UTF-8 code ... but no encoding declared` で失敗する。** `# -*- coding: ... -*-` という PEP 263 宣言でも直せない(Python 自身の先頭2行スキャンが ASCII 互換を前提にしており、EBCDIC バイト列では宣言そのものを認識できない)。本物の UTF-8 ファイルが必要な場合は、heredoc ではなく、いったん `file` ステップで実在するソース・メンバーとして転送してから `CPYTOSTMF ... STMFCCSID(1208) ENDLINFMT(*LF)` でIFSへ書き出すこと(`CRTRPGMOD`/`CRTSRVPGM` の `SRCSTMF` パラメーターに渡すソースの生成と同じ手法)。
+- **`git clone`/`git pull` でチェックアウトされるファイルは CCSID 1208(UTF-8)でタグ付けされる。** `CRTRPGMOD`/`CRTSQLRPGI` 等の `SRCSTMF` パラメーターへそのまま渡すと、既定の `TGTCCSID(*SRC)` は Unicode 系 CCSID を拒否する(`RNS9380`)。`TGTCCSID(*JOB)` を明示すること。
+- **CL の物理ソース行は約80桁(`verify/lib/clgen.mjs` の `CL_MAX_COL=80` と同じ目安)を超えると、`CPYFRMSTMF` が `CPIA083`(Stream file copied to object with truncated records)で静かに切り詰める。** 絶対 IFS パスを含む `SRCSTMF('...')` のような1つの長いトークンは、空白の位置でしか折り返せない(`+` 継続行を使う場合も、パラメーターの区切り目でしか折り返せない)ため、ディレクトリー名自体を短くしておくか、`+` 継続行に分割すること。切り詰めは `CPD0014`(引用符不一致)・`CPD0013`(かっこ不一致)のような、一見無関係なエラーとして現れる。
+- **CL のラベルは10文字に切り詰められる。** 別々のマニフェスト・ステップに異なるラベル(例: `CLIENTF0702A`/`CLIENTF0703A`)を付けたつもりでも、先頭10文字が同じ(`CLIENTF070`)だと生成される CL ソース上で重複ラベルになり、コンパイル・エラーになる。
+- **CL の `MONMSG` は直前の1コマンドしか監視しない。** `ADDLIBLE`→`CALL`→`CALL` のように複数コマンドを並べたあとに1つの `MONMSG` を置いても、それは最後のコマンドしか監視しない——先頭の `ADDLIBLE` 自身が返す無害な `CPF2103`(「既にライブラリー・リストに追加済み」)ですら未監視のまま扱われ、プログラム冒頭のトップレベル `MONMSG` まで伝播して残りの処理(2つの `CALL`)が一切実行されないまま `FAILSAFE` に落ちる。各コマンドを監視したい場合は、コマンドの直後にそれぞれ専用の `MONMSG` を置くこと。
+
 ## 実行結果の保存
 
 `work/verify/results/<batch>-<timestamp>.json` に保存する。実名は `verify/lib/anonymize.mjs` で `<USER>`/`<USER>1`/`<USER>2`/`<USER>B` に置換してから書き込む。`work/` は `.gitignore` 済みなのでコミットされない。教材やレッスンに転記するときは、この結果ファイルの anonymize 済みの内容から書き起こす。

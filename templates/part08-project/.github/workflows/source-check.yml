@@ -1,0 +1,28 @@
+name: source-check
+
+# PUB400には一切接続しない、ローカルの構文・リント検査のみのワークフロー
+# (08-01の演習で使うPCからのgit pushとは別の、PC/CI側だけで完結する確認)。
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # @halcyontech/rpglint(vscode-rpgleのリンターのCLI版)。設定ファイルは
+      # `.vscode/rpglint.json`に置くこと(このCLIはプロジェクト・ルート配下の
+      # `**/rpglint.json`を自動的に探す)。`npx --yes`/`pnpm dlx`での無引数
+      # 実行はPCローカルで実際に確認済み(docs/probes.mdの08-03節参照)。この
+      # `npm i -g`によるグローバル・インストール後の`rpglint`単体呼び出しと
+      # いう組み合わせ自体は、bin用のシバン行(`#!/usr/bin/env node`)を
+      # 確認しただけで、CI上で実際に動かして確認したわけではない。
+      - name: Run rpglint
+        run: |
+          npm i -g @halcyontech/rpglint
+          rpglint

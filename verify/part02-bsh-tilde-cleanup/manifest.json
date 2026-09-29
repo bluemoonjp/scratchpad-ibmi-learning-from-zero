@@ -1,0 +1,21 @@
+{
+  "batch": "part02-bsh-tilde-cleanup",
+  "description": "1st connection. Two goals, per advisor review of the part02-bsh-tilde-redirect investigation. (1) TESTCLONE checks the untested assumption behind 02-04's repair procedure and explanation: does `git clone ... ~/ibmi-kyozai` under bsh actually create a `~` parent directory and write silently into it (matching what happened with the earlier `>> ~/...` redirect test), or does git itself error out immediately on a literal `~` argument (in which case the 'writes silently' framing in 02-04 would be wrong)? Uses a disposable scratch area under $HOME/vfy, never touching the account's real ibmi-kyozai. (2) CLEANUP removes the real, pre-existing $HOME/~ directory this project's own account has had since 2026-09-25 (confirmed via part02-bsh-tilde-redirect, likely created by this exact bug during that day's testing) - records its full contents first, removes it with an explicit quoted path (never a bare `~`), then confirms $HOME's real entries (ibmi-kyozai, vfy, .profile) are untouched.",
+  "steps": [
+    {
+      "type": "sh",
+      "label": "TESTCLONE",
+      "cmd": "mkdir -p \"$HOME/vfy/tc\" && /QOpenSys/pkgs/bin/git init --bare \"$HOME/vfy/tc/src.git\" 2>&1\n/QOpenSys/usr/bin/bsh -c 'cd \"$HOME/vfy/tc\" && /QOpenSys/pkgs/bin/git clone \"$HOME/vfy/tc/src.git\" ~/cl' 2>&1\necho ---TC-TILDE-DIR---\nls -la \"$HOME/vfy/tc/~\" 2>&1\necho ---TC-REAL-HOME-UNTOUCHED---\nls -la \"$HOME/cl\" 2>&1\n"
+    },
+    {
+      "type": "sh",
+      "label": "RECORD",
+      "cmd": "ls -laR \"$HOME/~\" 2>&1\n"
+    },
+    {
+      "type": "sh",
+      "label": "CLEANUP",
+      "cmd": "rm -r \"$HOME/~\" 2>&1\nrm -r \"$HOME/vfy/tc\" 2>&1\necho ---AFTER-CLEANUP---\nls -la \"$HOME\" 2>&1\n"
+    }
+  ]
+}

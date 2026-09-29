@@ -1,0 +1,236 @@
+{
+  "batch": "part08-08-checkpoint",
+  "library2": "*B",
+  "description": "1st connection. 08-08 is the Part 8 capstone: branch -> feature add -> test -> lint -> tag -> promote to production -> TXCHECK -> rollback. Design brief (work/design/part08-design-v1.md ~214-235) says 'no new content' - this lesson mostly recombines already-confirmed mechanisms (05-12's SETENV/CRTDUPOBJ/SAVF promote-rollback pattern, part05-promote-rollback's own already-proven CRTDUPOBJ-based restore technique, 07-03's already-confirmed DSPSRVPGM DETAIL(*SIGNATURE) inspection, TXCHECK from part05-txcheck-probe). What's genuinely new and worth a connection: (1) TXCHECK has, before this connection, only ever been run (via *CMD, part06-15-checkpoint/part06-b7-bundle, or via CALL PGM, part07-05-checkpoint) against real per-lesson rows in the dev-role library (06-15, 07-05 - NOT 05-13: 05-13 own 実機メモ line 156 records its lesson-specific ZA0500/JU0900C *CMD-form rows as still unverified) or the synthetic self-check row (TEST01, part05-txcheck-probe) - never against rows for objects actually promoted to the production-role library; (2) *PRV has only ever been applied to JUCSRV (07-03) - never to ZAISRV; (3) the specific combination of CRTDUPOBJ-promoting a *SRVPGM (not the simple *PGM 05-12/part05-promote-rollback used) through a promote-modify-repromote-rollback cycle, with TXCHECK and a DRIVER regression check confirming state at each stage.\n\n[2026-09-29 CORRECTION, post-hoc review]: the \"(1)\" claim above, and the \"TXCHECK's own *CMD wrapper...has never actually been confirmed compiled anywhere in this repo's history\" claim in the bug-fix note below, were both already stale when written. part07-05-checkpoint (docs/probes.md) ran TXCHECK against real rows for ZAISRV/ZAISRVBD/DRIVER; part06-b7-bundle (2026-09-28, one day before this manifest was authored) already compiled the real *CMD wrapper (tools/qcmdsrc/txcheck.cmd) via CRTCMD (\"CPC0202: Command TXCHECK created in library <USER>2\") and ran it successfully through TXCHKRUN. This manifest's own choice to call TXCHECK via CALL PGM(...) PARM(...) instead of the *CMD form remains correct for the stated reason (this harness's CL-wrapper compile-time *LIBL constraint), but the historical justification text above overstated what was previously unconfirmed. The lesson text (docs/part08/08-08-checkpoint-promote-rollback.md lines 224/479) already cites part06-b7-bundle correctly and needed no change.\n\nADVISOR REVIEW FIXED 4 REAL BUGS IN AN EARLIER DRAFT OF THIS MANIFEST BEFORE IT EVER RAN (kept here as a record, since this class of mistake is worth remembering): (1) TXCHECK invoked unqualified would have been a COMPILE-time error in the shared CL wrapper - the wrapper's own CRTCLPGM runs via a bare 'system \"...\"' call (no auto-ADDLIBLE, the same already-established pitfall this session hit repeatedly with sh-type steps), so an unqualified command name that is not in the compiling job's *LIBL fails to resolve at compile time, aborting the WHOLE wrapper and losing every step's evidence - exactly like DSPPFM's missing OUTPUT parameter did in an earlier connection this session (part08-06-lvlid-and-gensql's 1st connection). Also, TXCHECK's own *CMD wrapper (tools/qcmdsrc/txcheck.cmd) has never actually been confirmed compiled anywhere in this repo's history - only the *PGM was, in part05-txcheck-probe (CALL PGM(&LIB/TXCHECK) PARM('TEST01' '&LIB')) - so this manifest freshly delivers+compiles txcheck.clp itself rather than assuming either form already exists in &LIB, and calls it via the already-proven CALL PGM(...) PARM(lesson lib) form, not the untested *CMD form. (2) CRTPF FILE(...) ... REPLACE(*YES) is not a real parameter combination - grepping cl_commands_75.txt finds no CRTPF entry at all in this repo's primary sources, and tools/qclsrc/txsetup.clp's own established, working CRTPF usage (line 170-171) has no REPLACE keyword at all, just OBJ/SRCFILE/SRCMBR/TEXT guarded by a prior existence check - this manifest matches that real precedent and relies on its own PRECLEAN step's DLTF instead. (3) THE MOST IMPORTANT FIX: the original draft kept the QTEMP baseline backup under the SAME name (QTEMP.ZAISRV). Since QTEMP is typically searched early in *LIBL (often ahead of a job's own user libraries) and DRIVER resolves ZAISRV unqualified via *LIBL/ZAISRVBD, this would have made EVERY regression check below (DEVREGR included, not just the later production ones) silently bind against the OLD baseline in QTEMP instead of whichever version was actually intended - and since DRIVER's 10-line output is IDENTICAL between the 3- and 4-procedure ZAISRV (pingZaisrv changes nothing DRIVER touches), this would have produced a false PASS with no way to detect the mistake from the output alone. Fixed by using CRTDUPOBJ's real, IBM-Docs-confirmed NEWOBJ parameter (fetched https://www.ibm.com/docs/api/v1/content/ssw_ibm_i_75/cl/crtdupobj.htm directly this session, matching this repo's own established 'do not guess new CL syntax' rule - CONFIRMED: NEWOBJ is real, position 5, default *OBJ, takes a specific name) to keep the QTEMP backup under a DIFFERENT name (ZAISRVBK), so it can never shadow the real ZAISRV name during unqualified *LIBL resolution. Every regression step also now runs DSPLIBL OUTPUT(*PRINT) immediately before the CALL, so the actual *LIBL search order is captured as direct evidence, not assumed. (4) The original CLNDEV step relied on CRTDUPOBJ-restoring &LIB's own ZAISRV *SRVPGM from the QTEMP object backup alone - if that restore step itself failed for any reason, &LIB would be left with NO ZAISRV *SRVPGM at all (a real risk to DRIVER/TSTZAISRV/Part 9's own future use of this shared harness state), and even on success the QRPGLESRC/QSRVSRC source MEMBERS would still be left as the 4-procedure version (part08-02-makei's own CPYTOSTMF, which reads these members directly rather than through a 'file' step, would then build the 4-procedure version on its next unrelated run). Fixed by also file-delivering the ORIGINAL (07-05) zaisrv.rpgle/zaisrv.bnd as separate members (ZAISRV75) and, at the very end, CPYF-ing them back over the real ZAISRV members before recompiling from THAT restored source - so &LIB ends this connection with its source, *MODULE, and *SRVPGM all genuinely back at the 07-05 baseline, not dependent on the QTEMP object backup succeeding.\n\nLibrary scheme: &LIB (this harness's persistent dev-role library, has JUCSRV/ZAISRV/DRIVER/ZAISRVBD from Part 7) stands in for the learner's dev library. &LIB2 ('*B', normally empty/disposable) stands in for the learner's PRODUCTION library for this connection only - NOT this harness's own real &LIB2 role elsewhere, and NOT the learner's real <USER>2 either (which in the actual curriculum is empty of JUCSRV/ZAISRV/TESTKIT until 08-08 - confirmed by grepping docs/part04-08 for '<USER>2': every hit is either 05-12's own TK0100/TK0100D promotion or this harness's own internal 実機メモ library-redaction note, never JUCSRV/ZAISRV). TESTKIT is deliberately NOT included in the promotion set (a test harness generally does not ship to production - a design decision, not an oversight). RESTOBJ is deliberately NOT attempted (matching part05-promote-rollback's own established reasoning: PUB400's RESTOBJ is undocumented in this repo's primary sources, a wrong guess would be a COMPILE-time failure in this single shared CL wrapper) - rollback is demonstrated via the SAME safe CRTDUPOBJ-based technique part05-promote-rollback already proved, now with NEWOBJ fixing the shadowing risk above. SAVF/SAVOBJ/RESTOBJ real syntax is NOT re-tested here - 05-12's own lesson already covers SAVOBJ/CRTSAVF/DSPSAVF, and RESTOBJ's own real parameters remain V3/interactive-only per 02-10's established precedent.\n\nFraming note (advisor): PRODREGR/ROLLREGR's own DRIVER call alone cannot prove which ZAISRV version was actually used (10-line output is identical either way) UNLESS the DSPLIBL evidence captured immediately before each shows &LIB2 actually searched ahead of &LIB - the lesson text must not claim '*PRV works in the promoted copy too' from the CALL's output alone, only from DSPLIBL+DSPSRVPGM together. DEVREGR (now that the QTEMP-shadowing bug above is fixed) is the one truly clean, unconfounded proof of *PRV itself.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../solutions/08-08/zaisrv.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "ZAISRV"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/08-08/zaisrv.bnd",
+      "remoteSrcFile": "QSRVSRC",
+      "member": "ZAISRV"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/07-05/zaisrv.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "ZAISRV75"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/07-05/zaisrv.bnd",
+      "remoteSrcFile": "QSRVSRC",
+      "member": "ZAISRV75"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qddssrc/txckm.pf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "TXCKM"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txcheck.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCHECK"
+    },
+    {
+      "type": "cl",
+      "label": "PRECLEAN",
+      "cmd": "DLTSRVPGM SRVPGM(&LIB2/ZAISRV)\nMONMSG MSGID(CPF0000)\nDLTSRVPGM SRVPGM(&LIB2/JUCSRV)\nMONMSG MSGID(CPF0000)\nDLTF FILE(&LIB2/TXCKM)\nMONMSG MSGID(CPF0000)\nDLTSRVPGM SRVPGM(QTEMP/ZAISRVBK)\nMONMSG MSGID(CPF0000)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKTXCHECK",
+      "cmd": "CRTCLPGM PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHECK) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "BASEPROM",
+      "cmd": "CRTDUPOBJ OBJ(ZAISRV) FROMLIB(&LIB) OBJTYPE(*SRVPGM) TOLIB(&LIB2)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "BASEBKUP",
+      "cmd": "CRTDUPOBJ OBJ(ZAISRV) FROMLIB(&LIB) OBJTYPE(*SRVPGM) TOLIB(QTEMP) NEWOBJ(ZAISRVBK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "JUCPROM",
+      "cmd": "CRTDUPOBJ OBJ(JUCSRV) FROMLIB(&LIB) OBJTYPE(*SRVPGM) TOLIB(&LIB2)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKTXCKM",
+      "cmd": "CRTPF FILE(&LIB2/TXCKM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TXCKM)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SEEDTXCKM",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB2/TXCKM WHERE LESSON=''08-08''') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB2/TXCKM VALUES (''08-08'', 1, ''JUCSRV'', ''*SRVPGM'', '' '', ''JUCSRV promoted to production'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB2/TXCKM VALUES (''08-08'', 2, ''ZAISRV'', ''*SRVPGM'', '' '', ''ZAISRV promoted to production'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CHKBASE",
+      "cmd": "CALL PGM(&LIB/TXCHECK) PARM('08-08' '&LIB2')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SIGBASE",
+      "cmd": "DSPSRVPGM SRVPGM(&LIB2/ZAISRV) OUTPUT(*PRINT)\nDSPSRVPGM SRVPGM(&LIB2/ZAISRV) DETAIL(*SIGNATURE) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RECOMPMOD",
+      "cmd": "CRTRPGMOD MODULE(&LIB/ZAISRV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(ZAISRV) REPLACE(*YES) TGTCCSID(*JOB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RECOMPSRV",
+      "cmd": "CRTSRVPGM SRVPGM(&LIB/ZAISRV) MODULE(&LIB/ZAISRV) EXPORT(*SRCFILE) SRCFILE(&LIB/QSRVSRC) SRCMBR(ZAISRV) ACTGRP(*CALLER)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DEVREGR",
+      "cmd": "DSPLIBL OUTPUT(*PRINT)\nMONMSG MSGID(CPF0000)\n&LIB/TXRESET LIB(&LIB)\nMONMSG MSGID(CPF0000)\nCALL PGM(&LIB/DRIVER)\nMONMSG MSGID(CPF0000 MCH0000 RNQ0000 CEE0000)\n&LIB/TXRESET LIB(&LIB)\nMONMSG MSGID(CPF0000)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DELOLDPROD",
+      "cmd": "DLTSRVPGM SRVPGM(&LIB2/ZAISRV)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "NEWPROM",
+      "cmd": "CRTDUPOBJ OBJ(ZAISRV) FROMLIB(&LIB) OBJTYPE(*SRVPGM) TOLIB(&LIB2)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CHKNEW",
+      "cmd": "CALL PGM(&LIB/TXCHECK) PARM('08-08' '&LIB2')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SIGNEW",
+      "cmd": "DSPSRVPGM SRVPGM(&LIB2/ZAISRV) OUTPUT(*PRINT)\nDSPSRVPGM SRVPGM(&LIB2/ZAISRV) DETAIL(*SIGNATURE) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRODREGR",
+      "cmd": "ADDLIBLE LIB(&LIB2) POSITION(*FIRST)\nMONMSG MSGID(CPF0000)\nDSPLIBL OUTPUT(*PRINT)\nMONMSG MSGID(CPF0000)\n&LIB/TXRESET LIB(&LIB)\nMONMSG MSGID(CPF0000)\nCALL PGM(&LIB/DRIVER)\nMONMSG MSGID(CPF0000 MCH0000 RNQ0000 CEE0000)\n&LIB/TXRESET LIB(&LIB)\nMONMSG MSGID(CPF0000)\nRMVLIBLE LIB(&LIB2)\nMONMSG MSGID(CPF0000)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DELNEWPROD",
+      "cmd": "DLTSRVPGM SRVPGM(&LIB2/ZAISRV)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ROLLBACK",
+      "cmd": "CRTDUPOBJ OBJ(ZAISRVBK) FROMLIB(QTEMP) OBJTYPE(*SRVPGM) TOLIB(&LIB2) NEWOBJ(ZAISRV)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SIGROLL",
+      "cmd": "DSPSRVPGM SRVPGM(&LIB2/ZAISRV) OUTPUT(*PRINT)\nDSPSRVPGM SRVPGM(&LIB2/ZAISRV) DETAIL(*SIGNATURE) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ROLLREGR",
+      "cmd": "ADDLIBLE LIB(&LIB2) POSITION(*FIRST)\nMONMSG MSGID(CPF0000)\nDSPLIBL OUTPUT(*PRINT)\nMONMSG MSGID(CPF0000)\n&LIB/TXRESET LIB(&LIB)\nMONMSG MSGID(CPF0000)\nCALL PGM(&LIB/DRIVER)\nMONMSG MSGID(CPF0000 MCH0000 RNQ0000 CEE0000)\n&LIB/TXRESET LIB(&LIB)\nMONMSG MSGID(CPF0000)\nRMVLIBLE LIB(&LIB2)\nMONMSG MSGID(CPF0000)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLNPROD",
+      "cmd": "DLTSRVPGM SRVPGM(&LIB2/ZAISRV)\nMONMSG MSGID(CPF0000)\nDLTSRVPGM SRVPGM(&LIB2/JUCSRV)\nMONMSG MSGID(CPF0000)\nDLTF FILE(&LIB2/TXCKM)\nMONMSG MSGID(CPF0000)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLNDEV",
+      "cmd": "CPYF FROMFILE(&LIB/QRPGLESRC) FROMMBR(ZAISRV75) TOFILE(&LIB/QRPGLESRC) TOMBR(ZAISRV) MBROPT(*REPLACE)\nMONMSG MSGID(CPF0000)\nCPYF FROMFILE(&LIB/QSRVSRC) FROMMBR(ZAISRV75) TOFILE(&LIB/QSRVSRC) TOMBR(ZAISRV) MBROPT(*REPLACE)\nMONMSG MSGID(CPF0000)\nCRTRPGMOD MODULE(&LIB/ZAISRV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(ZAISRV) REPLACE(*YES) TGTCCSID(*JOB)\nMONMSG MSGID(CPF0000)\nCRTSRVPGM SRVPGM(&LIB/ZAISRV) MODULE(&LIB/ZAISRV) EXPORT(*SRCFILE) SRCFILE(&LIB/QSRVSRC) SRCMBR(ZAISRV) ACTGRP(*CALLER)\nMONMSG MSGID(CPF0000)\nRMVM FILE(&LIB/QRPGLESRC) MBR(ZAISRV75)\nMONMSG MSGID(CPF0000)\nRMVM FILE(&LIB/QSRVSRC) MBR(ZAISRV75)\nMONMSG MSGID(CPF0000)\nDLTSRVPGM SRVPGM(QTEMP/ZAISRVBK)\nMONMSG MSGID(CPF0000)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DEVFINAL",
+      "cmd": "DSPSRVPGM SRVPGM(&LIB/ZAISRV) OUTPUT(*PRINT)\nDSPSRVPGM SRVPGM(&LIB/ZAISRV) DETAIL(*SIGNATURE) OUTPUT(*PRINT)\n&LIB/TXRESET LIB(&LIB)\nMONMSG MSGID(CPF0000)\nCALL PGM(&LIB/DRIVER)\nMONMSG MSGID(CPF0000 MCH0000 RNQ0000 CEE0000)\n&LIB/TXRESET LIB(&LIB)\nMONMSG MSGID(CPF0000)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "indent": 2,
+  "NoOCCURS": true,
+  "NoSELECTAll": true,
+  "NoSQLJoins": true,
+  "NoGlobalSubroutines": true,
+  "NoUnreferenced": true,
+  "NoCTDATA": true,
+  "RequiresParameter": true,
+  "StringLiteralDupe": true,
+  "PrettyComments": true,
+  "SpecificCasing": [
+    { "operation": "if", "expected": "*LOWER" },
+    { "operation": "dcl-s", "expected": "*LOWER" },
+    { "operation": "dcl-pr", "expected": "*LOWER" }
+  ]
+}

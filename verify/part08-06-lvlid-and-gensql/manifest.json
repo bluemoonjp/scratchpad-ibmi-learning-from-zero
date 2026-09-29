@@ -1,0 +1,28 @@
+{
+  "batch": "part08-06-lvlid-and-gensql",
+  "description": "1st connection. Two independent goals per advisor review of the 5 failed GENERATE_SQL attempts and a proposed hand-written-DDL fallback. (1) GENSQL_TABLE/GENSQL_FILE test the one untested variable across all 5 prior attempts: DATABASE_OBJECT_TYPE => 'TABLE' (design doc's own §7 item 6 cites 'TABLE', not '*FILE', which every attempt used unchallenged) - via db2 CLI directly (better SQLSTATE/native-error diagnostics than RUNSQL's truncated first-level text) and with ONLY the 3 minimal named args (object name/library/type), no source-file target, so a successful call's generated DDL should come back as a plain result set instead of needing a separate source-file read. (2) LVLIDTEST hand-authors CREATE TABLE variants matching TOKUIM's real DDS structure (db/v1/tokuim.pf: TOKCD 6A, TOKNM 30A, TOKZIP 7A, TOKTAN 6A, TOKUPD 8S0 zoned, keyed TOKCD, no PRIMARY KEY per the design's faithful-conversion vs modernization split) as a fallback in case GENERATE_SQL still doesn't work - fixing two real bugs the first draft of this plan had: TOKUPD must be NUMERIC(8,0) (zoned, matches DDS S-type/8 bytes), not DECIMAL(8,0) (packed/5 bytes, which alone would break level-ID matching for the wrong reason); every column needs NOT NULL WITH DEFAULT (DDS fields disallow NULL by default, SQL columns allow it by default, and nullability affects level ID). Tests RCDFMT TOKUIR vs no RCDFMT vs FOR SYSTEM NAME as three variants to isolate what actually affects level ID (previously just assumed from memory, now actually tested), all created in QTEMP only (never touches the real shared TOKUIM) and compared against TOKUIM's own already-known level ID (3B1ECB3196772, confirmed in part08-06-generate-sql-retry's 2nd connection).",
+  "steps": [
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "CALL QSYS2.GENERATE_SQL(DATABASE_OBJECT_NAME => 'TOKUIM', DATABASE_OBJECT_LIBRARY_NAME => '&LIB', DATABASE_OBJECT_TYPE => 'TABLE')"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "CALL QSYS2.GENERATE_SQL(DATABASE_OBJECT_NAME => 'TOKUIM', DATABASE_OBJECT_LIBRARY_NAME => '&LIB', DATABASE_OBJECT_TYPE => '*FILE')"
+    },
+    {
+      "type": "cl",
+      "label": "LVLIDTEST",
+      "cmd": "RUNSQL SQL('CREATE TABLE QTEMP.TOKUIA (TOKCD FOR COLUMN TOKCD CHAR(6) NOT NULL WITH DEFAULT, TOKNM FOR COLUMN TOKNM CHAR(30) NOT NULL WITH DEFAULT, TOKZIP FOR COLUMN TOKZIP CHAR(7) NOT NULL WITH DEFAULT, TOKTAN FOR COLUMN TOKTAN CHAR(6) NOT NULL WITH DEFAULT, TOKUPD FOR COLUMN TOKUPD NUMERIC(8,0) NOT NULL WITH DEFAULT) RCDFMT TOKUIR') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE QTEMP.TOKUIB (TOKCD FOR COLUMN TOKCD CHAR(6) NOT NULL WITH DEFAULT, TOKNM FOR COLUMN TOKNM CHAR(30) NOT NULL WITH DEFAULT, TOKZIP FOR COLUMN TOKZIP CHAR(7) NOT NULL WITH DEFAULT, TOKTAN FOR COLUMN TOKTAN CHAR(6) NOT NULL WITH DEFAULT, TOKUPD FOR COLUMN TOKUPD NUMERIC(8,0) NOT NULL WITH DEFAULT)') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE QTEMP.TOKUIM_FSN_TEST FOR SYSTEM NAME TOKUIC (TOKCD FOR COLUMN TOKCD CHAR(6) NOT NULL WITH DEFAULT, TOKNM FOR COLUMN TOKNM CHAR(30) NOT NULL WITH DEFAULT, TOKZIP FOR COLUMN TOKZIP CHAR(7) NOT NULL WITH DEFAULT, TOKTAN FOR COLUMN TOKTAN CHAR(6) NOT NULL WITH DEFAULT, TOKUPD FOR COLUMN TOKUPD NUMERIC(8,0) NOT NULL WITH DEFAULT) RCDFMT TOKUIR') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nSNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('---TOKUIA-RCDFMT-TOKUIR---') TOPGMQ(*SAME) MSGTYPE(*INFO)\nDSPFD FILE(QTEMP/TOKUIA) TYPE(*RCDFMT) OUTPUT(*PRINT)\nMONMSG MSGID(CPF0000)\nSNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('---TOKUIB-NO-RCDFMT---') TOPGMQ(*SAME) MSGTYPE(*INFO)\nDSPFD FILE(QTEMP/TOKUIB) TYPE(*RCDFMT) OUTPUT(*PRINT)\nMONMSG MSGID(CPF0000)\nSNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('---TOKUIC-FOR-SYSTEM-NAME---') TOPGMQ(*SAME) MSGTYPE(*INFO)\nDSPFD FILE(QTEMP/TOKUIC) TYPE(*RCDFMT) OUTPUT(*PRINT)\nMONMSG MSGID(CPF0000)\nSNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('---TOKUIA-DSPFFD---') TOPGMQ(*SAME) MSGTYPE(*INFO)\nDSPFFD FILE(QTEMP/TOKUIA) OUTPUT(*PRINT)\nMONMSG MSGID(CPF0000)",
+      "monmsg": ["CPF0000"]
+    },
+    {
+      "type": "cl",
+      "label": "ORIGLVLID",
+      "cmd": "DSPFD FILE(&LIB/TOKUIM) TYPE(*RCDFMT) OUTPUT(*PRINT)\nDSPFFD FILE(&LIB/TOKUIM) OUTPUT(*PRINT)",
+      "monmsg": ["CPF0000"]
+    }
+  ]
+}

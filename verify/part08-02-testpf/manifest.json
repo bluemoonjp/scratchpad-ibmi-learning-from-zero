@@ -1,0 +1,23 @@
+{
+  "batch": "part08-02-testpf",
+  "description": "2nd connection. 1st connection confirmed the important part (full seed+solution compile, Highest Severity 00, now recorded in docs/probes.md) but the bsh and add-a-PF checks failed on two of my own mistakes: bsh's real path is /QOpenSys/usr/bin/bsh (not /usr/bin/bsh - the 1st connection's own ls output already showed this via the symlink), and the add-a-PF test's CPYTOSTMF referenced &LIB2 for a file-type-delivered member, but file-type steps always deliver to &LIB regardless of library2. Both fixed here. Also broadens the GENERATE_SQL SYSPARMS query (0 rows under SPECIFIC_SCHEMA='QSYS2' last time, despite the query itself working - real column names confirmed) to just SPECIFIC_NAME LIKE '%GENERATE_SQL%' with no schema filter, in case it's cataloged under a different schema.",
+  "library2": "*B",
+  "steps": [
+    { "type": "file", "localPath": "testpf.pf", "remoteSrcFile": "QDDSSRC", "member": "TESTPF" },
+    {
+      "type": "sh",
+      "label": "BSHTEST",
+      "cmd": "ls -la /QOpenSys/usr/bin/bsh </dev/null 2>&1\necho ---BSH-DEFAULT-PATH---\n/QOpenSys/usr/bin/bsh -c 'echo $PATH' </dev/null 2>&1\necho ---BSH-MAKEI-VERSION---\n/QOpenSys/usr/bin/bsh -c 'export PATH=/QOpenSys/pkgs/bin:$PATH; echo PATH=$PATH; makei --version' </dev/null 2>&1\n"
+    },
+    {
+      "type": "sh",
+      "label": "PFEXERCISE",
+      "cmd": "rm -rf \"$HOME/mkpf\"\nmkdir -p \"$HOME/mkpf/z\"\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QDDSSRC.FILE/TESTPF.MBR') TOSTMF('$HOME/mkpf/z/testpf.pf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\n/QOpenSys/pkgs/bin/python3 -c \"open('$HOME/mkpf/z/Rules.mk','wb').write(b'TESTPF.FILE: testpf.pf\\n')\"\n/QOpenSys/pkgs/bin/python3 -c \"open('$HOME/mkpf/z/iproj.json','wb').write(b'{\\\"version\\\":\\\"0.0.1\\\",\\\"objlib\\\":\\\"&LIB2\\\",\\\"curlib\\\":\\\"&LIB2\\\"}')\"\necho ---TREE---\nfind \"$HOME/mkpf/z\" -type f </dev/null\necho ---BUILD---\n/QOpenSys/pkgs/bin/bash -c 'cd \"$HOME/mkpf/z\" && export PATH=/QOpenSys/pkgs/bin:$PATH && /QOpenSys/pkgs/bin/makei build' </dev/null 2>&1\necho ---CLEANUP---\nsystem \"DLTF FILE(&LIB2/TESTPF)\" 2>&1\nrm -rf \"$HOME/mkpf\"\n"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT SPECIFIC_SCHEMA, SPECIFIC_NAME, ORDINAL_POSITION, PARAMETER_MODE, PARAMETER_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM QSYS2.SYSPARMS WHERE SPECIFIC_NAME LIKE '%GENERATE_SQL%' ORDER BY SPECIFIC_SCHEMA, ORDINAL_POSITION"
+    }
+  ]
+}

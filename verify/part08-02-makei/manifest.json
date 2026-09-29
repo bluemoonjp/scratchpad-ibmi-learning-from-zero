@@ -1,0 +1,57 @@
+{
+  "batch": "part08-02-makei",
+  "description": "1st connection. Official lesson-level manifest for 08-02 (distinct from the part08-02-makei-probe/2/3 investigation manifests, which already confirmed makei build mechanics in the disposable &LIB2 library via python3-binary-written Rules.mk/iproj.json - not via git). This manifest closes the one gap those probes left open (advisor review, 2026-09-29): no probe had ever run makei build against files that arrived via git (the same delivery path 08-01 teaches learners to use), and templates/part08-zaisrv/ had no .gitattributes of its own after the templates/part08-project/ split, so a learner whose git config does not already normalize line endings could in principle commit a CRLF Rules.mk. This connection (a) deliberately writes Rules.mk with CRLF before the first commit, to actually exercise the newly-added templates/part08-zaisrv/.gitattributes' `* text=auto eol=lf` line (not just infer it works by analogy to 08-01's already-LF CPYTOSTMF output), (b) reuses 08-01's own proven bare-repo/PC-repo-stand-in/push/clone pattern so the git round trip itself is the same mechanism 08-01 already established, and (c) targets the real &LIB (the learner's own Part 7 dev library, where the traditionally-built ZAISRV already exists) instead of the disposable &LIB2, so the 'makei rebuilds a pre-existing non-makei object' scenario is confirmed for real, not just in a throwaway library. Also repeats the add-a-PF exercise end to end in this same project layout, matching part08-02-testpf's already-confirmed recipe.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "testpf.pf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "TESTPF"
+    },
+    {
+      "type": "sh",
+      "label": "SETUP",
+      "cmd": "rm -rf \"$HOME/mk10\"\nmkdir -p \"$HOME/mk10\"\ncd \"$HOME/mk10\" && /QOpenSys/pkgs/bin/git --version 2>&1\n"
+    },
+    {
+      "type": "sh",
+      "label": "BARE",
+      "cmd": "cd \"$HOME/mk10\" && /QOpenSys/pkgs/bin/git init -b main --bare b.git 2>&1\n"
+    },
+    {
+      "type": "sh",
+      "label": "PCREPO",
+      "cmd": "mkdir -p \"$HOME/mk10/p\" && cd \"$HOME/mk10/p\" && /QOpenSys/pkgs/bin/git init -b main 2>&1 && /QOpenSys/pkgs/bin/git config user.name 'Learner (verify harness rehearsal)' 2>&1 && /QOpenSys/pkgs/bin/git config user.email 'learner-rehearsal-no-email' 2>&1\n/QOpenSys/pkgs/bin/python3 -c \"open('$HOME/mk10/p/iproj.json','wb').write(b'{\\\"version\\\":\\\"0.0.1\\\",\\\"objlib\\\":\\\"&LIB\\\",\\\"curlib\\\":\\\"&LIB\\\"}')\"\n/QOpenSys/pkgs/bin/python3 -c \"open('$HOME/mk10/p/Rules.mk','wb').write(b'ZAISRV.MODULE: zaisrv.rpgle\\r\\nZAISRV.SRVPGM: ZAISRV.MODULE zaisrv.bnd\\r\\n')\"\n/QOpenSys/pkgs/bin/python3 -c \"open('$HOME/mk10/p/.gitattributes','wb').write(b'* text=auto eol=lf\\n*.rpg text eol=lf\\n*.rpgle text eol=lf\\n*.clp text eol=lf\\n*.clle text eol=lf\\n*.pf text eol=lf\\n*.lf text eol=lf\\n*.dspf text eol=lf\\n*.prtf text eol=lf\\n*.cmd text eol=lf\\n*.rpgleinc text eol=lf\\n*.bnd text eol=lf\\n*.sql text eol=lf\\n*.sqlrpgle text eol=lf\\n*.md text eol=lf\\n*.json text eol=lf\\n')\"\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGLESRC.FILE/ZAISRV.MBR') TOSTMF('$HOME/mk10/p/zaisrv.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QSRVSRC.FILE/ZAISRV.MBR') TOSTMF('$HOME/mk10/p/zaisrv.bnd') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\necho ---PRECOMMIT-RULES-MK-BYTES---\nod -c \"$HOME/mk10/p/Rules.mk\" </dev/null 2>&1 | head -3\ncd \"$HOME/mk10/p\" && /QOpenSys/pkgs/bin/git add -A 2>&1 && /QOpenSys/pkgs/bin/git commit -m 'initial import: ZAISRV makei project (Rules.mk deliberately CRLF, to test .gitattributes normalization)' 2>&1\n"
+    },
+    {
+      "type": "sh",
+      "label": "PUSH",
+      "cmd": "cd \"$HOME/mk10/p\" && /QOpenSys/pkgs/bin/git remote add origin \"$HOME/mk10/b.git\" 2>&1 && /QOpenSys/pkgs/bin/git --no-pager push origin main 2>&1\n"
+    },
+    {
+      "type": "sh",
+      "label": "CLONE",
+      "cmd": "cd \"$HOME/mk10\" && /QOpenSys/pkgs/bin/git clone b.git c 2>&1\necho ---CLONE-RULES-MK-BYTES---\nod -c \"$HOME/mk10/c/Rules.mk\" </dev/null 2>&1 | head -3\necho ---CLONE-IPROJ-JSON---\ncat \"$HOME/mk10/c/iproj.json\" </dev/null 2>&1\necho\necho ---CLONE-TREE---\nfind \"$HOME/mk10/c\" -maxdepth 1 -type f </dev/null 2>&1\n"
+    },
+    {
+      "type": "sh",
+      "label": "BUILD1",
+      "cmd": "/QOpenSys/pkgs/bin/bash -c 'cd \"$HOME/mk10/c\" && export PATH=/QOpenSys/pkgs/bin:$PATH && /QOpenSys/pkgs/bin/makei build' </dev/null 2>&1\n"
+    },
+    {
+      "type": "sh",
+      "label": "ADDPF",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QDDSSRC.FILE/TESTPF.MBR') TOSTMF('$HOME/mk10/c/testpf.pf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\n/QOpenSys/pkgs/bin/python3 -c \"open('$HOME/mk10/c/Rules.mk','ab').write(b'TESTPF.FILE: testpf.pf\\n')\"\n/QOpenSys/pkgs/bin/bash -c 'cd \"$HOME/mk10/c\" && export PATH=/QOpenSys/pkgs/bin:$PATH && /QOpenSys/pkgs/bin/makei build' </dev/null 2>&1\n"
+    },
+    {
+      "type": "sh",
+      "label": "CLEANUP",
+      "cmd": "system \"DLTF FILE(&LIB/TESTPF)\" 2>&1\nrm -rf \"$HOME/mk10\"\n"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJLIB, OBJCREATED, LAST_USED_TIMESTAMP FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', 'ALL')) X WHERE OBJNAME = 'ZAISRV' ORDER BY OBJTYPE"
+    }
+  ]
+}
