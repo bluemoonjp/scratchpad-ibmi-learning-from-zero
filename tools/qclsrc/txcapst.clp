@@ -126,6 +126,29 @@ PLANT:       RUNSQL     SQL('DELETE FROM ' *CAT %TRIM(&LIB) *CAT +
              RUNSQL     SQL('DELETE FROM QTEMP/JUBADD') COMMIT(*NONE)
              MONMSG     MSGID(CPF0000 SQL0000 SQL9010)
 
+/* --- Step a2: put the header in arrival order. ZA0500 reads JUCHUM in   */
+/* ARRIVAL sequence (program-described, no key), and RPG match fields     */
+/* must be ascending. A header for J00000 appended after J00001..J00008   */
+/* is out of sequence (RPG1031, real run 2026-09-29). So: save the rows   */
+/* in QTEMP, empty JUCHUM (CLRPFM), insert J00000 first (step c), then    */
+/* put the saved rows back in JUNO order (step c2). --- */
+             DLTF       FILE(QTEMP/TXCAPHD)
+             MONMSG     MSGID(CPF2105)
+             RUNSQL     SQL('CREATE TABLE QTEMP/TXCAPHD AS (SELECT * FROM ' +
+                          *CAT %TRIM(&LIB) *CAT '/JUCHUM) WITH DATA') +
+                          COMMIT(*NONE)
+             MONMSG     MSGID(CPF0000 SQL0000 SQL9010) EXEC(DO)
+                SNDPGMMSG  MSG('TXCAPST: could not save the order headers. +
+                             Nothing was changed.')
+                GOTO       CMDLBL(FAILSAFE)
+             ENDDO
+             CLRPFM     FILE(&LIB/JUCHUM)
+             MONMSG     MSGID(CPF0000) EXEC(DO)
+                SNDPGMMSG  MSG('TXCAPST: could not empty JUCHUM. Run +
+                             TXRESET if orders are missing.')
+                GOTO       CMDLBL(FAILSAFE)
+             ENDDO
+
 /* --- Step c: the order header first. The column list is explicit.       */
 /* DBVER 1 (JUCHUM 26 bytes): four columns. DBVER 2 adds JUDLV, which has */
 /* no default, so it gets a value (UNVERIFIED, see the header). TXSTATE   */
@@ -143,7 +166,7 @@ PLANT:       RUNSQL     SQL('DELETE FROM ' *CAT %TRIM(&LIB) *CAT +
                              See the job log.')
                 GOTO       CMDLBL(FAILSAFE)
              ENDDO
-             GOTO       CMDLBL(DETAIL)
+             GOTO       CMDLBL(RELOAD)
 
 HDRV2:       RUNSQL     SQL('INSERT INTO ' *CAT %TRIM(&LIB) *CAT +
                           '/JUCHUM (JUNO, JUTOK, JUDATE, JUTAN, JUDLV) +
@@ -153,6 +176,17 @@ HDRV2:       RUNSQL     SQL('INSERT INTO ' *CAT %TRIM(&LIB) *CAT +
              MONMSG     MSGID(CPF0000 SQL0000 SQL9010) EXEC(DO)
                 SNDPGMMSG  MSG('TXCAPST: could not insert the order header +
                              (DBVER 2). See the job log.')
+                GOTO       CMDLBL(FAILSAFE)
+             ENDDO
+
+/* --- Step c2: put the saved order headers back after J00000, in JUNO    */
+/* order (ORDER BY keeps the arrival order ascending). --- */
+RELOAD:      RUNSQL     SQL('INSERT INTO ' *CAT %TRIM(&LIB) *CAT +
+                          '/JUCHUM SELECT * FROM QTEMP/TXCAPHD ORDER BY +
+                          JUNO') COMMIT(*NONE)
+             MONMSG     MSGID(CPF0000 SQL0000 SQL9010) EXEC(DO)
+                SNDPGMMSG  MSG('TXCAPST: could not restore the order +
+                             headers. Run TXRESET.')
                 GOTO       CMDLBL(FAILSAFE)
              ENDDO
 
