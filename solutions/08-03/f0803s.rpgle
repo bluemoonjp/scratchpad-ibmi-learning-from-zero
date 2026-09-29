@@ -1,11 +1,14 @@
 **FREE
 // F0803S - model solution for the 08-03 rpglint exercise
-// (src/qrpglesrc/f0803s.rpgle). Fixes all 5 real, confirmed
-// violations that file's own header documents (SpecificCasing,
-// NoGlobalSubroutines, NoUnreferenced, StringLiteralDupe,
-// PrettyComments) plus the same real compile bug already fixed in the
-// seed file itself (CHAIN's third operand must be %FOUND, not a plain
-// `ind` field - RNF5191, confirmed via verify/part08-03-f0803-compile).
+// (src/qrpglesrc/f0803s.rpgle). Fixes all 5 real, confirmed rpglint
+// violations the seed file has (SpecificCasing, NoGlobalSubroutines,
+// NoUnreferenced, StringLiteralDupe, PrettyComments - see
+// docs/probes.md's Part 8 08-03 section for the confirmed rule list
+// and messages; deliberately not itemized again here since this file
+// is the answer key). The seed file also already uses %FOUND (not a
+// plain `ind` field) for its CHAIN, after an earlier draft's `ind`
+// form was found not to compile at all in free-form RPG (RNF5191,
+// verify/part08-03-f0803-compile) - nothing left to fix there.
 //
 // This is intended as a style-only refactor: the printed output (line
 // layout, values) is designed to be unchanged from the seed file, to
@@ -69,8 +72,11 @@ return;
 // the count, rather than reading/writing the caller's global
 // variables directly - avoids any question about whether a
 // subprocedure can see the mainline's globals, by simply not relying
-// on them. RequiresParameter means the call site above must use
-// call-with-brackets syntax (orderCount(custCode)), not exsr.
+// on them. Called as orderCount(custCode) below (call-with-brackets
+// syntax, required for any procedure call regardless of rpglint
+// config - NOT because of RequiresParameter specifically: that rule's
+// actual trigger condition is unconfirmed, and it did not fire on the
+// seed file's own exsr-based call at all - see docs/probes.md).
 dcl-proc orderCount;
   dcl-pi *n zoned(5:0);
     custCode char(6) const;
