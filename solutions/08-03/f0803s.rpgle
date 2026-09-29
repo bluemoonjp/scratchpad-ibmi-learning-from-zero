@@ -7,16 +7,22 @@
 // seed file itself (CHAIN's third operand must be %FOUND, not a plain
 // `ind` field - RNF5191, confirmed via verify/part08-03-f0803-compile).
 //
-// This is a style-only refactor: the printed output (line layout,
-// values) is unchanged from the seed file. That matches 08-03's own
-// scope constraint (no behavior-changing edits before 08-04 sets up a
-// safety net and 08-05 demonstrates test-then-refactor).
+// This is intended as a style-only refactor: the printed output (line
+// layout, values) is designed to be unchanged from the seed file, to
+// match 08-03's own scope constraint (no behavior-changing edits
+// before 08-04 sets up a safety net and 08-05 demonstrates
+// test-then-refactor). That equivalence has NOT been independently
+// verified by comparing actual printed output byte-for-byte against
+// the seed file - both programs compiled and ran without error, but
+// their WRKSPLF output was not captured/diffed. Treat as V3
+// (unconfirmed) until someone actually compares the two spool files.
 //
 // STATUS: rpglint-clean locally confirmed (@halcyontech/rpglint 0.27.0,
 // templates/part08-project/.vscode/rpglint.json, 2026-09-29, 0 errors).
-// Compiled on real hardware alongside the seed file
-// (verify/part08-03-f0803-compile) - see that manifest/docs/probes.md
-// for the exact connection record.
+// Compiled on real hardware as this whole, assembled file and CALLed
+// without error (verify/part08-02-testpf, 2026-09-29, Highest
+// Severity 00) - see that manifest/docs/probes.md for the exact
+// connection record.
 
 ctl-opt dftactgrp(*no) actgrp(*new);
 
