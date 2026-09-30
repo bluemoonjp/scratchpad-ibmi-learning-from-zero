@@ -1,0 +1,10 @@
+      * R0408BF - called side: line total = QTY x PRICE.
+      * PARM 1 QTY 5,0 in, PARM 2 PRICE 7,0 in, PARM 3 TOTAL 9,0 out.
+     H
+     C           *ENTRY    PLIST
+     C                     PARM           QTY     50
+     C                     PARM           PRICE   70
+     C                     PARM           TOTAL   90
+     C           QTY       MULT PRICE     TOTAL
+     C                     SETON                     LR
+     C                     RETRN
