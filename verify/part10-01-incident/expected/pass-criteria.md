@@ -61,7 +61,7 @@ vfylog: `TXCHECK PASS:` x4 (TXCAPFL flag exists, ZA0500 program exists, JU0900C 
 - INFMSG (TXCAPINF): vfylog has `TXCAPINF: RTVMSG first level: ...` (record whether `sample message data` was substituted into CPF9898) and second level; `TXCAPINF: RTVMSG failed.` means RTVMSG needs other parameters (record).
 - INFOBJD (TXCAPOBJ): `TXCAPOBJ: owner: ... crtdate: ... text: ...`. A compile failure `CPAPOBJ FAILED` (CPD0043) means the RTVOBJD keyword names in the reading box are wrong (record, fix the lesson, not this batch).
 - P15 recheck, primary route (proven view QSYS2.LIBRARY_LIST_INFO, no spool reading): collect VFYL10. Tags `W-BEFORE` / `W-AFTER` = the wrapper's own list before and after `CHGCURLIB CURLIB(<lib>)`; tags `J-BEFORE` / `J-AFTER` = the list of the SBMJOB job (helper TXCAPLIB) submitted right before / after it. PASS (P15 inherited *CURRENT confirmed): `J-BEFORE` equals `W-BEFORE` and `J-AFTER` equals `W-AFTER`, with a row of TYPE `CURRENT` naming the library only in the AFTER pair. Anything else is a P15 finding, record it.
-- Second look: LIBLA / LIBLB (QPDSPLIB spool of the two DSPLIBL jobs; spool file name and reader UNVERIFIED). SETENV *PRD itself is not run (SETENV lives in the private library 1, which batches never touch); CHGCURLIB is what SETENV *PRD does first.
+- Second look: LIBLA / LIBLB (QPDSPLIB spool of the two DSPLIBL jobs; spool file name and reader UNVERIFIED). `SETENV *PRD` itself is not run (SETENV lives in the private library 1, which batches never touch); CHGCURLIB is what `SETENV *PRD` does first.
 
 ## 8. Cleanup (end state)
 
