@@ -10,7 +10,7 @@
      C                     EXCPT
      C                     SETON                     LR
      OQSYSPRT E
-     O                         QTY        3
-     O                                    5 '  '
-     O                         FLG        6
-     O                 85                23 'CALL FAILED'
+     O                         QTY        5
+     O                                    7 '  '
+     O                         FLG        8
+     O                 85                25 'CALL FAILED'
