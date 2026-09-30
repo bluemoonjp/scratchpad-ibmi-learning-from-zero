@@ -1,4 +1,4 @@
-# part10-00-probe の期待値(手計算、実機未確認)
+# part10-00-probe の期待値(手計算。2026-09-30に2回実行済み。実際の結果は `docs/probes.md` の「第10部 10-00」の節)
 
 第10部の前提確認(H0、`work/design/part10-design-v3.md` 6節H0)の安全側。
 `<USER>2`のDBVER(サンプルDBの版)は変えない。DBVER 2に上げる手順は

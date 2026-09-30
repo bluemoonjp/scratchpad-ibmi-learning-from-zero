@@ -1,9 +1,15 @@
 solutions/10-03 - lesson 10-03 (Capstone C and D)
 ==================================================
 
-STATUS: UNVERIFIED (2026-09-30). The verify batch part10-03-modernize
-has not run yet. Do not look at the model answer before you have tried
-the skeleton.
+STATUS (2026-09-30): the model answer, the tests and RUNTEST were run by the
+verify batch part10-03-modernize (2 connections; V2, non-interactive):
+new ZA0500 built with CRTSQLRPGI, *TEST output identical to the legacy
+program, *LIVE stock identical (EXCEPT 0 rows both ways), RUNTEST message
+PASS=0000000038 FAIL=0000000000, makei "Build Successful!". NOT verified:
+real spool files, TXSNAP/CMPPFM, rpglint, a ZA0500 that a learner wrote from
+the skeleton, the reserve() *off path. See docs/part10/10-03-modernization-devbase.md
+(the real-machine notes at the end). Do not look at the model answer before you have tried the
+skeleton.
 
 Files
 -----
@@ -21,7 +27,9 @@ runtest.clp                RUNTEST: one command, one job, runs
                            PASS and FAIL counts
 Rules.mk                   makei rules for a flat clone: ZAISRV and ZA0500
                            (module route; see the NOTE in the file about
-                           ctl-opt dftactgrp/actgrp, UNVERIFIED)
+                           ctl-opt dftactgrp/actgrp: makei built OK on a
+                           copy without them, the case with them is
+                           UNVERIFIED)
 
 Build order (library list: your work library first)
 ---------------------------------------------------
@@ -34,11 +42,9 @@ Build order (library list: your work library first)
    has no ACTGRP or BNDDIR keyword):
      CRTSQLRPGI OBJ(<work lib>/ZA0500) SRCFILE(<work lib>/QRPGLESRC)
        SRCMBR(ZA0500) OBJTYPE(*PGM) COMMIT(*NONE) REPLACE(*YES)
-   From a git checkout (stream file, UTF-8) the design used SRCSTMF plus
-   TGTCCSID(*JOB) and BNDDIR on the command line. The command reference
-   lists CVTCCSID(*JOB) for the conversion and no such TGTCCSID or BNDDIR
-   keyword for CRTSQLRPGI; the batch tries all spellings and records the
-   result (UNVERIFIED until it runs).
+   From a git checkout (stream file, UTF-8) use SRCSTMF with CVTCCSID(*JOB)
+   (built to severity 00 on a scratch program, not run). CRTSQLRPGI has no
+   TGTCCSID and no BNDDIR keyword: both give CPD0043 (verified 2026-09-30).
 4. Build TSTZA0500 and RUNTEST:
      CRTBNDRPG PGM(<work lib>/TSTZA0500) SRCFILE(<work lib>/QRPGLESRC)
        SRCMBR(TSTZA0500) DFTACTGRP(*NO) ACTGRP(*NEW)

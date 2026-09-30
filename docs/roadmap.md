@@ -78,10 +78,10 @@
 | 状況 | 代替 |
 |---|---|
 | 外へ通信できない | モックを使う |
-| `<USER>2`(本番役のライブラリー)がない | `<USER>1` で役割を兼ね、`SETENV` で切り替えたことを成果物に書く |
+| `<USER>2`(本番役のライブラリー)がない | [05-12](part05/05-12-promote-and-rollback.md)(本番役の作り方)に戻る。第10部は `<USER>2` を前提に書いてあり、`<USER>1` で代用する手順は用意していません |
 | PTF の段階が低い | PTF 依存の機能を使わない書き方にする |
-| makei が使えない | `CRTSQLRPGI`・`CRTBNDRPG` を手で実行する(この教材のリポジトリーには `build.sh` のようなビルド用スクリプトはありません) |
-| IFS に書き込めない | `IFS_WRITE_UTF8` は第9部で実機確認済みです。代替として挙げる `CPYTOIMPF` による書き出しは未検証です(`RCDDLM(*CR)` を省くと `CPF2845` になる実例が[付録B](appendix/b-message-ids.md)にあります) |
+| makei が使えない | `CRTSQLRPGI ... OBJTYPE(*PGM) COMMIT(*NONE) CVTCCSID(*JOB)` を手で実行する([10-03](part10/10-03-modernization-devbase.md)の手順6。`CRTBNDRPG` は埋め込み SQL を含むソースには使えません。この教材のリポジトリーには `build.sh` のようなビルド用スクリプトはありません) |
+| IFS に書き込めない | `IFS_WRITE_UTF8` は第9部と 10-04 で実機確認済みです。代替として挙げる `CPYTOIMPF` による書き出しは未検証です(`RCDDLM(*CR)` を省くと `CPF2845` になる実例が[付録B](appendix/b-message-ids.md)にあります) |
 | ジャーナルがない | 更新の順序と取消しの処理で整合性を保つ |
 
 Code for IBM i(VS Code)を使う場合は、拡張機能の `autoClearTempData`(既定でオン)が接続のたびに一時ライブラリー内の `O_` で始まる `*FILE` を自動削除します。一時ライブラリーの設定を誤ると自分の開発物が消えることがあるため、[06-02](part06/06-02-vscode-code-for-ibmi.md)で設定を確認してください。

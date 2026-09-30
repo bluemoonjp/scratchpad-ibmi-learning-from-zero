@@ -1,4 +1,4 @@
-# part10-00b-dbver2 の期待値(手計算、実機未確認)
+# part10-00b-dbver2 の期待値(手計算。2026-09-30に1回実行済み。実際の結果は `docs/probes.md` の「第10部 10-00」の節)
 
 第10部H0の後半。TXMIGR TO(2)でJUCHUMをv2(JUDLV付き)にする。**対象は
 `<USER>B`(`library2: "*B"`)であり`<USER>2`ではない**(`part05-txmigr-to2`と同じ)。
