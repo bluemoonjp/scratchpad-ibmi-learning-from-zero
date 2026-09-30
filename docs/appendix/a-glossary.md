@@ -115,6 +115,7 @@
 |---|---|---|
 | Allocate | 引き当てる | 04-09 |
 | Breakpoint | ブレークポイント | 04-12 |
+| Called program / calling program | 呼ばれる側のプログラム / 呼ぶ側のプログラム | 04-08b |
 | Combined file | 組み合わせファイル | 04-11 |
 | Compare and branch | 比較して分岐(`CABxx`) | 05-02 |
 | Compile-time table | コンパイル時テーブル | 05-04 |
@@ -155,6 +156,7 @@
 | Record lock | レコード・ロック | 04-09 |
 | Resulting indicator | 結果標識 | 04-04 |
 | RPG cycle | RPG サイクル | 04-10 |
+| Parameter list (PLIST) | パラメーター・リスト(`*ENTRY PLIST` は呼ばれる側の入口) | 04-08b |
 | Runtime array | 実行時配列 | 05-04 |
 | Secondary file | セカンダリー・ファイル | 05-03 |
 | SFILE continuation line | SFILE 継続行(F仕様書) | 05-05 |

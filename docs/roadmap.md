@@ -42,7 +42,7 @@
 
 例外は次の2種類だけです。
 
-- **枝番レッスン(`b` の付くもの)**: 例 [01-06b](part01/01-06b-object-lifecycle.md)(オブジェクトのライフサイクル)、[06-01b](part06/06-01b-reading-fixed-mixed-form.md)(固定形式・混在形式のRPG IVを読む)、[06-11b](part06/06-11b-maintenance-screen-locking.md)(RPG IVの保守画面)、[06-14b](part06/06-14b-date-timestamp-null.md)(DATE/TIMESTAMP/NULL)、[09-02b](part09/09-02b-japanese-dbcs.md)(日本語・DBCSを実機で体験)。本編の流れには含まれず、直前のレッスンが終わっていれば、その場で寄り道してもよいですし、後回しにしてもかまいません。
+- **枝番レッスン(`b` の付くもの)**: 例 [01-06b](part01/01-06b-object-lifecycle.md)(オブジェクトのライフサイクル)、[04-08b](part04/04-08b-call-parm-plist.md)(RPG III の `CALL`・`PARM`・`PLIST`。推奨ルートに入る例外)、[06-01b](part06/06-01b-reading-fixed-mixed-form.md)(固定形式・混在形式のRPG IVを読む)、[06-11b](part06/06-11b-maintenance-screen-locking.md)(RPG IVの保守画面)、[06-14b](part06/06-14b-date-timestamp-null.md)(DATE/TIMESTAMP/NULL)、[09-02b](part09/09-02b-japanese-dbcs.md)(日本語・DBCSを実機で体験)。本編の流れには含まれず、直前のレッスンが終わっていれば、その場で寄り道してもよいですし、後回しにしてもかまいません。**ただし [04-08b](part04/04-08b-call-parm-plist.md)(RPG III の `CALL`・`PARM`・`PLIST` を自分で書く)だけは例外で、推奨ルートに入っています。** 第5部の [05-13](part05/05-13-checkpoint-tickets.md) のチケット1が、`*ENTRY PLIST` の長さ・小数点位置を呼ぶ側と合わせて直すことを求めるため、05-13 の前(04-09 に進む前でも、第4部の終わりでもかまいません)に済ませてください。
 - **各部末のチェックポイント**: [01-10](part01/01-10-checkpoint.md)・[02-11](part02/02-11-checkpoint.md)・[03-14](part03/03-14-checkpoint-backup.md)・[04-13](part04/04-13-checkpoint-stock-list.md)・[05-13](part05/05-13-checkpoint-tickets.md)・[06-15](part06/06-15-checkpoint-stock-inquiry.md)・[07-05](part07/07-05-checkpoint-zaisrv.md)・[08-08](part08/08-08-checkpoint-promote-rollback.md)・[09-07](part09/09-07-checkpoint-order-summary-api.md)・[第10部](part10/index.md)(各レッスンが TXCHECK で成果物を確かめ、10-04 で全体を振り返る)。次の部に進むための必須条件ではありませんが、その部の到達点を1問1問確かめる場なので、詰まったら次の部へ進む前に戻ることを勧めます。
 
 ## 早回しルート
@@ -50,7 +50,7 @@
 「情報系の基礎知識があり、CL/RPG III 自体は初めてでも先を急ぎたい」場合の削り方です。
 
 1. 各レッスンの「ウォームアップ」(前回の復習)は、`<details>` で畳まれています。自信があれば開かずに読み飛ばしてください。
-2. 枝番レッスン(`01-06b` 等)は初回は飛ばし、該当の部のチェックポイントで理解に穴があると感じたら戻ってください。
+2. 枝番レッスン(`01-06b` 等)は初回は飛ばし、ただし **`04-08b` は飛ばさないでください**(05-13 のチケット1の前提です)。それ以外の枝番は、該当の部のチェックポイントで理解に穴があると感じたら戻ってください。
 3. 各部末のチェックポイントを先に眺めて、「もう説明どおりにできそうだ」と思えるなら、その部の途中レッスンの「実演」を読むだけにして「演習」は省略し、チェックポイントで実際に確認する、という進め方もできます(ただし本書は「自分で答えを探させる課題」を出さない設計なので、飛ばした場合は理解の抜けに自分で気づきにくい点に注意してください)。
 4. GUI 専用の内容(06-02 の VS Code、09-02b の ACS 中心の内容、09-01/09-07 の ACS 部分)は、コンパイル・実行そのものには影響しないため、後回しにしても本編は進められます。
 5. 第10部は、[10-01](part10/10-01-preparation-incident.md)(準備と障害対応)と [10-04](part10/10-04-api-retrospective.md)(API と振り返り)を、読むだけの早回しにしてもかまいません。ただし [10-03](part10/10-03-modernization-devbase.md)(近代化と開発基盤)は、目標5・6を1つの成果物で確かめる場なので省略しないでください。また、10-01 で整える準備の状態が後のレッスンの前提になっている場合があるため、読むだけにするときは[第10部の扉](part10/index.md)で前提を確認してください。
