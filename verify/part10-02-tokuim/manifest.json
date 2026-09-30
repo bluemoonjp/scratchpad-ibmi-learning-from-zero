@@ -1,0 +1,1158 @@
+{
+  "batch": "part10-02-tokuim",
+  "library2": "*B",
+  "sshTimeoutMs": 480000,
+  "description": "Part 10, lesson 10-02 (task B, maintenance: add TOKYSN 7S 0 to TOKUIM by hand). Design: work/design/part10-design-v3.md, batch H2. NOT RUN YET - every expectation below is a prediction, see expected/notes.md. PRECONDITION: the library (default library) already holds the DBVER 1 sample database with the original 6 TOKUIM rows (TXSETUP or TXRESET done, TOKUIM still without TOKYSN); if an earlier run stopped half-way, restore TOKUIM by hand first (see the RSTDPF/RSTDUP/RSTLF steps) because the BACKUP step copies whatever TOKUIM looks like now.\n\nWHAT IT DOES, in wrapper order. (0) Compiles TXSNAP and creates TXSNAPT (RCDLEN 133), compiles TXCKM/TXCHECK/TXCHKRUN (TXCHECK is called exactly once: 08-08 found CPF4174 on a second call in one job), records the TOKUIM row count and, by INSERT ... SELECT from QSYS2.SYSCOLUMNS into the persistent VFYCOL table, the column list of TOKUIM and TOKUIL1 at stage T0. DSPFD TYPE(*RCDFMT) OUTPUT(*OUTFILE) snapshots (VFYFDM0/VFYFDL0 ...) keep the record format level of both files at each stage; the outfile columns are not confirmed, so the collect steps read SELECT *. (1) Compiles the v1 dependents against the v1 file: TK0100D and TK0100 (legacy, never CALLed here: it opens a display file), R0406S, R0407S, R0408S (src/qrpgsrc, TOKUIM readers), the CL probes TKPROBE/TKPROBL (DCLF + RCVF over TOKUIM / TOKUIL1, pattern of verify/part05-txmigr-to2/src/runprobe.clp) and the ORIGINAL JU0300. Runs the probes, runs JU0300 and copies its QSYSPRT with TXSNAP label BEFORE. Captures DSPDBR of TOKUIM (VFYDBR) and DSPPGMREF PGM(lib/*ALL) (VFYPGMR) into persistent tables. Backs TOKUIM up with CRTDUPOBJ DATA(*YES) into the second library as TKUIMBK. (2) CHGPF FILE(TOKUIM) SRCMBR(TOKUIMV3), the member being solutions/10-02/tokuim-v3.pf (original fields plus TOKYSN 7S 0, no DFT). Records columns/level snapshots, the value the existing rows got for TOKYSN (VFYDFT), then inserts one probe row C99999 with an explicit column list that omits TOKYSN (INSCHK, INSVFY, INSDEL; this is what TXRESET/load_v1.sql does after the change; VFYINS shows the TOKYSN it got, or INSCHK FAILED with SQL0407 if the omitted column is refused), then calls the v1-compiled probes again: TKPROBE should report CPF4131, TKPROBL is recorded whichever way it goes. (3) Rebuilds TOKUIL1 (DLTF + CRTLF, CRTLF has no REPLACE), recompiles TK0100/R0406S/R0407S/R0408S, compiles TKPROB3/TKPROBL3 (same source members, now bound to the v3 level) and calls them (expected: no CPF4131) and calls the v1 TKPROBE once more (expected: still CPF4131). (4) Compiles solutions/10-02/ju0300-credit.rpg over JU0300 and runs it twice: first with the limit as CHGPF left it (TXSNAP AFTER0), then after UPDATE TOKUIM SET TOKYSN = 10000 (TXSNAP AFTER). QSYS2 EXCEPT comparison of the TXSNAPT members through persistent aliases: BEFORE vs AFTER0, BEFORE vs AFTER, in both directions, into VFYXB0/VFYX0B/VFYXBA/VFYXAB. (5) TXCKM rows for lesson 10-02 (TOKUIM *FILE, TOKUIL1 *FILE, TK0100 *PGM, JU0300 *PGM) and one TXCHKRUN call. (6) Restore test: DLTF TOKUIL1, DLTF TOKUIM, CRTDUPOBJ TKUIMBK back as TOKUIM (DATA *YES), CRTLF TOKUIL1, snapshots, calls TKPROBE (v1 program: expected to work again if the level ID of a restored copy equals the original) and TKPROB3 (v3 program: expected CPF4131), recompiles the original JU0300, runs it (TXSNAP RESTORE) and compares with BEFORE (expected: identical). After the wrapper: TXCKM rows of 10-02 and the four aliases are removed; TKUIMBK stays in the second library on purpose (delete it by hand once the result is accepted; the BACKUP step only creates it when it is missing and never overwrites an existing one). Nothing outside the named objects is touched, the private library is never written, TXCKM/TXCHECK/TXCHKRUN/TXSNAP/TXSNAPT are shared and never deleted.\n\nSAFETY GATES: PREGATE (first cl step) stops the whole run with a VFYLOG line \"PREGATE STOP\" when TOKUIM already has TOKYSN (an earlier run died half-way: restore by hand first, otherwise BACKUP would save the v3 shape). CHGGUARD (before CHGPF) stops with \"CHGGUARD STOP\" when TKUIMBK is missing, so CHGPF never runs without a backup. Both jump to the wrapper DONE label and leave TOKUIM untouched.\n\nPRINT OUTPUT AND TXSNAP (read this before the pass criteria): docs/probes.md (part06-0103-freeform, part08-02-driver-bsh) found that a program run by a qsh system() wrapper job prints into the captured stdout, the run section of the result JSON, NOT into a spooled file, so CPYSPLF FILE(QSYSPRT) fails with CPF3303. Expect SNAPB, SNAPA0, SNAPA and SNAPR to report FAILED, and therefore the aliases, the EXCEPT tables (VFYXBA .. VFYXRB), VFYCNT and the GREPOVR counts to be empty or missing. That is the known harness limit, not a defect in JU0300. The primary evidence for the JU0300 report is the run section: four JU0300 reports in call order (BEFORE, AFTER0, AFTER, RESTORE), each ending with its GRAND TOTAL line. Count only report detail lines (they start with the order number J000nn and end with OVER LIMIT); the CRTRPGPGM compile listings in the same section also contain the source text OVER LIMIT and must not be counted. The TXSNAP path is kept only as an opportunistic second observation.\n\nHANG RISK: no step calls a display-file program or an unmonitored RPG entry; JU0300 is plain batch RPG III (it ran in part05-legacy-probe). If a call does stop on an inquiry message, CHGJOB INQMSGRPY(*DFT) answers it.\n\nUNVERIFIED and recorded rather than assumed: the DSPPGMREF OBJTYPE(*SRVPGM) keyword of CLNSVPR (not evidenced anywhere in the repo; the step is MONMSG-guarded, and the default OBJTYPE(*ALL) of CLNPGMR may already list *SRVPGM rows in VFYPGMR), RCLRSC before CHGPF/DLTF (a precaution against locks left by earlier SQL in the same job), TXSNAP (never run on hardware, P17; see above: expected to fail here), DSPFD *RCDFMT outfile columns, whether QSYS2.SYSCOLUMNS lists the logical file, KLIST/KFLD and the three added F-specs in ju0300-credit.rpg (first compile), whether TOKUIL1 needs a rebuild after CHGPF, the default CHGPF gives to TOKYSN (expected 0), and CRTDUPOBJ restoring an identical record format level ID.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txsnap.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXSNAP",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qddssrc/txckm.pf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "TXCKM",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txcheck.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCHECK",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qcmdsrc/txcheck.cmd",
+      "remoteSrcFile": "QCMDSRC",
+      "member": "TXCHECK",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "src/txchkrun.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCHKRUN",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "src/tkprobe.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TKPROBE",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "src/tkprobl.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TKPROBL",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/tk0100d.dspf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "TK0100D",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/tk0100.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "TK0100",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/ju0300.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "JU0300",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/10-02/ju0300-credit.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "JU0300C",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpgsrc/r0406s.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "R0406S",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpgsrc/r0407s.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "R0407S",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpgsrc/r0408s.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "R0408S",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../db/v1/tokuil1.lf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "TOKUIL1V1",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/10-02/tokuim-v3.pf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "TOKUIMV3",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "cl",
+      "label": "PREGATE",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYGATE') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/VFYGATE AS (SELECT COUNT(TOKYSN) AS N FROM &LIB/TOKUIM) WITH DATA') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000) EXEC(GOTO CMDLBL(CPTXSNAP))\nCHKOBJ OBJ(QTEMP/NOGATE) OBJTYPE(*DTAARA)\nMONMSG MSGID(CPF9801 CPF9810) EXEC(DO)\nSNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('PREGATE STOP: TOKUIM already has TOKYSN - restore by hand') TOPGMQ(*SAME) MSGTYPE(*INFO)\nGOTO CMDLBL(DONE)\nENDDO",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXSNAP",
+      "cmd": "CRTCLPGM PGM(&LIB/TXSNAP) SRCFILE(&LIB/QCLSRC) SRCMBR(TXSNAP) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKSNAPT",
+      "cmd": "CRTPF FILE(&LIB/TXSNAPT) RCDLEN(133) MAXMBRS(*NOMAX)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCKM",
+      "cmd": "CHKOBJ OBJ(&LIB/TXCKM) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/TXCKM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TXCKM))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHECK",
+      "cmd": "CHKOBJ OBJ(&LIB/TXCHECK) OBJTYPE(*PGM)\nMONMSG MSGID(CPF9801) EXEC(CRTCLPGM PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHECK))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHKCMD",
+      "cmd": "DLTCMD CMD(&LIB/TXCHECK)\nMONMSG MSGID(CPF0000)\nCRTCMD CMD(&LIB/TXCHECK) PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXCHECK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHKRUN",
+      "cmd": "CRTCLPGM PGM(&LIB/TXCHKRUN) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHKRUN) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKPRE",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYPRE') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/VFYPRE AS (SELECT COUNT(*) AS N, MIN(TOKCD) AS MINCD, MAX(TOKCD) AS MAXCD FROM &LIB/TOKUIM) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKCOL",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYCOL (TAG VARCHAR(12), TBL VARCHAR(10), COLN VARCHAR(10), POS INT, LEN INT, SCALE INT) ON REPLACE DELETE ROWS') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "COL0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYCOL SELECT ''T0-BEFORE'', TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, LENGTH, NUMERIC_SCALE FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME IN (''TOKUIM'', ''TOKUIL1'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FDM0",
+      "cmd": "DLTF FILE(&LIB/VFYFDM0)\nMONMSG MSGID(CPF0000)\nDSPFD FILE(&LIB/TOKUIM) TYPE(*RCDFMT) OUTPUT(*OUTFILE) OUTFILE(&LIB/VFYFDM0)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FDL0",
+      "cmd": "DLTF FILE(&LIB/VFYFDL0)\nMONMSG MSGID(CPF0000)\nDSPFD FILE(&LIB/TOKUIL1) TYPE(*RCDFMT) OUTPUT(*OUTFILE) OUTFILE(&LIB/VFYFDL0)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTK0100D",
+      "cmd": "CRTDSPF FILE(&LIB/TK0100D) SRCFILE(&LIB/QDDSSRC) SRCMBR(TK0100D)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTK0100",
+      "cmd": "CRTRPGPGM PGM(&LIB/TK0100) SRCFILE(&LIB/QRPGSRC) SRCMBR(TK0100)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPR0406S",
+      "cmd": "CRTRPGPGM PGM(&LIB/R0406S) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0406S)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPR0407S",
+      "cmd": "CRTRPGPGM PGM(&LIB/R0407S) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0407S)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPR0408S",
+      "cmd": "CRTRPGPGM PGM(&LIB/R0408S) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0408S)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTKPROBE",
+      "cmd": "CRTCLPGM PGM(&LIB/TKPROBE) SRCFILE(&LIB/QCLSRC) SRCMBR(TKPROBE) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTKPROBL",
+      "cmd": "CRTCLPGM PGM(&LIB/TKPROBL) SRCFILE(&LIB/QCLSRC) SRCMBR(TKPROBL) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPJU0300O",
+      "cmd": "CRTRPGPGM PGM(&LIB/JU0300) SRCFILE(&LIB/QRPGSRC) SRCMBR(JU0300) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRB0",
+      "cmd": "CALL PGM(&LIB/TKPROBE) PARM('&LIB' 'V1-PRE')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRL0",
+      "cmd": "CALL PGM(&LIB/TKPROBL) PARM('&LIB' 'V1-PRE')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNBEFORE",
+      "cmd": "CHGDTAARA DTAARA(*LDA (11 6)) VALUE(' ')\nMONMSG MSGID(CPF0000)\nCALL PGM(&LIB/JU0300)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNAPB",
+      "cmd": "CALL PGM(&LIB/TXSNAP) PARM('BEFORE' '&LIB' 'QSYSPRT' '*' '*LAST')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLNDBR",
+      "cmd": "DLTF FILE(&LIB/VFYDBR)\nMONMSG MSGID(CPF0000)\nDSPDBR FILE(&LIB/TOKUIM) OUTPUT(*OUTFILE) OUTFILE(&LIB/VFYDBR)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLNPGMR",
+      "cmd": "DLTF FILE(&LIB/VFYPGMR)\nMONMSG MSGID(CPF0000)\nDSPPGMREF PGM(&LIB/*ALL) OUTPUT(*OUTFILE) OUTFILE(&LIB/VFYPGMR)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLNSVPR",
+      "cmd": "DLTF FILE(&LIB/VFYSVPR)\nMONMSG MSGID(CPF0000)\nDSPPGMREF PGM(&LIB/*ALL) OBJTYPE(*SRVPGM) OUTPUT(*OUTFILE) OUTFILE(&LIB/VFYSVPR)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "BACKUP",
+      "cmd": "CHKOBJ OBJ(&LIB2/TKUIMBK) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTDUPOBJ OBJ(TOKUIM) FROMLIB(&LIB) OBJTYPE(*FILE) TOLIB(&LIB2) NEWOBJ(TKUIMBK) DATA(*YES))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FDBK",
+      "cmd": "DLTF FILE(&LIB/VFYFDBK)\nMONMSG MSGID(CPF0000)\nDSPFD FILE(&LIB2/TKUIMBK) TYPE(*RCDFMT) OUTPUT(*OUTFILE) OUTFILE(&LIB/VFYFDBK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CHGGUARD",
+      "cmd": "CHKOBJ OBJ(&LIB2/TKUIMBK) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801 CPF9810) EXEC(DO)\nSNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('CHGGUARD STOP: no TKUIMBK backup, TOKUIM untouched') TOPGMQ(*SAME) MSGTYPE(*INFO)\nGOTO CMDLBL(DONE)\nENDDO",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DOCHGPF",
+      "cmd": "RCLRSC\nMONMSG MSGID(CPF0000)\nCHGPF FILE(&LIB/TOKUIM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TOKUIMV3)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "COL1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYCOL SELECT ''T1-CHGPF'', TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, LENGTH, NUMERIC_SCALE FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME IN (''TOKUIM'', ''TOKUIL1'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FDM1",
+      "cmd": "DLTF FILE(&LIB/VFYFDM1)\nMONMSG MSGID(CPF0000)\nDSPFD FILE(&LIB/TOKUIM) TYPE(*RCDFMT) OUTPUT(*OUTFILE) OUTFILE(&LIB/VFYFDM1)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FDL1",
+      "cmd": "DLTF FILE(&LIB/VFYFDL1)\nMONMSG MSGID(CPF0000)\nDSPFD FILE(&LIB/TOKUIL1) TYPE(*RCDFMT) OUTPUT(*OUTFILE) OUTFILE(&LIB/VFYFDL1)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKDFT",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYDFT') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/VFYDFT AS (SELECT COUNT(*) AS N, MIN(TOKYSN) AS MINYSN, MAX(TOKYSN) AS MAXYSN FROM &LIB/TOKUIM) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRB1",
+      "cmd": "CALL PGM(&LIB/TKPROBE) PARM('&LIB' 'V1-POST')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRL1",
+      "cmd": "CALL PGM(&LIB/TKPROBL) PARM('&LIB' 'V1-POST')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "INSCHK",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TOKUIM (TOKCD, TOKNM, TOKZIP, TOKTAN, TOKUPD) VALUES (''C99999'', ''PROBE ROW'', ''0000000'', ''T00001'', 20260930)') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "INSVFY",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYINS') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/VFYINS AS (SELECT TOKCD, TOKYSN FROM &LIB/TOKUIM WHERE TOKCD = ''C99999'') WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "INSDEL",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/TOKUIM WHERE TOKCD = ''C99999''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RBLDLF",
+      "cmd": "DLTF FILE(&LIB/TOKUIL1)\nMONMSG MSGID(CPF0000)\nCRTLF FILE(&LIB/TOKUIL1) SRCFILE(&LIB/QDDSSRC) SRCMBR(TOKUIL1V1)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FDL2",
+      "cmd": "DLTF FILE(&LIB/VFYFDL2)\nMONMSG MSGID(CPF0000)\nDSPFD FILE(&LIB/TOKUIL1) TYPE(*RCDFMT) OUTPUT(*OUTFILE) OUTFILE(&LIB/VFYFDL2)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RTK0100",
+      "cmd": "CRTRPGPGM PGM(&LIB/TK0100) SRCFILE(&LIB/QRPGSRC) SRCMBR(TK0100)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RR0406S",
+      "cmd": "CRTRPGPGM PGM(&LIB/R0406S) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0406S)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RR0407S",
+      "cmd": "CRTRPGPGM PGM(&LIB/R0407S) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0407S)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RR0408S",
+      "cmd": "CRTRPGPGM PGM(&LIB/R0408S) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0408S)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTKPROB3",
+      "cmd": "CRTCLPGM PGM(&LIB/TKPROB3) SRCFILE(&LIB/QCLSRC) SRCMBR(TKPROBE) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTKPROL3",
+      "cmd": "CRTCLPGM PGM(&LIB/TKPROBL3) SRCFILE(&LIB/QCLSRC) SRCMBR(TKPROBL) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRB2",
+      "cmd": "CALL PGM(&LIB/TKPROB3) PARM('&LIB' 'V3-POST')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRL2",
+      "cmd": "CALL PGM(&LIB/TKPROBL3) PARM('&LIB' 'V3-POST')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRB2OLD",
+      "cmd": "CALL PGM(&LIB/TKPROBE) PARM('&LIB' 'V1-OLD')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPJU0300C",
+      "cmd": "CRTRPGPGM PGM(&LIB/JU0300) SRCFILE(&LIB/QRPGSRC) SRCMBR(JU0300C) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNAFT0",
+      "cmd": "CHGDTAARA DTAARA(*LDA (11 6)) VALUE(' ')\nMONMSG MSGID(CPF0000)\nCALL PGM(&LIB/JU0300)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNAPA0",
+      "cmd": "CALL PGM(&LIB/TXSNAP) PARM('AFTER0' '&LIB' 'QSYSPRT' '*' '*LAST')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SETLIM",
+      "cmd": "RUNSQL SQL('UPDATE &LIB/TOKUIM SET TOKYSN = 10000') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNAFTER",
+      "cmd": "CHGDTAARA DTAARA(*LDA (11 6)) VALUE(' ')\nMONMSG MSGID(CPF0000)\nCALL PGM(&LIB/JU0300)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNAPA",
+      "cmd": "CALL PGM(&LIB/TXSNAP) PARM('AFTER' '&LIB' 'QSYSPRT' '*' '*LAST')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ALB",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE ALIAS &LIB.SNPB FOR &LIB.TXSNAPT (BEFORE)') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ALA0",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE ALIAS &LIB.SNPA0 FOR &LIB.TXSNAPT (AFTER0)') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ALA",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE ALIAS &LIB.SNPA FOR &LIB.TXSNAPT (AFTER)') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "XBA",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB.VFYXBA') COMMIT(*NONE) NAMING(*SQL)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB.VFYXBA AS (SELECT * FROM &LIB.SNPB EXCEPT SELECT * FROM &LIB.SNPA) WITH DATA') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "XAB",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB.VFYXAB') COMMIT(*NONE) NAMING(*SQL)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB.VFYXAB AS (SELECT * FROM &LIB.SNPA EXCEPT SELECT * FROM &LIB.SNPB) WITH DATA') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "XB0",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB.VFYXB0') COMMIT(*NONE) NAMING(*SQL)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB.VFYXB0 AS (SELECT * FROM &LIB.SNPB EXCEPT SELECT * FROM &LIB.SNPA0) WITH DATA') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "X0B",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB.VFYX0B') COMMIT(*NONE) NAMING(*SQL)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB.VFYX0B AS (SELECT * FROM &LIB.SNPA0 EXCEPT SELECT * FROM &LIB.SNPB) WITH DATA') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKCNT",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYCNT (TAG VARCHAR(10), N INT) ON REPLACE DELETE ROWS') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CNTB",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFYCNT SELECT ''BEFORE'', COUNT(*) FROM &LIB.SNPB') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CNTA0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFYCNT SELECT ''AFTER0'', COUNT(*) FROM &LIB.SNPA0') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CNTA",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFYCNT SELECT ''AFTER'', COUNT(*) FROM &LIB.SNPA') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CKDEL",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/TXCKM WHERE LESSON = ''10-02''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CK1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-02'', 10, ''TOKUIM'', ''*FILE'', '' '', ''TOKUIM customer master exists'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CK2",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-02'', 20, ''TOKUIL1'', ''*FILE'', '' '', ''TOKUIL1 logical file exists'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CK3",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-02'', 30, ''TK0100'', ''*PGM'', '' '', ''TK0100 inquiry program exists'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CK4",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-02'', 40, ''JU0300'', ''*PGM'', '' '', ''JU0300 order list program exists'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TXCHK",
+      "cmd": "CALL PGM(&LIB/TXCHKRUN) PARM('10-02' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RSTGUARD",
+      "cmd": "CHKOBJ OBJ(&LIB2/TKUIMBK) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(GOTO CMDLBL(DONE))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RSTDLF",
+      "cmd": "RCLRSC\nMONMSG MSGID(CPF0000)\nDLTF FILE(&LIB/TOKUIL1)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RSTDPF",
+      "cmd": "DLTF FILE(&LIB/TOKUIM)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RSTDUP",
+      "cmd": "CRTDUPOBJ OBJ(TKUIMBK) FROMLIB(&LIB2) OBJTYPE(*FILE) TOLIB(&LIB) NEWOBJ(TOKUIM) DATA(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RSTLF",
+      "cmd": "DLTF FILE(&LIB/TOKUIL1)\nMONMSG MSGID(CPF0000)\nCRTLF FILE(&LIB/TOKUIL1) SRCFILE(&LIB/QDDSSRC) SRCMBR(TOKUIL1V1)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "COL2",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYCOL SELECT ''T2-RESTORE'', TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, LENGTH, NUMERIC_SCALE FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME IN (''TOKUIM'', ''TOKUIL1'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FDM3",
+      "cmd": "DLTF FILE(&LIB/VFYFDM3)\nMONMSG MSGID(CPF0000)\nDSPFD FILE(&LIB/TOKUIM) TYPE(*RCDFMT) OUTPUT(*OUTFILE) OUTFILE(&LIB/VFYFDM3)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FDL3",
+      "cmd": "DLTF FILE(&LIB/VFYFDL3)\nMONMSG MSGID(CPF0000)\nDSPFD FILE(&LIB/TOKUIL1) TYPE(*RCDFMT) OUTPUT(*OUTFILE) OUTFILE(&LIB/VFYFDL3)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRB3",
+      "cmd": "CALL PGM(&LIB/TKPROBE) PARM('&LIB' 'V1-REST')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRL3",
+      "cmd": "CALL PGM(&LIB/TKPROBL) PARM('&LIB' 'V1-REST')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRB3NEW",
+      "cmd": "CALL PGM(&LIB/TKPROB3) PARM('&LIB' 'V3-REST')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ZTK0100",
+      "cmd": "CRTRPGPGM PGM(&LIB/TK0100) SRCFILE(&LIB/QRPGSRC) SRCMBR(TK0100)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ZR0406S",
+      "cmd": "CRTRPGPGM PGM(&LIB/R0406S) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0406S)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ZR0407S",
+      "cmd": "CRTRPGPGM PGM(&LIB/R0407S) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0407S)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ZR0408S",
+      "cmd": "CRTRPGPGM PGM(&LIB/R0408S) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0408S)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTPRB3",
+      "cmd": "DLTPGM PGM(&LIB/TKPROB3)\nMONMSG MSGID(CPF0000)\nDLTPGM PGM(&LIB/TKPROBL3)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPJU0300R",
+      "cmd": "CRTRPGPGM PGM(&LIB/JU0300) SRCFILE(&LIB/QRPGSRC) SRCMBR(JU0300) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNREST",
+      "cmd": "CHGDTAARA DTAARA(*LDA (11 6)) VALUE(' ')\nMONMSG MSGID(CPF0000)\nCALL PGM(&LIB/JU0300)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNAPR",
+      "cmd": "CALL PGM(&LIB/TXSNAP) PARM('RESTORE' '&LIB' 'QSYSPRT' '*' '*LAST')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ALR",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE ALIAS &LIB.SNPR FOR &LIB.TXSNAPT (RESTORE)') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "XBR",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB.VFYXBR') COMMIT(*NONE) NAMING(*SQL)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB.VFYXBR AS (SELECT * FROM &LIB.SNPB EXCEPT SELECT * FROM &LIB.SNPR) WITH DATA') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "XRB",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB.VFYXRB') COMMIT(*NONE) NAMING(*SQL)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB.VFYXRB AS (SELECT * FROM &LIB.SNPR EXCEPT SELECT * FROM &LIB.SNPB) WITH DATA') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CNTR",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB.VFYCNT SELECT ''RESTORE'', COUNT(*) FROM &LIB.SNPR') COMMIT(*NONE) NAMING(*SQL)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "POSTCNT",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYPOST') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/VFYPOST AS (SELECT COUNT(*) AS N FROM &LIB/TOKUIM) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "sh",
+      "label": "GREPOVR",
+      "cmd": "echo \"OVERLIMIT-LINES BEFORE: $(grep -c 'OVER LIMIT' /QSYS.LIB/&LIB.LIB/TXSNAPT.FILE/BEFORE.MBR 2>&1)\"\necho \"OVERLIMIT-LINES AFTER0: $(grep -c 'OVER LIMIT' /QSYS.LIB/&LIB.LIB/TXSNAPT.FILE/AFTER0.MBR 2>&1)\"\necho \"OVERLIMIT-LINES AFTER: $(grep -c 'OVER LIMIT' /QSYS.LIB/&LIB.LIB/TXSNAPT.FILE/AFTER.MBR 2>&1)\"\necho \"OVERLIMIT-LINES RESTORE: $(grep -c 'OVER LIMIT' /QSYS.LIB/&LIB.LIB/TXSNAPT.FILE/RESTORE.MBR 2>&1)\"",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "CLNSEED",
+      "cmd": "system \"RUNSQL SQL('DELETE FROM &LIB/TXCKM WHERE LESSON = ''10-02''') COMMIT(*NONE)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "CLNALIAS",
+      "cmd": "system \"RUNSQL SQL('DROP ALIAS &LIB.SNPB') COMMIT(*NONE) NAMING(*SQL)\" 2>&1\nsystem \"RUNSQL SQL('DROP ALIAS &LIB.SNPA0') COMMIT(*NONE) NAMING(*SQL)\" 2>&1\nsystem \"RUNSQL SQL('DROP ALIAS &LIB.SNPA') COMMIT(*NONE) NAMING(*SQL)\" 2>&1\nsystem \"RUNSQL SQL('DROP ALIAS &LIB.SNPR') COMMIT(*NONE) NAMING(*SQL)\" 2>&1",
+      "after": true
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYPRE"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, TBL, COLN, POS, LEN, SCALE FROM &LIB.VFYCOL ORDER BY TAG, TBL, POS"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYDFT"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYINS"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT WHRFI, WHRLI, WHREFI, WHRELI, WHTYPE FROM &LIB.VFYDBR"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT WHLIB, WHPNAM, WHFNAM, WHLNAM, WHOBJT FROM &LIB.VFYPGMR WHERE WHFNAM IN ('TOKUIM', 'TOKUIL1') ORDER BY WHPNAM, WHFNAM"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT DISTINCT WHPNAM FROM &LIB.VFYPGMR WHERE WHPNAM IN ('JU0300', 'TK0100') AND WHFNAM = 'TOKUIM'"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYFDM0"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYFDL0"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYFDBK"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYFDM1"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYFDL1"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYFDL2"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYFDM3"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYFDL3"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, N FROM &LIB.VFYCNT ORDER BY TAG"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT WHLIB, WHPNAM, WHFNAM, WHLNAM, WHOBJT FROM &LIB.VFYSVPR WHERE WHFNAM IN ('TOKUIM', 'TOKUIL1') ORDER BY WHPNAM, WHFNAM"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COUNT(*) AS N_BEFORE_ONLY_VS_AFTER FROM &LIB.VFYXBA"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYXBA"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYXAB"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COUNT(*) AS N_BEFORE_ONLY_VS_AFTER0 FROM &LIB.VFYXB0"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COUNT(*) AS N_AFTER0_ONLY FROM &LIB.VFYX0B"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COUNT(*) AS N_BEFORE_ONLY_VS_RESTORE FROM &LIB.VFYXBR"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COUNT(*) AS N_RESTORE_ONLY FROM &LIB.VFYXRB"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB.VFYPOST"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COUNT(*) AS TXCKM_1002_LEFT FROM &LIB.TXCKM WHERE LESSON = '10-02'"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJCREATED FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*ALL')) X WHERE OBJNAME IN ('TOKUIM', 'TOKUIL1', 'TK0100', 'JU0300', 'TKPROBE', 'TKPROB3') ORDER BY OBJNAME, OBJTYPE"
+    }
+  ]
+}

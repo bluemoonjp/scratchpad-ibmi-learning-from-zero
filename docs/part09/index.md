@@ -68,7 +68,7 @@ cd $HOME/ibmi-kyozai && git sparse-checkout add solutions && git pull
 
 - 上の表の「扱わない」層(Node・Python・Java・PHPの実装、サーバーの作成、証明書の管理、常駐リスナー、SOAP、自動CIなど)。
 - IWS・Apache・Mapepireサーバーの導入・設定(「読んで設計する」層。設計書を書くところまで)。
-- `ZAISRVBD`・`JUCSRVBD`という2つのバインディング・ディレクトリーの統合(第8部から持ち越されていますが、この部でも扱わず、第10部の棚卸しへ引き続き送ります)。
+- `ZAISRVBD`・`JUCSRVBD`という2つのバインディング・ディレクトリーの統合(第8部から持ち越されていますが、この部でも第10部でも扱いません。この教材では範囲外のままです)。
 - 常駐するジョブ、ループするジョブ、`ADDJOBSCDE`による定期実行(この教材の方針です。[スタイル・ガイド](../style-guide.md)が、ループする常駐ジョブを避けるとしています)。「夜間」は、手動の`SBMJOB`で表現します(09-06)。
 
 ## 同時接続数
@@ -131,13 +131,8 @@ SSHは、連続失敗でIPが一時遮断されるため、認証に2回失敗�
 - 確認した層: 09-04〜09-07はV2、09-03はV1(コンパイルとPCMLの中身。`zaiApiGet`の呼び出しは未実施)(バッチ名`part09-inventory`・`part09-01-02-json`・`part09-03-pcml`・`part09-03-pcml2`・`part09-04-sql-routines`・`part09-05-mock`・`part09-05-http`・`part09-06-dtaq`・`part09-07-checkpoint`。いずれも非対話SSH)。各バッチの記録は[プローブ記録](../probes.md)の「第9部」の節にあります。
   - OSは`V7R5M0`、ジョブのCCSIDは273。`QSYS2`に`HTTP_GET`・`HTTP_POST`・`IFS_WRITE`・`IFS_WRITE_UTF8`・`SEND_DATA_QUEUE`・`SEND_DATA_QUEUE_UTF8`・`RECEIVE_DATA_QUEUE`が存在する(棚卸し`part09-inventory`で存在を確認。動作まで確認したのは`IFS_WRITE_UTF8`だけ)。`IFS_READ_UTF8`は棚卸しの一覧には出ておらず、`part09-01-02-json`で実際に実行して`LINE_NUMBER`・`LINE`が返ったことで存在と動作を確認した。
   - `VALUES CURRENT_TIMESTAMP`と`VALUES JSON_OBJECT(KEY 'ok' VALUE 1)`(結果`{"ok":1}`)が動く。
-  - `RUNSQLSTM SRCSTMF`の経路: `SELECT`単独文は`SQL0084`。表が未ジャーナルの`SQL7905`(重大度20)は、`ERRLVL(40)`を付けたとき後続文が動いた(省略時の動作は未検証(2026-09-29時点))。`## 実機メモ
-
-- 確認日: 2026-09-29(IBM i 7.5 / V7R5M0、PUB400、著者の検証用ライブラリーで実施。学習者自身の`<自分のユーザー名>1`・`<自分のユーザー名>2`そのものでの再現は未確認)。
-- 確認した層: 09-04〜09-07はV2、09-03はV1(コンパイルとPCMLの中身。`zaiApiGet`の呼び出しは未実施)(バッチ名`part09-inventory`・`part09-01-02-json`・`part09-03-pcml`・`part09-03-pcml2`・`part09-04-sql-routines`・`part09-05-mock`・`part09-05-http`・`part09-06-dtaq`・`part09-07-checkpoint`。いずれも非対話SSH)。各バッチの記録は[プローブ記録](../probes.md)の「第9部」の節にあります。
-  - OSは`V7R5M0`、ジョブのCCSIDは273。`QSYS2`に`HTTP_GET`・`HTTP_POST`・`IFS_WRITE`・`IFS_WRITE_UTF8`・`SEND_DATA_QUEUE`・`SEND_DATA_QUEUE_UTF8`・`RECEIVE_DATA_QUEUE`が存在する(棚卸し`part09-inventory`で存在を確認。動作まで確認したのは`IFS_WRITE_UTF8`だけ)。`IFS_READ_UTF8`は棚卸しの一覧には出ておらず、`part09-01-02-json`で実際に実行して`LINE_NUMBER`・`LINE`が返ったことで存在と動作を確認した。
-  - `VALUES CURRENT_TIMESTAMP`と`VALUES JSON_OBJECT(KEY 'ok' VALUE 1)`(結果`{"ok":1}`)が動く。
-・`[`・`]`・`{`・`}`を含む`.sql`は、CCSID 273タグのまま実行できた。UTF-8(1208タグ)に変換すると`SQL0330`で失敗した。`DFTRDBCOL`は未修飾名の作成先を決めるが、`CURRENT SCHEMA`はユーザー名のまま。詳しくは09-02。
+  - `RUNSQLSTM SRCSTMF`の経路: `SELECT`単独文は`SQL0084`。表が未ジャーナルの`SQL7905`(重大度20)は、`ERRLVL(40)`を付けたとき後続文が動いた(省略時の動作は未検証(2026-09-29時点))。
+  - `[`・`]`・`{`・`}`を含む`.sql`は、CCSID 273タグのまま実行できた。UTF-8(1208タグ)に変換すると`SQL0330`で失敗した。`DFTRDBCOL`は未修飾名の作成先を決めるが、`CURRENT SCHEMA`はユーザー名のまま。詳しくは09-02。
   - `curl`は`/QOpenSys/pkgs/bin/curl`にある(`PATH`には無い)。
   - qshの`system()`呼び出しは呼び出しごとに別ジョブ。`RMVLIBLE`で現行ライブラリーを外そうとすると`CPF2104`(05-12で確認した事実)。
 - プローブ別の状況(2026-09-29。詳しくは[プローブ記録](../probes.md)の「第9部」の各節): P03(ジョブCCSID 273)は確認済み。P15・P34(データ待ち行列とバッチ、09-06)、P26(`PGMINFO`によるPCML生成、09-03)、P31(SQL外部ルーチン、09-04)、P35(`IFS_WRITE_UTF8`・`IFS_READ_UTF8`)は確認済み。P32(`$[]{}`を含むSQL)は、qshのヒアドキュメントで書いた`.sql`の経路で確認済み。P33(`HTTP_GET`)は、枠の4回で確認済み(09-05)。P39(日本語のCCSID)はSQL部分だけ確認済み(GUI表示と`CCSID 1208`列での保持は未検証)。P14・P40はV3。
