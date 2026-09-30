@@ -173,7 +173,7 @@
 |---|---|---|
 | Backup | 退避 | 05-01 |
 | Cross-reference | 相互参照 | 05-02 |
-| Decimal data error | 10進数データ・エラー | 05-11 |
+| Decimal data error | 10進数データ・エラー | 04-08b(詳しくは 05-11) |
 | Direct / indirect reference | 直接参照 / 間接参照 | 05-07 |
 | Entry point | 入口 | 05-01 |
 | Golden master (test) | ゴールデン・マスター(・テスト) | 05-08 |
