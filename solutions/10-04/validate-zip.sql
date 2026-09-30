@@ -1,9 +1,11 @@
 -- validate-zip.sql - Lesson 10-04 model answer: validate zip code lookups
 -- by presence only. Two views over the tables of 09-05.
 --
--- STATUS: not run on the real machine yet (unverified as of 2026-09-30).
--- The batch verify/part10-04-checkpoint runs this file after the adapter
--- calls and records the verdicts; do not state a result from this header.
+-- STATUS: run on the real machine (part10-04-checkpoint, 2026-09-30, V2): both
+-- views were created by RUNSQLSTM without error. Mock rows: 1000001 FOUND,
+-- 9999999 NOTFOUND, 9999504 HTTPERR, 9999404 HTTPERR. Log after five adapter
+-- calls: 1000001 FOUND, 9999999 NOTFOUND, 9999504 HTTPERR, 9999404 HTTPERR,
+-- 1234567 NOMOCK.
 --
 -- Run it like the 09-05 scripts:
 --   RUNSQLSTM SRCSTMF('<path to this file>') COMMIT(*NONE) NAMING(*SQL)

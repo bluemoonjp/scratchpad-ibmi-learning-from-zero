@@ -50,7 +50,7 @@
              MONMSG     MSGID(CPF2103)
 
 /* 2. Clear old results. The table may not exist on the first run.       */
-             CHGVAR     VAR(&SQL) VALUE('DELETE FROM ' *TCAT %TRIM(&LIB) +
+             CHGVAR     VAR(&SQL) VALUE('DELETE FROM ' *CAT %TRIM(&LIB) +
                           *TCAT '/TESTRES')
              RUNSQL     SQL(&SQL) COMMIT(*NONE)
              MONMSG     MSGID(CPF0000 SQL0000)
@@ -89,18 +89,22 @@
              MONMSG     MSGID(CPF0000)
 
 /* 6. Count. Two small QTEMP tables, then RTVMBRD reads their sizes.     */
-             CHGVAR     VAR(&SQL) VALUE('CREATE OR REPLACE TABLE +
-                          QTEMP/TRPASS AS (SELECT * FROM ' *TCAT +
-                          %TRIM(&LIB) *TCAT '/TESTRES WHERE RESULT = +
-                          ''PASS'') WITH DATA')
+             DLTF       FILE(QTEMP/TRPASS)
+             MONMSG     MSGID(CPF0000)
+             CHGVAR     VAR(&SQL) VALUE('CREATE TABLE QTEMP/TRPASS AS +
+                          (SELECT * FROM ' *CAT %TRIM(&LIB) *TCAT +
+                          '/TESTRES WHERE RESULT = ''PASS'') +
+                          WITH DATA')
              RUNSQL     SQL(&SQL) COMMIT(*NONE)
              MONMSG     MSGID(CPF0000 SQL0000)
              RTVMBRD    FILE(QTEMP/TRPASS) NBRCURRCD(&NPASS)
              MONMSG     MSGID(CPF0000)
-             CHGVAR     VAR(&SQL) VALUE('CREATE OR REPLACE TABLE +
-                          QTEMP/TRFAIL AS (SELECT * FROM ' *TCAT +
-                          %TRIM(&LIB) *TCAT '/TESTRES WHERE RESULT <> +
-                          ''PASS'') WITH DATA')
+             DLTF       FILE(QTEMP/TRFAIL)
+             MONMSG     MSGID(CPF0000)
+             CHGVAR     VAR(&SQL) VALUE('CREATE TABLE QTEMP/TRFAIL AS +
+                          (SELECT * FROM ' *CAT %TRIM(&LIB) *TCAT +
+                          '/TESTRES WHERE RESULT <> ''PASS'') +
+                          WITH DATA')
              RUNSQL     SQL(&SQL) COMMIT(*NONE)
              MONMSG     MSGID(CPF0000 SQL0000)
              RTVMBRD    FILE(QTEMP/TRFAIL) NBRCURRCD(&NFAIL)
