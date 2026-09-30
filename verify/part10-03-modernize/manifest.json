@@ -1,0 +1,718 @@
+{
+  "batch": "part10-03-modernize",
+  "library2": "*B",
+  "sshTimeoutMs": 900000,
+  "description": "Part 10 lesson 10-03 (Capstone C and D). Real runs 2026-09-30 (2nd run: all criteria met; NEWBUILD OBJATTRIBUTE is RPGLE). ONE connection, ONE cl wrapper job. The first cl step CURSET makes the work library the current library, because a harness job starts with the private dev library as CURLIB and ZA0500, ZAISRV and the SQL cursors resolve JUCHUD/JUCHUM/ZAIKOM through the library list (without CURSET a *LIVE pass could update the private ZAIKOM). Order: (1) rebuild the legacy ZA0500 (src/legacy) and the ticket-1-fixed JU0900C, TXRESET, run JU0900C with PARM *TEST and print a marker before it: the printed lines are the legacy golden master (12 lines, OK 10, SHORT 2, NOTFOUND 0; expected/golden-test-12.txt; the printed text of a qsh-started job is captured in the run section, not a real spool file, so TXSNAP/CMPPFM stay V3 and the comparison is done locally on the run text); (2) separate *LIVE pass with the legacy program, ZAIKOM copied into VFYZLEG, TXRESET before and after; (3) CRTDUPOBJ backup ZA0ORIG into the backup library, build ZAISRV/ZAISRVBD/JUCSRV/JUCSRVBD/TESTKIT/TESTKITBD/TSTJUCSRV/TSTZAISRV/TSTZA0500/RUNTEST from source in the work library (closest safe alternative to promoting from the private dev library, which a batch must never touch), then CRTSQLRPGI of solutions/10-03/za0500s.sqlrpgle over ZA0500 (member form, COMMIT(*NONE), REPLACE(*YES); the binding directory is named by ctl-opt bnddir in the source because the command reference lists no BNDDIR or TGTCCSID keyword for CRTSQLRPGI); the stream-file spellings (design line with TGTCCSID and BNDDIR, CVTCCSID(*JOB), COMPILEOPT) are tried at run time through QCMDEXC on a scratch program ZA0STM by the helper ZA0STMB, one message each; (4) new ZA0500 through JU0900C: *TEST twice in the same job (second call OK, so no lock or ODP leak), then TXRESET, *LIVE pass with the ZAIKOM copy VFYZNEW and TXRESET again; the EXCEPT collects compare VFYZLEG and VFYZNEW (the printed *LIVE block of the legacy pass, after the marker LEGACY LIVE, is expected to equal expected/live-predicted-12.txt too; a difference there is a finding, not a harness error); (5) RUNTEST once (CHGCURLIB, DELETE FROM TESTRES, ZAIKOM isolated in QTEMP, TSTJUCSRV, TSTZAISRV, TSTZA0500; expected message RUNTEST: PASS=0000000038 FAIL=0000000000, ten digit zero padded like TXCHECK, = 23 existing rows + 15 new); (6) TXCKM rows for 10-03 and TXCHKRUN once (expected 6 passed 0 failed), the rows are copied to VFYCKM and deleted from TXCKM at the end; (7) rollback (delete ZA0500, CRTDUPOBJ ZA0ORIG back) and the *TEST run again, which must print the golden master; VFYATTR records OBJATTRIBUTE of ZA0500 as LEGACY, NEWBUILD, ROLLBACK so a failed compile cannot pass as a match (legacy is RPG, the new one must not be RPG: SQLRPGLE or RPGLE). Then after the wrapper, in separate qsh jobs: makei attempt on a flat clone built from the members (Rules.mk with ZAISRV and ZA0500 rules, objects go to the backup library and are deleted again; whether makei supports .sqlrpgle and a *PGM that binds a *SRVPGM is UNVERIFIED and is recorded either way). The makei copy of the source has the ctl-opt keywords dftactgrp and actgrp removed by a python step (ACTGRP is valid only for CRTBNDRPG, and makei builds a *MODULE first). JU0900C stays the ticket-1 version in the work library afterwards (TXLEGACY FORCE(*YES) resets it); ZA0500 ends as the legacy program. rpglint is NOT run here (learner-side tool, local only). Never run without reading the results section by section; ZAIKOM is restored with TXRESET at the end.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/za0500.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "ZA0500"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/05-13/ju0900c-ticket1.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "JU0900C"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/07-05/zaisrv.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "ZAISRV",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/07-05/zaisrv.bnd",
+      "remoteSrcFile": "QSRVSRC",
+      "member": "ZAISRV",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/jucsrv.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "JUCSRV",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qsrvsrc/jucsrv.bnd",
+      "remoteSrcFile": "QSRVSRC",
+      "member": "JUCSRV",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/testkit.sqlrpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "TESTKIT",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qsrvsrc/testkit.bnd",
+      "remoteSrcFile": "QSRVSRC",
+      "member": "TESTKIT",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/08-04/tstjucsrv.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "TSTJUCSRV"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/08-04/tstzaisrv.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "TSTZAISRV"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/10-03/za0500s.sqlrpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "ZA0500"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/10-03/tstza0500.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "TSTZA0500"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/10-03/runtest.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "RUNTEST"
+    },
+    {
+      "type": "file",
+      "localPath": "src/za0stmb.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "ZA0STMB"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qddssrc/txckm.pf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "TXCKM"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txcheck.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCHECK"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qcmdsrc/txcheck.cmd",
+      "remoteSrcFile": "QCMDSRC",
+      "member": "TXCHECK",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../part06-15-checkpoint/src/txchkrun.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCHKRUN"
+    },
+    {
+      "type": "sh",
+      "label": "MKSTMFDIR",
+      "cmd": "mkdir -p \"$HOME/vfy/part10-03-modernize/stmf\" 2>&1"
+    },
+    {
+      "type": "cl",
+      "label": "CURSET",
+      "cmd": "CHGCURLIB CURLIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RSTA",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPZALEG",
+      "cmd": "DLTPGM PGM(&LIB/ZA0500)\nMONMSG MSGID(CPF0000)\nCRTRPGPGM PGM(&LIB/ZA0500) SRCFILE(&LIB/QRPGSRC) SRCMBR(ZA0500) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPJU09",
+      "cmd": "DLTPGM PGM(&LIB/JU0900C)\nMONMSG MSGID(CPF0000)\nCRTCLPGM PGM(&LIB/JU0900C) SRCFILE(&LIB/QCLSRC) SRCMBR(JU0900C) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ATTRLEG",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYATTR') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/VFYATTR AS (SELECT CAST(''LEGACY'' AS VARCHAR(12)) AS TAG, OBJNAME, OBJATTRIBUTE AS ATTR FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME = ''ZA0500'') WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKLEGT",
+      "cmd": "CHGDTAARA DTAARA(*LDA (1 30)) VALUE('P10-03 LEGACY TEST GOLDEN     ')\nMONMSG MSGID(CPF0000)\nDSPDTAARA DTAARA(*LDA) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNLEGT",
+      "cmd": "CALL PGM(&LIB/JU0900C) PARM('*TEST' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RSTB",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKLEGL",
+      "cmd": "CHGDTAARA DTAARA(*LDA (1 30)) VALUE('P10-03 LEGACY LIVE            ')\nMONMSG MSGID(CPF0000)\nDSPDTAARA DTAARA(*LDA) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNLEGL",
+      "cmd": "CALL PGM(&LIB/JU0900C) PARM('*LIVE' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNAPLEG",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYZLEG') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/VFYZLEG AS (SELECT ZASHO, ZASU FROM &LIB/ZAIKOM) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RSTC",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "BKUPZA",
+      "cmd": "DLTPGM PGM(&LIB2/ZA0ORIG)\nMONMSG MSGID(CPF0000)\nCRTDUPOBJ OBJ(ZA0500) FROMLIB(&LIB) OBJTYPE(*PGM) TOLIB(&LIB2) NEWOBJ(ZA0ORIG)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPZAISM",
+      "cmd": "CRTRPGMOD MODULE(&LIB/ZAISRV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(ZAISRV) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPZAISS",
+      "cmd": "CRTSRVPGM SRVPGM(&LIB/ZAISRV) MODULE(&LIB/ZAISRV) EXPORT(*SRCFILE) SRCFILE(&LIB/QSRVSRC) SRCMBR(ZAISRV) ACTGRP(*CALLER) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPZAISBD",
+      "cmd": "CHKOBJ OBJ(&LIB/ZAISRVBD) OBJTYPE(*BNDDIR)\nMONMSG MSGID(CPF9801) EXEC(CRTBNDDIR BNDDIR(&LIB/ZAISRVBD))\nADDBNDDIRE BNDDIR(&LIB/ZAISRVBD) OBJ((*LIBL/ZAISRV *SRVPGM))\nMONMSG MSGID(CPF0000)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPJUCSM",
+      "cmd": "CRTRPGMOD MODULE(&LIB/JUCSRV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(JUCSRV) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPJUCSS",
+      "cmd": "CRTSRVPGM SRVPGM(&LIB/JUCSRV) MODULE(&LIB/JUCSRV) EXPORT(*SRCFILE) SRCFILE(&LIB/QSRVSRC) SRCMBR(JUCSRV) ACTGRP(*CALLER) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPJUCSBD",
+      "cmd": "CHKOBJ OBJ(&LIB/JUCSRVBD) OBJTYPE(*BNDDIR)\nMONMSG MSGID(CPF9801) EXEC(CRTBNDDIR BNDDIR(&LIB/JUCSRVBD))\nADDBNDDIRE BNDDIR(&LIB/JUCSRVBD) OBJ((*LIBL/JUCSRV *SRVPGM))\nMONMSG MSGID(CPF0000)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTKMOD",
+      "cmd": "CRTSQLRPGI OBJ(&LIB/TESTKIT) SRCFILE(&LIB/QRPGLESRC) SRCMBR(TESTKIT) OBJTYPE(*MODULE) COMMIT(*NONE) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "SQL0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTKSRV",
+      "cmd": "CRTSRVPGM SRVPGM(&LIB/TESTKIT) MODULE(&LIB/TESTKIT) EXPORT(*SRCFILE) SRCFILE(&LIB/QSRVSRC) SRCMBR(TESTKIT) ACTGRP(*CALLER) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTKBD",
+      "cmd": "CHKOBJ OBJ(&LIB/TESTKITBD) OBJTYPE(*BNDDIR)\nMONMSG MSGID(CPF9801) EXEC(CRTBNDDIR BNDDIR(&LIB/TESTKITBD))\nADDBNDDIRE BNDDIR(&LIB/TESTKITBD) OBJ((*LIBL/TESTKIT *SRVPGM))\nMONMSG MSGID(CPF0000)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTSTJUC",
+      "cmd": "CRTBNDRPG PGM(&LIB/TSTJUCSRV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(TSTJUCSRV) DFTACTGRP(*NO) ACTGRP(*NEW) BNDDIR((*LIBL/JUCSRVBD) (*LIBL/TESTKITBD)) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTSTZAI",
+      "cmd": "CRTBNDRPG PGM(&LIB/TSTZAISRV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(TSTZAISRV) DFTACTGRP(*NO) ACTGRP(*NEW) BNDDIR((*LIBL/ZAISRVBD) (*LIBL/TESTKITBD)) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTSTZA05",
+      "cmd": "CRTBNDRPG PGM(&LIB/TSTZA0500) SRCFILE(&LIB/QRPGLESRC) SRCMBR(TSTZA0500) DFTACTGRP(*NO) ACTGRP(*NEW) BNDDIR((*LIBL/ZAISRVBD) (*LIBL/TESTKITBD)) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPRUNTEST",
+      "cmd": "CRTCLPGM PGM(&LIB/RUNTEST) SRCFILE(&LIB/QCLSRC) SRCMBR(RUNTEST) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPZA0STB",
+      "cmd": "CRTCLPGM PGM(&LIB/ZA0STMB) SRCFILE(&LIB/QCLSRC) SRCMBR(ZA0STMB) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPZANEW",
+      "cmd": "CRTSQLRPGI OBJ(&LIB/ZA0500) SRCFILE(&LIB/QRPGLESRC) SRCMBR(ZA0500) OBJTYPE(*PGM) COMMIT(*NONE) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "SQL0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ATTRNEW",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYATTR SELECT ''NEWBUILD'', OBJNAME, OBJATTRIBUTE FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME = ''ZA0500''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNZASTM",
+      "cmd": "CALL PGM(&LIB/ZA0STMB) PARM('&LIB')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKNEWT",
+      "cmd": "CHGDTAARA DTAARA(*LDA (1 30)) VALUE('P10-03 NEW TEST               ')\nMONMSG MSGID(CPF0000)\nDSPDTAARA DTAARA(*LDA) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNNEWT",
+      "cmd": "CALL PGM(&LIB/JU0900C) PARM('*TEST' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKNEWT2",
+      "cmd": "CHGDTAARA DTAARA(*LDA (1 30)) VALUE('P10-03 NEW TEST 2ND CALL      ')\nMONMSG MSGID(CPF0000)\nDSPDTAARA DTAARA(*LDA) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNNEWT2",
+      "cmd": "CALL PGM(&LIB/JU0900C) PARM('*TEST' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RSTD",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKNEWL",
+      "cmd": "CHGDTAARA DTAARA(*LDA (1 30)) VALUE('P10-03 NEW LIVE               ')\nMONMSG MSGID(CPF0000)\nDSPDTAARA DTAARA(*LDA) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNNEWL",
+      "cmd": "CALL PGM(&LIB/JU0900C) PARM('*LIVE' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNAPNEW",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYZNEW') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/VFYZNEW AS (SELECT ZASHO, ZASU FROM &LIB/ZAIKOM) WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RSTE",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRTB",
+      "cmd": "CHGDTAARA DTAARA(*LDA (1 30)) VALUE('P10-03 RUNTEST BEGIN          ')\nMONMSG MSGID(CPF0000)\nDSPDTAARA DTAARA(*LDA) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNTEST",
+      "cmd": "CALL PGM(&LIB/RUNTEST) PARM('&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRTE",
+      "cmd": "CHGDTAARA DTAARA(*LDA (1 30)) VALUE('P10-03 RUNTEST END            ')\nMONMSG MSGID(CPF0000)\nDSPDTAARA DTAARA(*LDA) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCKM",
+      "cmd": "CHKOBJ OBJ(&LIB/TXCKM) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/TXCKM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TXCKM))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHECK",
+      "cmd": "CHKOBJ OBJ(&LIB/TXCHECK) OBJTYPE(*PGM)\nMONMSG MSGID(CPF9801) EXEC(CRTCLPGM PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHECK))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHKCMD",
+      "cmd": "DLTCMD CMD(&LIB/TXCHECK)\nMONMSG MSGID(CPF0000)\nCRTCMD CMD(&LIB/TXCHECK) PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXCHECK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPTXCHKRN",
+      "cmd": "CRTCLPGM PGM(&LIB/TXCHKRUN) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHKRUN) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TXCKMROWS",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/TXCKM WHERE LESSON = ''10-03''') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-03'', 10, ''ZA0500'', ''*PGM'', '' '', ''ZA0500 modernized program exists'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-03'', 20, ''RUNTEST'', ''*PGM'', '' '', ''RUNTEST wrapper exists'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-03'', 30, ''TSTZA0500'', ''*PGM'', '' '', ''TSTZA0500 test case exists'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-03'', 40, ''TESTKIT'', ''*SRVPGM'', '' '', ''TESTKIT service program exists'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-03'', 50, ''ZAISRV'', ''*SRVPGM'', '' '', ''ZAISRV service program exists'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('INSERT INTO &LIB/TXCKM VALUES (''10-03'', 60, ''TESTRES'', ''*FILE'', '' '', ''TESTRES result table exists'')') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNTXCHK",
+      "cmd": "CALL PGM(&LIB/TXCHKRUN) PARM('10-03' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CKMSNAP",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYCKM') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/VFYCKM AS (SELECT LESSON, SEQNBR, OBJNAME, OBJTYPE FROM &LIB/TXCKM WHERE LESSON = ''10-03'') WITH DATA') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ROLLBACK",
+      "cmd": "DLTPGM PGM(&LIB/ZA0500)\nMONMSG MSGID(CPF0000)\nCRTDUPOBJ OBJ(ZA0ORIG) FROMLIB(&LIB2) OBJTYPE(*PGM) TOLIB(&LIB) NEWOBJ(ZA0500)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ATTRROLL",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYATTR SELECT ''ROLLBACK'', OBJNAME, OBJATTRIBUTE FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME = ''ZA0500''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKROLL",
+      "cmd": "CHGDTAARA DTAARA(*LDA (1 30)) VALUE('P10-03 ROLLBACK TEST          ')\nMONMSG MSGID(CPF0000)\nDSPDTAARA DTAARA(*LDA) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNROLL",
+      "cmd": "CALL PGM(&LIB/JU0900C) PARM('*TEST' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RPG0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RSTF",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTBKUP",
+      "cmd": "DLTPGM PGM(&LIB2/ZA0ORIG)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CKMCLEAN",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/TXCKM WHERE LESSON = ''10-03''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "sh",
+      "label": "MKISETUP",
+      "after": true,
+      "cmd": "rm -rf \"$HOME/mk10\"\nmkdir -p \"$HOME/mk10/z\"\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGLESRC.FILE/ZAISRV.MBR') TOSTMF('$HOME/mk10/z/zaisrv.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QSRVSRC.FILE/ZAISRV.MBR') TOSTMF('$HOME/mk10/z/zaisrv.bnd') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGLESRC.FILE/ZA0500.MBR') TOSTMF('$HOME/mk10/z/za0500s.sqlrpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\n/QOpenSys/pkgs/bin/python3 -c \"p='$HOME/mk10/z/za0500s.sqlrpgle'; d=open(p,'rb').read(); open(p,'wb').write(d.replace(b'dftactgrp(*no) actgrp(*new) ', b''))\"\necho ---CTL-OPT---\n/QOpenSys/usr/bin/grep -n ctl-opt \"$HOME/mk10/z/za0500s.sqlrpgle\" </dev/null\n/QOpenSys/pkgs/bin/python3 -c \"open('$HOME/mk10/z/Rules.mk','wb').write(b'ZAISRV.MODULE: zaisrv.rpgle\\nZAISRV.SRVPGM: ZAISRV.MODULE zaisrv.bnd\\nZA0500.MODULE: za0500s.sqlrpgle\\nZA0500.PGM: ZA0500.MODULE ZAISRV.SRVPGM\\n')\"\n/QOpenSys/pkgs/bin/python3 -c \"open('$HOME/mk10/z/iproj.json','wb').write(b'{\\\"version\\\":\\\"0.0.1\\\",\\\"objlib\\\":\\\"&LIB2\\\",\\\"curlib\\\":\\\"&LIB2\\\",\\\"postUsrlibl\\\":' + bytes([91]) + b'\\\"&LIB\\\"' + bytes([93]) + b'}')\"\necho ---RULES-MK---\ncat \"$HOME/mk10/z/Rules.mk\" </dev/null\necho ---IPROJ-JSON---\ncat \"$HOME/mk10/z/iproj.json\" </dev/null\necho\n"
+    },
+    {
+      "type": "sh",
+      "label": "MKIBUILD",
+      "after": true,
+      "cmd": "/QOpenSys/pkgs/bin/bash -c 'cd \"$HOME/mk10/z\" && export PATH=/QOpenSys/pkgs/bin:$PATH && /QOpenSys/pkgs/bin/makei build' </dev/null 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "MKILIST",
+      "after": true,
+      "cmd": "db2 \"SELECT OBJNAME, OBJTYPE, OBJATTRIBUTE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB2', '*ALL')) X WHERE OBJNAME IN ('ZAISRV', 'ZA0500') ORDER BY OBJNAME, OBJTYPE\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "MKICLEAN",
+      "after": true,
+      "cmd": "system \"DLTPGM PGM(&LIB2/ZA0500)\" 2>&1\nsystem \"DLTSRVPGM SRVPGM(&LIB2/ZAISRV)\" 2>&1\nsystem \"DLTMOD MODULE(&LIB2/ZA0500)\" 2>&1\nsystem \"DLTMOD MODULE(&LIB2/ZAISRV)\" 2>&1\nrm -rf \"$HOME/mk10\" 2>&1\nrm -rf \"$HOME/vfy/part10-03-modernize/stmf\" 2>&1\n"
+    },
+    {
+      "type": "collect",
+      "kind": "attr",
+      "sql": "SELECT TAG, OBJNAME, ATTR FROM &LIB/VFYATTR ORDER BY 1"
+    },
+    {
+      "type": "collect",
+      "kind": "zaikom-legacy-live",
+      "sql": "SELECT ZASHO, ZASU FROM &LIB/VFYZLEG ORDER BY ZASHO"
+    },
+    {
+      "type": "collect",
+      "kind": "zaikom-new-live",
+      "sql": "SELECT ZASHO, ZASU FROM &LIB/VFYZNEW ORDER BY ZASHO"
+    },
+    {
+      "type": "collect",
+      "kind": "except-legacy-minus-new",
+      "sql": "SELECT COUNT(*) AS LEG_MINUS_NEW FROM (SELECT ZASHO, ZASU FROM &LIB/VFYZLEG EXCEPT SELECT ZASHO, ZASU FROM &LIB/VFYZNEW) X"
+    },
+    {
+      "type": "collect",
+      "kind": "except-new-minus-legacy",
+      "sql": "SELECT COUNT(*) AS NEW_MINUS_LEG FROM (SELECT ZASHO, ZASU FROM &LIB/VFYZNEW EXCEPT SELECT ZASHO, ZASU FROM &LIB/VFYZLEG) X"
+    },
+    {
+      "type": "collect",
+      "kind": "testres",
+      "sql": "SELECT SEQ, TESTNM, EXPECTED, ACTUAL, RESULT FROM &LIB/TESTRES ORDER BY SEQ"
+    },
+    {
+      "type": "collect",
+      "kind": "testres-summary",
+      "sql": "SELECT COUNT(*) AS TOTAL_CNT, SUM(CASE WHEN RESULT = 'PASS' THEN 1 ELSE 0 END) AS PASS_CNT, SUM(CASE WHEN RESULT <> 'PASS' THEN 1 ELSE 0 END) AS FAIL_CNT FROM &LIB/TESTRES"
+    },
+    {
+      "type": "collect",
+      "kind": "txckm",
+      "sql": "SELECT LESSON, SEQNBR, OBJNAME, OBJTYPE FROM &LIB/VFYCKM ORDER BY SEQNBR"
+    },
+    {
+      "type": "collect",
+      "kind": "final-state",
+      "sql": "SELECT 'JUCHUM' AS T, COUNT(*) AS N FROM &LIB/JUCHUM UNION ALL SELECT 'JUCHUD', COUNT(*) FROM &LIB/JUCHUD UNION ALL SELECT 'ZAIKOM', COUNT(*) FROM &LIB/ZAIKOM"
+    },
+    {
+      "type": "collect",
+      "kind": "zaikom-final",
+      "sql": "SELECT ZASHO, ZASU FROM &LIB/ZAIKOM ORDER BY ZASHO"
+    },
+    {
+      "type": "collect",
+      "kind": "objects",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJATTRIBUTE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*ALL')) X WHERE OBJNAME IN ('ZA0500', 'ZA0STM', 'ZAISRV', 'ZAISRVBD', 'TESTKIT', 'TESTKITBD', 'TSTZA0500', 'RUNTEST') ORDER BY OBJNAME, OBJTYPE"
+    },
+    {
+      "type": "collect",
+      "kind": "backup-lib-leftovers",
+      "sql": "SELECT OBJNAME, OBJTYPE FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB2', '*ALL')) X WHERE OBJNAME IN ('ZA0ORIG', 'ZA0500', 'ZAISRV')"
+    }
+  ]
+}
