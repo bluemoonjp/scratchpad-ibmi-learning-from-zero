@@ -1,0 +1,16 @@
+      * R0408BD - calling side, fixed: QTY is 5,0, same as R0408BC.
+      * Fix for the 3,0 / 5,0 mismatch.
+     H
+     FQSYSPRT O   F     132            PRINTER
+     C                     Z-ADD5         QTY     50
+     C                     MOVEL'-'       FLG     1
+     C                     CALL 'R0408BC'              85
+     C                     PARM           QTY
+     C                     PARM           FLG
+     C                     EXCPT
+     C                     SETON                     LR
+     OQSYSPRT E
+     O                         QTY        5
+     O                                    7 '  '
+     O                         FLG        8
+     O                 85                25 'CALL FAILED'
