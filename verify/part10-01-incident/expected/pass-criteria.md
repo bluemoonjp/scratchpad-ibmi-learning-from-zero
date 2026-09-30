@@ -50,7 +50,7 @@ State after the failed run: VFY10 `C-AFTFAIL` J00000 row unchanged (`4B4B4B4B4B`
 ## 5. Fix and resubmit (FIXUPD, FIXALT, jobs TXC1FIXD / TXC1FIXDD)
 
 - VFY10 `F-FIX`: HEX(JUSU) = `F0F0F0F0F1` (JUSU = 1). If FIXUPD failed but FIXALT worked (or the reverse), record which UPDATE form the SQL engine accepts on a row with an invalid digit.
-- Resubmitted run: no RPG0907, job ends normally. Line count is UNVERIFIED: design derivation says 13 print lines (J00000 line 1 = P00001 qty 1, `*TEST` writes nothing, avail 45 - 1 = 44 >= MINQTY 5 so it prints OK). Record the actual count and the J00000 line text from collect VFYPFIXD (in-job copy, likely route) or SPLFIXD / SPLFIXDD (second route). Do not hard-code 12 or 13 in the lesson or in TXCKM before this is read.
+- Resubmitted run: no RPG0907, job ends normally. Line count (observed in run 2, 2026-09-30: 13 application lines with `J00000  P00001  00001       OK` first, 14 CPYSPLF records with the footer; see section 9). The design derivation said 13 print lines (J00000 line 1 = P00001 qty 1, `*TEST` writes nothing, avail 45 - 1 = 44 >= MINQTY 5 so it prints OK). Record the actual count and the J00000 line text from collect VFYPFIXD (in-job copy, likely route) or SPLFIXD / SPLFIXDD (second route). Do not hard-code 12 or 13 in the lesson or in TXCKM before this is read.
 
 ## 6. TXCKM and TXCHECK (TXCHK1, once per job)
 
