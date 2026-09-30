@@ -2,7 +2,7 @@
       * PARM 1 PCODE 6 in, PARM 2 PNAME 30 out, PARM 3 PRC 1,0 out
       * (0 = found, 1 = not found).
      H
-     FTOKUIM  I   E           K        DISK
+     FTOKUIM  IF  E           K        DISK
      C           *ENTRY    PLIST
      C                     PARM           PCODE   6
      C                     PARM           PNAME  30
