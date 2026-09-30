@@ -361,6 +361,36 @@
     },
     {
       "type": "cl",
+      "label": "CLRVFY10",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/VFY10') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLRVFYJ10",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/VFYJ10') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLRVFYL10",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/VFYL10') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
       "label": "MKPBASE",
       "cmd": "DLTF FILE(&LIB/VFYPBASE)\nMONMSG MSGID(CPF0000)\nCRTPF FILE(&LIB/VFYPBASE) RCDLEN(133) TEXT('10-01 QSYSPRT copy BASE')",
       "monmsg": [

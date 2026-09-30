@@ -2,10 +2,13 @@
 -- QSYS2.IFS_WRITE_UTF8, once with a literal line and once with a line that
 -- comes from a column (the low stock alert view of lowstock-alert.sql).
 --
--- STATUS: not run on the real machine yet (unverified as of 2026-09-30).
--- Only a literal LINE was seen to work (09-02, batch part09-01-02-json).
--- A column-valued LINE, a relative PATH_NAME and the largest LINE are open
--- until verify/part10-04-checkpoint has run; read its result first.
+-- STATUS: run on the real machine (part10-04-checkpoint, 2026-09-30, V2):
+-- a literal LINE, a LINE from a variable filled from a view column (this
+-- procedure), and a scalar subselect directly as LINE all wrote the file; a
+-- relative PATH_NAME lands in the home directory of the job (not next to
+-- your script); LINE of 3000 and of 20000 bytes were written whole. Read back
+-- with IFS_READ_UTF8: one row, the same 180 characters. The view LOWALERT
+-- must exist first.
 --
 -- Prerequisite: the view LOWALERT (solutions/10-04/lowstock-alert.sql).
 -- Run:
@@ -27,9 +30,8 @@
 -- (unverified as of 2026-09-30).
 
 -- 1. Literal LINE. The path is relative: it is meant to resolve against the
---    home directory of the job. Whether it does is unverified; the batch
---    looks for the file in the home directory. Use an absolute path when in
---    doubt.
+--    home directory of the job. Verified: the file appeared in the home
+--    directory (21 bytes), not next to this script. Use an absolute path.
 CALL QSYS2.IFS_WRITE_UTF8(PATH_NAME => 'p1004lit.txt',
                           LINE => 'LOW STOCK EXPORT TEST',
                           OVERWRITE => 'REPLACE',
