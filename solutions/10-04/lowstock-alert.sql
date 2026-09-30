@@ -1,17 +1,18 @@
 -- lowstock-alert.sql - Lesson 10-04 model answer: the low stock alert as
 -- one JSON document, built on the LOW_STOCK table function of 09-04.
 --
--- STATUS: run on the real machine once (part10-04-checkpoint, 2026-09-30).
--- The first version of this file called LOW_STOCK() unqualified in the view
--- and RUNSQLSTM (NAMING(*SQL), DFTRDBCOL = dev library) stopped with SQL0204
+-- STATUS: run on the real machine twice (part10-04-checkpoint, 2026-09-30).
+-- Run 1: a first version called LOW_STOCK() unqualified in the view and
+-- RUNSQLSTM (NAMING(*SQL), DFTRDBCOL = dev library) stopped with SQL0204
 -- "LOW_STOCK in *LIBL type *N not found": DFTRDBCOL sets the default schema
 -- for tables, not the SQL path, and the path (QSYS, QSYS2, SYSPROC, SYSIBMADM,
--- user library) did not contain the dev library. The same view created
--- through db2 with the library written in front of LOW_STOCK worked and gave
--- the two expected products. This version has NOT been run yet: it repeats
--- the query of LOW_STOCK inside the view, so no function name has to be found
--- (tables are resolved through DFTRDBCOL, as in every other script here).
--- Do not state a result of this version from this header.
+-- user library) did not contain the dev library. Run 2 (V2): this version,
+-- which repeats the query of LOW_STOCK inside the view (no function name),
+-- was created by RUNSQLSTM without error (SQL7951, 00 level severity errors)
+-- and returned count 2 with P00002 and P00005 (from a wrapper job and from
+-- db2), 180 characters. Not checked: the view itself with zero low stock
+-- rows (only a WHERE 1 = 0 copy that calls LOW_STOCK gave count 0 and
+-- items null).
 --
 -- Prerequisite: the tables SHOHIM and ZAIKOM. The query is the one in
 -- LOW_STOCK (src/sql/09-04-routines.sql, SPECIFIC LOWSTOCKT). Run this file
@@ -29,9 +30,10 @@
 -- The alert is a manual query: nothing here runs on a schedule, and the
 -- 09-06 worker (C0906A) does not read it.
 --
--- JSON_ARRAYAGG over zero rows should give NULL, so with no low stock
--- product the document should read count 0 and items null (checked by the
--- batch with a WHERE 1 = 0 copy of the query; read its result first).
+-- JSON_ARRAYAGG over zero rows gave NULL in the WHERE 1 = 0 copy, so with no
+-- low stock product the document should read count 0 and items null (this
+-- view itself
+-- was not run with zero rows).
 
 CREATE OR REPLACE VIEW LOWALERT (ALERT_JSON) AS
   SELECT CAST(JSON_OBJECT(
