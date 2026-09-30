@@ -130,8 +130,9 @@
       * - an unqualified CALL from a fresh session hits the same
       * *LIBL RPG1216 hang probes.md 04-06 found for R0406T.
       *
-      * 10-02 CHANGE (model answer for lesson 10-02; compile and run
-      * status: see verify/part10-02-tokuim, UNVERIFIED until it has run).
+      * 10-02 CHANGE (model answer for lesson 10-02; compiled clean
+      * (severity 00) and run on PUB400 2026-09-30, batch
+      * part10-02-tokuim: flags 0/8/2/0).
       * Only ONE thing is added to the report above: a credit-limit flag.
       *   F-specs   TOKUIM, SHOHIM, JUCHUD (input, chained, keyed).
       *   C-specs   KLIST JKEY (JUNO + JULINE) and, per order, one CHAIN
