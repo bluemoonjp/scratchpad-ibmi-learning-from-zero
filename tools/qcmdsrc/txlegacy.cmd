@@ -7,3 +7,6 @@
              PARM       KWD(FORCE) TYPE(*CHAR) LEN(4) DFT(*NO) +
                           RSTD(*YES) VALUES(*NO *YES) +
                           PROMPT('Force rebuild (backs up first)')
+             PARM       KWD(LANG) TYPE(*CHAR) LEN(7) DFT(*SAME) +
+                          RSTD(*YES) VALUES(*SAME *RPG *RPGLE) +
+                          PROMPT('Source language')
