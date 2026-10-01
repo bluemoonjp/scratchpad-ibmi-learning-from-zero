@@ -1,0 +1,20 @@
+      * R0408BB - calling side: pass a customer code, print the name.
+      * Calls R0408BA. RC is set to 9 first so that a change is visible.
+     H
+     FQSYSPRT O   F     132            PRINTER
+     C                     MOVEL'C00001'  CODE    6
+     C                     MOVE *BLANKS   NAME   30
+     C                     Z-ADD9         RC      10
+     C                     CALL 'R0408BA'              85
+     C                     PARM           CODE
+     C                     PARM           NAME
+     C                     PARM           RC
+     C                     EXCPT
+     C                     SETON                     LR
+     OQSYSPRT E
+     O                         CODE       6
+     O                                    8 '  '
+     O                         NAME      38
+     O                                   40 '  '
+     O                         RC        41
+     O                 85                55 'CALL FAILED'

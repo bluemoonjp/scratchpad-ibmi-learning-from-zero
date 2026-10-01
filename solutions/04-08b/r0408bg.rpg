@@ -1,0 +1,15 @@
+      * R0408BG - calling side: call R0408BF with 3 and 1500.
+     H
+     FQSYSPRT O   F     132            PRINTER
+     C                     Z-ADD3         QTY     50
+     C                     Z-ADD1500      PRICE   70
+     C                     Z-ADD0         TOTAL   90
+     C                     CALL 'R0408BF'              85
+     C                     PARM           QTY
+     C                     PARM           PRICE
+     C                     PARM           TOTAL
+     C                     EXCPT
+     C                     SETON                     LR
+     OQSYSPRT E
+     O                         TOTAL 1   12
+     O                 85                30 'CALL FAILED'

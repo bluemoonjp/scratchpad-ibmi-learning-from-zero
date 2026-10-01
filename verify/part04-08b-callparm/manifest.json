@@ -1,0 +1,41 @@
+{
+  "batch": "part04-08b-callparm",
+  "description": "Lesson 04-08b (RPG III CALL/PARM/PLIST written by hand). CONFIRMED 2026-09-30 in 3 connections, results in expected/notes.md. PRECONDITION: the default library (<USER>2) already holds the DBVER 1 sample database (TXSETUP done, TOKUIM has C00001 = ACME TRADING CO), same prerequisite as part05-legacy-probe. WHAT IT DOES, in wrapper order: (0) ADDLIBLE the library first, so that the compile of R0408BA (external TOKUIM) and every unqualified CALL 'R0408Bx' inside the RPG programs resolve through *LIBL (04-06's RPG1216 hang and part06-p43-lockdiag's RNF2120 were both this). (1) DLTPGM then CRTRPGPGM for R0408BA (callee, name lookup), R0408BB (caller), R0408BC (callee, QTY 5,0), R0408BD (caller, QTY 3,0 = the mismatch), R0408BE (caller, NAME 10 vs 30 = the character mismatch), R0408BX (solutions/04-08b/r0408bd-fixed.rpg, QTY 5,0), R0408BF/R0408BG (exercise 3 answer, QTY x PRICE). (2) CHGJOB INQMSGRPY(*DFT) so that a function check in a called RPG program cannot stop the wrapper on an inquiry message. (3) Correct calls first (BB, BX, BG), then the two mismatch experiments: BE (character length, predicted to run silently) and, LAST because it may end abnormally (RPG0907) or hang, BD. All CALL steps are wrapped with broad MONMSG so a failure does not stop the wrapper. The RPG programs print with QSYSPRT; per part06-0103-freeform the output of a qsh system(CALL ...) job flows into this connection's run section. One connection is expected to be enough.",
+  "steps": [
+    { "type": "file", "localPath": "../../src/qrpgsrc/r0408ba.rpg", "remoteSrcFile": "QRPGSRC", "member": "R0408BA" },
+    { "type": "file", "localPath": "../../src/qrpgsrc/r0408bb.rpg", "remoteSrcFile": "QRPGSRC", "member": "R0408BB" },
+    { "type": "file", "localPath": "../../src/qrpgsrc/r0408bc.rpg", "remoteSrcFile": "QRPGSRC", "member": "R0408BC" },
+    { "type": "file", "localPath": "../../src/qrpgsrc/r0408bd.rpg", "remoteSrcFile": "QRPGSRC", "member": "R0408BD" },
+    { "type": "file", "localPath": "../../src/qrpgsrc/r0408be.rpg", "remoteSrcFile": "QRPGSRC", "member": "R0408BE" },
+    { "type": "file", "localPath": "../../solutions/04-08b/r0408bd-fixed.rpg", "remoteSrcFile": "QRPGSRC", "member": "R0408BX" },
+    { "type": "file", "localPath": "../../solutions/04-08b/r0408bf.rpg", "remoteSrcFile": "QRPGSRC", "member": "R0408BF" },
+    { "type": "file", "localPath": "../../solutions/04-08b/r0408bg.rpg", "remoteSrcFile": "QRPGSRC", "member": "R0408BG" },
+
+    { "type": "cl", "label": "ADDLIB", "cmd": "ADDLIBLE LIB(&LIB) POSITION(*FIRST)", "monmsg": ["CPF2103"] },
+
+    { "type": "cl", "label": "DLBA", "cmd": "DLTPGM PGM(&LIB/R0408BA)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPBA", "cmd": "CRTRPGPGM PGM(&LIB/R0408BA) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0408BA) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "DLBB", "cmd": "DLTPGM PGM(&LIB/R0408BB)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPBB", "cmd": "CRTRPGPGM PGM(&LIB/R0408BB) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0408BB) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "DLBC", "cmd": "DLTPGM PGM(&LIB/R0408BC)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPBC", "cmd": "CRTRPGPGM PGM(&LIB/R0408BC) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0408BC) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "DLBD", "cmd": "DLTPGM PGM(&LIB/R0408BD)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPBD", "cmd": "CRTRPGPGM PGM(&LIB/R0408BD) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0408BD) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "DLBE", "cmd": "DLTPGM PGM(&LIB/R0408BE)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPBE", "cmd": "CRTRPGPGM PGM(&LIB/R0408BE) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0408BE) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "DLBX", "cmd": "DLTPGM PGM(&LIB/R0408BX)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPBX", "cmd": "CRTRPGPGM PGM(&LIB/R0408BX) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0408BX) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "DLBF", "cmd": "DLTPGM PGM(&LIB/R0408BF)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPBF", "cmd": "CRTRPGPGM PGM(&LIB/R0408BF) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0408BF) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "DLBG", "cmd": "DLTPGM PGM(&LIB/R0408BG)", "monmsg": ["CPF0000"] },
+    { "type": "cl", "label": "CPBG", "cmd": "CRTRPGPGM PGM(&LIB/R0408BG) SRCFILE(&LIB/QRPGSRC) SRCMBR(R0408BG) REPLACE(*YES)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "INQDFT", "cmd": "CHGJOB INQMSGRPY(*DFT)", "monmsg": ["CPF0000"] },
+
+    { "type": "cl", "label": "RUNBB", "cmd": "CALL PGM(&LIB/R0408BB)", "monmsg": ["CPF0000", "MCH0000", "RPG0000"] },
+    { "type": "cl", "label": "RUNBX", "cmd": "CALL PGM(&LIB/R0408BX)", "monmsg": ["CPF0000", "MCH0000", "RPG0000"] },
+    { "type": "cl", "label": "RUNBG", "cmd": "CALL PGM(&LIB/R0408BG)", "monmsg": ["CPF0000", "MCH0000", "RPG0000"] },
+    { "type": "cl", "label": "RUNBE", "cmd": "CALL PGM(&LIB/R0408BE)", "monmsg": ["CPF0000", "MCH0000", "RPG0000"] },
+    { "type": "cl", "label": "RUNBD", "cmd": "CALL PGM(&LIB/R0408BD)", "monmsg": ["CPF0000", "MCH0000", "RPG0000"] }
+  ]
+}

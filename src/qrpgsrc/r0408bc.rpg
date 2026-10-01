@@ -1,0 +1,11 @@
+      * R0408BC - called side: reorder check. QTY is 5,0.
+      * PARM 1 QTY 5,0 in, PARM 2 FLG 1 out (R = reorder, O = ok).
+     H
+     C           *ENTRY    PLIST
+     C                     PARM           QTY     50
+     C                     PARM           FLG     1
+     C           QTY       COMP 10                     90
+     C   90                MOVEL'R'       FLG
+     C  N90                MOVEL'O'       FLG
+     C                     SETON                     LR
+     C                     RETRN
