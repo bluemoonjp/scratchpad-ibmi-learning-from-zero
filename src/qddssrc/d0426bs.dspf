@@ -1,0 +1,20 @@
+     A*  D0426B - customer list (TOKUIM), load-all subfile (04-26).
+     A*  No DDS conditioning indicators (see docs/probes.md).
+     A                                      DSPSIZ(24 80 *DS3)
+     A          R SFL1                      SFL
+     A            TOKCD          6A  O  4  2
+     A            TOKNM         30A  O  4 10
+     A          R SFL1CTL                   SFLCTL(SFL1)
+     A                                      SFLSIZ(9999)
+     A                                      SFLPAG(14)
+     A                                      SFLDSP
+     A                                      SFLDSPCTL
+     A                                      CF03(03)
+     A                                      OVERLAY
+     A                                  1  2'D0426B - Customer list (TOKUIM)'
+     A                                  3  2'Code'
+     A                                  3 10'Name'
+     A          R SFL1FTR
+     A                                      OVERLAY
+     A            MORE          10A  O 20  2
+     A                                 23  2'F3=Exit  Roll=Page'

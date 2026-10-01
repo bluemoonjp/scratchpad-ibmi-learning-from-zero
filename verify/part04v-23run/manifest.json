@@ -1,0 +1,783 @@
+{
+  "batch": "part04v-23run",
+  "sshTimeoutMs": 600000,
+  "description": "Issue #35, part 4V lesson 04-23 (externally described files in fixed-form RPG IV, CRTBNDRPG). Compiles the six shipped samples V0423A-E and W0423A (src/qrpglesrc/v0423*s.rpgle, w0423as.rpgle), the exercise answers (solutions/04-23, scratch member names X423*) and five NEGATIVE probes (verify/part04v-23run/src/t423n1-5: RPG III spelling UPDAT/EXCPT, READ EOF indicator and K at the RPG III columns, UPDATE on an input-only file) with OPTION(*EVENTF); the compile event file member of each is copied into VFYEVF so the real RNF/RNS message ids can be read (the harness never ran this EVFEVENT copy before: cl_commands_75.txt says the event file member is in EVFEVENT in the library of the created object, so the copy reads from &LIB, not QTEMP). RUN: V0423A/B/C and exercise programs print through QSYSPRT; per docs/probes.md (part06-decisions-2) the printed lines are read from this connection result's run section, not via CPYSPLF. V0423D mutates ZAIKOM P00001 45 to 43: TXRESET runs before and after, and VFYSTK records snapshots (RESET0, BEFOREV0D, AFTERV0D, RESET1, AFTERLOCK). The library list is reset first (RMVLIBLE then ADDLIBLE POSITION(*FIRST) of &LIB): there is no placeholder for the learner's first library, so &LIB (where the sample DB lives) is the one removed and re-added. LOCK EXPERIMENT (batch vs batch, the pattern part06-p43-lockdiag already confirmed with SHOHIM): SBMJOB V0423E (UF CHAIN of ZAIKOM P00006, no UPDATE, QCMDEXC DLYJOB 30) with INQMSGRPY(*DFT), then DSPRCDLCK, then the wrapper job calls W0423A with OVRDBF WAITRCD(5): expected LOCKED / status 01218 (UNVERIFIED for this fixed-form pair), then after the holder ends W0423A again: expected FOUND / 00000. HANG-PRONE LAST: a second holder is submitted and T423NE (the same tester WITHOUT an error indicator) is called against it: whatever ILE does for an unhandled record-lock time-out (an RNQ1218-style inquiry answered by INQMSGRPY(*DFT), or an RNX escape) lands in the job log (VFYLOG). Level check (CPF4131) and the *LIBL open failure are NOT run here (they would need a shared or scratch PF and an ILE inquiry message that has not been observed); the lesson text marks them unverified. Nothing is written to ZAIKOM except V0423D, which TXRESET undoes.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/v0423s.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0423A",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/v0423bs.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0423B"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/v0423cs.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0423C"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/v0423ds.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0423D"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/v0423es.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0423E"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/w0423as.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "W0423A"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/04-23/v0423b-c99999.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "X423B1"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/04-23/v0423d-short.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "X423D1"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/04-23/v0423d-notfound.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "X423D2"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/04-23/v0423c-swapped.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "X423C1"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/04-23/v0423f.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "X423F"
+    },
+    {
+      "type": "file",
+      "localPath": "src/t423n1.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "T423N1"
+    },
+    {
+      "type": "file",
+      "localPath": "src/t423n2.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "T423N2"
+    },
+    {
+      "type": "file",
+      "localPath": "src/t423n3.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "T423N3"
+    },
+    {
+      "type": "file",
+      "localPath": "src/t423n4.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "T423N4"
+    },
+    {
+      "type": "file",
+      "localPath": "src/t423n5.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "T423N5"
+    },
+    {
+      "type": "file",
+      "localPath": "src/t423ne.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "T423NE"
+    },
+    {
+      "type": "cl",
+      "label": "RMLIB",
+      "cmd": "RMVLIBLE LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ADLIB",
+      "cmd": "ADDLIBLE LIB(&LIB) POSITION(*FIRST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSPLIBL",
+      "cmd": "DSPLIBL OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CHGTYPES",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0423A) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(V0423B) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(V0423C) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(V0423D) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(V0423E) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(W0423A) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(X423B1) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(X423D1) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(X423D2) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(X423C1) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(X423F) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(T423N1) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(T423N2) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(T423N3) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(T423N4) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(T423N5) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)\nCHGPFM FILE(&LIB/QRPGLESRC) MBR(T423NE) SRCTYPE(RPGLE)\nMONMSG MSGID(CPF0000)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CRTEVF",
+      "cmd": "CHKOBJ OBJ(&LIB/VFYEVF) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYEVF) RCDLEN(300) TEXT('compile event capture'))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLREVF",
+      "cmd": "CLRPFM FILE(&LIB/VFYEVF)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CRTSTK",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFYSTK (TAG VARCHAR(10), ZASHO CHAR(6), ZASU DECIMAL(7, 0))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0423A",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0423A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0423A) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0423A",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(V0423A) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0423B",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0423B) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0423B) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0423B",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(V0423B) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0423C",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0423C) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0423C) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0423C",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(V0423C) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0423D",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0423D) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0423D) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0423D",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(V0423D) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0423E",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0423E) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0423E) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0423E",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(V0423E) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPW0423A",
+      "cmd": "CRTBNDRPG PGM(&LIB/W0423A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(W0423A) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVW0423A",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(W0423A) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPX423B1",
+      "cmd": "CRTBNDRPG PGM(&LIB/X423B1) SRCFILE(&LIB/QRPGLESRC) SRCMBR(X423B1) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVX423B1",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(X423B1) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPX423D1",
+      "cmd": "CRTBNDRPG PGM(&LIB/X423D1) SRCFILE(&LIB/QRPGLESRC) SRCMBR(X423D1) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVX423D1",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(X423D1) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPX423D2",
+      "cmd": "CRTBNDRPG PGM(&LIB/X423D2) SRCFILE(&LIB/QRPGLESRC) SRCMBR(X423D2) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVX423D2",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(X423D2) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPX423C1",
+      "cmd": "CRTBNDRPG PGM(&LIB/X423C1) SRCFILE(&LIB/QRPGLESRC) SRCMBR(X423C1) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVX423C1",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(X423C1) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPX423F",
+      "cmd": "CRTBNDRPG PGM(&LIB/X423F) SRCFILE(&LIB/QRPGLESRC) SRCMBR(X423F) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVX423F",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(X423F) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPT423N1",
+      "cmd": "CRTBNDRPG PGM(&LIB/T423N1) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T423N1) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVT423N1",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(T423N1) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPT423N2",
+      "cmd": "CRTBNDRPG PGM(&LIB/T423N2) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T423N2) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVT423N2",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(T423N2) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPT423N3",
+      "cmd": "CRTBNDRPG PGM(&LIB/T423N3) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T423N3) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVT423N3",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(T423N3) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPT423N4",
+      "cmd": "CRTBNDRPG PGM(&LIB/T423N4) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T423N4) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVT423N4",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(T423N4) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPT423N5",
+      "cmd": "CRTBNDRPG PGM(&LIB/T423N5) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T423N5) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVT423N5",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(T423N5) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPT423NE",
+      "cmd": "CRTBNDRPG PGM(&LIB/T423NE) SRCFILE(&LIB/QRPGLESRC) SRCMBR(T423NE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVT423NE",
+      "cmd": "CPYF FROMFILE(&LIB/EVFEVENT) FROMMBR(T423NE) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RESET0",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNRESET0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYSTK SELECT ''RESET0'', ZASHO, ZASU FROM &LIB/ZAIKOM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNV0423A",
+      "cmd": "CALL PGM(&LIB/V0423A)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNV0423B",
+      "cmd": "CALL PGM(&LIB/V0423B)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNV0423C",
+      "cmd": "CALL PGM(&LIB/V0423C)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNX423B1",
+      "cmd": "CALL PGM(&LIB/X423B1)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNX423F",
+      "cmd": "CALL PGM(&LIB/X423F)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNX423C1",
+      "cmd": "CALL PGM(&LIB/X423C1)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNX423D1",
+      "cmd": "CALL PGM(&LIB/X423D1)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNX423D2",
+      "cmd": "CALL PGM(&LIB/X423D2)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNBEFOREV0D",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYSTK SELECT ''BEFOREV0D'', ZASHO, ZASU FROM &LIB/ZAIKOM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNV0423D",
+      "cmd": "CALL PGM(&LIB/V0423D)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNAFTERV0D",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYSTK SELECT ''AFTERV0D'', ZASHO, ZASU FROM &LIB/ZAIKOM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RESET1",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNRESET1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYSTK SELECT ''RESET1'', ZASHO, ZASU FROM &LIB/ZAIKOM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SETWAIT",
+      "cmd": "OVRDBF FILE(ZAIKOM) WAITRCD(5)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SBMHOLD1",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/V0423E)) JOB(V0423E) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "WAIT1",
+      "cmd": "DLYJOB DLY(20)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MIDLOCK",
+      "cmd": "DSPRCDLCK FILE(*LIBL/ZAIKOM) MBR(*FIRST) RCDNBR(*ALL) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNWLOCK",
+      "cmd": "CALL PGM(&LIB/W0423A)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "WAIT2",
+      "cmd": "DLYJOB DLY(25)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "POSTLOCK",
+      "cmd": "DSPRCDLCK FILE(*LIBL/ZAIKOM) MBR(*FIRST) RCDNBR(*ALL) OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNWFREE",
+      "cmd": "CALL PGM(&LIB/W0423A)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNAFTERLOCK",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYSTK SELECT ''AFTERLOCK'', ZASHO, ZASU FROM &LIB/ZAIKOM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SBMHOLD2",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/V0423E)) JOB(V0423E) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "WAIT3",
+      "cmd": "DLYJOB DLY(12)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNNOER",
+      "cmd": "CALL PGM(&LIB/T423NE)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "WAIT4",
+      "cmd": "DLYJOB DLY(25)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYEVF"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, ZASHO, ZASU FROM &LIB/VFYSTK ORDER BY TAG, ZASHO"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/ZAIKOM ORDER BY ZASHO"
+    }
+  ]
+}
