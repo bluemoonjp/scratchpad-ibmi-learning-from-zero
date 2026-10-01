@@ -2,6 +2,12 @@
 
 > 所要時間: 75分(長め)/ 前提レッスン: 06-13 / 目標番号: 5 / 観測方法: `WRKSPLF` / 道具: SSH(`CPYFRMSTMF` でのソース取り込み)、5250(`CRTSQLRPGI`・`CALL`・`WRKSPLF`)/ 同時接続数: 5250×1(SSHでのソース取り込みは1回の接続でまとめて行います)/ 作る・変えるオブジェクト: `<USER>1/Q0614A`(SQLRPGLE)/ DBVER: 1 / 依存するプローブ: P12(`TOKUIM`は未journaled、確認済み)・`part06-1314-sql`検証バッチ(`CRTSQLRPGI`のOBJ/SRCFILE/SRCMBR/OBJTYPE/COMMIT構文、Highest Severity 00で確認)/ PTF 依存: なし / 容量の目安: わずか
 
+<details><summary>RPG III を通らないルートの人へ</summary>
+
+本文の `R0408A`(04-08)は、ルートでは [04-21](../part04v/04-21-fixed-form-skeleton.md) の `V0421D` に当たります。比較に使う `V0601A` は、ルートでは [04-27](../part04v/04-27-route-preparation.md) の手順 A3 で作ります。コミットメント制御の補足にある「05-11 で `DSPJRN` に触れた」は、ルートでは読んでいない話です。ジャーナルの作成は、このレッスンの範囲外という趣旨の一文なので、読み流して構いません。
+
+</details>
+
 ## ゴール
 
 - カーソルを使って、条件に合う複数行を1行ずつ`FETCH`で取り出せる。

@@ -1,6 +1,12 @@
 # 07-05 チェックポイント: 在庫サービスZAISRV
 
-> 所要時間: 120分(長め)/ 前提レッスン: 07-04 / 目標番号: 5 / 観測方法: `WRKSPLF`(印字結果)・`DSPSRVPGM` / 道具: SSH(`CPYFRMSTMF` でのソース取り込み)、5250(コンパイル・実行・確認)、SQL(`STRSQL`、`TXCKM`登録)/ 同時接続数: 5250×1(SSHでのソース取り込みは1回の接続でまとめて行います)/ 作る・変えるオブジェクト: `<USER>1/ZAISRV`(*MODULE→*SRVPGM)・`<USER>1/ZAISRVBD`(*BNDDIR)・`<USER>1/DRIVER`(プログラム)。演習は共有テーブル`ZAIKOM`の中身も書き換える(要`TXRESET`)/ DBVER: 1 / 依存するプローブ: なし / PTF 依存: なし / 容量の目安: わずか
+> 所要時間: 120分(長め)/ 前提レッスン: 07-04(TXCKM・TXCHECK は 05-13。RPG III を通らないルートでは 04-27) / 目標番号: 5 / 観測方法: `WRKSPLF`(印字結果)・`DSPSRVPGM` / 道具: SSH(`CPYFRMSTMF` でのソース取り込み)、5250(コンパイル・実行・確認)、SQL(`STRSQL`、`TXCKM`登録)/ 同時接続数: 5250×1(SSHでのソース取り込みは1回の接続でまとめて行います)/ 作る・変えるオブジェクト: `<USER>1/ZAISRV`(*MODULE→*SRVPGM)・`<USER>1/ZAISRVBD`(*BNDDIR)・`<USER>1/DRIVER`(プログラム)。演習は共有テーブル`ZAIKOM`の中身も書き換える(要`TXRESET`)/ DBVER: 1 / 依存するプローブ: なし / PTF 依存: なし / 容量の目安: わずか
+
+<details><summary>RPG III を通らないルートの人へ</summary>
+
+`TXCKM`・`TXCHECK` は、05-13 ではなく [04-27](../part04v/04-27-route-preparation.md) の手順 A1 で作ってあります。本文の `R0409A`(04-09)は [04-23](../part04v/04-23-external-files.md) の `V0423D`、04-13 は [04-25](../part04v/04-25-cycle-and-control-levels.md) の `V0425D` に読み替えてください。`V0423D` も `ZAIKOM` を書き換えるので、片付けの `TXRESET` は、ルートでも必要です。
+
+</details>
 
 ## ゴール
 
@@ -222,7 +228,7 @@ ENDPGMEXP
 
 7. `DSPSRVPGM SRVPGM(<自分のユーザー名>1/ZAISRV)`を実行し、エクスポートされている手続きの一覧に`GET`・`RESERVE`・`RELEASE`(いずれも大文字)が出ることを確認してください。
 
-8. `TXCKM`にこのレッスンの行を登録します。`TXCKM`・`TXCHECK`(および`*CMD`)は05-13で既にコンパイル済みのはずです(まだの場合は05-13の手順に従ってください)。二重登録を避けるため、まず同じ`LESSON`の行を消してから入れ直します。
+8. `TXCKM`にこのレッスンの行を登録します。`TXCKM`・`TXCHECK`(および`*CMD`)は05-13(RPG III を通らないルートでは 04-27)で既にコンパイル済みのはずです(まだの場合は05-13または04-27の手順に従ってください)。二重登録を避けるため、まず同じ`LESSON`の行を消してから入れ直します。
 
    ```sql
    DELETE FROM <自分のユーザー名>1/TXCKM WHERE LESSON = '07-05';
