@@ -42,10 +42,10 @@
 **対処**:
 
 - `CPF` 系のエスケープ・メッセージには、プログラム冒頭の `DCL` 群の直後に **`MONMSG MSGID(CPF0000) EXEC(GOTO CMDLBL(FAILSAFE))`** を1行置く(実機確認済み。この安全網により、以後同種の見落としがあっても無期限ハングではなく即時終了になる)。
-- ただし **`RPG1216`/`RPG0102` のような RPG 独自の照会メッセージは `CPF` で始まらないため、CL 側の `MONMSG MSGID(CPF0000)` では捕まえられない**(`src/legacy/qclsrc/mn0000c.clp` のヘッダー・コメントが明記)。RPG 自身の `*PSSR`(標準エラー処理サブルーチン)も、ファイル・オープンのような初期化段階のエラーには効かないことが実機で確認されている。これらは事後に捕まえるのではなく、**そもそも発生させない**しかない: `RPG1216` は同じジョブの中で `ADDLIBLE` するかライブラリー修飾する([04-06](../part04/04-06-sequential-read.md))、`RPG0102` は `DIV` の前に `COMP` で除数がゼロでないか確認する([04-12](../part04/04-12-debugging-runtime-errors.md))。
+- ただし **`RPG1216`/`RPG0102` のような RPG 独自の照会メッセージは `CPF` で始まらないため、CL 側の `MONMSG MSGID(CPF0000)` では捕まえられない**(`src/legacy/qclsrc/mn0000c.clp` のヘッダー・コメントが明記)。RPG 自身の `*PSSR`(標準エラー処理サブルーチン)も、ファイル・オープンのような初期化段階のエラーには効かないことが実機で確認されている。これらは事後に捕まえるのではなく、**そもそも発生させない**しかない: `RPG1216` は同じジョブの中で `ADDLIBLE` するかライブラリー修飾する([04-06](../part04/04-06-sequential-read.md))、`RPG0102` は `DIV` の前に `COMP` で除数がゼロでないか確認する([04-12](../part04/04-12-debugging-runtime-errors.md))。RPG III を通らないルート(`CRTBNDRPG` のプログラム)で出る `RNQ` 始まりの ILE の照会メッセージも、`CPF` ではないので同様に捕まえられないはずです(未検証(2026-10-01時点)。[04-24](../part04v/04-24-call-parm-debugging.md) を参照)。
 - `SBMJOB` には `INQMSGRPY(*DFT)`(照会メッセージに既定の応答を自動的に返す)を付けておくと、`MONMSG` で捕まえられない種類の照会メッセージが来ても、少なくとも無期限ハングだけは防げる。**`INQMSGRPY(*DFT)`自体の効果(既定の応答を自動的に返し、ハングを防ぐこと)は実機確認済みである**(harness-selftestで`RPG0102`への自動応答`C`を確認、`part05-lesson-decimal`でも`RPG0907`の照会メッセージに対して同じ`INQMSGRPY(*DFT)`込みの`CHGJOB`が実際に機能したことを確認)。**ただし`SBMJOB`コマンドそのものの書式(実際に`SBMJOB`から投入する形)は、本教材ではまだ実機確認できていない**([03-12](../part03/03-12-batch-jobs.md) 実機メモ、P15)。また既定の応答が必ずしも「処理を継続する」側とは限らない点にも注意([05-06](../part05/05-06-reading-opnqryf-sndrcvf.md))——今回の`RPG0907`照会も、既定の応答は`C`(取消)であり、プログラムはそのまま異常終了した。
 
-**関連レッスン**: [03-06](../part03/03-06-monmsg-1.md), [03-07](../part03/03-07-monmsg-2.md), [03-12](../part03/03-12-batch-jobs.md), [04-06](../part04/04-06-sequential-read.md), [04-12](../part04/04-12-debugging-runtime-errors.md), [05-06](../part05/05-06-reading-opnqryf-sndrcvf.md), [docs/probes.md](../probes.md), `tools/qclsrc/txsetup.clp` のヘッダー・コメント。
+**関連レッスン**: [03-06](../part03/03-06-monmsg-1.md), [03-07](../part03/03-07-monmsg-2.md), [03-12](../part03/03-12-batch-jobs.md), [04-06](../part04/04-06-sequential-read.md), [04-12](../part04/04-12-debugging-runtime-errors.md), [05-06](../part05/05-06-reading-opnqryf-sndrcvf.md), [docs/probes.md](../probes.md), `tools/qclsrc/txsetup.clp` のヘッダー・コメント、[04-23](../part04v/04-23-external-files.md)・[04-24](../part04v/04-24-call-parm-debugging.md)(RPG III を通らないルートでは 04-06・04-12 の代わり)。
 
 ---
 
@@ -61,7 +61,7 @@
 
 **対処**: ライブラリー修飾する(`CALL PGM(lib/prog)`)、または `ADDLIBLE LIB(lib) POSITION(*FIRST)` してから**同じジョブの中で** `CALL` する。ライブラリー・リストを変更してから使う処理は、必ず1つの CL プログラム(1つのジョブ)の中で完結させる。
 
-**関連レッスン**: [04-06](../part04/04-06-sequential-read.md), [04-09](../part04/04-09-update-lock.md)(演習の注意書き), [05-09](../part05/05-09-add-field-level-check.md), [docs/probes.md](../probes.md)。
+**関連レッスン**: [04-06](../part04/04-06-sequential-read.md), [04-09](../part04/04-09-update-lock.md)(演習の注意書き), [05-09](../part05/05-09-add-field-level-check.md), [docs/probes.md](../probes.md)、[04-23](../part04v/04-23-external-files.md)(RPG III を通らないルートでは 04-06・04-09 の代わり)。
 
 ---
 
@@ -111,7 +111,7 @@
 
 **対処**: 覚え方は「`CASxx` は S(SubRoutine)、`CABxx` は B(Branch = `TAG` へ分岐)」。分岐先が `TAG` か `BEGSR` かを見れば、どちらが正しいか分かる。
 
-**関連レッスン**: [05-02](../part05/05-02-reading-old-opcodes.md), [05-03](../part05/05-03-reading-cycle-programs.md), git 履歴(`326dabe`)。
+**関連レッスン**: [05-02](../part05/05-02-reading-old-opcodes.md), [05-03](../part05/05-03-reading-cycle-programs.md), git 履歴(`326dabe`)、[04-22](../part04v/04-22-characters-indicators-subroutines.md)(RPG III を通らないルートでは 05-02 の代わりに CABxx・CASxx の読み方を扱います)。
 
 ---
 
@@ -162,7 +162,7 @@
 
 **対処**: 原因データを直す(このリポジトリーでは `TXRESET`)。呼び出し元の `MONMSG` が広すぎて本当のエラーを握りつぶしていないかも合わせて確認する。
 
-**関連レッスン**: [05-11](../part05/05-11-decimal-data-error.md), [05-12](../part05/05-12-promote-and-rollback.md)(復習問題)。
+**関連レッスン**: [05-11](../part05/05-11-decimal-data-error.md), [05-12](../part05/05-12-promote-and-rollback.md)(復習問題)、[04-24](../part04v/04-24-call-parm-debugging.md)(RPG III を通らないルートでは 05-11 の代わり)。
 
 ---
 
@@ -290,7 +290,7 @@
 
 **対処**: 突合せに使う両ファイルの並び順を揃える(データの追加位置を到着順に合わせる、または対象を1行に絞る)。テスト用データでは、キー順に並んだ行を到着順のファイルの途中や末尾に足さない。
 
-**関連レッスン**: [05-03](../part05/05-03-reading-cycle-programs.md)(`RPG1031` の説明), [05-13](../part05/05-13-checkpoint-tickets.md), [docs/probes.md](../probes.md)。
+**関連レッスン**: [05-03](../part05/05-03-reading-cycle-programs.md)(`RPG1031` の説明), [05-13](../part05/05-13-checkpoint-tickets.md), [docs/probes.md](../probes.md)、[04-25](../part04v/04-25-cycle-and-control-levels.md)(RPG III を通らないルートでは 05-03 の代わり)。
 
 ---
 
@@ -306,7 +306,7 @@
 
 **対処**: サインオフ・サインオンし直して、新しいジョブで1回だけ `TXCHECK` を実行する(08-08 の提案。新しいジョブで消えることは、09-07 では未確認)。
 
-**関連レッスン**: [08-08](../part08/08-08-checkpoint-promote-rollback.md), [09-07](../part09/09-07-checkpoint-order-summary-api.md)。
+**関連レッスン**: [08-08](../part08/08-08-checkpoint-promote-rollback.md), [09-07](../part09/09-07-checkpoint-order-summary-api.md)。`TXCHECK` と `TXCKM` は 05-13(RPG III を通らないルートでは [04-27](../part04v/04-27-route-preparation.md))で作ります。
 
 ---
 
@@ -368,4 +368,4 @@
 
 **対処**: 対話的な画面を伴うプログラムは、必ず学習者自身の5250セッションで実行・確認する。
 
-**関連レッスン**: [04-11](../part04/04-11-display-file-inquiry.md), [05-05](../part05/05-05-reading-subfiles.md)。
+**関連レッスン**: [04-11](../part04/04-11-display-file-inquiry.md), [05-05](../part05/05-05-reading-subfiles.md)、[04-26](../part04v/04-26-display-files.md)(RPG III を通らないルートでは 04-11 の代わり)。
