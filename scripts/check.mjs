@@ -134,7 +134,11 @@ for (const relPath of files) {
   // バイナリらしきファイルはスキップ(NUL バイトを含むもの)
   if (buf.includes(0x00)) continue;
 
-  if (FIXED_FORM_EXTS.has(ext)) {
+  // .rpgle は 1 行目が **FREE なら完全自由形式、そうでなければ固定形式(混在を含む)とみなす
+  const isFixedRpgle =
+    ext === '.rpgle' && !/^\*\*free/i.test(buf.toString('utf8').split('\n', 1)[0]);
+
+  if (FIXED_FORM_EXTS.has(ext) || isFixedRpgle) {
     checkFixedForm(relPath, buf);
   } else if (FREE_FORM_EXTS.has(ext)) {
     checkFreeForm(relPath, buf);
