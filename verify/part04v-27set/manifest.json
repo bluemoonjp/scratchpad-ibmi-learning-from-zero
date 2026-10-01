@@ -1,0 +1,1049 @@
+{
+  "batch": "part04v-27set",
+  "description": "Issue #35, part 4V lesson 04-27 (route preparation for learners who skip RPG III) plus the 06-05 route variant. Simulates a route learner in ONE connection, in the default library (<USER>2, the library the plan uses for batches): PRECONDITION (helper V27RUN: DBVER = 1, TXLEGLNG absent or *RPG; failure jumps to DONE before anything is changed); snapshot A0-PRE of OBJECT_STATISTICS (expected attribute RPG for TK0100/JU0300/ZA0500); RMVLIBLE of <USER>1 (the harness has no placeholder for it, so the helper uses RTVJOBA CURUSER + 1; the library list is job-scoped so the removal holds) with DSPLIBL captured before and after into VFYSPL; A1 TXCKM/TXCHECK and A2 TXSNAP/TXSNAPT with the lesson create commands verbatim (the *PGM/*CMD objects are deleted first so OBJCREATED is fresh and the lesson text is tested without REPLACE; TXCKM and TXSNAPT are shared with other batches and are NOT deleted, so their CRTPF log the already-exists message); A3 CRTSRCPF QRPGLE112 (expected to fail with an already-exists message when the file is there: the message id settles the open CPF5813 item), V0601A from src/qrpglesrc/v0601s.rpgle into QRPGLE112 and CRTBNDRPG; A4 TXLEGACY compiled from the repo, TXLEGST and TXLEGLNG and the three legacy programs deleted, then TXLEGACY LANG(*RPGLE) (no FORCE, because FORCE would SAVOBJ into the SAVF library); A5 snapshot (expected RPGLE) and TXLEGLNG; A6 TXCKM rows plus TXCHECK LESSON 04-27; C collapsed onto the same library (TXSTATUS, LASTCD, then TXLEGACY again with *RPGLE, *SAME and a mismatching *RPG without FORCE to record the already-loaded and mismatch notes); B ticket 1 (JU0900C and ZA0500 source lines with MINQTY are copied before the fix, the model answer is staged in V27STG member T1FIX and copied into QCLSRC/JU0900C by CPYSRCF, then CRTCLPGM REPLACE(*YES); JU0900C is NOT called). Then 06-05 route: V0423D (src/qrpglesrc/v0423ds.rpgle) and verify/part04v-27set/src/f0605r.rpgle (identical to src/qrpglesrc/f0605s.rpgle except the one extpgm line, V0423D instead of R0409A) compiled as F0605R (not F0605A, so the restored library keeps its F0605A); TXRESET, V0601A call (QSYSPRT captured), F0605R call (QSYSPRT captured, ZAIKOM P00001 before/after written into VFYLOG), TXRESET. LAST: restore the library to the RPG III legacy system (TXLEGST and TXLEGLNG deleted, TXLEGACY LANG(*RPG), no FORCE), snapshot RESTORE (expected attribute RPG), a copy of QCLSRC/JU0900C after the restore (expected LEN(3 0) again: shows that a rebuild undoes the B fix, the lesson claim about FORCE(*YES)), and a final TXRESET. The CLONEDIR tree that TXLEGACY reads ($HOME/ibmi-kyozai/src/legacy/{qrpgle112,qrpgsrc,qddssrc,qclsrc}) is built like part05-txlegacy-exec: file steps stage each repo file into source file V27STG (RCDLEN 112, members Q_/R_/D_/C_ + name), sh steps CPYTOSTMF them with STMFCCSID(1208) ENDLINFMT(*LF); this overwrites same-named files if $HOME/ibmi-kyozai is a real git clone (the MKTREE step records whether .git exists). Commands that may not exist when the wrapper is compiled (TXLEGACY, TXCHECK, TXSTATUS) run through QCMDEXC in V27RUN. All collects read tables filled inside the wrapper (V27OBJ, VFYSPL, V27SB/SA/SR/SZ source copies) because collect runs after the restore. HONEST LIMITS: this is a simulation, the library still holds other objects of the author (TXRESET, JUCHUM, ...); EXFMT/SEU/STRDBG and the PDM typing steps are V3 and not covered. The two CALLs (V0601A, F0605R) are hang-prone and sit just before the restore; the restore steps are one command per step so an error cannot skip them. Nothing has been run on hardware yet (2026-10-02, PUB400 unreachable). sshTimeoutMs 600000.",
+  "sshTimeoutMs": 600000,
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "src/v27run.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "V27RUN",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qddssrc/txckm.pf",
+      "remoteSrcFile": "QDDSSRC",
+      "member": "TXCKM",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txcheck.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXCHECK"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qcmdsrc/txcheck.cmd",
+      "remoteSrcFile": "QCMDSRC",
+      "member": "TXCHECK",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txsnap.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXSNAP"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qcmdsrc/txsnap.cmd",
+      "remoteSrcFile": "QCMDSRC",
+      "member": "TXSNAP"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txlegacy.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXLEGACY"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qcmdsrc/txlegacy.cmd",
+      "remoteSrcFile": "QCMDSRC",
+      "member": "TXLEGACY"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/v0601s.rpgle",
+      "remoteSrcFile": "QRPGLE112",
+      "member": "V0601A",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/v0423ds.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0423D",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "src/f0605r.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "F0605R"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgle112/tk0100.rpgle",
+      "remoteSrcFile": "V27STG",
+      "member": "Q_TK0100",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgle112/ju0300.rpgle",
+      "remoteSrcFile": "V27STG",
+      "member": "Q_JU0300"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgle112/za0500.rpgle",
+      "remoteSrcFile": "V27STG",
+      "member": "Q_ZA0500"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/tk0100.rpg",
+      "remoteSrcFile": "V27STG",
+      "member": "R_TK0100"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/ju0300.rpg",
+      "remoteSrcFile": "V27STG",
+      "member": "R_JU0300"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/za0500.rpg",
+      "remoteSrcFile": "V27STG",
+      "member": "R_ZA0500"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/fldrefr.rpg",
+      "remoteSrcFile": "V27STG",
+      "member": "R_FLDREFR"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/fldref.pf",
+      "remoteSrcFile": "V27STG",
+      "member": "D_FLDREF"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/tk0100d.dspf",
+      "remoteSrcFile": "V27STG",
+      "member": "D_TK0100D"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/mn0000d.dspf",
+      "remoteSrcFile": "V27STG",
+      "member": "D_MN0000D"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qclsrc/ju0900c.clp",
+      "remoteSrcFile": "V27STG",
+      "member": "C_JU0900C"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qclsrc/mn0000c.clp",
+      "remoteSrcFile": "V27STG",
+      "member": "C_MN0000C"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/05-13/ju0900c-ticket1.clp",
+      "remoteSrcFile": "V27STG",
+      "member": "T1FIX"
+    },
+    {
+      "type": "sh",
+      "label": "MKTREE",
+      "cmd": "mkdir -p \"$HOME/ibmi-kyozai/src/legacy/qrpgle112\" \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc\" \"$HOME/ibmi-kyozai/src/legacy/qddssrc\" \"$HOME/ibmi-kyozai/src/legacy/qclsrc\" 2>&1\nls -d \"$HOME/ibmi-kyozai/.git\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-Q_TK0100",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/Q_TK0100.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgle112/tk0100.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-Q_JU0300",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/Q_JU0300.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgle112/ju0300.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-Q_ZA0500",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/Q_ZA0500.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgle112/za0500.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-R_TK0100",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/R_TK0100.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/tk0100.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-R_JU0300",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/R_JU0300.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/ju0300.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-R_ZA0500",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/R_ZA0500.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/za0500.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-R_FLDREFR",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/R_FLDREFR.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/fldrefr.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-D_FLDREF",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/D_FLDREF.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/fldref.pf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-D_TK0100D",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/D_TK0100D.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/tk0100d.dspf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-D_MN0000D",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/D_MN0000D.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/mn0000d.dspf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-C_JU0900C",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/C_JU0900C.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qclsrc/ju0900c.clp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-C_MN0000C",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/C_MN0000C.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qclsrc/mn0000c.clp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "LSTREE",
+      "cmd": "ls -l \"$HOME/ibmi-kyozai/src/legacy/qrpgle112\" \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc\" 2>&1"
+    },
+    {
+      "type": "cl",
+      "label": "CPV27RUN",
+      "cmd": "CRTCLPGM PGM(&LIB/V27RUN) SRCFILE(&LIB/QCLSRC) SRCMBR(V27RUN) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRECOND",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('PRECOND' '&LIB')\nMONMSG MSGID(CPF9898) EXEC(GOTO CMDLBL(DONE))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKSPL",
+      "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('verify spool capture'))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DROBJ",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/V27OBJ') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKOBJ",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/V27OBJ (TAG CHAR(10), OBJNAME CHAR(10), OBJTYPE CHAR(8), OBJATTR CHAR(10), OBJCREATED TIMESTAMP)') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNPRE",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V27OBJ SELECT ''A0-PRE'', OBJNAME, OBJTYPE, OBJATTRIBUTE, OBJCREATED FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*ALL'')) X WHERE OBJNAME IN (''TK0100'', ''JU0300'', ''ZA0500'', ''V0601A'', ''JU0900C'', ''MN0000C'', ''TXCHECK'', ''TXSNAP'', ''TXLEGACY'', ''TXCKM'', ''TXSNAPT'', ''LASTCD'', ''TXLEGLNG'', ''TXLEGST'', ''V0423D'', ''F0605R'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKLIB0",
+      "cmd": "SNDPGMMSG MSG('V27 MARK: library list BEFORE RMVLIBLE')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSPLIB0",
+      "cmd": "DSPLIBL OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPLIB0",
+      "cmd": "CPYSPLF FILE(QPDSPLIB) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPLIB0D",
+      "cmd": "DLTSPLF FILE(QPDSPLIB) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RMLIB1",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('RMVLIB1' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKLIB1",
+      "cmd": "SNDPGMMSG MSG('V27 MARK: library list AFTER RMVLIBLE')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSPLIB1",
+      "cmd": "DSPLIBL OUTPUT(*PRINT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPLIB1",
+      "cmd": "CPYSPLF FILE(QPDSPLIB) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPLIB1D",
+      "cmd": "DLTSPLF FILE(QPDSPLIB) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-TXCKM",
+      "cmd": "CHGPFM FILE(&LIB/QDDSSRC) MBR(TXCKM) SRCTYPE(PF)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-TXCHK",
+      "cmd": "CHGPFM FILE(&LIB/QCLSRC) MBR(TXCHECK) SRCTYPE(CLP)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-TXCCMD",
+      "cmd": "CHGPFM FILE(&LIB/QCMDSRC) MBR(TXCHECK) SRCTYPE(CMD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTXCHKP",
+      "cmd": "DLTPGM PGM(&LIB/TXCHECK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTXCHKC",
+      "cmd": "DLTCMD CMD(&LIB/TXCHECK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A1-CRTPF",
+      "cmd": "CRTPF FILE(&LIB/TXCKM) SRCFILE(&LIB/QDDSSRC) SRCMBR(TXCKM)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A1-CLP",
+      "cmd": "CRTCLPGM PGM(&LIB/TXCHECK) SRCFILE(&LIB/QCLSRC) SRCMBR(TXCHECK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A1-CMD",
+      "cmd": "CRTCMD CMD(&LIB/TXCHECK) PGM(*LIBL/TXCHECK) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXCHECK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-TXSNP",
+      "cmd": "CHGPFM FILE(&LIB/QCLSRC) MBR(TXSNAP) SRCTYPE(CLP)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-TXSCMD",
+      "cmd": "CHGPFM FILE(&LIB/QCMDSRC) MBR(TXSNAP) SRCTYPE(CMD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTXSNP",
+      "cmd": "DLTPGM PGM(&LIB/TXSNAP)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTXSNC",
+      "cmd": "DLTCMD CMD(&LIB/TXSNAP)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A2-CLP",
+      "cmd": "CRTCLPGM PGM(&LIB/TXSNAP) SRCFILE(&LIB/QCLSRC) SRCMBR(TXSNAP)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A2-CMD",
+      "cmd": "CRTCMD CMD(&LIB/TXSNAP) PGM(*LIBL/TXSNAP) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXSNAP)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A2-PF",
+      "cmd": "CRTPF FILE(&LIB/TXSNAPT) RCDLEN(133) MAXMBRS(*NOMAX) TEXT('TXSNAP snapshots')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A3-SRCPF",
+      "cmd": "CRTSRCPF FILE(&LIB/QRPGLE112) RCDLEN(112) TEXT('Curriculum RPG IV (fixed form) sources')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-V0601",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLE112) MBR(V0601A) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV0601A",
+      "cmd": "DLTPGM PGM(&LIB/V0601A)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A3-CRT",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0601A) SRCFILE(&LIB/QRPGLE112) SRCMBR(V0601A)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-TXLGP",
+      "cmd": "CHGPFM FILE(&LIB/QCLSRC) MBR(TXLEGACY) SRCTYPE(CLP)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-TXLGC",
+      "cmd": "CHGPFM FILE(&LIB/QCMDSRC) MBR(TXLEGACY) SRCTYPE(CMD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTXLGP",
+      "cmd": "DLTPGM PGM(&LIB/TXLEGACY)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTXLGC",
+      "cmd": "DLTCMD CMD(&LIB/TXLEGACY)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A4-CLP",
+      "cmd": "CRTCLPGM PGM(&LIB/TXLEGACY) SRCFILE(&LIB/QCLSRC) SRCMBR(TXLEGACY)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A4-CMD",
+      "cmd": "CRTCMD CMD(&LIB/TXLEGACY) PGM(*LIBL/TXLEGACY) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXLEGACY)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A4-LASTCD",
+      "cmd": "CRTDTAARA DTAARA(&LIB/LASTCD) TYPE(*CHAR) LEN(6)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTXLST",
+      "cmd": "DLTDTAARA DTAARA(&LIB/TXLEGST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTXLLN",
+      "cmd": "DLTDTAARA DTAARA(&LIB/TXLEGLNG)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTK0100",
+      "cmd": "DLTPGM PGM(&LIB/TK0100)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLJU0300",
+      "cmd": "DLTPGM PGM(&LIB/JU0300)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLZA0500",
+      "cmd": "DLTPGM PGM(&LIB/ZA0500)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKA4",
+      "cmd": "SNDPGMMSG MSG('V27 MARK: A4: TXLEGACY LANG(*RPGLE), first load')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A4-RUN",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('LEGRPGLE' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNA5",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V27OBJ SELECT ''A5'', OBJNAME, OBJTYPE, OBJATTRIBUTE, OBJCREATED FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*ALL'')) X WHERE OBJNAME IN (''TK0100'', ''JU0300'', ''ZA0500'', ''V0601A'', ''JU0900C'', ''MN0000C'', ''TXCHECK'', ''TXSNAP'', ''TXLEGACY'', ''TXCKM'', ''TXSNAPT'', ''LASTCD'', ''TXLEGLNG'', ''TXLEGST'', ''V0423D'', ''F0605R'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A5-LNG",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('SHOWST' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A6-DEL",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/TXCKM WHERE LESSON = ''04-27''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A6-INS",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/TXCKM (LESSON, SEQNBR, OBJNAME, OBJTYPE, OBJATTR, CKDESC) VALUES (''04-27'', 10, ''TXCHECK'', ''*PGM'', '' '', ''TXCHECK exists''), (''04-27'', 20, ''TXSNAP'', ''*PGM'', '' '', ''TXSNAP exists''), (''04-27'', 30, ''TXSNAPT'', ''*FILE'', '' '', ''TXSNAPT exists''), (''04-27'', 40, ''V0601A'', ''*PGM'', '' '', ''V0601A exists''), (''04-27'', 50, ''TK0100'', ''*PGM'', '' '', ''TK0100 exists''), (''04-27'', 60, ''JU0300'', ''*PGM'', '' '', ''JU0300 exists''), (''04-27'', 70, ''ZA0500'', ''*PGM'', '' '', ''ZA0500 exists''), (''04-27'', 80, ''JU0900C'', ''*PGM'', '' '', ''JU0900C exists''), (''04-27'', 90, ''LASTCD'', ''*DTAARA'', '' '', ''LASTCD exists''), (''04-27'', 100, ''TXLEGLNG'', ''*DTAARA'', '' '', ''TXLEGLNG exists'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKA6",
+      "cmd": "SNDPGMMSG MSG('V27 MARK: A6: TXCHECK')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A6-RUN",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('CHECK' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKC",
+      "cmd": "SNDPGMMSG MSG('V27 MARK: C: TXSTATUS, LASTCD, TXLEGACY again (already loaded)')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "C-STATUS",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('STATUS' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "C-LASTCD",
+      "cmd": "CRTDTAARA DTAARA(&LIB/LASTCD) TYPE(*CHAR) LEN(6)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "C-RPGLE",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('LEGRPGLE' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "C-SAME",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('LEGSAME' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "C-MISM",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('LEGRPG' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNC",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V27OBJ SELECT ''C'', OBJNAME, OBJTYPE, OBJATTRIBUTE, OBJCREATED FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*ALL'')) X WHERE OBJNAME IN (''TK0100'', ''JU0300'', ''ZA0500'', ''V0601A'', ''JU0900C'', ''MN0000C'', ''TXCHECK'', ''TXSNAP'', ''TXLEGACY'', ''TXCKM'', ''TXSNAPT'', ''LASTCD'', ''TXLEGLNG'', ''TXLEGST'', ''V0423D'', ''F0605R'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKB",
+      "cmd": "SNDPGMMSG MSG('V27 MARK: B: ticket 1 (JU0900C MINQTY)')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-DLSB",
+      "cmd": "DLTF FILE(&LIB/V27SB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-CPSB",
+      "cmd": "CPYF FROMFILE(&LIB/QCLSRC) TOFILE(&LIB/V27SB) FROMMBR(JU0900C) TOMBR(JU0900C) MBROPT(*REPLACE) CRTFILE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-DLSZ",
+      "cmd": "DLTF FILE(&LIB/V27SZ)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-CPSZ",
+      "cmd": "CPYF FROMFILE(&LIB/QRPGLE112) TOFILE(&LIB/V27SZ) FROMMBR(ZA0500) TOMBR(ZA0500) MBROPT(*REPLACE) CRTFILE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-FIX",
+      "cmd": "CPYSRCF FROMFILE(&LIB/V27STG) TOFILE(&LIB/QCLSRC) FROMMBR(T1FIX) TOMBR(JU0900C) MBROPT(*REPLACE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-CLP",
+      "cmd": "CRTCLPGM PGM(&LIB/JU0900C) SRCFILE(&LIB/QCLSRC) SRCMBR(JU0900C) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-DLSA",
+      "cmd": "DLTF FILE(&LIB/V27SA)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-CPSA",
+      "cmd": "CPYF FROMFILE(&LIB/QCLSRC) TOFILE(&LIB/V27SA) FROMMBR(JU0900C) TOMBR(JU0900C) MBROPT(*REPLACE) CRTFILE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-V423D",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0423D) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-F605R",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(F0605R) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CP-V423D",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0423D) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0423D) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CP-F605R",
+      "cmd": "CRTBNDRPG PGM(&LIB/F0605R) SRCFILE(&LIB/QRPGLESRC) SRCMBR(F0605R) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKCALLS",
+      "cmd": "SNDPGMMSG MSG('V27 MARK: calls: V0601A, then F0605R (route variant of 06-05)')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RESET0",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALL0601",
+      "cmd": "CALL PGM(&LIB/V0601A)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPV0601",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPV060D",
+      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ZBEFORE",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYLOG SELECT 91000, ''ZAIKOM P00001 ZASU before F0605R = '' CONCAT CHAR(ZASU) FROM &LIB/ZAIKOM WHERE ZASHO = ''P00001''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CALL605R",
+      "cmd": "CALL PGM(&LIB/F0605R)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPF605R",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPF605D",
+      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ZAFTER",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYLOG SELECT 91001, ''ZAIKOM P00001 ZASU after F0605R = '' CONCAT CHAR(ZASU) FROM &LIB/ZAIKOM WHERE ZASHO = ''P00001''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RESET1",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRESTORE",
+      "cmd": "SNDPGMMSG MSG('V27 MARK: restore: RPG III legacy system + TXRESET')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RDLXLST",
+      "cmd": "DLTDTAARA DTAARA(&LIB/TXLEGST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RDLXLLN",
+      "cmd": "DLTDTAARA DTAARA(&LIB/TXLEGLNG)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RESTORE",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('LEGRPG' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-DLSR",
+      "cmd": "DLTF FILE(&LIB/V27SR)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-CPSR",
+      "cmd": "CPYF FROMFILE(&LIB/QCLSRC) TOFILE(&LIB/V27SR) FROMMBR(JU0900C) TOMBR(JU0900C) MBROPT(*REPLACE) CRTFILE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SNREST",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V27OBJ SELECT ''RESTORE'', OBJNAME, OBJTYPE, OBJATTRIBUTE, OBJCREATED FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*ALL'')) X WHERE OBJNAME IN (''TK0100'', ''JU0300'', ''ZA0500'', ''V0601A'', ''JU0900C'', ''MN0000C'', ''TXCHECK'', ''TXSNAP'', ''TXLEGACY'', ''TXCKM'', ''TXSNAPT'', ''LASTCD'', ''TXLEGLNG'', ''TXLEGST'', ''V0423D'', ''F0605R'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RESET2",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, OBJNAME, OBJTYPE, OBJATTR, OBJCREATED FROM &LIB/V27OBJ ORDER BY TAG, OBJNAME"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYSPL"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT SRCSEQ, SRCDTA FROM &LIB/V27SB WHERE SRCDTA LIKE '%MINQTY%'"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT SRCSEQ, SRCDTA FROM &LIB/V27SA WHERE SRCDTA LIKE '%MINQTY%'"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT SRCSEQ, SRCDTA FROM &LIB/V27SR WHERE SRCDTA LIKE '%MINQTY%'"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT SRCSEQ, SRCDTA FROM &LIB/V27SZ WHERE SRCDTA LIKE '%MINQTY%'"
+    }
+  ]
+}

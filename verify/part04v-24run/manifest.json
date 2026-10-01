@@ -1,0 +1,1292 @@
+{
+  "batch": "part04v-24run",
+  "description": "Lesson 04-24 (part 4V, fixed-form RPG IV, CRTBNDRPG): *ENTRY PLIST / CALL / PARM, PARM length mismatch, *PSSR, decimal data error, HEX(). Ports of the 04-08b experiments R0408BA..BG to ILE RPG (V0424A..G plus solutions V0424X/H/I/J/K/L), so the real ILE behaviour is recorded instead of assuming the OPM RPG III facts. PRECONDITION: the library (<USER>2) already holds the DBVER 1 sample database (TOKUIM has C00001 = ACME TRADING CO). ORDER: file steps create QRPGLESRC (RCDLEN 112) and upload all sources; CHGPFM sets SRCTYPE(RPGLE); every member is compiled with CRTBNDRPG DBGVIEW(*SOURCE) OPTION(*EVENTF) (event file copied to V24EVF so RNF ids and severities can be read; V24NA..V24ND are deliberately failing negative examples, V24PL is a probe whose success or failure is recorded); then CHGJOB INQMSGRPY(*DFT); then the calls. Every call is preceded by a marker row and followed by CPYSPLF of the QSYSPRT spool into V24SPL (and DLTSPLF so that *LAST cannot pick up a stale spool); collect step 1 lists V24SPL in order. Correct calls first (V0424B, V0424X, V0424K), then the *PSSR pair (V0424G with RETURN inside *PSSR, V0424I with ENDSR *CANCL), then V0424E (character mismatch), then the inquiry-message / hang-prone experiments LAST (V0424D, CL caller C0424A with &QTY 3,0, a bare numeric literal PARM(5 X) into the 5,0 PARM, a call with one PARM too few, and V0424L reading W0424B whose QTY holds five periods = invalid zoned decimal; HEX(QTY) is collected). The message text and default reply of RNQ0907/RNQ0202/RNX9001/RNX0100 are collected from QSYS2.MESSAGE_FILE_DATA (the view name and columns are unverified; failure of that collect is harmless). Nothing in this batch has been run on hardware yet (2026-10-01): every expected value in the lesson is a placeholder. Only the compile step of the library-less negative members can fail on purpose. Timeout: sshTimeoutMs is 600000 (compile-heavy: 18 CRTBNDRPG plus about 11 calls that may wait on inquiry replies or dumps; the default 180 s would lose VFYLOG). RUNONE (too few PARMs, writes through an unpassed parameter) is deliberately the very last call. If V24SPL comes back empty and VFYLOG shows CAPRUN* FAILED, the spool capture into an SQL table did not work: switch V24SPL to CRTPF RCDLEN(133) as in part06-0103-freeform.",
+  "sshTimeoutMs": 600000,
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/v0424s.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0424A",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/v0424bs.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0424B"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/v0424cs.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0424C"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/v0424ds.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0424D"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/v0424es.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0424E"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/v0424fs.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0424F"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/qrpglesrc/v0424gs.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0424G"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/04-24/v0424x.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0424X"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/04-24/v0424h.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0424H"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/04-24/v0424i.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0424I"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/04-24/v0424j.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0424J"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/04-24/v0424k.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0424K"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/04-24/v0424l.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V0424L"
+    },
+    {
+      "type": "file",
+      "localPath": "src/neg-a.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V24NA"
+    },
+    {
+      "type": "file",
+      "localPath": "src/neg-b.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V24NB"
+    },
+    {
+      "type": "file",
+      "localPath": "src/neg-c.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V24NC"
+    },
+    {
+      "type": "file",
+      "localPath": "src/neg-d.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V24ND"
+    },
+    {
+      "type": "file",
+      "localPath": "src/probe-parmlen.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V24PL"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/04-24/c0424a.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "C0424A",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "cl",
+      "label": "TYV0424A",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0424A) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV0424B",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0424B) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV0424C",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0424C) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV0424D",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0424D) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV0424E",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0424E) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV0424F",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0424F) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV0424G",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0424G) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV0424X",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0424X) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV0424H",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0424H) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV0424I",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0424I) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV0424J",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0424J) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV0424K",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0424K) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV0424L",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V0424L) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV24NA",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V24NA) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV24NB",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V24NB) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV24NC",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V24NC) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV24ND",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V24ND) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYV24PL",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V24PL) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKEVF",
+      "cmd": "CHKOBJ OBJ(&LIB/V24EVF) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/V24EVF) RCDLEN(300) TEXT('04-24 compile event capture'))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLEVF",
+      "cmd": "CLRPFM FILE(&LIB/V24EVF)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DRSPL",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/V24SPL') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKSPL",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/V24SPL (TXT CHAR(133) NOT NULL)') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DRWA",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/W0424A') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DRWB",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/W0424B') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKWA",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/W0424A (ID CHAR(2) NOT NULL, QTY CHAR(5) NOT NULL)') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKWB",
+      "cmd": "RUNSQL SQL('CREATE TABLE &LIB/W0424B (ID CHAR(2) NOT NULL, QTY NUMERIC(5, 0) NOT NULL)') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "INSWA",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/W0424A VALUES(''A1'', ''00003''), (''B2'', ''.....''), (''C3'', ''00004'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPYWB",
+      "cmd": "CPYF FROMFILE(&LIB/W0424A) TOFILE(&LIB/W0424B) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV0424A",
+      "cmd": "DLTPGM PGM(&LIB/V0424A)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0424A",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0424A) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0424A) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0424A",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0424A) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV0424B",
+      "cmd": "DLTPGM PGM(&LIB/V0424B)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0424B",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0424B) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0424B) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0424B",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0424B) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV0424C",
+      "cmd": "DLTPGM PGM(&LIB/V0424C)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0424C",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0424C) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0424C) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0424C",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0424C) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV0424D",
+      "cmd": "DLTPGM PGM(&LIB/V0424D)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0424D",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0424D) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0424D) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0424D",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0424D) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV0424E",
+      "cmd": "DLTPGM PGM(&LIB/V0424E)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0424E",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0424E) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0424E) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0424E",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0424E) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV0424F",
+      "cmd": "DLTPGM PGM(&LIB/V0424F)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0424F",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0424F) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0424F) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0424F",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0424F) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV0424G",
+      "cmd": "DLTPGM PGM(&LIB/V0424G)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0424G",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0424G) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0424G) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0424G",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0424G) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV0424X",
+      "cmd": "DLTPGM PGM(&LIB/V0424X)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0424X",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0424X) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0424X) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0424X",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0424X) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV0424H",
+      "cmd": "DLTPGM PGM(&LIB/V0424H)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0424H",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0424H) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0424H) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0424H",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0424H) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV0424I",
+      "cmd": "DLTPGM PGM(&LIB/V0424I)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0424I",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0424I) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0424I) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0424I",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0424I) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV0424J",
+      "cmd": "DLTPGM PGM(&LIB/V0424J)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0424J",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0424J) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0424J) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0424J",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0424J) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV0424K",
+      "cmd": "DLTPGM PGM(&LIB/V0424K)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0424K",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0424K) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0424K) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0424K",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0424K) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV0424L",
+      "cmd": "DLTPGM PGM(&LIB/V0424L)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV0424L",
+      "cmd": "CRTBNDRPG PGM(&LIB/V0424L) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V0424L) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV0424L",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0424L) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV24NA",
+      "cmd": "DLTPGM PGM(&LIB/V24NA)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV24NA",
+      "cmd": "CRTBNDRPG PGM(&LIB/V24NA) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V24NA) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV24NA",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V24NA) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV24NB",
+      "cmd": "DLTPGM PGM(&LIB/V24NB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV24NB",
+      "cmd": "CRTBNDRPG PGM(&LIB/V24NB) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V24NB) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV24NB",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V24NB) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV24NC",
+      "cmd": "DLTPGM PGM(&LIB/V24NC)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV24NC",
+      "cmd": "CRTBNDRPG PGM(&LIB/V24NC) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V24NC) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV24NC",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V24NC) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV24ND",
+      "cmd": "DLTPGM PGM(&LIB/V24ND)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV24ND",
+      "cmd": "CRTBNDRPG PGM(&LIB/V24ND) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V24ND) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV24ND",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V24ND) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLV24PL",
+      "cmd": "DLTPGM PGM(&LIB/V24PL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV24PL",
+      "cmd": "CRTBNDRPG PGM(&LIB/V24PL) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V24PL) DBGVIEW(*SOURCE) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVV24PL",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V24PL) TOFILE(&LIB/V24EVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPC0424A",
+      "cmd": "CRTCLPGM PGM(&LIB/C0424A) SRCFILE(&LIB/QCLSRC) SRCMBR(C0424A) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "INQDFT",
+      "cmd": "CHGJOB INQMSGRPY(*DFT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRUNB",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V24SPL VALUES(''--- RUNB ---'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNB",
+      "cmd": "CALL PGM(&LIB/V0424B)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPRUNB",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/V24SPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSRUNB",
+      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRUNX",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V24SPL VALUES(''--- RUNX ---'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNX",
+      "cmd": "CALL PGM(&LIB/V0424X)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPRUNX",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/V24SPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSRUNX",
+      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRUNK",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V24SPL VALUES(''--- RUNK ---'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNK",
+      "cmd": "CALL PGM(&LIB/V0424K)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPRUNK",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/V24SPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSRUNK",
+      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRUNG",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V24SPL VALUES(''--- RUNG ---'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNG",
+      "cmd": "CALL PGM(&LIB/V0424G)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPRUNG",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/V24SPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSRUNG",
+      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRUNI",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V24SPL VALUES(''--- RUNI ---'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNI",
+      "cmd": "CALL PGM(&LIB/V0424I)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPRUNI",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/V24SPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSRUNI",
+      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRUNE",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V24SPL VALUES(''--- RUNE ---'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNE",
+      "cmd": "CALL PGM(&LIB/V0424E)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPRUNE",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/V24SPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSRUNE",
+      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRUND",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V24SPL VALUES(''--- RUND ---'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUND",
+      "cmd": "CALL PGM(&LIB/V0424D)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPRUND",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/V24SPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSRUND",
+      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRUNCL",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V24SPL VALUES(''--- RUNCL ---'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNCL",
+      "cmd": "CALL PGM(&LIB/C0424A)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPRUNCL",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/V24SPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSRUNCL",
+      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRUNLIT",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V24SPL VALUES(''--- RUNLIT ---'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNLIT",
+      "cmd": "CALL PGM(&LIB/V0424C) PARM(5 'X')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPRUNLIT",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/V24SPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSRUNLIT",
+      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRUNL",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V24SPL VALUES(''--- RUNL ---'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNL",
+      "cmd": "CALL PGM(&LIB/V0424L)",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPRUNL",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/V24SPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSRUNL",
+      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRUNONE",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/V24SPL VALUES(''--- RUNONE ---'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RUNONE",
+      "cmd": "CALL PGM(&LIB/V0424A) PARM('C00001')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000",
+        "RNQ0000",
+        "RNX0000",
+        "CEE0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CAPRUNONE",
+      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/V24SPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSRUNONE",
+      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT RRN(X) AS N, TXT FROM &LIB/V24SPL X ORDER BY 1"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/V24EVF"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT ID, QTY, HEX(QTY) AS QTY_HEX FROM &LIB/W0424B"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT ID, QTY, HEX(QTY) AS QTY_HEX FROM &LIB/W0424A"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM QSYS2.MESSAGE_FILE_DATA WHERE MESSAGE_FILE_LIBRARY = 'QSYS' AND MESSAGE_FILE_NAME = 'QRNXMSG' AND MESSAGE_ID IN ('RNQ0907', 'RNQ0202', 'RNX9001', 'RNX0100', 'RNQ0100')"
+    }
+  ]
+}
