@@ -2,6 +2,12 @@
 
 > 所要時間: 75分(長め)/ 前提レッスン: 06-11 / 目標番号: 5 / 観測方法: `WRKSPLF`・画面そのもの / 道具: SSH(`CPYFRMSTMF` でのソース取り込み)、5250(コンパイル・実行・`CHGCMD`・`F4`)/ 同時接続数: 5250×1(SSHでのソース取り込みは1回の接続でまとめて行います)/ 作る・変えるオブジェクト: `<USER>1/P0612A`(PRTF)・`<USER>1/F0612A`・`<USER>1/F0612B`・`<USER>1/F0612C`(いずれもRPG)、`<USER>1/JUCINQ`(既存コマンド、CPPを`F0612A`へ変更)/ DBVER: 1 / 依存するプローブ: P17(未実施)/ PTF 依存: なし / 容量の目安: わずか
 
+<details><summary>RPG III を通らないルートの人へ</summary>
+
+本文の `R0408A`(04-08)は、ルートでは [04-21](../part04v/04-21-fixed-form-skeleton.md) の `V0421D`(同じ出力)に当たります。`*ENTRY PLIST`・`PARM`([04-08b](../part04/04-08b-call-parm-plist.md))の代わりには [04-24](../part04v/04-24-call-parm-debugging.md) を読んでください。編集コードも 04-21 で扱います。
+
+</details>
+
 ## ゴール
 
 - 印刷装置ファイル(PRTF)を DDS で書き、`SPACEB`/`SKIPB`/`EDTCDE` で帳票のレイアウトを組み立てられる。
