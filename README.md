@@ -1,6 +1,6 @@
 # IBM i / RPG III → RPG IV 学習カリキュラム
 
-IBM i を全く触ったことがない方が、[PUB400.com](https://pub400.com/)(無料の公開 IBM i)を練習台にして、基礎コマンドから CL プログラミング、RPG III の作成・保守、RPG IV(完全自由形式)を主力言語として使えるようになり、現代的な開発手法と、環境が許す範囲での API 化まで進むための独学用の教科書です。
+IBM i を全く触ったことがない方が、[PUB400.com](https://pub400.com/)(無料の公開 IBM i)を練習台にして、基礎コマンドから CL プログラミング、RPG III の作成・保守、RPG IV(完全自由形式)を主力言語として使えるようになり、現代的な開発手法と、環境が許す範囲での API 化まで進むための独学用の教科書です。職場の RPG が RPG IV(`CRTBNDRPG`)の固定形式・混在形式で、RPG III を学びたくない人のために、第4部・第5部の代わりに通る[第4部V](docs/part04v/index.md)のルートも用意しています(詳しくは [`docs/roadmap.md`](docs/roadmap.md))。
 
 ## 現在の状態
 
@@ -31,6 +31,7 @@ IBM i を全く触ったことがない方が、[PUB400.com](https://pub400.com/
 | [第3部](docs/part03/index.md) | CL プログラミング |
 | [第4部](docs/part04/index.md) | RPG III を書く |
 | [第5部](docs/part05/index.md) | RPG III を読む・直す(保守) |
+| [第4部V](docs/part04v/index.md) | 固定形式 RPG IV を書く・読む(第4部・第5部の代わり。RPG III を通らないルート) |
 | [第6部](docs/part06/index.md) | RPG IV 完全自由形式 |
 | [第7部](docs/part07/index.md) | ILE とモジュール化 |
 | [第8部](docs/part08/index.md) | モダン開発(git・VS Code・テスト) |
