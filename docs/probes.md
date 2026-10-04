@@ -3475,3 +3475,23 @@ RPG IV 版(`src/legacy/qrpgle112`)を `CRTBNDRPG` で作り直して同じ手順
   `JU0900C`・`MN0000C` も作られた。`OBJECT_STATISTICS` で6個とも作成日時が今回の実行時刻。
 - `TXLEGLNG` が無い状態の `*SAME` は `*RPG` に落ち、一本道の動きは変わらない。
   差は、`TXLEGLNG`(`*RPG`)というデータ域が1つ増えることだけ。
+
+## Issue #50 `TXLEGACY ... FORCE(*YES)` の実機確認と、`TXLEGST` の修正(Issue #47): `issue50-force`(確認日 2026-10-05、1回の接続で最後まで)
+
+`verify/issue50-force` は、`verify/part04v-27set` と同じ旧システムのツリーを使い、`<USER>2` で1回の接続で流した。修正後の `tools/qclsrc/txlegacy.clp`(`TXLEGST` を、無ければ作り、そのあと無条件に `CHGDTAARA` で `'Y'` にする)をコンパイルしてから行った。
+
+- **前提**: `DBVER=0000000001`、`TXLEGLNG` は `*RPG`(RPG III 版の旧システム)。
+- **手順1: 初回の `LANG(*RPGLE) FORCE(*YES)`**: `<USER>B/LG261004` へ退避した旨のメッセージが出て(`TXLEGACY: backed up existing legacy objects to <USER>B/LG261004`)、旧システムが読み込まれ、`TXLEGST=[Y] TXLEGLNG=[*RPGLE ]` になった。退避の前に `CPA4067`(`Cancel reply received`)が出る(ハーネスの非対話ジョブの既定応答による雑音で、過去の実行と同じ)。
+- **手順2: チケット1の修正**: `JU0900C` のソース(113行)を、05-13 の模範解答(118行)で置き換えて再コンパイルした。`&MINQTY` の宣言は `LEN(3 0)` から `LEN(5 0)` になった(ソースの44行目)。
+- **手順3: `TXLEGST` を `N` にしてから、もう一度 `FORCE(*YES)`**: `CHGDTAARA ... VALUE(N)` で `TXLEGST=[N]` を確認してから `LANG(*RPGLE) FORCE(*YES)` を実行すると、`TXLEGST=[Y]` に戻った(Issue #47 の修正の効果。修正前は、既にあるデータ域には `CHGDTAARA` が実行されなかった)。同じ `<USER>B/LG261004` が再び退避先として表示された。
+- **`JU0900C` の復元**: 手順3のあと、`JU0900C` のソースは113行に戻り、`DCL VAR(&MINQTY) TYPE(*DEC) LEN(3 0)`(31行目)になった。`FORCE(*YES)` が、配布版のソースから `JU0900C` を作り直し、チケット1の修正を元に戻す(04-27 と 08-05b の注意書きの主張)ことが、`FORCE(*YES)` そのもので確認できた。
+- **後始末**: `TXLEGST`・`TXLEGLNG` を消して `LANG(*RPG)`(`FORCE` なし)で RPG III 版に戻し、`TXRESET`。最後は `TXLEGST=[Y] TXLEGLNG=[*RPG   ]`。
+- **未確認**: `<USER>B` の `SAVF` の中身を直接 `DSPSAVF` などで読んではいない(`TXLEGACY` のメッセージで、退避先の名前を確認したのみ)。
+
+## Issue #50 ILE の statement 番号・Line Number・ファイルの行番号の差(接続なし、確認日 2026-10-05)
+
+`part10-01-rpgle` の保存済みの結果(`work/verify/results/part10-01-rpgle-*.json`、匿名化済み)のコンパイル・リストを読み直して分かったこと。新しい接続はしていない。
+
+- `src/legacy/qrpgle112/za0500.rpgle` の `ZAIKOM` は、F 仕様書で外部記述ファイルとして宣言されている(63行目)。コンパイラーは、最後のプログラム記述の `I` 仕様書(75行目の直後)のあとに、レコード様式 `ZAIKOR` の入力仕様書を生成して挿入する。コンパイル・リストでは、`ZAIKOR` の1行と、フィールド `ZASHO`・`ZASU`・`ZAUPD`(`db/v1/zaikom.pf`)の3行、合計4行(`76`〜`79`)になる。
+- そのため、挿入より後ろの行は、コンパイル・リストの Line Number がファイルの行番号より4大きくなる。`COMP MINQTY` は、ファイルの87行目、Line Number 91(`*NOSRCSTMT` では Line Number がそのまま statement 番号)。挿入より前の `JUSU`(69行目)は、差が無いので一致する。出力側にも、同じように `OZAIKOR`(Line Number 108)が生成される。
+- `/COPY` の展開によるものではない。
