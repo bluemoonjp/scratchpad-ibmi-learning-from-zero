@@ -1,6 +1,6 @@
 {
   "batch": "part04v-27set",
-  "description": "Issue #35, part 4V lesson 04-27 (route preparation for learners who skip RPG III) plus the 06-05 route variant. Simulates a route learner in ONE connection, in the default library (<USER>2, the library the plan uses for batches): PRECONDITION (helper V27RUN: DBVER = 1, TXLEGLNG absent or *RPG; failure jumps to DONE before anything is changed); snapshot A0-PRE of OBJECT_STATISTICS (expected attribute RPG for TK0100/JU0300/ZA0500); RMVLIBLE of <USER>1 (the harness has no placeholder for it, so the helper uses RTVJOBA CURUSER + 1; the library list is job-scoped so the removal holds) with DSPLIBL captured before and after into VFYSPL; A1 TXCKM/TXCHECK and A2 TXSNAP/TXSNAPT with the lesson create commands verbatim (the *PGM/*CMD objects are deleted first so OBJCREATED is fresh and the lesson text is tested without REPLACE; TXCKM and TXSNAPT are shared with other batches and are NOT deleted, so their CRTPF log the already-exists message); A3 CRTSRCPF QRPGLE112 (expected to fail with an already-exists message when the file is there: the message id settles the open CPF5813 item), V0601A from src/qrpglesrc/v0601s.rpgle into QRPGLE112 and CRTBNDRPG; A4 TXLEGACY compiled from the repo, TXLEGST and TXLEGLNG and the three legacy programs deleted, then TXLEGACY LANG(*RPGLE) (no FORCE, because FORCE would SAVOBJ into the SAVF library); A5 snapshot (expected RPGLE) and TXLEGLNG; A6 TXCKM rows plus TXCHECK LESSON 04-27; C collapsed onto the same library (TXSTATUS, LASTCD, then TXLEGACY again with *RPGLE, *SAME and a mismatching *RPG without FORCE to record the already-loaded and mismatch notes); B ticket 1 (JU0900C and ZA0500 source lines with MINQTY are copied before the fix, the model answer is staged in V27STG member T1FIX and copied into QCLSRC/JU0900C by CPYSRCF, then CRTCLPGM REPLACE(*YES); JU0900C is NOT called). Then 06-05 route: V0423D (src/qrpglesrc/v0423ds.rpgle) and verify/part04v-27set/src/f0605r.rpgle (identical to src/qrpglesrc/f0605s.rpgle except the one extpgm line, V0423D instead of R0409A) compiled as F0605R (not F0605A, so the restored library keeps its F0605A); TXRESET, V0601A call (QSYSPRT captured), F0605R call (QSYSPRT captured, ZAIKOM P00001 before/after written into VFYLOG), TXRESET. LAST: restore the library to the RPG III legacy system (TXLEGST and TXLEGLNG deleted, TXLEGACY LANG(*RPG), no FORCE), snapshot RESTORE (expected attribute RPG), a copy of QCLSRC/JU0900C after the restore (expected LEN(3 0) again: shows that a rebuild undoes the B fix, the lesson claim about FORCE(*YES)), and a final TXRESET. The CLONEDIR tree that TXLEGACY reads ($HOME/ibmi-kyozai/src/legacy/{qrpgle112,qrpgsrc,qddssrc,qclsrc}) is built like part05-txlegacy-exec: file steps stage each repo file into source file V27STG (RCDLEN 112, members Q_/R_/D_/C_ + name), sh steps CPYTOSTMF them with STMFCCSID(1208) ENDLINFMT(*LF); this overwrites same-named files if $HOME/ibmi-kyozai is a real git clone (the MKTREE step records whether .git exists). Commands that may not exist when the wrapper is compiled (TXLEGACY, TXCHECK, TXSTATUS) run through QCMDEXC in V27RUN. All collects read tables filled inside the wrapper (V27OBJ, VFYSPL, V27SB/SA/SR/SZ source copies) because collect runs after the restore. HONEST LIMITS: this is a simulation, the library still holds other objects of the author (TXRESET, JUCHUM, ...); EXFMT/SEU/STRDBG and the PDM typing steps are V3 and not covered. The two CALLs (V0601A, F0605R) are hang-prone and sit just before the restore; the restore steps are one command per step so an error cannot skip them. Nothing has been run on hardware yet (2026-10-02, PUB400 unreachable). sshTimeoutMs 600000.",
+  "description": "Issue #35, part 4V lesson 04-27 (route preparation for learners who skip RPG III) plus the 06-05 route variant. Simulates a route learner in ONE connection, in the default library (<USER>2, the library the plan uses for batches): PRECONDITION (helper V27RUN: DBVER = 1, TXLEGLNG absent or *RPG; failure jumps to DONE before anything is changed); snapshot A0-PRE of OBJECT_STATISTICS (expected attribute RPG for TK0100/JU0300/ZA0500); RMVLIBLE of <USER>1 (the harness has no placeholder for it, so the helper uses RTVJOBA CURUSER + 1; the library list is job-scoped so the removal holds) with DSPLIBL printed before and after (the listings appear in the raw run section); A1 TXCKM/TXCHECK and A2 TXSNAP/TXSNAPT with the lesson create commands verbatim (the *PGM/*CMD objects are deleted first so OBJCREATED is fresh and the lesson text is tested without REPLACE; TXCKM and TXSNAPT are shared with other batches and are NOT deleted, so their CRTPF log the already-exists message); A3 CRTSRCPF QRPGLE112 (expected to fail with an already-exists message when the file is there: the message id settles the open CPF5813 item), V0601A from src/qrpglesrc/v0601s.rpgle into QRPGLE112 and CRTBNDRPG; A4 TXLEGACY compiled from the repo, TXLEGST and TXLEGLNG and the three legacy programs deleted, then TXLEGACY LANG(*RPGLE) (no FORCE, because FORCE would SAVOBJ into the SAVF library); A5 snapshot (expected RPGLE) and TXLEGLNG; A6 TXCKM rows plus TXCHECK LESSON 04-27; C collapsed onto the same library (TXSTATUS, LASTCD, then TXLEGACY again with *RPGLE, *SAME and a mismatching *RPG without FORCE to record the already-loaded and mismatch notes); B ticket 1 (JU0900C and ZA0500 source lines with MINQTY are copied before the fix, the model answer is staged in V27STG member T1FIX and copied into QCLSRC/JU0900C by CPYSRCF, then CRTCLPGM REPLACE(*YES); JU0900C is NOT called). Then 06-05 route: V0423D (src/qrpglesrc/v0423ds.rpgle) and verify/part04v-27set/src/f0605r.rpgle (identical to src/qrpglesrc/f0605s.rpgle except the one extpgm line, V0423D instead of R0409A) compiled as F0605R (not F0605A, so the restored library keeps its F0605A); TXRESET, V0601A call (printout not captured: CPYSPLF of QSYSPRT failed with CPF3303, so only job-log lines are evidenced), F0605R call (job-log lines only, ZAIKOM P00001 before/after written into VFYLOG), TXRESET. LAST: restore the library to the RPG III legacy system (TXLEGST and TXLEGLNG deleted, TXLEGACY LANG(*RPG), no FORCE), snapshot RESTORE (expected attribute RPG), a copy of QCLSRC/JU0900C after the restore (expected LEN(3 0) again: shows that a rebuild undoes the B fix, the lesson claim about FORCE(*YES)), and a final TXRESET. The CLONEDIR tree that TXLEGACY reads ($HOME/ibmi-kyozai/src/legacy/{qrpgle112,qrpgsrc,qddssrc,qclsrc}) is built like part05-txlegacy-exec: file steps stage each repo file into source file V27STG (RCDLEN 112, members Q_/R_/D_/C_ + name), sh steps CPYTOSTMF them with STMFCCSID(1208) ENDLINFMT(*LF); this overwrites same-named files if $HOME/ibmi-kyozai is a real git clone (the MKTREE step records whether .git exists). Commands that may not exist when the wrapper is compiled (TXLEGACY, TXCHECK, TXSTATUS) run through QCMDEXC in V27RUN. All collects read tables filled inside the wrapper (V27OBJ, VFYSPL, V27SB/SA/SR/SZ source copies) because collect runs after the restore. HONEST LIMITS: this is a simulation, the library still holds other objects of the author (TXRESET, JUCHUM, ...); EXFMT/SEU/STRDBG and the PDM typing steps are V3 and not covered. The two CALLs (V0601A, F0605R) are hang-prone and sit just before the restore; the restore steps are one command per step so an error cannot skip them. First hardware run 2026-10-04 failed in the helper V27RUN (CPD0899: a global MONMSG EXEC must be GOTO; fixed), so A4-A6, C and the restore did not run: re-run needed. Capture steps (CPYSPLF of QPDSPLIB/QSYSPRT) removed after CPF3303. sshTimeoutMs 600000.",
   "sshTimeoutMs": 600000,
   "steps": [
     {
@@ -253,14 +253,6 @@
     },
     {
       "type": "cl",
-      "label": "MKSPL",
-      "cmd": "CHKOBJ OBJ(&LIB/VFYSPL) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSPL) RCDLEN(133) TEXT('verify spool capture'))",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
       "label": "DROBJ",
       "cmd": "RUNSQL SQL('DROP TABLE &LIB/V27OBJ') COMMIT(*NONE)",
       "monmsg": [
@@ -304,22 +296,6 @@
     },
     {
       "type": "cl",
-      "label": "CAPLIB0",
-      "cmd": "CPYSPLF FILE(QPDSPLIB) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "CAPLIB0D",
-      "cmd": "DLTSPLF FILE(QPDSPLIB) SPLNBR(*LAST)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
       "label": "RMLIB1",
       "cmd": "CALL PGM(&LIB/V27RUN) PARM('RMVLIB1' '&LIB')",
       "monmsg": [
@@ -339,22 +315,6 @@
       "type": "cl",
       "label": "DSPLIB1",
       "cmd": "DSPLIBL OUTPUT(*PRINT)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "CAPLIB1",
-      "cmd": "CPYSPLF FILE(QPDSPLIB) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "CAPLIB1D",
-      "cmd": "DLTSPLF FILE(QPDSPLIB) SPLNBR(*LAST)",
       "monmsg": [
         "CPF0000"
       ]
@@ -881,22 +841,6 @@
     },
     {
       "type": "cl",
-      "label": "CAPV0601",
-      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "CAPV060D",
-      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
       "label": "ZBEFORE",
       "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFYLOG SELECT 91000, ''ZAIKOM P00001 ZASU before F0605R = '' CONCAT CHAR(ZASU) FROM &LIB/ZAIKOM WHERE ZASHO = ''P00001''') COMMIT(*NONE)",
       "monmsg": [
@@ -914,22 +858,6 @@
         "RNQ0000",
         "RNX0000",
         "CEE0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "CAPF605R",
-      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSPL) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "CAPF605D",
-      "cmd": "DLTSPLF FILE(QSYSPRT) SPLNBR(*LAST)",
-      "monmsg": [
-        "CPF0000"
       ]
     },
     {
@@ -1019,11 +947,6 @@
       "type": "collect",
       "kind": "sql",
       "sql": "SELECT TAG, OBJNAME, OBJTYPE, OBJATTR, OBJCREATED FROM &LIB/V27OBJ ORDER BY TAG, OBJNAME"
-    },
-    {
-      "type": "collect",
-      "kind": "sql",
-      "sql": "SELECT * FROM &LIB/VFYSPL"
     },
     {
       "type": "collect",

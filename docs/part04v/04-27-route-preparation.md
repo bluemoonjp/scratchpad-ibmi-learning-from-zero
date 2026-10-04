@@ -80,7 +80,7 @@ A0〜A6 は続けて行ってください。C は第8部の 08-08 に入る前�
 
 ## 実演
 
-**ここから先は、第4部・第5部の実機確認済みの手順を、このルート向けに並べ直したものです。固定形式 RPG IV 版の旧システム(`LANG(*RPGLE)`)を実機で実行した結果は、まだ確認していません(実機メモ参照)。**
+**ここから先は、第4部・第5部の実機確認済みの手順を、このルート向けに並べ直したものです。固定形式 RPG IV 版の旧システム(`LANG(*RPGLE)`)で A0 から B まで通した結果は、実機で確認しました(part04v-27set、2026-10-04。確認の範囲は実機メモ参照)。**
 
 ### A0 前提の確認
 
@@ -159,7 +159,7 @@ A0〜A6 は続けて行ってください。C は第8部の 08-08 に入る前�
 
 **入れる先は `QRPGLESRC` ではなく `QRPGLE112` です。** 06-01b の手順6が `V0601A` を `QRPGLE112` から開くためです(04-21 で説明した2つのソース物理ファイルの使い分けのうち、`CVTRPGSRC` の変換結果の置き場所にあたります)。
 
-1. `QRPGLE112` を作ります(5250)。すでにあれば、`CPF5813` などの「既に存在する」という趣旨のメッセージが出ますが、そのまま次に進んでかまいません(`CRTPF` では `CPF5813` の直後に `CPF7302` が出た実績が 06-01b にありますが、**`CRTSRCPF` でのメッセージ ID は未検証(2026-10-01時点)** です)。
+1. `QRPGLE112` を作ります(5250)。すでにあれば、`CPF5813` などの「既に存在する」という趣旨のメッセージが出ますが、そのまま次に進んでかまいません(`CRTPF` では `CPF5813` の直後に `CPF7302` が出た実績が 06-01b にありますが、`CRTSRCPF` でも同じで、`QRPGLE112` がすでにあるときは `CPF5813`(File QRPGLE112 in library ... already exists)の直後に `CPF7302`(File QRPGLE112 not created in library ...)が出ました。**実機で確認(part04v-27set、2026-10-04)**。
 
    ```text
    CRTSRCPF FILE(<USER>1/QRPGLE112) RCDLEN(112) TEXT('Curriculum RPG IV (fixed form) sources')
@@ -172,7 +172,7 @@ A0〜A6 は続けて行ってください。C は第8部の 08-08 に入る前�
    system "CPYFRMSTMF FROMSTMF('/home/<USER>/ibmi-kyozai/src/qrpglesrc/v0601s.rpgle') TOMBR('/QSYS.LIB/<USER>1.LIB/QRPGLE112.FILE/V0601A.MBR') MBROPT(*REPLACE) STMFCCSID(1208)"
    ```
 
-3. 5250 に戻り、コンパイルして実行します。
+3. 5250 に戻り、コンパイルして実行します。`CRTBNDRPG` は `RNS9304`(Program V0601A placed in library ... 00 highest severity)で終わります(**実機で確認(part04v-27set、2026-10-04)**。続く `CALL` では、`ACME TRADING CO` の `J00001  20260901` と `J00003  20260905` の2行が印刷されました(**実機で確認(part04v-27set、2026-10-04)**。この検証は非対話の SSH なので、印刷の中身はスプール・ファイルではなく、実行時の出力(接続の生ログ)を直接読んで確認しました。5250 で `WRKSPLF` を開く操作は V3 で、確認していません))。
 
    ```text
    CRTBNDRPG PGM(<USER>1/V0601A) SRCFILE(<USER>1/QRPGLE112) SRCMBR(V0601A)
@@ -204,6 +204,8 @@ A0〜A6 は続けて行ってください。C は第8部の 08-08 に入る前�
    CRTCMD CMD(<USER>1/TXLEGACY) PGM(*LIBL/TXLEGACY) SRCFILE(<USER>1/QCMDSRC) SRCMBR(TXLEGACY)
    ```
 
+   **`*PGM` と `*CMD` は必ずセットで作り直します。** 旧版(`LANG` の無い、3パラメーターの `TXLEGACY`)の `*CMD` が残ったまま `*PGM` だけを新しくすると、`TXLEGACY` の実行が `CPD0172`(Parameters passed on CALL do not match those required)で止まります(`part05-lglang` で確認、2026-10-04)。すでに `TXLEGACY` がある場合は、`CRTCLPGM` に `REPLACE(*YES)` を付け、`CRTCMD` の前に `DLTCMD CMD(<USER>1/TXLEGACY)` を実行してください。
+
 3. `TK0100` が実行時に必要とするデータ域 `LASTCD` を作ります(`TXLEGACY` は作りません。05-01 で確認済みです)。すでにあれば「既に存在する」という趣旨のメッセージが出るだけなので、そのまま次に進みます。
 
    ```text
@@ -216,7 +218,7 @@ A0〜A6 は続けて行ってください。C は第8部の 08-08 に入る前�
    TXLEGACY LIB(<USER>1) LANG(*RPGLE)
    ```
 
-   ジョブ・ログに `TXLEGACY: loading legacy system into library ...` から `TXLEGACY: done. ...` までが並べば完了です。`QRPGLE112` にはこのとき `TK0100`・`JU0300`・`ZA0500` のメンバーが入り、A3 で作った `V0601A` のメンバーはそのまま残ります。
+   ジョブ・ログに `TXLEGACY: loading legacy system into library ...` から `TXLEGACY: done. ...` までが並べば完了です(**実機で確認(part04v-27set、2026-10-04)**。途中に `RNS9304`(Program `TK0100`・`JU0300`・`ZA0500` placed in library ... 00 highest severity)が3本分並び、`TXLEGLNG` と `TXLEGST` の作成(`CPC0904`)で終わりました)。`QRPGLE112` にはこのとき `TK0100`・`JU0300`・`ZA0500` のメンバーが入り、A3 で作った `V0601A` のメンバーはそのまま残ります。
 
    - **RPG III 版をすでに入れてある場合**(A0 の手順3): 同じコマンドの末尾に `FORCE(*YES)` を付けます。`FORCE(*YES)` は、作り直す前に `<USER>B` に `LG` + 日付の名前の SAVF を作って退避します。`DSPSAVF FILE(<USER>B/LG......)` で、何が退避されたかを自分の目で確かめてください(05-01 手順9と同じ注意です。**全部が入っているとは限りません**)。
 
@@ -224,9 +226,9 @@ A0〜A6 は続けて行ってください。C は第8部の 08-08 に入る前�
      TXLEGACY LIB(<USER>1) LANG(*RPGLE) FORCE(*YES)
      ```
 
-   - `FORCE(*NO)` のまま、すでに入っている言語と違う `LANG` を指定すると、「何も作り直さず、入っている言語はこれです」という趣旨の注意メッセージだけが出ます。
+   - `FORCE(*NO)` のまま、すでに入っている言語と違う `LANG` を指定すると、「何も作り直さず、入っている言語はこれです」という趣旨の注意メッセージだけが出ます(**実機で確認(part04v-27set、2026-10-04)**。`*RPGLE` で入れたあとに `LANG(*RPG)` を指定すると、`TXLEGACY: already loaded in this library. Use FORCE(*YES) to rebuild (backs up first).` に続けて `TXLEGACY: note - the loaded language is *RPGLE , not *RPG   . Nothing was changed; use FORCE(*YES) to switch.` が出て、`TXLEGLNG` は `*RPGLE` のままでした。`LANG` を省略しても、または `LANG(*RPGLE)` を指定しても、`already loaded` の1行だけで何も変わりませんでした。`FORCE(*YES)` 自体は、退避先の SAVF を作るので、このバッチでは実行していません)。
 
-5. `DSPDTAARA DTAARA(<USER>1/TXLEGST)` の値が `Y` であることを確認します(05-01 手順7と同じです)。
+5. `DSPDTAARA DTAARA(<USER>1/TXLEGST)` の値が `Y` であることを確認します(05-01 手順7と同じです。`*RPGLE` で入れた直後に `Y` でした。**実機で確認(part04v-27set、2026-10-04)**)。
 
 ### A5 RPG III が無いことの確認
 
@@ -241,7 +243,7 @@ A0〜A6 は続けて行ってください。C は第8部の 08-08 に入る前�
 
    4行すべてで `OBJATTRIBUTE` が `RPGLE` になっているはずです。1行でも `RPG`(RPG III)になっていたら、そのプログラムは RPG III のソースから作られています。A4 の `TXLEGACY` が `LANG(*RPGLE)` で動いたか、ジョブ・ログを確かめてください。
 
-   `OBJATTRIBUTE` の列名と、RPG IV のプログラムが `RPGLE`、RPG III のプログラムが `RPG` と出ることは、10-03 の実機メモ(`part10-03-modernize`、V2)が確認済みです。**未検証(2026-10-01時点)**: `CRTBNDRPG` で作った固定形式 RPG IV の `TK0100`・`JU0300`・`ZA0500`・`V0601A` が `RPGLE` と出ることは、このレッスンの手順では実機でまだ確認していません(10-03 の確認は埋め込み SQL のプログラムです)。
+   `OBJATTRIBUTE` の列名と、RPG IV のプログラムが `RPGLE`、RPG III のプログラムが `RPG` と出ることは、10-03 の実機メモ(`part10-03-modernize`、V2)が確認済みです。`CRTBNDRPG` で作った固定形式 RPG IV の `V0601A`(A3 の手順で作り直したもの)が `RPGLE` と出ることは、実機で確認しました(part04v-27set、2026-10-04)。`TK0100`・`JU0300`・`ZA0500` を `LANG(*RPGLE)` で入れたものも、4行すべてが `RPGLE` と出ました(**実機で確認(part04v-27set、2026-10-04)**)。同じバッチで、旧システムを `LANG(*RPG)` で入れ直したあとは、`TK0100`・`JU0300`・`ZA0500` が `RPG` になり、`V0601A` は `RPGLE` のままでした(RPG III と RPG IV を見分けられることの確認です)。
 
 2. `TXLEGLNG` の値を確かめます。
 
@@ -249,7 +251,7 @@ A0〜A6 は続けて行ってください。C は第8部の 08-08 に入る前�
    DSPDTAARA DTAARA(<USER>1/TXLEGLNG)
    ```
 
-   `*RPGLE` と表示されるはずです。`TXLEGLNG` が無いときや値が `*RPG` のときは、RPG III 版のままです(`TXLEGACY` が最後に記録するデータ域のため、A4 が最後まで終わっていない可能性もあります)。
+   `*RPGLE` と表示されるはずです(**実機で確認(part04v-27set、2026-10-04)**。`TXLEGLNG` の値を読むと `*RPGLE` でした)。`TXLEGLNG` が無いときや値が `*RPG` のときは、RPG III 版のままです(`TXLEGACY` が最後に記録するデータ域のため、A4 が最後まで終わっていない可能性もあります)。
 
 ### A6 `TXCHECK` の自己確認
 
@@ -279,7 +281,7 @@ VALUES
 TXCHECK LESSON('04-27') LIB(<USER>1)
 ```
 
-ジョブ・ログに `TXCHECK PASS: ...` が10件と、`TXCHECK: lesson 04-27 - 0000000010 passed,` に続く `0000000000 failed.` が出れば、オブジェクトが揃っています(件数は10桁ゼロ埋めです。05-13 と同じ形です)。`FAIL` が出たら、その行の `CKDESC` のオブジェクトを作る手順に戻ってください。`TXCHECK` は存在と型だけを見るので、RPG III か RPG IV かは A5 の確認で見分けます。
+ジョブ・ログに `TXCHECK PASS: ...` が10件と、`TXCHECK: lesson 04-27 - 0000000010 passed,` に続く `0000000000 failed.` が出れば、オブジェクトが揃っています(件数は10桁ゼロ埋めです。05-13 と同じ形です。**実機で確認(part04v-27set、2026-10-04)**。10行すべてが PASS で、最後の2行は `TXCHECK: lesson 04-27 - 0000000010 passed,` と `0000000000 failed.` でした。`TXCKM` に `*FILE`・`*DTAARA` の行があっても、同じように処理されました)。`FAIL` が出たら、その行の `CKDESC` のオブジェクトを作る手順に戻ってください。`TXCHECK` は存在と型だけを見るので、RPG III か RPG IV かは A5 の確認で見分けます。
 
 ### C 本番役ライブラリーを用意する
 
@@ -317,7 +319,9 @@ TXCHECK LESSON('04-27') LIB(<USER>1)
    DSPDTAARA DTAARA(<USER>2/TXLEGLNG)
    ```
 
-   3行すべてが `RPGLE`、`TXLEGLNG` が `*RPGLE` であれば完了です(未検証の部分は A5 と同じです)。
+   3行すべてが `RPGLE`、`TXLEGLNG` が `*RPGLE` であれば完了です。
+
+   **確認の範囲(part04v-27set、2026-10-04)**: このバッチは、1つのライブラリーに A0〜B を通す形で実行したので、C の手順は同じライブラリーに対して行いました。`TXSTATUS` が `TXSTATUS: DBVER=0000000001 in library ...` を返したこと、`CRTDTAARA` が `LASTCD` を作る手順(すでにあるので `CPF1023`)、2回目の `TXLEGACY ... LANG(*RPGLE)` が `already loaded` で何も変えなかったことは、**実機で確認しました**。**未検証(2026-10-04時点)**: `<USER>1` とは別の `<USER>2` に対して、`TXSETUP` を含めて C を通した記録はまだありません。
 
 ### B 08-05b の直前に行う: チケット1の診断と修正
 
@@ -329,7 +333,7 @@ TXCHECK LESSON('04-27') LIB(<USER>1)
    DCL        VAR(&MINQTY) TYPE(*DEC) LEN(3 0)
    ```
 
-   次に、`<USER>1/QRPGLE112` の `ZA0500` を開き、`*ENTRY PLIST` の `MINQTY` に対応する `PARM` の行を探します(04-24 で練習した形です。桁数と小数点位置が、結果フィールドの欄に書いてあります)。CL 側は `3,0`、RPG IV 側は `5,0` なのが食い違いです。**個数が合っているので、コンパイルは通ります**(03-08・04-24 のとおりです)。どちらを直しても、両方が一致すれば正解です。ここでは、模範解答に合わせて CL 側を `5,0` に広げます。
+   次に、`<USER>1/QRPGLE112` の `ZA0500` を開き、`*ENTRY PLIST` の `MINQTY` に対応する `PARM` の行を探します(04-24 で練習した形です。桁数と小数点位置が、結果フィールドの欄に書いてあります)。CL 側は `3,0`、RPG IV 側は `5,0` なのが食い違いです(**実機で確認(part04v-27set、2026-10-04)**。配布版の `JU0900C` は31行目が `DCL VAR(&MINQTY) TYPE(*DEC) LEN(3 0)`、74行目が `CALL PGM(&LIB/ZA0500) PARM(&RUNMODE &MINQTY)`、`ZA0500`(`QRPGLE112`)は78行目が `C                   PARM                    MINQTY            5 0` でした。`ZA0500` の10行目には、この食い違いを `BUG (05-13 ticket 1)` と書いたコメントがあります)。**個数が合っているので、コンパイルは通ります**(03-08・04-24 のとおりです)。どちらを直しても、両方が一致すれば正解です。ここでは、模範解答に合わせて CL 側を `5,0` に広げます。
 
 2. **直す。** SSH で、模範解答のソースを `QCLSRC` の `JU0900C` メンバーに取り込みます(配布版が置き換わります)。
 
@@ -343,11 +347,11 @@ TXCHECK LESSON('04-27') LIB(<USER>1)
    CRTCLPGM PGM(<USER>1/JU0900C) SRCFILE(<USER>1/QCLSRC) SRCMBR(JU0900C) REPLACE(*YES)
    ```
 
-4. 取り込んだメンバーに `DCL VAR(&MINQTY) TYPE(*DEC) LEN(5 0)` があることを、`WRKMBRPDM` などで開いて確かめます。
+4. 取り込んだメンバーに `DCL VAR(&MINQTY) TYPE(*DEC) LEN(5 0)` があることを、`WRKMBRPDM` などで開いて確かめます(**実機で確認(part04v-27set、2026-10-04)**。`REPLACE(*YES)` の再コンパイルは `CPC0815` で終わり、メンバーの44行目が `LEN(5 0)` になりました。`WRKMBRPDM` で開く操作そのものは V3 で、確認していません)。
 
-5. **注意。** `TXLEGACY LIB(<USER>1) FORCE(*YES)` を実行すると、`JU0900C` は配布版のソース(`LEN(3 0)` のまま)から作り直されるので、この修正は元に戻ります。そのあとは、もう一度この手順の2〜4を行ってください。
+5. **注意。** `TXLEGACY LIB(<USER>1) FORCE(*YES)` を実行すると、`JU0900C` は配布版のソース(`LEN(3 0)` のまま)から作り直されるので、この修正は元に戻ります。そのあとは、もう一度この手順の2〜4を行ってください(**実機で確認(part04v-27set、2026-10-04)**: 修正のあとで旧システムを作り直すと、`JU0900C` のソースは `LEN(3 0)` に戻りました。ただし、このバッチが使ったのは `FORCE(*YES)` ではなく、`TXLEGST`・`TXLEGLNG` を消してから `TXLEGACY LANG(*RPG)` を実行する形です。どちらも `JU0900C` を配布版のソースから作り直す点は同じですが、`FORCE(*YES)` 自体で戻ることは、SAVF を作るので実行していません)。
 
-**実行結果の確認は、このレッスンではしません。** RPG III 版の `ZA0500` では、食い違ったまま `JU0900C` から呼ぶと、実機で毎回 `RPG0907`(10進データ・エラー)で異常終了し、直すとそれが解消することが確認済みです(05-13 の実機メモ)。RPG IV 版の `ZA0500` で、どのメッセージ ID が出るかは**未検証(2026-10-01時点)**です。
+**実行結果の確認は、このレッスンではしません。** RPG III 版の `ZA0500` では、食い違ったまま `JU0900C` から呼ぶと、実機で毎回 `RPG0907`(10進データ・エラー)で異常終了し、直すとそれが解消することが確認済みです(05-13 の実機メモ)。RPG IV 版の `ZA0500` で、どのメッセージ ID が出るかは**未検証(2026-10-04時点)**です(part04v-27set でも、`JU0900C` は修正の前後とも呼んでいません)。
 
 ## セルフチェック
 
@@ -380,7 +384,14 @@ TXCHECK LESSON('04-27') LIB(<USER>1)
 
 ## 実機メモ
 
-- **未検証(2026-10-01時点)**: このレッスンの手順をそのまま通して実行した記録は、まだありません。実機で確認したのは、次の「根拠」の個別の部品だけです。
+- **実機で確認(part04v-27set、2026-10-04)**: A1〜A3 の作成コマンドの結果です。`TXCHECK` と `TXSNAP` の `CRTCLPGM` は `CPC0815`、`CRTCMD` は `CPC0202` で作成できました(`TXLEGACY` の `*PGM`・`*CMD` の作成も同じです)。`TXCKM`・`TXSNAPT`・`QRPGLE112` がすでにあると、`CRTPF`・`CRTSRCPF` は `CPF5813` に続く `CPF7302` で終わります。`LASTCD` がすでにあると `CRTDTAARA` は `CPF1023` です。`V0601A` は `QRPGLE112` から `CRTBNDRPG` で `RNS9304`(重大度00)として作成でき、`OBJATTRIBUTE` は `RPGLE` でした。
+- **実機で確認(part04v-27set、再実行、2026-10-04)**: A0 から B までを通しました(最初の実行は、補助プログラム(検証用の CL)が `CPD0899` で作れず止まったので、直して再実行したものです)。**範囲の限界**: 検証用のライブラリー1つに A0〜B を通す形で実行したため、`<USER>1` と `<USER>2` を別々に使い分ける形ではありません(C は同じライブラリーでの `TXSTATUS`・`LASTCD`・`TXLEGACY` の再実行です)。`FORCE(*YES)` は `<USER>B` に SAVF を作るので実行せず、`JU0900C` は呼んでいません。5250 の対話操作(PDM・SEU・`EXFMT`・`STRDBG`)は V3 で、確認していません。
+  - A4: `TXLEGACY LIB(...) LANG(*RPGLE)` が、`TXLEGLNG`・`TXLEGST` が無い状態から `TXLEGACY: done.` まで終わりました。`TK0100`・`JU0300`・`ZA0500` は `QRPGLE112` から `RNS9304`(重大度00)で作られ、`TXLEGST` は `Y`、`TXLEGLNG` は `*RPGLE` でした。
+  - A5: `OBJATTRIBUTE` は `TK0100`・`JU0300`・`ZA0500`・`V0601A` の4行とも `RPGLE`。RPG III に戻したあとは、3本が `RPG` でした。
+  - A6: `TXCHECK PASS` が10行、最後は `0000000010 passed,` と `0000000000 failed.` でした。
+  - C: `TXSTATUS` は `DBVER=0000000001`。`LASTCD` の `CRTDTAARA` は `CPF1023`。2回目の `TXLEGACY` は `LANG(*RPGLE)`・`LANG` 省略とも `already loaded` で何も変えず、`LANG(*RPG)` は不一致の注意が出て `TXLEGLNG` は `*RPGLE` のままでした。
+  - B: 診断(`JU0900C` 31行目 `LEN(3 0)`、`ZA0500` 78行目 `5 0`)、模範解答の取り込み、`REPLACE(*YES)` の再コンパイル(`CPC0815`)、旧システムの作り直しで `LEN(3 0)` に戻ること(`FORCE(*YES)` ではなく、`TXLEGST`・`TXLEGLNG` を消して `LANG(*RPG)` で入れ直した形)。
+  - 最後に、検証用ライブラリーは `TXLEGACY LANG(*RPG)` で RPG III 版に戻し、`TXRESET` も実行しました。
 - **根拠(それぞれの出典のレッスンの実機メモが正本です)**:
   - `TXCKM`・`TXCHECK` の `*PGM` と `*CMD`: 05-13 の実機メモ(`part05-txcheck-probe` の V2、`part06-15-checkpoint` での `*CMD` 呼び出しの V2)。
   - `TXSNAP`・`TXSNAPT`(`CRTPF ... MAXMBRS(*NOMAX)`): 05-08(この手順そのものの通しは、05-08 の実機メモで確認してください)。
@@ -388,10 +399,7 @@ TXCHECK LESSON('04-27') LIB(<USER>1)
   - `TXLEGACY`(RPG III 版、`FORCE` なしの初回ロード): 05-01 の実機メモ(`part05-txlegacy-exec`、確認日2026-09-27、V2)。
   - `<USER>2` への `TXSETUP`・`TXLEGACY` と `LASTCD`: 05-12 の実機メモ。
   - チケット1の食い違いと `solutions/05-13/ju0900c-ticket1.clp` による解消: `part05-ju0900c-baseline`・`part05-13-tickets`(確認日2026-09-27、RPG III 版の `ZA0500` に対して V2)。
-- **未検証(2026-10-01時点)**:
-  - `TXLEGACY` の `LANG` パラメーター(`*RPGLE`・`*SAME`・`*RPG`)と `TXLEGLNG` の動き。`QRPGLE112` に作る `TK0100`・`JU0300`・`ZA0500` が `CRTBNDRPG` でコンパイルできること、`src/legacy/qrpgle112/` のソースの内容。
-  - `CRTBNDRPG` で作った固定形式 RPG IV のプログラムが、`OBJECT_STATISTICS` の `OBJATTRIBUTE` で `RPGLE` を返すこと(列名と、埋め込み SQL のプログラムでの値は 10-03 で確認済み)。
-  - A6 の `TXCKM` の10行(`*FILE`・`*DTAARA` を含む)を `TXCHECK` が処理して `10 passed, 0 failed` を返すこと(05-13 の確認は `*PGM` の行です)。
+- **未検証(2026-10-04時点)**:
   - RPG IV 版の `ZA0500` が、食い違った `PARM` で受けたときに出すメッセージ ID(RPG III 版の `RPG0907` とは限りません)。
-  - A3 で、`QRPGLE112` がすでにある場合に出るメッセージ ID(`CPF5813` かどうか)。
+  - `TXLEGACY ... FORCE(*YES)` そのもの(SAVF への退避と、作り直しで修正が戻ること)。`<USER>1` とは別の `<USER>2` に対して `TXSETUP` から C を通すこと。ライブラリーに言語の記録が無いときの `LANG` 省略(`*SAME`、`*RPG` になるはず)。
 - 食い違いに気づいたら [Issue](https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero/issues) で教えてください。

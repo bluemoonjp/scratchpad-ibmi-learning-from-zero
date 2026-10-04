@@ -3,7 +3,7 @@
       * JUCHUL1 is the PRIMARY file (IP): the RPG cycle reads it by itself,
       * no READ and no GOTO. L1 is declared on the I spec for JUTOK.
       * Source order: detail lines (blank level) first, then the L1 lines.
-      * The I spec columns (field name 49, control level 63) are UNVERIFIED.
+      * I spec: field name from column 49, control level in columns 63-64.
      H DFTACTGRP(*YES)
      FJUCHUL1   IP   E           K DISK
      FQSYSPRT   O    F  132        PRINTER

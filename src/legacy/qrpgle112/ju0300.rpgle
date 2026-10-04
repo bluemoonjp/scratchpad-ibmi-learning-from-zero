@@ -1,55 +1,145 @@
-      * HAND CONVERSION - UNVERIFIED (2026-10-01): not yet compiled with CRTBNDRPG nor
-      * compared to the real CVTRPGSRC output; replace by real output (verify batch
-      * part05-lgcvt) and keep the RPG III original (src/legacy/qrpgsrc) in sync.
+      * CVTRPGSRC output of src/legacy/qrpgsrc/ju0300.rpg (verified on hardware:
+      * part05-lgcvt, 2026-10-04, conversion 0 highest severity). Only edit:
+      * the H spec now says DFTACTGRP(*YES). Keep in sync with the RPG III
+      * original; the comment block below is the original header, unchanged.
+
+      * JU0300 - order list (JUCHUM/JUCHUL1) with L1/L2 subtotals
+      * and a grand total, Part 5 (legacy system).
       *
-      * Made by converting src/legacy/qrpgsrc/ju0300.rpg column for column, as CVTRPGSRC
-      * does. Only three edits were made on purpose: this header, the H spec
-      * (DFTACTGRP(*YES)) and the 100-column limit of QRPGLE112. Code lines are
-      * not modernized. Changes that follow from the RPG III -> RPG IV layout:
-      *  - EXCPT -> EXCEPT, SETOF -> SETOFF, UPDAT -> UPDATE, DEFN -> DEFINE,
-      *    array notation CT,IX -> CT(IX), *IN,60 -> *IN(60).
-      *  - RPG IV allows one conditioning indicator per line (cols 9-11). A line
-      *    with more than one is split: first indicator on its own line, the
-      *    other ones on CAN lines, with the operation on the last CAN line.
-      *    (Layout of these CAN lines is UNVERIFIED against real CVTRPGSRC.)
-      *  - Resulting indicators moved from cols 54-59 to cols 71-76.
+      * CONFIRMED, real hardware (part05-legacy-probe, 2nd connection):
+      * compiles with 0/00 severity (see docs/probes.md). See
+      * docs/probes.md before relying on any construct here that is
+      * still flagged unverified below (compile success does not by
+      * itself confirm every runtime behavior this file documents).
       *
-      * JU0300 - order list (JUCHUM/JUCHUL1) with L1/L2 subtotals and a grand
-      * total. Legacy system, fixed-form RPG IV (QRPGLE112, CRTBNDRPG).
-      * Prints the same lines as the RPG III JU0300.
+      * Design deviations from this design's original purpose text,
+      * and why:
       *
-      * Control levels: L1 = JUDATE (minor key), L2 = JUTOK (major key). This
-      * follows the key order of JUCHUL1 (JUTOK, then JUDATE): the field that
-      * changes less often must be the HIGHER level. LR gives the grand total.
-      * Calculation order: blank level (detail), then L1, L2, LR.
+      * 1. Control level assignment DELIBERATELY DEVIATES from the
+      *    design purpose text's own example, "L1(customer=JUTOK)".
+      *    JUCHUL1 is keyed JUTOK (major) then JUDATE (minor within
+      *    customer) - see db/v1/juchul1.lf. RPG forces every LOWER
+      *    level on whenever a HIGHER level breaks (confirmed for
+      *    L1/LR in probes.md 04-10 #3), so the field that changes
+      *    LESS often (the major/outer key, JUTOK) must be the
+      *    HIGHER level number, and the field that changes MORE
+      *    often (the minor/inner key, JUDATE) the LOWER one. Coding
+      *    the design text's literal example (L1=JUTOK, L2=JUDATE)
+      *    would make an ordinary date change inside one customer
+      *    incorrectly force a spurious customer break every time.
+      *    This program uses L1=JUDATE (date, minor), L2=JUTOK
+      *    (customer, major), matching JUCHUL1's actual key order -
+      *    the design JSON's rpgConstructsUsed list itself only says
+      *    "L1/L2", not which field is which, but the purpose text
+      *    does say L1=customer, and this knowingly does the
+      *    opposite because the literal reading is structurally
+      *    broken against JUCHUL1 as built.
       *
-      * CT is a runtime array that collects the order count of each customer
-      * at every L2 break. XFOOT cross-foots it at LR against GCNT (the same
-      * count added one order at a time): XFOOT OK or MISMATCH is printed.
-      * The guard compares IX with 49 BEFORE adding 1, so IX never passes 50.
+      * 2. "OF (total time)" is not itself a control-level entry RPG
+      *    accepts in C-spec cols 7-8 (that column takes blank,
+      *    L1-L9, LR, and a few other reserved entries - e.g. SR for
+      *    subroutines, AN/OR for extended conditioning - per
+      *    standard RPG II/III doctrine, but not an arbitrary token
+      *    like OF). The grand total the design means by "OF" is
+      *    coded here as LR-conditioned lines (LR = the RPG cycle's
+      *    own last-record / final-total level, which turns on
+      *    automatically at end of the primary file and forces
+      *    L1/L2 on too - see probes.md 04-10 #3 for the same
+      *    mechanism one level down). This is NOT the printer
+      *    overflow indicator (OA-OG / F-spec 33-34, TK0100's
+      *    separate teaching point) - deliberately not used here
+      *    since this design does not call for page headings.
+      *    LR-in-cols-7-8 has no probes.md entry of its own (ZA0500's
+      *    MR, checked again while writing this, sits in the
+      *    conditioning-indicator columns 9-17, not 7-8, so it is
+      *    NOT precedent for this) - treat LR-in-7-8 as unverified.
       *
-      * The unnamed UDS reads *LDA. FTOK is *LDA positions 11-16: an optional
-      * customer code. When it is not blank, only the detail lines of that
-      * customer are printed. Totals always cover all records. MN0000C uses
-      * *LDA position 1, so FTOK is placed behind it on purpose.
+      * 3. XFOOT needs an array (it sums an array's elements), and
+      *    JUCHUM/JUCHUL1 has no natural array data. CT below is a
+      *    RUNTIME array (E-spec with entries-per-record left blank -
+      *    no "**" compile-time data follows) that collects each
+      *    customer's order count as L2 breaks happen; XFOOT then
+      *    cross-foots it against GCNT (the same count accumulated
+      *    independently, one order at a time) as an integrity check
+      *    at LR, printed as XFOOT OK / MISMATCH. This is a genuine,
+      *    classic use of cross-footing (two independent totals that
+      *    must agree), not a cosmetic stand-in for ADD. Only
+      *    COMPILE-TIME E-spec arrays have any probe record at all
+      *    (verify/part05-gen-probe/src/t0eds.rpg, itself also not
+      *    yet compiled) - a RUNTIME array is unverified on top of
+      *    that. decimals=0 is passed explicitly on the E-spec, same
+      *    reasoning as the QRG7044 len/dec rule for C-spec results.
+      *    The L2-break guard below compares IX to the array bound
+      *    BEFORE incrementing it (not after), so IX itself can
+      *    never advance past 50 - an increment-then-compare order
+      *    would let IX silently wrap past its own 2-digit length
+      *    at the 100th customer and index the array at 0.
       *
-      * Indicators: 91 FTOK blank, 92 FTOK = JUTOK, 93 XFOOT = GCNT,
-      * 94 at least one record was read (an empty JUCHUL1 prints nothing),
-      * 90 array bound reached. The second DTL line is conditioned N91, so a
-      * record with FTOK and JUTOK both blank cannot print twice (this is the
-      * line that became a CAN pair).
+      * 4. UDS: an I-spec DS with option "U" auto-loads *LDA at
+      *    program start (rpg3.mjs iSpecDS(option:'U')). Column
+      *    positions are unverified (see design.json
+      *    unverifiedGeneratorFeatures and src/legacy/qrpgsrc/
+      *    fldrefr.rpg's comment, which points here). This program
+      *    reads one subfield, FTOK, at *LDA positions 11-16 (6
+      *    chars): an optional customer-code filter that, when non-
+      *    blank, suppresses DETAIL printing for other customers.
+      *    Positions 11-16 (not 1-6) are deliberate: MN0000C, the
+      *    menu program that CALLs this one, already does
+      *    CHGDTAARA(*LDA (1 1)) with the menu digit - see src/
+      *    legacy/qclsrc/mn0000c.clp - so FTOK is placed past that
+      *    byte on purpose. No program in this design currently
+      *    writes 11-16 either; this is a plausible, self-contained
+      *    illustration of the UDS mechanism, not a confirmed
+      *    integration. The subtotals/grand total below always cover
+      *    ALL records regardless of this filter; only detail-line
+      *    visibility is affected.
       *
-      * IX gets its length at its first ADD, after its first use in a COMP.
-      * RPG III accepted this. Whether CRTBNDRPG does is UNVERIFIED.
+      * 5. Source order: per probes.md 04-10 #5 (QRG5002), blank-
+      *    level (detail) C-spec lines must precede L1-L9 lines. This
+      *    program extends that defensively to LR too (untested for
+      *    LR specifically): blank, then L1, then L2, then LR.
       *
-      * Run it with a library-qualified CALL (or ADDLIBLE in the same job), as
-      * with JU0900C and ZA0500; an unqualified CALL hits the *LIBL hang.
+      * 6. Fixes applied after a code review of this source (all low
+      *    severity; nothing here changes compiled behavior for the
+      *    data this program was originally designed around):
+      *    a. L1CNT/L2CNT no longer repeat len/dec (cols 49-52) on
+      *       their second (Z-ADD0) occurrence - RPG/400 Reference
+      *       p.161-162 requires len/dec only on a result field's
+      *       FIRST definition; repeating it risks drifting out of
+      *       sync with the first if only one copy is later edited.
+      *    b. New indicator 94: SETON at the blank (detail) level,
+      *       once per input record actually read. EXCPTL1BRK/
+      *       L2BRK/GTOT are now additionally conditioned on 94, so
+      *       an empty JUCHUL1 (0 records) - which still forces
+      *       L1/L2/LR on once, per "totals are always processed
+      *       when LR is on" - prints nothing instead of three
+      *       blank/zero summary lines.
+      *    c. The second FTOK-filter EXCPTDTL (ind 92) is now also
+      *       conditioned N91, so a degenerate record where FTOK
+      *       and JUTOK are both blank cannot fire both 91 and 92
+      *       and double-print the DTL group for that one record.
+      *    d. O-spec edit code 'Z' (RPG/400 Reference p.403, simple
+      *       edit code: removes the sign and suppresses leading
+      *       zeros, no decimal point) added to L1CNT/L2CNT/GCNT/
+      *       XTOT and to both JUDATE occurrences. 'Z' rather than
+      *       the date code 'Y' for JUDATE: Y's separator placement
+      *       for an 8-digit YYYYMMDD field that is not itself a
+      *       *DATE-typed field is not pinned down for this case in
+      *       the reference, and a width-changing edit code would
+      *       risk overrunning JUDATE's fixed end position (32/22)
+      *       without a real compile to check against; Z is same-
+      *       width and prose-defined, so it carries no such risk.
+      *
+      * To actually run this from MN0000C, use a library-qualified
+      * CALL (or ADDLIBLE in the same job) exactly like JU0900C/ZA0500
+      * - an unqualified CALL from a fresh session hits the same
+      * *LIBL RPG1216 hang probes.md 04-06 found for R0406T.
      H DFTACTGRP(*YES)
      FJUCHUL1   IP   E           K DISK
      FQSYSPRT   O    F  132        PRINTER
-     DCT               S              5S 0 DIM(50)
+     D CT              S              5  0 DIM(50)
      D                UDS
-     DFTOK                    11     16
+     D  FTOK                  11     16
      IJUCHUR
      I                                          JUDATE        L1
      I                                          JUTOK         L2
