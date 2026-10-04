@@ -1,0 +1,17 @@
+      * T423N4 - NEGATIVE PROBE 4: RPG III spelling EXCPT instead of EXCEPT.
+      * Fixed-form RPG IV port of R0406A (04-06). Prints the same lines.
+      * Compile: CRTBNDRPG. File TOKUIM is found through *LIBL.
+     H DFTACTGRP(*YES)
+     FTOKUIM    IF   E             DISK
+     FQSYSPRT   O    F  132        PRINTER
+     C     LOOP          TAG
+     C                   READ      TOKUIM                                 99
+     C   99              GOTO      ENDLP
+     C                   EXCPT
+     C                   GOTO      LOOP
+     C     ENDLP         TAG
+     C                   SETON                                        LR
+     OQSYSPRT   E
+     O                       TOKCD                6
+     O                                            8 '  '
+     O                       TOKNM               38

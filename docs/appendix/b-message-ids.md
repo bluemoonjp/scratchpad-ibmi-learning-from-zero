@@ -87,7 +87,7 @@
 
 ### RPG(RPG 独自の照会メッセージ)
 
-CPF で始まらないため、CL 側の `MONMSG MSGID(CPF0000)` では捕まえられない、という共通点があります(`src/legacy/qclsrc/mn0000c.clp` のヘッダー・コメントが明記)。
+CPF で始まらないため、CL 側の `MONMSG MSGID(CPF0000)` では捕まえられない、という共通点があります(`src/legacy/qclsrc/mn0000c.clp` のヘッダー・コメントが明記)。これらの `RPG0xxx` は RPG III(OPM)の実行時メッセージです。RPG III を通らないルートの人が `CRTBNDRPG` のプログラムで出会う実行時メッセージは `RNQ`・`RNX` 系になるはずです([04-24](../part04v/04-24-call-parm-debugging.md))。
 
 | メッセージ ID | 意味 | どのレッスンで出会うか | 対処 |
 |---|---|---|---|
@@ -119,7 +119,7 @@ CPF で始まらないため、CL 側の `MONMSG MSGID(CPF0000)` では捕まえ
 
 ### QRG(RPG コンパイラーの生成診断メッセージ)
 
-いずれも `CRTRPGPGM`/`CRTDSPF` のコンパイル・リストに実際に現れたものです(**[実機確認]**)。
+いずれも `CRTRPGPGM`/`CRTDSPF` のコンパイル・リストに実際に現れたものです(**[実機確認]**)。`CRTRPGPGM` を使わない(RPG III を通らない)ルートの人は、この節を読み飛ばしてかまいません。固定形式 RPG IV のコンパイル時メッセージは、次の RNF の節です。
 
 | メッセージ ID | 意味 | どのレッスンで出会うか | 対処 |
 |---|---|---|---|
@@ -142,7 +142,7 @@ CPF で始まらないため、CL 側の `MONMSG MSGID(CPF0000)` では捕まえ
 
 ### RNF(ILE RPG IV のコンパイル時診断メッセージ)
 
-`CRTBNDRPG`/`CRTRPGMOD`/`CRTSQLRPGI` のコンパイル・リストに現れる、QRG(RPG III/固定形式)とは別のメッセージ体系です。
+`CRTBNDRPG`/`CRTRPGMOD`/`CRTSQLRPGI` のコンパイル・リストに現れる、QRG(`CRTRPGPGM` の RPG III コンパイラー)とは別のメッセージ体系です。固定形式の RPG IV(`CRTBNDRPG`)も、自由形式と同じく RNF を出します。RPG III を通らないルートの人は、ここが最初に出会うコンパイル時メッセージです([04-21](../part04v/04-21-fixed-form-skeleton.md) の「RPG IV のメッセージ ID の見方」。同レッスンの `V0421A`〜`V0421D` でも `RNF2318`・`RNF6011` が出るはずですが、未検証(2026-10-01時点)です)。
 
 | メッセージ ID | 意味 | どのレッスンで出会うか | 対処 |
 |---|---|---|---|

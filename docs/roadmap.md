@@ -6,15 +6,15 @@
 
 [00-01](part00/00-01-orientation.md)で示す7つの目標と、それを扱う部の対応です。
 
-| 目標 | 内容 | 主な部 | 到達を確認するレッスン | 第10部で教えるレッスン | TXCHECK のレッスン ID |
-|---|---|---|---|---|---|
-| 1 | 基礎的なコマンド群を使える | 第0〜2部 | [01-10](part01/01-10-checkpoint.md)・[02-11](part02/02-11-checkpoint.md) | [10-01](part10/10-01-preparation-incident.md) | 第1〜4部のチェックポイントでは使いません。第10部は `10-01` |
-| 2 | CL プログラミングができる | 第3部 | [03-14](part03/03-14-checkpoint-backup.md) | [10-01](part10/10-01-preparation-incident.md) | 同上 |
-| 3 | 簡単な RPG III プログラムを作成できる | 第4部 | [04-13](part04/04-13-checkpoint-stock-list.md) | [10-02](part10/10-02-maintenance-tokyusn.md) | 第10部は `10-02` |
-| 4 | 既存の RPG III ソースを読み・保守できる | 第5部 | [05-13](part05/05-13-checkpoint-tickets.md)(保守チケット3本) | [10-02](part10/10-02-maintenance-tokyusn.md) | `05-13`・第10部は `10-02` |
-| 5 | RPG IV(完全自由形式)を主力言語として使える | 第6〜7部 | [06-15](part06/06-15-checkpoint-stock-inquiry.md)(在庫照会をサブファイル+SQLで)・[07-05](part07/07-05-checkpoint-zaisrv.md)(在庫サービスZAISRV) | [10-03](part10/10-03-modernization-devbase.md)(課題C) | `06-15`・`07-05`・第10部は `10-03` |
-| 6 | 現代的なプログラミング手法を活用できる | 第8部 | [08-08](part08/08-08-checkpoint-promote-rollback.md)(ブランチから本番昇格・切り戻しまで) | [10-03](part10/10-03-modernization-devbase.md)(課題D) | `08-08`・第10部は `10-03` |
-| 7 | API 化・API からのデータ取得(環境が許す範囲で) | 第9部 | [09-07](part09/09-07-checkpoint-order-summary-api.md)(受注サマリーAPIと公開設計書) | [10-04](part10/10-04-api-retrospective.md) | `09-07`・第10部は `10-04` |
+| 目標 | 内容 | 主な部 | 到達を確認するレッスン | 第10部で教えるレッスン | TXCHECK のレッスン ID | RPG III を通らないルートでは |
+|---|---|---|---|---|---|---|
+| 1 | 基礎的なコマンド群を使える | 第0〜2部 | [01-10](part01/01-10-checkpoint.md)・[02-11](part02/02-11-checkpoint.md) | [10-01](part10/10-01-preparation-incident.md) | 第1〜4部のチェックポイントでは使いません。第10部は `10-01` | 同じ |
+| 2 | CL プログラミングができる | 第3部 | [03-14](part03/03-14-checkpoint-backup.md) | [10-01](part10/10-01-preparation-incident.md) | 同上 | 同じ |
+| 3 | 簡単な RPG III プログラムを作成できる | 第4部 | [04-13](part04/04-13-checkpoint-stock-list.md) | [10-02](part10/10-02-maintenance-tokyusn.md) | 第10部は `10-02` | 第4部の代わりに[第4部V](part04v/index.md)(04-21〜04-26)。到達の確認は [04-25](part04v/04-25-cycle-and-control-levels.md) の演習 V0425D(`R0413A` 相当) |
+| 4 | 既存の RPG III ソースを読み・保守できる | 第5部 | [05-13](part05/05-13-checkpoint-tickets.md)(保守チケット3本) | [10-02](part10/10-02-maintenance-tokyusn.md) | `05-13`・第10部は `10-02` | 第5部の代わりに [04-27](part04v/04-27-route-preparation.md) の B(チケット1の診断と修正)、[08-05b](part08/08-05b-matching-records-sql-rewrite.md)、[10-02](part10/10-02-maintenance-tokyusn.md) で確認。TXCHECK のレッスン ID は `04-27` |
+| 5 | RPG IV(完全自由形式)を主力言語として使える | 第6〜7部 | [06-15](part06/06-15-checkpoint-stock-inquiry.md)(在庫照会をサブファイル+SQLで)・[07-05](part07/07-05-checkpoint-zaisrv.md)(在庫サービスZAISRV) | [10-03](part10/10-03-modernization-devbase.md)(課題C) | `06-15`・`07-05`・第10部は `10-03` | 同じ |
+| 6 | 現代的なプログラミング手法を活用できる | 第8部 | [08-08](part08/08-08-checkpoint-promote-rollback.md)(ブランチから本番昇格・切り戻しまで) | [10-03](part10/10-03-modernization-devbase.md)(課題D) | `08-08`・第10部は `10-03` | 同じ(`<USER>2` は 04-27 の C で用意) |
+| 7 | API 化・API からのデータ取得(環境が許す範囲で) | 第9部 | [09-07](part09/09-07-checkpoint-order-summary-api.md)(受注サマリーAPIと公開設計書) | [10-04](part10/10-04-api-retrospective.md) | `09-07`・第10部は `10-04` | 同じ |
 
 [第10部(総合演習)](part10/index.md)は、この7つの目標すべてを1つの題材で通しで使う仕上げの部で、7つの目標がここに集まります。最後の [10-04](part10/10-04-api-retrospective.md) で、全体の振り返りと最終の TXCHECK を行います。TXCHECK は、そのレッスンの成果物が指定のライブラリーに存在するかを確かめる道具で、内容の正しさや版までは判定しません。
 
@@ -40,9 +40,12 @@
 
 第10部の中も一本道です([10-01](part10/10-01-preparation-incident.md) → [10-02](part10/10-02-maintenance-tokyusn.md) → [10-03](part10/10-03-modernization-devbase.md) → [10-04](part10/10-04-api-retrospective.md))。詳しくは[第10部の扉](part10/index.md)を参照してください。
 
-例外は次の2種類だけです。
+職場の RPG が RPG IV(`CRTBNDRPG`)で、RPG III を学びたくない人のための別の鎖が1本あります。第4部・第5部の代わりに[第4部V](part04v/index.md)(04-21〜04-28)を通るルートで、下の[専用の節](#rpg-iii-を通らないルート固定形式-rpg-iv-の職場向け)にまとめています。通常の一本道は、このルートがあっても変わりません。
 
-- **枝番レッスン(`b` の付くもの)**: 例 [01-06b](part01/01-06b-object-lifecycle.md)(オブジェクトのライフサイクル)、[04-08b](part04/04-08b-call-parm-plist.md)(RPG III の `CALL`・`PARM`・`PLIST`。推奨ルートに入る例外)、[06-01b](part06/06-01b-reading-fixed-mixed-form.md)(固定形式・混在形式のRPG IVを読む)、[06-11b](part06/06-11b-maintenance-screen-locking.md)(RPG IVの保守画面)、[06-14b](part06/06-14b-date-timestamp-null.md)(DATE/TIMESTAMP/NULL)、[09-02b](part09/09-02b-japanese-dbcs.md)(日本語・DBCSを実機で体験)。本編の流れには含まれず、直前のレッスンが終わっていれば、その場で寄り道してもよいですし、後回しにしてもかまいません。**ただし [04-08b](part04/04-08b-call-parm-plist.md)(RPG III の `CALL`・`PARM`・`PLIST` を自分で書く)だけは例外で、推奨ルートに入っています。** 第5部の [05-13](part05/05-13-checkpoint-tickets.md) のチケット1が、`*ENTRY PLIST` の長さ・小数点位置を呼ぶ側と合わせて直すことを求めるため、05-13 の前(04-09 に進む前でも、第4部の終わりでもかまいません)に済ませてください。
+例外は次の3種類だけです。
+
+- **枝番レッスン(`b` の付くもの)**: 例 [01-06b](part01/01-06b-object-lifecycle.md)(オブジェクトのライフサイクル)、[04-08b](part04/04-08b-call-parm-plist.md)(RPG III の `CALL`・`PARM`・`PLIST`。推奨ルートに入る例外)、[06-01b](part06/06-01b-reading-fixed-mixed-form.md)(固定形式・混在形式のRPG IVを読む)、[06-11b](part06/06-11b-maintenance-screen-locking.md)(RPG IVの保守画面)、[06-14b](part06/06-14b-date-timestamp-null.md)(DATE/TIMESTAMP/NULL)、[09-02b](part09/09-02b-japanese-dbcs.md)(日本語・DBCSを実機で体験)。本編の流れには含まれず、直前のレッスンが終わっていれば、その場で寄り道してもよいですし、後回しにしてもかまいません。**ただし [04-08b](part04/04-08b-call-parm-plist.md)(RPG III の `CALL`・`PARM`・`PLIST` を自分で書く)だけは例外で、推奨ルートに入っています。** 第5部の [05-13](part05/05-13-checkpoint-tickets.md) のチケット1が、`*ENTRY PLIST` の長さ・小数点位置を呼ぶ側と合わせて直すことを求めるため、05-13 の前(04-09 に進む前でも、第4部の終わりでもかまいません)に済ませてください。**この「04-08b は飛ばさない」という規則は、第4部・第5部を通る一本道だけのものです。** RPG III を通らないルートでは、同じ内容(`*ENTRY PLIST`・`CALL`・`PARM` の長さの食い違い)を [04-24](part04v/04-24-call-parm-debugging.md) が固定形式 RPG IV で扱うので、04-08b は行いません。
+- **RPG III を通らないルート(第4部V)**: 第3部の次に、[04-21](part04v/04-21-fixed-form-skeleton.md)〜[04-28](part04v/04-28-impact-analysis.md) を通り、第4部・第5部を飛ばして [06-01b](part06/06-01b-reading-fixed-mixed-form.md) へ進む鎖です。職場が `CRTBNDRPG` の固定形式・混在形式の RPG IV である人向けです。詳しくは[専用の節](#rpg-iii-を通らないルート固定形式-rpg-iv-の職場向け)を参照してください。
 - **各部末のチェックポイント**: [01-10](part01/01-10-checkpoint.md)・[02-11](part02/02-11-checkpoint.md)・[03-14](part03/03-14-checkpoint-backup.md)・[04-13](part04/04-13-checkpoint-stock-list.md)・[05-13](part05/05-13-checkpoint-tickets.md)・[06-15](part06/06-15-checkpoint-stock-inquiry.md)・[07-05](part07/07-05-checkpoint-zaisrv.md)・[08-08](part08/08-08-checkpoint-promote-rollback.md)・[09-07](part09/09-07-checkpoint-order-summary-api.md)・[第10部](part10/index.md)(各レッスンが TXCHECK で成果物を確かめ、10-04 で全体を振り返る)。次の部に進むための必須条件ではありませんが、その部の到達点を1問1問確かめる場なので、詰まったら次の部へ進む前に戻ることを勧めます。
 
 ## 早回しルート
@@ -50,12 +53,116 @@
 「情報系の基礎知識があり、CL/RPG III 自体は初めてでも先を急ぎたい」場合の削り方です。
 
 1. 各レッスンの「ウォームアップ」(前回の復習)は、`<details>` で畳まれています。自信があれば開かずに読み飛ばしてください。
-2. 枝番レッスン(`01-06b` 等)は初回は飛ばし、ただし **`04-08b` は飛ばさないでください**(05-13 のチケット1の前提です)。それ以外の枝番は、該当の部のチェックポイントで理解に穴があると感じたら戻ってください。
+2. 枝番レッスン(`01-06b` 等)は初回は飛ばし、ただし **`04-08b` は飛ばさないでください**(05-13 のチケット1の前提です。これは第4部・第5部を通る一本道の規則です。RPG III を通らないルートでは 04-08b を行わず、[04-24](part04v/04-24-call-parm-debugging.md) が代わりになります)。それ以外の枝番は、該当の部のチェックポイントで理解に穴があると感じたら戻ってください。
 3. 各部末のチェックポイントを先に眺めて、「もう説明どおりにできそうだ」と思えるなら、その部の途中レッスンの「実演」を読むだけにして「演習」は省略し、チェックポイントで実際に確認する、という進め方もできます(ただし本書は「自分で答えを探させる課題」を出さない設計なので、飛ばした場合は理解の抜けに自分で気づきにくい点に注意してください)。
 4. GUI 専用の内容(06-02 の VS Code、09-02b の ACS 中心の内容、09-01/09-07 の ACS 部分)は、コンパイル・実行そのものには影響しないため、後回しにしても本編は進められます。
 5. 第10部は、[10-01](part10/10-01-preparation-incident.md)(準備と障害対応)と [10-04](part10/10-04-api-retrospective.md)(API と振り返り)を、読むだけの早回しにしてもかまいません。ただし [10-03](part10/10-03-modernization-devbase.md)(近代化と開発基盤)は、目標5・6を1つの成果物で確かめる場なので省略しないでください。また、10-01 で整える準備の状態が後のレッスンの前提になっている場合があるため、読むだけにするときは[第10部の扉](part10/index.md)で前提を確認してください。
 
 急ぎたくても省略できないのは、02-04(教材の git clone。これ以降すべてのソースの入手経路)と、各部の最初の数レッスン(前提知識を作る部分)です。
+
+## RPG III を通らないルート(固定形式 RPG IV の職場向け)
+
+職場の RPG が **`CRTBNDRPG` でコンパイルする RPG IV(固定形式、または固定形式と `/FREE` の混在)**で、RPG III を学びたくない人のためのルートです。第4部・第5部の代わりに[第4部V](part04v/index.md)(04-21〜04-28)を通り、RPG III に一度も触れずに第6〜10部を完走できるように組んであります。
+
+- **`CRTRPGPGM`(RPG III)の職場は対象外です。** それは RPG III そのものなので、第4部・第5部を通ってください。
+- **通常の一本道は変わりません。** 第4部・第5部を通る人は、この節を読まなくてかまいません。第6〜10部の各レッスンには、ルートの人向けの注記を足してありますが、一本道の人の手順は変えていません。
+- **非対話で確認できる範囲は、2026-10-04 に実機で確認しました。** 04-21〜04-28 のコンパイル・実行・印字、旧システムの固定形式 RPG IV 版(実機の `CVTRPGSRC` の出力そのまま)が RPG III 版と同じ印字になること、ILE のメッセージ(`RNQ`・`CEE` 系列)などです。**未検証(2026-10-04時点)なのは、対話でしか確かめられない手順(`EXFMT`・`STRDBG`・SEU・PDM・2セッションのロック)と、バッチが実行していないもの、04-27 から第6〜10部へ通して進む確認です。** 確認できたことと未検証のことは、各レッスンの「実機メモ」と、下の対応表の各行に分けて書いています。
+
+### ルートの鎖
+
+```text
+第3部(03-14)
+  → 第4部V(04-21 … 04-28。04-14〜04-20 は意図的な欠番)
+    → 06-01b(06-01 は行わない)
+      → 06-02 → 06-03 → … → 06-15
+        → 第7部 → 第8部 → 第9部 → 第10部
+```
+
+- 第4部V の中は、04-21 → 04-22 → 04-23 → 04-24 → 04-25 → 04-26 → 04-27 → 04-28 の一本道です。
+- **04-27(準備)は、06-01b の前に行います。** TXCHECK・TXSNAP・`V0601A`・旧システム(固定形式版)・`<USER>2` を、この1本でまとめて用意するレッスンです。ただし B(チケット1の診断と修正)だけは、[08-05b](part08/08-05b-matching-records-sql-rewrite.md) の直前に行います。
+- 第5部の代わりは、次のように割り当てています。第5部のページへのリンクは、ルートの本文には置きません。代わりのレッスンがない内容は、ルートでは扱いません。
+
+| 第5部で扱う内容 | ルートでの代わり |
+|---|---|
+| 05-01(旧システムの導入) | [04-27](part04v/04-27-route-preparation.md) の A4 |
+| 05-03(サイクルの読解) | [04-25](part04v/04-25-cycle-and-control-levels.md)(固定形式版 `JU0300`・`ZA0500` を手引きつきで読む) |
+| 05-05(サブファイルの読解) | [04-26](part04v/04-26-display-files.md) |
+| 05-02・05-04・05-06(古い命令コード、配列・DS・`QCMDEXC`、CL の `OPNQRYF`・`*LDA`) | ルートには代わりのレッスンがありません。必要な場面で、各レッスンの注記が指す箇所を読みます |
+| 05-07(影響調査) | [04-28](part04v/04-28-impact-analysis.md) |
+| 05-08(ロジックの修正と回帰比較) | 04-27 の A2(`TXSNAP` の用意)。比較の方法(BEFORE/AFTER を同じ条件で取る、隠れた入力、`OVRPRTF SPLFNAME`、`CMPPFM`・`EXCEPT`)は、[08-05](part08/08-05-control-level-refactor.md) の「05-08 の比較の方法」の囲みが説明します。詳しく読むときは、05-08 の「説明」節のうち RPG III を使わない見出し(ゴールデン・マスター、ジョブ日付、`OVRPRTF`、`TXSNAP`、`05-08-compare.sql`、`CMPPFM`、`git diff`)だけを読みます |
+| 05-09(フィールドの追加とレベル・チェック) | [04-23](part04v/04-23-external-files.md)(レベル・チェックの考え方)。`CHGPF` でフィールドを足す手順は、[10-02](part10/10-02-maintenance-tokyusn.md) が本文で行います(ルートに代わりのレッスンはありません。背景は 05-09 の言語に依らない4節だけを読みます。10-02 の囲みに見出しを挙げてあります) |
+| 05-10(画面項目と他システムのファイル) | PDM でのソース編集は [04-21](part04v/04-21-fixed-form-skeleton.md)。ほかの内容には、ルートに代わりのレッスンがありません |
+| 05-11(10進数データ・エラー) | [04-24](part04v/04-24-call-parm-debugging.md) |
+| 05-12(本番への移送と切り戻し) | 04-27 の C(`<USER>2` の用意だけ)。移送・切り戻しの説明には、ルートに代わりのレッスンがありません |
+| 05-13(保守チケット3本) | 04-27 の A1(`TXCHECK`)・B(チケット1)。チケット2・3に代わりのレッスンはありません |
+
+### 04-27 で用意するもの
+
+| 手順 | 用意するもの | 使うレッスン |
+|---|---|---|
+| A0 | 前提の確認(`DBVER` が 1、`git pull` 済み。RPG III 版を読み込み済みなら `LANG(*RPGLE) FORCE(*YES)` で入れ直す) | すべて |
+| A1 | `TXCKM`・`TXCHECK`(`*PGM` と `*CMD`) | 06-15・07-05・08-08・09-07・第10部 |
+| A2 | `TXSNAP`・`TXSNAPT` | 08-05・08-05b |
+| A3 | `QRPGLE112` と `V0601A`(固定形式。06-01 が作るものと同じ。`CRTBNDRPG` で 00、`CALL` で `J00001`・`J00003` の2行を印字: 実機で確認(part04v-27set、2026-10-04)) | 06-01b |
+| A4 | 旧システムの固定形式版(`TXLEGACY LIB(<USER>1) LANG(*RPGLE)`)と `LASTCD`(`TK0100`・`JU0300`・`ZA0500` が `CRTBNDRPG` で 00、`TXLEGLNG` が `*RPGLE`: 実機で確認(part04v-27set・part05-lglang、2026-10-04)。ソースは実機の `CVTRPGSRC` の出力そのまま: part05-lgcvt) | 08-05・08-05b |
+| A5・A6 | RPG III が無いことの確認(`OBJATTRIBUTE` が `RPGLE`、`TXLEGLNG`)と `TXCHECK` の自己確認(`TXCHECK` 04-27 は10件すべて PASS: 実機で確認(part04v-27set、2026-10-04)。`OBJATTRIBUTE` が `RPGLE` になることは part05-lglang) | (確認のみ) |
+| C | 本番役 `<USER>2`(`TXSETUP` と、`LANG(*RPGLE)` の `TXLEGACY`、`LASTCD`) | 08-08・第10部 |
+| B | チケット1の診断と修正(`JU0900C`)(修正版の `JU0900C` を再コンパイルできた: 実機で確認(part04v-27set、2026-10-04)。診断で見えるメッセージは `MCH1202` → `RNQ0907` → `CEE9901`: part05-lggold) | 08-05b の直前 |
+
+旧システムをどちらの言語で入れたかは、`TXLEGACY` の `LANG` パラメーター(`*SAME`・`*RPG`・`*RPGLE`)で決まります。**`LANG` の既定値は `*SAME` で、ライブラリーに記録された言語(`TXLEGLNG`)を使い、記録が無いときは `*RPG` になるように作ってあります。** そのため、一本道の人の `TXLEGACY` の動きは変わりません。`LANG` の挙動は、実機で確認しました(part05-lglang、2026-10-04)。`LANG(*RPGLE)` の初回ロードで `OBJATTRIBUTE` が `RPGLE`、`TXLEGLNG` が `*RPGLE` になります。`LANG` を省略(既定値 `*SAME`)した実行は「already loaded」で何も変えず、`LANG(*SAME)`(省略時の既定値)を付けた `FORCE(*YES)` でも記録された言語が保たれます。`LANG(*RPG) FORCE(*NO)` のように食い違わせると、注意メッセージが出るだけで何も変わりません。`LANG(*RPG) FORCE(*YES)` で RPG III 版に戻ります。旧3パラメーターの `*PGM`/`*CMD` が残っていると `CPD0172` で `CALL` 自体が拒否されるので、`*PGM` と `*CMD` は一緒に作り直します。**記録が無いライブラリーで `LANG` を省略したときに `*RPG` になる分岐は、通して確認しておらず、未検証(2026-10-04時点)です。**
+
+### 第6〜10部のレッスンごとの対応表
+
+次の表は、第6〜10部の**すべてのレッスン**について、ルートで足す前提、04-27 の準備手順、寄り道・読み替えを並べたものです。「同じ」は、一本道と同じで、ルートとして足すものがないという意味です。ルートで足す前提は、各レッスンの「前提レッスン」欄の末尾に追記してあります(一本道の前提は消していません)。
+
+| レッスン | ルートで足す前提 | 04-27 の準備 | 寄り道・読み替え |
+|---|---|---|---|
+| [06-01](part06/06-01-cvtrpgsrc-bridge.md) | **行いません** | A3 が代わり | RPG III の `R0408A` を `CVTRPGSRC` で変換する回です。系譜・`QRPGLE112` と `QRPGLESRC` の違い・`RNF2318` は 04-21 が扱い、同じ `V0601A` は 04-27 の A3 で作ります |
+| [06-01b](part06/06-01b-reading-fixed-mixed-form.md) | 04-21〜04-28(04-25 が 05-03 の代わり) | A3 | RPG III の桁の列は参考扱い。ウォームアップの問1・問3は飛ばす。「05-03 への回答」は 04-25 に読み替える。A3 の `V0601A` の作成と実行は実機で確認(part04v-27set、2026-10-04) |
+| [06-02](part06/06-02-vscode-code-for-ibmi.md) | 同じ | なし | なし |
+| [06-03](part06/06-03-free-form-basics.md) | 04-22 | なし | `R0405A`(04-05)は `V0422C` に読み替える。04-05 の演習1〜3を引く箇所も、04-22 の `V0422C` で |
+| [06-04](part06/06-04-free-form-order-inquiry-screen.md) | 04-21・04-23・04-26 | なし | `R0408A` は `V0421D`、`R0407A` 相当は `V0423B`、`R0411A`(DDS)は `D0426A`・`V0426A` に読み替える |
+| [06-05](part06/06-05-subprocedures-prototypes.md) | 04-23 | なし | `R0409A` は `V0423D`。`extpgm('R0409A')` を `extpgm('V0423D')` に差し替える(差し替え方は 04-23 に書いてあります。差し替えたメンバーは `CRTBNDRPG` で 00 になり、`P00001  0000043  OK` を印字し、ジョブ・ログの3行目は文字列定数なので `R0409A` のまま出る: 実機で確認(part04v-27set、2026-10-04))。`R0402A` は `V0421B`。ウォームアップの `R0408A` は `V0421D`。05-04 の `ZA0510`・`QCMDEXC` を既習として引く箇所は、ルートでは読み飛ばし、`QCMDEXC` の呼び出しは 04-23 の `V0423E` で読んだ形を `**FREE` にしたものとして足りる(レッスンのルート用ブロックに書いてあります) |
+| [06-06](part06/06-06-bifs-strings-and-dates.md) | 04-21・04-22 | なし | `R0402A` は `V0421B`、`R0403A` は `V0422A` に読み替える |
+| [06-07](part06/06-07-data-structures-arrays.md) | 04-25 | なし | `R0413A`(04-13)は 04-25 の演習 `V0425D` に読み替える(`V0425D` は `LOWSTOCK` が `P00002`・`P00005` だけの、`R0413A` と同じ印字: 実機で確認(part04v-25run、2026-10-04)) |
+| [06-08](part06/06-08-file-io-dclf.md) | 04-23 | なし | `R0409A` は `V0423D`(`P00001  0000043  OK` を印字し、`TXRESET` で戻る: 実機で確認(part04v-27set、2026-10-04))。固定形式の F 仕様書の桁(15・31桁目)は、RPG IV の桁(04-23)に読み替える |
+| [06-09](part06/06-09-exception-handling-debugging.md) | 04-23・04-24 | なし | `R0409A` は `V0423D`、`STRDBG` と `*PSSR` は 04-24。引用される 04-06 の `RPG1216`(暗黙オープンの失敗)は、04-23 の「ライブラリー・リストにファイルが無いと照会メッセージで止まる」節に、04-12 の `R0412A`(ゼロ除算)は 04-21 の演習5に、それぞれ近い話があります。04-12 の「事前に `COMP` で弾く」型は、レッスンのルート用ブロックに中身を書いてあります。04-21 の演習5は発展で、やっていなくても足ります。演習5(05-13 のチケット3)は任意の発展で、ルートでは飛ばします |
+| [06-10](part06/06-10-indds-named-indicators.md) | 04-26 | なし | 04-11 の画面は `V0426A`。04-06 の `RPG1216` への言及は上の 06-09 と同じ読み替え |
+| [06-11](part06/06-11-subfiles-page-message.md) | 04-26 | なし | DDS の技法(04-11)とサブファイル(05-05)は 04-26。`TK0100D` は旧システムの画面ファイルで、04-27 の A4 で入ります(読むだけ) |
+| [06-11b](part06/06-11b-maintenance-screen-locking.md) | 04-23・04-26 | なし | `R0409A` のロックは `V0423D`。04-13 の `SHOHIM` を引く箇所は `V0425D` に読み替える |
+| [06-12](part06/06-12-printer-files-cpp-swap.md) | 04-21・04-24 | なし | `R0408A` は `V0421D`、04-08 の編集コードは 04-21、04-08b の `*ENTRY PLIST` は 04-24 に読み替える |
+| [06-13](part06/06-13-embedded-sql-1.md) | 同じ | なし | 04-08 を1回引くだけです(`V0421D` に読み替え) |
+| [06-14](part06/06-14-embedded-sql-2-cursors.md) | 04-21 | A3 | 出力を比べる相手の `R0408A` は `V0421D` に読み替える。`V0601A` は 04-27 の A3 で作ったもの |
+| [06-14b](part06/06-14b-date-timestamp-null.md) | 同じ | なし | RPG III の8桁日付との対比は読み物です。読み替えは不要 |
+| [06-15](part06/06-15-checkpoint-stock-inquiry.md) | 04-25・04-27 | A1 | 前提の 05-13 は 04-27 の A1(`TXCKM`・`TXCHECK` の用意)に読み替える。`R0413A` は `V0425D` |
+| [07-01](part07/07-01-ile-overview-modules.md) | 同じ | A1 | `M0701A` は実行時に `R0409A` を呼びません(ソースのコメントと説明の引用だけ)。ウォームアップが引く `R0413A` は `V0425D` に読み替える |
+| [07-02](part07/07-02-service-programs-binding-directories.md) | 同じ | なし | `R0408A` の引用は `V0421D` に読み替える |
+| [07-03](part07/07-03-binder-source-signatures.md) | 同じ | なし | なし |
+| [07-04](part07/07-04-activation-groups-ile-cl.md) | 同じ | なし | なし |
+| [07-05](part07/07-05-checkpoint-zaisrv.md) | 04-27 | A1 | `TXCKM`・`TXCHECK` は 05-13 ではなく 04-27 の A1 で作ってあります。`R0409A`・04-13 への注意書きは `V0423D`・`V0425D` に読み替える |
+| [08-01](part08/08-01-git-project-srcstmf-build.md) | 同じ | なし | なし |
+| [08-02](part08/08-02-makei-tobi-build.md) | 同じ | なし | なし |
+| [08-03](part08/08-03-style-lint-ci.md) | 同じ | なし | なし |
+| [08-04](part08/08-04-unit-testing-testkit.md) | 同じ | なし | `CRTDUPOBJ`(05-12 と書いてあります)は [02-10](part02/02-10-save-restore.md) でも使っています。05-07・05-11・05-13 を引いて `RUNSQL` を説明する箇所は、読み流してかまいません(`RUNSQL` の構文は、このレッスンが本文で初めて説明します) |
+| [08-05](part08/08-05-control-level-refactor.md) | 04-25・04-27 | A2・A4 | `JU0300` は固定形式 RPG IV 版(`src/legacy/qrpgle112/ju0300.rpgle`)で、抜粋もそこから取ります。取り込み・コンパイル・`TXSNAP` の手順は、ルート用のブロックで読み替える(`CRTRPGPGM` は `CRTBNDRPG`)。05-08 の回帰比較の説明を引く箇所は、冒頭の囲み「05-08 の比較の方法」で足ります(RPG IV 版の `JU0300` の印字が RPG III 版と同一であることは、実機で確認(part05-lggold、2026-10-04)。`F0805A` との突き合わせと、`OVRPRTF`/`TXSNAP` の手順の通しは未検証(2026-10-04時点)) |
+| [08-05b](part08/08-05b-matching-records-sql-rewrite.md) | 04-24・04-25・04-27 | A2・A4・B | `ZA0500` は固定形式版。05-13 のチケット1が済んだ状態が前提なので、**直前に 04-27 の B を行います**(`LEN(3 0)` と `*ENTRY PLIST` の食い違いの診断と、`JU0900C` の再コンパイル)。B のあとに `TXLEGACY ... FORCE(*YES)` をやり直すと、この修正が元に戻ります。ルートの `ZA0500` が `JU0900C` から出す12行は RPG III 版と同一で、チケット1は `MCH1202` → `RNQ0907` → `CEE9901` になる(実機で確認(part05-lggold、2026-10-04))。`Q0805B` を RPG IV 版と突き合わせる通しは未検証(2026-10-04時点) |
+| [08-06](part08/08-06-dds-to-sql-ddl.md) | 04-23・04-28(前提の 08-05b はそのまま) | なし | 05-07 は 04-28、05-09 は 04-23。05-09 が足す `JUDLV` を例に引く箇所は、`DBVER` が 1 のルートには無い項目で、読み物として読み流してかまいません(本文に注記済み) |
+| [08-07](part08/08-07-ibmi-services-permissions.md) | 04-28 | なし | 05-07 は 04-28、05-04 の `QCMDEXC` は 06-05 に読み替える |
+| [08-08](part08/08-08-checkpoint-promote-rollback.md) | 04-27 | A1・C | 事前確認の「05-12 の手順1〜3」は 04-27 の C、`TXCKM` の取り込み(05-13)は A1 に読み替える。05-12 の `SETENV *PRD`・`SAVF` 退避・切り戻しを既習として引く箇所は、`SETENV` は [03-11](part03/03-11-custom-commands.md)、`SAVF`・`CRTDUPOBJ`・`RESTOBJ` は [02-10](part02/02-10-save-restore.md) で学んだ内容です。05-01 の改修記録の原則は、本文が1文で説明しています(本文の囲みに対応を書きました)。C の `TXLEGACY LIB(<USER>2) LANG(*RPGLE)` は実機で確認(part04v-27set・part05-lglang、2026-10-04)。`TXSETUP` を含む C から 08-08 までの通しは未検証(2026-10-04時点) |
+| [09-01](part09/09-01-api-overview-pub400.md) | 同じ | なし | なし |
+| [09-02](part09/09-02-sql-json.md) | 同じ | なし | なし |
+| [09-02b](part09/09-02b-japanese-dbcs.md) | 同じ | なし | 05-11 で既習としている `HEX()` は、04-24 が SQL の `HEX()` として扱っています |
+| [09-03](part09/09-03-api-boundary-service-program.md) | 同じ | なし | なし |
+| [09-04](part09/09-04-api-boundary-sql-routines.md) | 同じ | なし | `TXCHECK` は 04-27 の A1 で作ってあります |
+| [09-05](part09/09-05-external-api-adapter-mock.md) | 同じ | なし | なし |
+| [09-06](part09/09-06-data-queues-async.md) | 同じ | なし | なし |
+| [09-07](part09/09-07-checkpoint-order-summary-api.md) | 04-27 | A1 | 前提の 05-13 は 04-27 の A1 に読み替える(「前提レッスン」欄に併記済み) |
+| [10-01](part10/10-01-preparation-incident.md) | 04-24・04-27 | A0・A4・B・C | 05-11・05-13 は 04-24・04-27 に読み替える。`SBMJOB` は 03-12・09-06、`HEX()` は 04-24、`TXLOAD` はルートでも読解・任意(作る手順は一本道にもありません)。ソースと突き合わせる相手は `src/legacy/qrpgle112/za0500.rpgle`。`TXLEGACY ... FORCE(*YES)` は `LANG` が既定の `*SAME` なので、RPG IV 版が保たれる(`TXLEGLNG`)。ジョブ・ログは ILE なので、`RPG0907` の代わりに `RNQ`・`RNX`・`CEE` 系列のメッセージが出ます(実機で確認(part05-lggold、2026-10-04): チケット1は `MCH1202` → `RNQ0907` → `CEE9901`(`MCH1202 unmonitored by ZA0500`)→ `CPF9999` の順で、`JU0900C` の `MONMSG CPF0000` が拾って「ZA0500 ended abnormally」になる。`LANG(*SAME)`(既定値)を付けた `FORCE(*YES)` で記録された言語が保たれることも実機で確認: part05-lglang) |
+| [10-02](part10/10-02-maintenance-tokyusn.md) | 04-21〜04-28(04-22 は固定形式の条件標識、04-25 は改修する `JU0300` の読解) | A4・C | `JU0300`・`TK0100` は固定形式版で、ソースは `QRPGLE112` に入れます。`JU0300C` の手書き(`KLIST`・`KFLD`・`CHAIN`)は RPG IV で、`CRTRPGPGM` は `CRTBNDRPG` に読み替える。05-07・05-09 は 04-28・04-23。項目を足す手順(`CHGPF`、PF → LF → RPG → CL)は本文で足ります。`TXMIGR` の囲みと `R04xx` の再コンパイルは、ルートでは読み流す・出てきません(本文の囲みに注記済み) |
+| [10-03](part10/10-03-modernization-devbase.md) | 04-25・04-27 | A1・A4・B・C | 前提の 05-13 は 04-27 に読み替える。旧 `ZA0500`(05-03 の規則)は 04-25 で読んだ固定形式版。新旧を見分ける印は `OBJTEXT` では使えないので、別の手がかりを使う(どれが使えるかは未検証(2026-10-04時点)。`OBJATTRIBUTE` は `RPG` と `RPGLE` の区別には使える(part05-lglang)。旧・新・切り戻し後の3つとも `RPGLE` だったので(part10-03-rpgle、docs/probes.md)、新旧の見分けには使えない) |
+| [10-04](part10/10-04-api-retrospective.md) | 同じ | A1 | 前提は 10-01〜10-03 経由で足ります。`TXCHECK` は 04-27 の A1 で作ってあります |
+
+この表は、ルートの設計と、第6〜10部の各レッスンの本文を照らして作りました。レッスン側の注記と食い違う箇所を見つけたら、[Issue](https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero/issues) で教えてください。
 
 ## SSH が使えない場合の代替ルート
 
@@ -78,7 +185,7 @@
 | 状況 | 代替 |
 |---|---|
 | 外へ通信できない | モックを使う |
-| `<USER>2`(本番役のライブラリー)がない | [05-12](part05/05-12-promote-and-rollback.md)(本番役の作り方)に戻る。第10部は `<USER>2` を前提に書いてあり、`<USER>1` で代用する手順は用意していません |
+| `<USER>2`(本番役のライブラリー)がない | [05-12](part05/05-12-promote-and-rollback.md)(本番役の作り方)に戻る。第10部は `<USER>2` を前提に書いてあり、`<USER>1` で代用する手順は用意していません(RPG III を通らないルートでは、05-12 ではなく [04-27](part04v/04-27-route-preparation.md) の C で作ります) |
 | PTF の段階が低い | PTF 依存の機能を使わない書き方にする |
 | makei が使えない | `CRTSQLRPGI ... OBJTYPE(*PGM) COMMIT(*NONE) CVTCCSID(*JOB)` を手で実行する([10-03](part10/10-03-modernization-devbase.md)の手順6。`CRTBNDRPG` は埋め込み SQL を含むソースには使えません。この教材のリポジトリーには `build.sh` のようなビルド用スクリプトはありません) |
 | IFS に書き込めない | `IFS_WRITE_UTF8` は第9部と 10-04 で実機確認済みです。代替として挙げる `CPYTOIMPF` による書き出しは未検証です(`RCDDLM(*CR)` を省くと `CPF2845` になる実例が[付録B](appendix/b-message-ids.md)にあります) |

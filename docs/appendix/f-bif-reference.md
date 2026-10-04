@@ -2,6 +2,12 @@
 
 この付録は生きた文書です。第4部・第5部(RPG III)でこの教材が実機確認してきた事実と、一次資料(*RPG/400 Reference*, IBM, 1994年6月 初版、ILE RPG/400 プログラム番号5763-RG1、Version 3 Release 0 Modification 5 向け)の確認結果、そして第6〜9部(RPG IV)のレッスンで実際に使われたBIFとその確認状況(V1/V2)を、この教材が実機で確かめていない一般知識とはっきり区別して記載します。なお、RPG IV の表はレッスン本文が述べている範囲だけを載せています。BIFの厳密な仕様は一次資料(ILE RPG言語リファレンス)で確認してください。
 
+<details><summary>RPG III を通らないルートの人へ</summary>
+
+「RPG III で使える主な BIF」の節は、RPG III(`CRTRPGPGM`)のソースを読む必要が出たときの参照用です。RPG III を通らないルート([第4部V](../part04v/index.md))の人は、読み飛ばしてかまいません。この付録で読むのは「RPG IV の主な BIF(第6〜9部のレッスンで使ったもの)」の節です。固定形式 RPG IV の桁位置は、[04-21](../part04v/04-21-fixed-form-skeleton.md) の早見表も見てください。
+
+</details>
+
 ## BIF とは
 
 BIF(Built-In Function、組み込み関数)は、`%TRIM`・`%SUBST`のように`%`で始まる名前を持つ、RPG言語があらかじめ用意している関数です。呼び出す側は `%関数名(引数)` の形で式の中に直接書けます。

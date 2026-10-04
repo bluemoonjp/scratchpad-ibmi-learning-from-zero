@@ -1,0 +1,545 @@
+{
+  "batch": "part04v-28imp",
+  "sshTimeoutMs": 900000,
+  "description": "Issue #35, part 4V lesson 04-28 (impact analysis against the fixed-form RPG IV legacy system). ONE wrapper job: gate (DBVER 1: JUCHUM has 4 columns and no JUDLV; JU0300/ZA0500/TK0100 are still OBJATTRIBUTE RPG) -> T28RUN MUT recompiles the three programs from QRPGLE112 with CRTBNDRPG over the same names (and builds JUCINQC from solutions/03-09 when absent) -> DSPPGMREF PGM(lib/*ALL), DSPPGMREF PGM(lib/ZA0500), DSPDBR JUCHUM and DSPFD JUCHU* TYPE(*RCDFMT) to QTEMP outfiles in the SAME job, read with RUNSQL into VFY28 (tags A-GATE, B-MUT, C-COLS, D-JUCHUM, E-JUCHUL1, F-ZAIKOM, G-BYPGM, H-DBR, Z-AFTER) and copied with CPYF into VFY28P/Z/D/F for the real column names (ILE specific columns are UNVERIFIED) -> T28RUN RST puts the RPG III programs back with CRTRPGPGM from QRPGSRC, deletes a JUCINQC this batch built, and runs TXRESET -> LAST (hang-prone, after the restore): FNDSTRPDM on QRPGLE112 and QCLSRC (OPTION(*NONE) PRTMBRLIST(*YES) PRTRCDS(*ALL), the proven form; hits are read with qsh grep in the after phase). T28RUN also does RMVLIBLE of <USER>1 (RTVJOBA CURUSER + 1) first, so unqualified file names resolve in the batch library. If the gate fails nothing is changed and the analysis still runs against whatever state the library is in (read the A-GATE rows). A final collect reads QTEMP.PGMREF from another job (expected to fail: QTEMP is job scoped). Nothing in the sample data is changed except by TXRESET, which restores it. REVISION 2 (after the first run, 2026-10-04: the library had no JU0300/ZA0500/TK0100 at all cause not verified, so the gate failed): the gate now also passes when none of the three programs exists, and T28RUN then deletes them again in the restore phase instead of putting RPG III back; the empty SPLLIST and CCOLS captures are removed and the VFY28P captures read full ILE rows.",
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgle112/ju0300.rpgle",
+      "remoteSrcFile": "QRPGLE112",
+      "member": "JU0300",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgle112/za0500.rpgle",
+      "remoteSrcFile": "QRPGLE112",
+      "member": "ZA0500",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgle112/tk0100.rpgle",
+      "remoteSrcFile": "QRPGLE112",
+      "member": "TK0100",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/ju0300.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "JU0300",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/za0500.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "ZA0500",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/tk0100.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "TK0100",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/03-09/jucinqc.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "JUCINQC",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txreset.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXRESET",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qcmdsrc/txreset.cmd",
+      "remoteSrcFile": "QCMDSRC",
+      "member": "TXRESET",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "src/t28run.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "T28RUN",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "cl",
+      "label": "TYPLE1",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLE112) MBR(JU0300) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYPLE2",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLE112) MBR(ZA0500) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYPLE3",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLE112) MBR(TK0100) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYPRG1",
+      "cmd": "CHGPFM FILE(&LIB/QRPGSRC) MBR(JU0300) SRCTYPE(RPG)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYPRG2",
+      "cmd": "CHGPFM FILE(&LIB/QRPGSRC) MBR(ZA0500) SRCTYPE(RPG)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TYPRG3",
+      "cmd": "CHGPFM FILE(&LIB/QRPGSRC) MBR(TK0100) SRCTYPE(RPG)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPRST",
+      "cmd": "CRTCLPGM PGM(&LIB/TXRESET) SRCFILE(&LIB/QCLSRC) SRCMBR(TXRESET) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPRSTCMD",
+      "cmd": "DLTCMD CMD(&LIB/TXRESET)\nMONMSG MSGID(CPF0000)\nCRTCMD CMD(&LIB/TXRESET) PGM(&LIB/TXRESET) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXRESET)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPT28",
+      "cmd": "CRTCLPGM PGM(&LIB/T28RUN) SRCFILE(&LIB/QCLSRC) SRCMBR(T28RUN) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MK28",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFY28 (TS TIMESTAMP DEFAULT CURRENT TIMESTAMP, TAG VARCHAR(24), K1 VARCHAR(30), K2 VARCHAR(30), V VARCHAR(80))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MK28G",
+      "cmd": "RUNSQL SQL('CREATE OR REPLACE TABLE &LIB/VFY28G (OK CHAR(1))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLR28",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/VFY28') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLR28G",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/VFY28G') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "GCOLS",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''A-GATE'', ''JUCHUM-COLS'', '' '', CHAR(COUNT(*)) FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''JUCHUM''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "GJUDLV",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''A-GATE'', ''JUDLV-COLS'', '' '', CHAR(COUNT(*)) FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''JUCHUM'' AND COLUMN_NAME = ''JUDLV''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "GATTR",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''A-BEFORE'', OBJNAME, OBJTYPE, OBJATTRIBUTE FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME IN (''JU0300'', ''ZA0500'', ''TK0100'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "GOK",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28G (OK) SELECT ''Y'' FROM SYSIBM.SYSDUMMY1 WHERE (SELECT COUNT(*) FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''JUCHUM'') = 4 AND (SELECT COUNT(*) FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''JUCHUM'' AND COLUMN_NAME = ''JUDLV'') = 0 AND ((SELECT COUNT(*) FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME IN (''JU0300'', ''ZA0500'', ''TK0100'') AND OBJATTRIBUTE = ''RPG'') = 3 OR (SELECT COUNT(*) FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME IN (''JU0300'', ''ZA0500'', ''TK0100'')) = 0)') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "GOKROW",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''A-GATE'', ''GATE-ROWS'', '' '', CHAR(COUNT(*)) FROM &LIB/VFY28G') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MUT",
+      "cmd": "CALL PGM(&LIB/T28RUN) PARM('&LIB' 'MUT')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "BATTR",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''B-MUT'', OBJNAME, OBJTYPE, OBJATTRIBUTE FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME IN (''JU0300'', ''ZA0500'', ''TK0100'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "BJIC",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''B-MUT'', OBJNAME, OBJTYPE, OBJATTRIBUTE FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME = ''JUCINQC''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSPREF",
+      "cmd": "DSPPGMREF PGM(&LIB/*ALL) OUTPUT(*OUTFILE) OUTFILE(QTEMP/PGMREF)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSPREFZ",
+      "cmd": "DSPPGMREF PGM(&LIB/ZA0500) OUTPUT(*OUTFILE) OUTFILE(QTEMP/PGMREFZ)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSPDBR",
+      "cmd": "DSPDBR FILE(&LIB/JUCHUM) OUTPUT(*OUTFILE) OUTFILE(QTEMP/DBRJUCHUM)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DSPFD",
+      "cmd": "DSPFD FILE(&LIB/JUCHU*) TYPE(*RCDFMT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/FDJUCHU)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTCP1",
+      "cmd": "DLTF FILE(&LIB/VFY28P)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPYREF",
+      "cmd": "CPYF FROMFILE(QTEMP/PGMREF) TOFILE(&LIB/VFY28P) MBROPT(*REPLACE) CRTFILE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTCP2",
+      "cmd": "DLTF FILE(&LIB/VFY28Z)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPYREFZ",
+      "cmd": "CPYF FROMFILE(QTEMP/PGMREFZ) TOFILE(&LIB/VFY28Z) MBROPT(*REPLACE) CRTFILE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTCP3",
+      "cmd": "DLTF FILE(&LIB/VFY28D)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPYDBR",
+      "cmd": "CPYF FROMFILE(QTEMP/DBRJUCHUM) TOFILE(&LIB/VFY28D) MBROPT(*REPLACE) CRTFILE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTCP4",
+      "cmd": "DLTF FILE(&LIB/VFY28F)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPYFD",
+      "cmd": "CPYF FROMFILE(QTEMP/FDJUCHU) TOFILE(&LIB/VFY28F) MBROPT(*REPLACE) CRTFILE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DJUCHUM",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''D-JUCHUM'', WHPNAM, WHFNAM, WHOBJT FROM QTEMP/PGMREF WHERE WHFNAM = ''JUCHUM'' ORDER BY WHPNAM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DJUCHUL1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''E-JUCHUL1'', WHPNAM, WHFNAM, WHOBJT FROM QTEMP/PGMREF WHERE WHFNAM = ''JUCHUL1'' ORDER BY WHPNAM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DZAIKOM",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''F-ZAIKOM'', WHPNAM, WHFNAM, WHOBJT FROM QTEMP/PGMREF WHERE WHFNAM = ''ZAIKOM'' ORDER BY WHPNAM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DPGMS",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''G-BYPGM'', WHPNAM, WHFNAM, WHOBJT FROM QTEMP/PGMREF WHERE WHPNAM IN (''JU0300'', ''ZA0500'', ''TK0100'', ''JU0900C'', ''JUCINQC'') ORDER BY WHPNAM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DDBR",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''H-DBR'', WHRFI, WHREFI, WHTYPE FROM QTEMP/DBRJUCHUM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RST",
+      "cmd": "CALL PGM(&LIB/T28RUN) PARM('&LIB' 'RST')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ZATTR",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''Z-AFTER'', OBJNAME, OBJTYPE, OBJATTRIBUTE FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME IN (''JU0300'', ''ZA0500'', ''TK0100'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ZJIC",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''Z-AFTER'', OBJNAME, OBJTYPE, OBJATTRIBUTE FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME = ''JUCINQC''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "SQL0000",
+        "SQL9010"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FNDJU",
+      "cmd": "FNDSTRPDM FILE(&LIB/QRPGLE112) MBR(*ALL) STRING('JUCHUM') OPTION(*NONE) PRTMBRLIST(*YES) PRTRCDS(*ALL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FNDJUC",
+      "cmd": "FNDSTRPDM FILE(&LIB/QCLSRC) MBR(*ALL) STRING('JUCHUM') OPTION(*NONE) PRTMBRLIST(*YES) PRTRCDS(*ALL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "FNDZA",
+      "cmd": "FNDSTRPDM FILE(&LIB/QRPGLE112) MBR(*ALL) STRING('ZAIKOM') OPTION(*NONE) PRTMBRLIST(*YES) PRTRCDS(*ALL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "sh",
+      "label": "GREPJU",
+      "cmd": "grep -in \"juchum\" /QSYS.LIB/&LIB.LIB/QRPGLE112.FILE/*.MBR 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "GREPLI",
+      "cmd": "grep -il \"juchum\" /QSYS.LIB/&LIB.LIB/QRPGLE112.FILE/*.MBR 2>&1",
+      "after": true
+    },
+    {
+      "type": "sh",
+      "label": "GREPCL",
+      "cmd": "grep -in \"juchum\" /QSYS.LIB/&LIB.LIB/QCLSRC.FILE/*.MBR 2>&1",
+      "after": true
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TS, TAG, K1, K2, V FROM &LIB/VFY28 ORDER BY TS"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFY28Z FETCH FIRST 12 ROWS ONLY"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFY28D"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFY28F FETCH FIRST 6 ROWS ONLY"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COUNT(*) FROM QTEMP.PGMREF"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COLUMN_NAME, DATA_TYPE, LENGTH FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = '&LIB' AND TABLE_NAME = 'VFY28P' ORDER BY ORDINAL_POSITION"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT WHLIB, WHPNAM, WHFNAM, WHLNAM, WHOBJT, WHOTYP, WHFUSG, WHRFNM, WHRFSN, WHRFFN, WHSPKG, WHSYSN FROM &LIB/VFY28P WHERE WHPNAM IN ('JU0300', 'ZA0500', 'TK0100', 'V0421D', 'V0601A', 'JUCINQC') ORDER BY WHPNAM, WHFNAM"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT WHOBJT, WHOTYP, WHFUSG, COUNT(*) AS N FROM &LIB/VFY28P GROUP BY WHOBJT, WHOTYP, WHFUSG ORDER BY 4 DESC FETCH FIRST 20 ROWS ONLY"
+    }
+  ]
+}

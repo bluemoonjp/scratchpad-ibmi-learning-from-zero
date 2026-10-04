@@ -13,13 +13,22 @@
 /*   CLONEDIR absolute path of the git clone. Default: your home         */
 /*            directory + /ibmi-kyozai (computed from your profile).     */
 /*   FORCE    *YES rebuilds even if already loaded (backs up first).      */
-             PGM        PARM(&LIB &CLONEDIR &FORCE)
+/*   LANG     *RPG   load the RPG III sources (src/legacy/qrpgsrc).      */
+/*            *RPGLE load the fixed-form RPG IV sources                   */
+/*                   (src/legacy/qrpgle112), same object names.          */
+/*            *SAME  (default) use the language recorded in data area     */
+/*                   TXLEGLNG of the target library; *RPG if none.       */
+/*            The language used is recorded in TXLEGLNG (CHAR 7).        */
+             PGM        PARM(&LIB &CLONEDIR &FORCE &LANG)
 
              /* Parameters must not have an initial VALUE; the caller     */
              /* supplies it. See tools/qclsrc/txsetup.clp for why.        */
              DCL        VAR(&LIB) TYPE(*CHAR) LEN(10)
              DCL        VAR(&CLONEDIR) TYPE(*CHAR) LEN(200)
              DCL        VAR(&FORCE) TYPE(*CHAR) LEN(4)
+             DCL        VAR(&LANG) TYPE(*CHAR) LEN(7)
+             DCL        VAR(&LANGU) TYPE(*CHAR) LEN(7)
+             DCL        VAR(&CURLANG) TYPE(*CHAR) LEN(7)
 
              /* CALLSUBR cannot pass arguments (a subroutine shares the   */
              /* caller's variables), so &P1 (member/object name) / &P1LC  */
@@ -41,6 +50,17 @@
              /* job forever instead of failing).                          */
              MONMSG     MSGID(CPF0000) EXEC(GOTO CMDLBL(FAILSAFE))
 
+/* --- LANG: a caller that passes only three parameters gets MCH3601 on  */
+/* the first reference to &LANG; treat as *SAME. (On hardware, an older   */
+/* 3-parameter *CMD or a CALL with 3 parameters is already rejected by    */
+/* CALL with CPD0172 before this runs: recreate the *CMD together with    */
+/* the *PGM. This MONMSG is only a second line of defence.) ---           */
+             CHGVAR     VAR(&LANGU) VALUE(&LANG)
+             MONMSG     MSGID(MCH3601) EXEC(CHGVAR VAR(&LANGU) +
+                          VALUE('*SAME'))
+             IF         COND(&LANGU *EQ ' ') THEN(CHGVAR VAR(&LANGU) +
+                          VALUE('*SAME'))
+
 /* --- Fill in defaults for omitted/blank parameters --- */
              IF         COND(&LIB *EQ ' ') THEN(CHGVAR VAR(&LIB) +
                           VALUE('*CURLIB'))
@@ -60,12 +80,29 @@
                 RTVJOBA    CURLIB(&LIB)
              ENDDO
 
+/* --- Language recorded for this library, if any (TXLEGLNG). *SAME      */
+/* resolves to it, or to *RPG when the data area does not exist yet. --- */
+             CHGVAR     VAR(&CURLANG) VALUE(' ')
+             RTVDTAARA  DTAARA(&LIB/TXLEGLNG (1 7)) RTNVAR(&CURLANG)
+             MONMSG     MSGID(CPF0000) EXEC(CHGVAR VAR(&CURLANG) +
+                          VALUE(' '))
+             IF         COND(&LANGU *EQ '*SAME') THEN(DO)
+                IF         COND(&CURLANG *EQ ' ') THEN(CHGVAR VAR(&LANGU) +
+                             VALUE('*RPG'))
+                ELSE       CMD(CHGVAR VAR(&LANGU) VALUE(&CURLANG))
+             ENDDO
+
 /* --- Has this library already been loaded? (state data area TXLEGST) --- */
              CHKOBJ     OBJ(&LIB/TXLEGST) OBJTYPE(*DTAARA)
              MONMSG     MSGID(CPF9801) EXEC(GOTO CMDLBL(BUILD))
              IF         COND(&FORCE *NE '*YES') THEN(DO)
                 SNDPGMMSG  MSG('TXLEGACY: already loaded in this library. +
                              Use FORCE(*YES) to rebuild (backs up first).')
+                IF         COND(&CURLANG *NE ' ' *AND &CURLANG *NE +
+                             &LANGU) THEN(SNDPGMMSG MSG('TXLEGACY: note - +
+                             the loaded language is ' *CAT &CURLANG *CAT +
+                             ', not ' *CAT &LANGU *CAT '. Nothing was +
+                             changed; use FORCE(*YES) to switch.'))
                 GOTO       CMDLBL(TXEND)
              ENDDO
 
@@ -97,6 +134,12 @@ BUILD:       SNDPGMMSG  MSG('TXLEGACY: loading legacy system into library ' +
              CHKOBJ     OBJ(&LIB/QCLSRC) OBJTYPE(*FILE)
              MONMSG     MSGID(CPF9801) EXEC(CRTSRCPF FILE(&LIB/QCLSRC) +
                           RCDLEN(92) TEXT('Curriculum CL sources'))
+             IF         COND(&LANGU *EQ '*RPGLE') THEN(DO)
+                CHKOBJ     OBJ(&LIB/QRPGLE112) OBJTYPE(*FILE)
+                MONMSG     MSGID(CPF9801) EXEC(CRTSRCPF +
+                             FILE(&LIB/QRPGLE112) RCDLEN(112) +
+                             TEXT('Curriculum RPG IV (fixed form) sources'))
+             ENDDO
 
 /* --- DDS reference file first (no other legacy object depends on it to  */
 /* compile, but it documents the shared field layout). --- */
@@ -108,15 +151,18 @@ BUILD:       SNDPGMMSG  MSG('TXLEGACY: loading legacy system into library ' +
 /* --- RPG III /COPY member (no compile of its own; just needs to land in */
 /* QRPGSRC before anything that /COPYs it, none of which TXLEGACY builds  */
 /* yet - ZA0510 is a follow-up, see docs/probes.md TODO). --- */
-             CHGVAR     VAR(&SRC) VALUE(&CLONEDIR *TCAT +
-                          '/src/legacy/qrpgsrc/fldrefr.rpg')
-             ADDPFM     FILE(&LIB/QRPGSRC) MBR(FLDREFR) SRCTYPE(RPG) +
-                          TEXT('Shared field definitions (/COPY member)')
-             MONMSG     MSGID(CPF7306)
-             CHGVAR     VAR(&TOMBR) VALUE('/QSYS.LIB/' *TCAT %TRIM(&LIB) +
-                          *TCAT '.LIB/QRPGSRC.FILE/FLDREFR.MBR')
-             CPYFRMSTMF FROMSTMF(&SRC) TOMBR(&TOMBR) MBROPT(*REPLACE) +
-                          STMFCCSID(1208)
+             IF         COND(&LANGU *EQ '*RPG') THEN(DO)
+                CHGVAR     VAR(&SRC) VALUE(&CLONEDIR *TCAT +
+                             '/src/legacy/qrpgsrc/fldrefr.rpg')
+                ADDPFM     FILE(&LIB/QRPGSRC) MBR(FLDREFR) SRCTYPE(RPG) +
+                             TEXT('Shared field definitions (/COPY member)')
+                MONMSG     MSGID(CPF7306)
+                CHGVAR     VAR(&TOMBR) VALUE('/QSYS.LIB/' *TCAT +
+                             %TRIM(&LIB) *TCAT +
+                             '.LIB/QRPGSRC.FILE/FLDREFR.MBR')
+                CPYFRMSTMF FROMSTMF(&SRC) TOMBR(&TOMBR) MBROPT(*REPLACE) +
+                             STMFCCSID(1208)
+             ENDDO
 
 /* --- Display files (compile before the RPG programs that use them, so   */
 /* CRTRPGPGM can resolve the external record formats). --- */
@@ -133,15 +179,21 @@ BUILD:       SNDPGMMSG  MSG('TXLEGACY: loading legacy system into library ' +
              CHGVAR     VAR(&P1) VALUE('TK0100')
              CHGVAR     VAR(&P1LC) VALUE('tk0100')
              CHGVAR     VAR(&P2) VALUE('Customer inquiry')
-             CALLSUBR   SUBR(LOADRPG)
+             IF         COND(&LANGU *EQ '*RPGLE') THEN(CALLSUBR +
+                          SUBR(LOADRPGLE))
+             ELSE       CMD(CALLSUBR SUBR(LOADRPG))
              CHGVAR     VAR(&P1) VALUE('JU0300')
              CHGVAR     VAR(&P1LC) VALUE('ju0300')
              CHGVAR     VAR(&P2) VALUE('Order list by customer')
-             CALLSUBR   SUBR(LOADRPG)
+             IF         COND(&LANGU *EQ '*RPGLE') THEN(CALLSUBR +
+                          SUBR(LOADRPGLE))
+             ELSE       CMD(CALLSUBR SUBR(LOADRPG))
              CHGVAR     VAR(&P1) VALUE('ZA0500')
              CHGVAR     VAR(&P1LC) VALUE('za0500')
              CHGVAR     VAR(&P2) VALUE('Stock allocation')
-             CALLSUBR   SUBR(LOADRPG)
+             IF         COND(&LANGU *EQ '*RPGLE') THEN(CALLSUBR +
+                          SUBR(LOADRPGLE))
+             ELSE       CMD(CALLSUBR SUBR(LOADRPG))
 
 /* --- CL programs (JU0900C calls ZA0500 by a library-qualified name, so   */
 /* compile order relative to ZA0500 does not matter, but load it after    */
@@ -154,6 +206,13 @@ BUILD:       SNDPGMMSG  MSG('TXLEGACY: loading legacy system into library ' +
              CHGVAR     VAR(&P1LC) VALUE('mn0000c')
              CHGVAR     VAR(&P2) VALUE('Legacy menu')
              CALLSUBR   SUBR(LOADCLP)
+
+/* --- Record the language in TXLEGLNG (CHAR 7). --- */
+             CHKOBJ     OBJ(&LIB/TXLEGLNG) OBJTYPE(*DTAARA)
+             MONMSG     MSGID(CPF9801) EXEC(CRTDTAARA +
+                          DTAARA(&LIB/TXLEGLNG) TYPE(*CHAR) LEN(7) +
+                          VALUE(' ') TEXT('Legacy system source language'))
+             CHGDTAARA  DTAARA(&LIB/TXLEGLNG (1 7)) VALUE(&LANGU)
 
 /* --- Create the TXLEGST marker data area --- */
              CHKOBJ     OBJ(&LIB/TXLEGST) OBJTYPE(*DTAARA)
@@ -217,6 +276,22 @@ SUBR       SUBR(LOADRPG)
              CPYFRMSTMF FROMSTMF(&SRC) TOMBR(&TOMBR) MBROPT(*REPLACE) +
                           STMFCCSID(1208)
              CRTRPGPGM  PGM(&LIB/&P1) SRCFILE(&LIB/QRPGSRC) SRCMBR(&P1) +
+                          TEXT(&P2) REPLACE(*YES)
+ENDSUBR
+
+SUBR       SUBR(LOADRPGLE)
+             CHGVAR     VAR(&SRC) VALUE(&CLONEDIR *TCAT +
+                          '/src/legacy/qrpgle112/' *TCAT %TRIM(&P1LC) *TCAT +
+                          '.rpgle')
+             ADDPFM     FILE(&LIB/QRPGLE112) MBR(&P1) SRCTYPE(RPGLE) +
+                          TEXT(&P2)
+             MONMSG     MSGID(CPF7306)
+             CHGVAR     VAR(&TOMBR) VALUE('/QSYS.LIB/' *TCAT %TRIM(&LIB) +
+                          *TCAT '.LIB/QRPGLE112.FILE/' *TCAT %TRIM(&P1) +
+                          *TCAT '.MBR')
+             CPYFRMSTMF FROMSTMF(&SRC) TOMBR(&TOMBR) MBROPT(*REPLACE) +
+                          STMFCCSID(1208)
+             CRTBNDRPG  PGM(&LIB/&P1) SRCFILE(&LIB/QRPGLE112) SRCMBR(&P1) +
                           TEXT(&P2) REPLACE(*YES)
 ENDSUBR
 

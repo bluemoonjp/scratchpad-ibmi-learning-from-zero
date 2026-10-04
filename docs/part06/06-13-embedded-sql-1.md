@@ -2,6 +2,12 @@
 
 > 所要時間: 60分 / 前提レッスン: 06-12 / 目標番号: 5 / 観測方法: `WRKSPLF` / 道具: SSH(`CPYFRMSTMF` でのソース取り込み)、5250(コンパイル・実行、`WRKSPLF`)/ 同時接続数: 5250×1(SSHでのソース取り込みは1回の接続でまとめて行います)/ 作る・変えるオブジェクト: `<USER>1/Q0613A`(SQLRPGLE)。演習で複写する`<USER>1/Q0613B`は`SQL7008`再現用としてそのまま残します / DBVER: 1 / 依存するプローブ: P12(`TOKUIM`は未journaled、確認済み)・P25(メンバーからの`CRTSQLRPGI`本体構文と`SET OPTION`除去→`SQL7008`再現のみ確認。IFS直接コンパイル・`/COPY`・`RPGPPOPT(*LVL2)`は未検証)(下の「実機メモ」参照)/ PTF 依存: なし / 容量の目安: わずか
 
+<details><summary>RPG III を通らないルートの人へ</summary>
+
+本文の「RPG III 時代の結果標識」は、ルートでは [04-22](../part04v/04-22-characters-indicators-subroutines.md) で学ぶ標識のことです。「04-08 以来ずっと実在する行」の 04-08 は、ルートでは [04-21](../part04v/04-21-fixed-form-skeleton.md) の `V0421D` が読んでいる `TOKUIM` の行のことです。
+
+</details>
+
 ## ゴール
 
 - `SET OPTION`で`COMMIT`/`NAMING`/`CLOSQLCSR`を明示的に指定できる。
