@@ -3339,3 +3339,53 @@ P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)�
 - **予測の外れ**: 「`QTY`=5 の結果は `O`」と予想したが、`5` は10より小さいので `R` が正しかった(ソースの誤りではなく、予想の誤り)。
 - **検証側の雑音**: `ADDLIB FAILED`(`CPF2103`、ラッパーが先に追加済み)、初回の `DLxx FAILED`(`CPF2105`、削除対象なし)。
 - **未検証(2026-09-30時点、V3)**: 5250 の対話ジョブでの `RPG0907` 照会メッセージの見え方、隣のバイトの中身(なぜ不正な数字になったか)の確認。
+
+## Issue #35 旧システムの CVTRPGSRC 変換: `part05-lgcvt`(確認日 2026-10-04)
+
+`src/legacy/qrpgsrc/{ju0300,za0500,tk0100}.rpg` を `CVTRPGSRC` で `QRPGLE112` へ変換し、
+`CRTBNDRPG` でコンパイルした(接続2回、PUB400 が2026-10-01〜10-04に不通だった後の最初の成功)。
+
+- 変換: 3本とも「0 highest severity」「1 converted, 0 converted with errors」。
+- コンパイル: `LGC0300`・`LGC0500`・`LGC0100`(元は JU0300・ZA0500・TK0100)が
+  すべて「00 highest severity」。TK0100 は、`SFILE` を使わずにサブファイル形式を
+  持つ表示装置ファイル(TK0100D)を使っているが、`CRTBNDRPG` で通った。
+- 変換結果のコード行は、事前に手作業で変換した版と、H 仕様書と D 仕様書2行を除いて一致した。
+  元のヘッダー・コメントは変換後もそのまま残る。
+- `src/legacy/qrpgle112/*.rpgle` は、この実出力に H 仕様書(`DFTACTGRP(*YES)`)だけを
+  変えたもの。実行時の出力の一致は `part05-lggold` で確かめる。
+
+## Issue #35 ゴールデン・マスター比較(RPG III 対 固定形式 RPG IV): `part05-lggold`(確認日 2026-10-04)
+
+`<USER>2` で TXRESET 後、RPG III 版の JU0300・ZA0500・TK0100 を作って実行し、同じ名前で
+RPG IV 版(`src/legacy/qrpgle112`)を `CRTBNDRPG` で作り直して同じ手順で実行した。
+
+- コンパイル: RPG IV 版の JU0300・ZA0500・TK0100 は、H 仕様書に `DFTACTGRP(*YES)` を
+  付けた状態で、すべて「00 highest severity」。
+- **印字の一致**: JU0300 の全件の印字(DATE TOTAL・CUST TOTAL・GRAND TOTAL 8、XFOOT=8 OK)と、
+  JU0900C(`*TEST`)から ZA0500 を呼んだ12行(SHORT は J00002 と J00006)が、
+  RPG III 版と RPG IV 版でテキストとして完全に同一。ZAIKOM は前後で変化なし。
+- **チケット1(JU0900C の `LEN(3 0)` と ZA0500 の `MINQTY` 5,0 の食い違い)のジョブ・ログ**:
+  - RPG III 版: `RPG0907` → `RPG9001`(JU0900C で未監視、statement 7400)→ 「ZA0500 ended abnormally」。
+  - RPG IV 版(ILE): `MCH1202`「Decimal data error」→ `RNQ0907`「Decimal-data error occurred (C G D F)」
+    → `CEE9901`「MCH1202 unmonitored by ZA0500 at statement 0000000091」→ JU0900C の
+    `MONMSG CPF0000` が拾い「JU0900C: ZA0500 ended abnormally」。ハングしなかった。
+- 未検証: TK0100 の画面動作(EXFMT は対話でのみ確認できる)。
+
+## Issue #35 TXLEGACY の LANG の動き: `part05-lglang`(確認日 2026-10-04)
+
+`<USER>2` で `TXLEGACY` を `LANG` ありの版に差し替えて、順に実行した。
+
+- `LANG(*RPGLE)` の初回ロード: `TK0100`・`JU0300`・`ZA0500` が `OBJATTRIBUTE` = `RPGLE`、
+  `TXLEGLNG` = `*RPGLE`、`QRPGLE112` が作られ、`TXLEGACY: done.` が出た。
+- `LANG` と `FORCE` を省略(`*SAME`): 「already loaded」で何も変えない。`TXLEGLNG` は `*RPGLE` のまま。
+- `LANG(*RPG) FORCE(*NO)`(食い違い): 「already loaded」に続き、
+  「note - the loaded language is *RPGLE , not *RPG」の注意が出た。何も変えない。
+- `FORCE(*YES)` で `LANG` 省略: `*RPGLE` が保たれた。
+- `LANG(*RPG) FORCE(*YES)`: RPG III 版(`OBJATTRIBUTE` = `RPG`)に戻り、`TXLEGLNG` = `*RPG`。
+  続けて `LANG` 省略の `FORCE(*YES)` で `*RPG` が保たれた。
+- **旧3パラメーターの呼び出しは、`MCH3601` の経路に届かない**: 3パラメーターで `CALL PGM(TXLEGACY)` すると、
+  `CPD0172`「Parameters passed on CALL do not match those required」と `CPF0001`
+  「Error found on CALL command」で CALL 自体が拒否される。旧 `*CMD`(3パラメーター)が残っていて
+  新しい `*PGM` だけが入っている場合も同じ。`*PGM` と `*CMD` は必ず一緒に作り直すこと。
+- 副産物: 2回目以降の `FORCE(*YES)` で `SAVOBJ` が「7 objects saved, 1 not saved」(`FLDREFR` が
+  `*RPGLE` のとき存在しない)になるが、`MONMSG` で捕捉され、進行に影響しない。
