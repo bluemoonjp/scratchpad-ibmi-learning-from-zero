@@ -3379,7 +3379,7 @@ RPG IV 版(`src/legacy/qrpgle112`)を `CRTBNDRPG` で作り直して同じ手順
   `TXLEGLNG` = `*RPGLE`、`QRPGLE112` が作られ、`TXLEGACY: done.` が出た。
 - `LANG` と `FORCE` を省略(`*SAME`): 「already loaded」で何も変えない。`TXLEGLNG` は `*RPGLE` のまま。
 - `LANG(*RPG) FORCE(*NO)`(食い違い): 「already loaded」に続き、
-  「note - the loaded language is *RPGLE , not *RPG」の注意が出た。何も変えない。
+  「note - the loaded language is `*RPGLE`, not `*RPG`」の注意が出た。何も変えない。
 - `FORCE(*YES)` で `LANG` 省略: `*RPGLE` が保たれた。
 - `LANG(*RPG) FORCE(*YES)`: RPG III 版(`OBJATTRIBUTE` = `RPG`)に戻り、`TXLEGLNG` = `*RPG`。
   続けて `LANG` 省略の `FORCE(*YES)` で `*RPG` が保たれた。
