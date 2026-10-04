@@ -1,5 +1,5 @@
       * V0421T - exercise 3 answer: V0421D for customer C00003.
-      * Expected: J00004 and J00008 lines for the customer of C00003.
+      * Confirmed on PUB400 (part04v-21cmp, 2026-10-04): J00004, J00008.
       * Only the literal in the first C spec differs from V0421D.
      H DFTACTGRP(*YES)
      FTOKUIM    IF   E           K DISK
