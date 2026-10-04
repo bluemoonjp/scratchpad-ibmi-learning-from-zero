@@ -3475,3 +3475,33 @@ RPG IV 版(`src/legacy/qrpgle112`)を `CRTBNDRPG` で作り直して同じ手順
   `JU0900C`・`MN0000C` も作られた。`OBJECT_STATISTICS` で6個とも作成日時が今回の実行時刻。
 - `TXLEGLNG` が無い状態の `*SAME` は `*RPG` に落ち、一本道の動きは変わらない。
   差は、`TXLEGLNG`(`*RPG`)というデータ域が1つ増えることだけ。
+
+## Issue #50 `TXLEGACY ... FORCE(*YES)` の実機確認と、`TXLEGST` の修正(Issue #47): `issue50-force`(確認日 2026-10-05、1回の接続で最後まで)
+
+`verify/issue50-force` は、`verify/part04v-27set` と同じ旧システムのツリーを使い、`<USER>2` で1回の接続で流した。修正後の `tools/qclsrc/txlegacy.clp`(`TXLEGST` を、無ければ作り、そのあと無条件に `CHGDTAARA` で `'Y'` にする)をコンパイルしてから行った。
+
+- **前提**: `DBVER=0000000001`、`TXLEGLNG` は `*RPG`(RPG III 版の旧システム)。
+- **手順1: 初回の `LANG(*RPGLE) FORCE(*YES)`**: `<USER>B/LG261004` へ退避した旨のメッセージが出て(`TXLEGACY: backed up existing legacy objects to <USER>B/LG261004`)、旧システムが読み込まれ、`TXLEGST=[Y] TXLEGLNG=[*RPGLE ]` になった。退避の前に `CPA4067`(`Cancel reply received`)が出る(ハーネスの非対話ジョブの既定応答による雑音で、過去の実行と同じ)。
+- **手順2: チケット1の修正**: `JU0900C` のソース(113行)を、05-13 の模範解答(118行)で置き換えて再コンパイルした。`&MINQTY` の宣言は `LEN(3 0)` から `LEN(5 0)` になった(ソースの44行目)。
+- **手順3: `TXLEGST` を `N` にしてから、もう一度 `FORCE(*YES)`**: `CHGDTAARA ... VALUE(N)` で `TXLEGST=[N]` を確認してから `LANG(*RPGLE) FORCE(*YES)` を実行すると、`TXLEGST=[Y]` に戻った(Issue #47 の修正の効果。修正前は、既にあるデータ域には `CHGDTAARA` が実行されなかった)。同じ `<USER>B/LG261004` が再び退避先として表示された。
+- **`JU0900C` の復元**: 手順3のあと、`JU0900C` のソースは113行に戻り、`DCL VAR(&MINQTY) TYPE(*DEC) LEN(3 0)`(31行目)になった。`FORCE(*YES)` が、配布版のソースから `JU0900C` を作り直し、チケット1の修正を元に戻す(04-27 と 08-05b の注意書きの主張)ことが、`FORCE(*YES)` そのもので確認できた。
+- **後始末**: `TXLEGST`・`TXLEGLNG` を消して `LANG(*RPG)`(`FORCE` なし)で RPG III 版に戻し、`TXRESET`。最後は `TXLEGST=[Y] TXLEGLNG=[*RPG   ]`。
+- **未確認**: `<USER>B` の `SAVF` の中身を直接 `DSPSAVF` などで読んではいない(`TXLEGACY` のメッセージで、退避先の名前を確認したのみ)。
+
+## Issue #50 ILE の statement 番号・Line Number・ファイルの行番号の差(接続なし、確認日 2026-10-05)
+
+`part10-01-rpgle` の保存済みの結果(`work/verify/results/part10-01-rpgle-*.json`、匿名化済み)のコンパイル・リストを読み直して分かったこと。新しい接続はしていない。
+
+- `src/legacy/qrpgle112/za0500.rpgle` の `ZAIKOM` は、F 仕様書で外部記述ファイルとして宣言されている(63行目)。コンパイラーは、最後のプログラム記述の `I` 仕様書(75行目の直後)のあとに、レコード様式 `ZAIKOR` の入力仕様書を生成して挿入する。コンパイル・リストでは、`ZAIKOR` の1行と、フィールド `ZASHO`・`ZASU`・`ZAUPD`(`db/v1/zaikom.pf`)の3行、合計4行(`76`〜`79`)になる。
+- そのため、挿入より後ろの行は、コンパイル・リストの Line Number がファイルの行番号より4大きくなる。`COMP MINQTY` は、ファイルの87行目、Line Number 91(`*NOSRCSTMT` では Line Number がそのまま statement 番号)。挿入より前の `JUSU`(69行目)は、差が無いので一致する。出力側にも、同じように `OZAIKOR`(Line Number 108)が生成される。
+- `/COPY` の展開によるものではない。
+
+## Issue #50 ILE のメッセージ(RPG1031 相当、`CALL` に標識なし)と `CPYSRCF TOMBR(JU0300C)`: `issue50-ilemsg`(確認日 2026-10-05、1回の接続で最後まで)
+
+`verify/issue50-ilemsg` は、`<USER>2` を `TXLEGACY LANG(*RPGLE) FORCE(*YES)` で ILE 版にしてから、3つの目標を1回の接続で流した(`verify/issue50-force` と同じツリー)。ジョブ・ログは `QSYS2.JOBLOG_INFO` を永続表に写して回収した。終わりに RPG III 版へ戻し(`TXLEGLNG` が `*RPG`)、`TXRESET` で `JUCHUM` 8・`JUCHUD` 12・`ZAIKOM` 6、在庫合計392になった。
+
+- **ILE 版の `RPG1031` 相当**: チケット1の修正を `JU0900C` に当ててから、ヘッダー `J00000` を `JUCHUM` の末尾に足し、有効な明細行 `J00000/1/P00001/1` を `JUCHUD` に足して、`JU0900C` を `*TEST` で投入した。基準(足す前)は12行、メッセージなしで正常終了。足したあとは `ZA0500` が **`RNX1031`「The match field for file JUCHUM is out of sequence」→ `RNQ1031`(C G D F)→ `CEE9901`「RNX1031 unmonitored by ZA0500 at statement 0001000001」→ `CPF9999`「CEE9901 unmonitored by JU0900C at statement 8800」→ JU0900C の「ZA0500 ended abnormally」**。印字は12行(基準と同じ行)。在庫合計は前後で392。statement 番号は、ILE のほかの番号(`0000000069` など)と違い `0001000001` だった(理由は未確認)。
+- **04-24 の `RNQ0202`・`RNX0100`(`CALL` に標識なし)**: 呼ばれるプログラム `V50MISS` が無い場合は、`MCH3401` → `RNQ0211`「Error occurred while calling program or procedure `*LIBL/V50MISS`」→ `CEE9901`(呼ぶ側 `V50NB1` の statement 7、`MCH3401` unmonitored)。呼ばれるプログラム `V50DIV` が実行時にゼロ除算すると、`RNX0102`・`RNQ0102`(`V50DIV` の statement 12)→ `CEE9901` → 呼ぶ側に **`RNQ0202`「The call to `*LIBL/V50DIV` ended in error」** → `CEE9901`(`V50NB2` の statement 6)。`RNX0100` は出なかった。いずれも `INQMSGRPY(*DFT)` で投入し、ジョブは自分で終了した。
+- **`CPYSRCF ... TOMBR(JU0300C)`**: レッスン 10-02 の本文のとおり、`QRPGSRC` の `JU0300`(180行)→ `JU0300C`、`QRPGLE112` の `JU0300`(186行)→ `JU0300C` は、どちらも通り、複写先の行数が複写元と一致した。この `<USER>2` には、以前の検証の `JU0300C`(213行・104行)が残っていたが、`MBROPT(*REPLACE)` で置き換わった。検証側は、先に複写を取り、終わりに元の行数へ戻した。
+- **検証側の雑音**: `A4LASTCD`(既にある)と、終了済みジョブへの `ENDJOB` の `FAILED` 行(無害)。
+- **未検証(2026-10-05時点)**: `RNX0100` が出る場面、`statement 0001000001` の意味、5250 の画面での表示。

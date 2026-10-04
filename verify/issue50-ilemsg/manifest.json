@@ -1,0 +1,1005 @@
+{
+  "batch": "issue50-ilemsg",
+  "description": "Issue #50 open items. ONE connection in the default library (<USER>2). Staging as in issue50-force (V27STG + CPYTOSTMF), then TXLEGACY LANG(*RPGLE) FORCE(*YES) from RPG III. (1) ILE counterpart of RPG1031: ticket-1 fix on JU0900C, baseline JU0900C *TEST as a submitted job (tag RBASE), then a JUCHUM header J00000 appended AT THE END (plus a valid JUCHUD line J00000/1/P00001/1) and the same job again (tag RFAIL); job log message ids in VFYJ50/VFYJ50X, print in VFYPRBASE/VFYPRFAIL; rows deleted and JU0900C restored from C_JU0900C afterwards. (2) 04-24 RNQ0202/RNX0100: V50NB1 CALLs a missing program, V50NB2 CALLs V50DIV (divide by zero), both without error indicator 85, submitted with INQMSGRPY(*DFT) (tags NB1, NB2). (3) CPYSRCF with TOMBR(JU0300C) exactly as lesson 10-02 shows it, line 402 (QRPGSRC) and line 454 (QRPGLE112): backup of an existing JU0300C into V50JCB1/V50JCB2, the lesson command, row counts in VFY50MK, restore. LAST: restore the RPG III legacy system (TXLEGST/TXLEGLNG deleted, LANG(*RPG), no FORCE) and TXRESET. PRECOND: DBVER=1, legacy system RPG III. Results: collect sections VFY50MK, VFYJ50, VFYJ50X plus sections.vfylog. HONEST LIMITS: single-library simulation; a submitted job that hangs is ended with ENDJOB, which loses its in-job job log copy (VFY50MK row JOB-<name> then shows 1/<status>).",
+  "sshTimeoutMs": 600000,
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "src/v27run.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "V27RUN",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txlegacy.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXLEGACY"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qcmdsrc/txlegacy.cmd",
+      "remoteSrcFile": "QCMDSRC",
+      "member": "TXLEGACY"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgle112/tk0100.rpgle",
+      "remoteSrcFile": "V27STG",
+      "member": "Q_TK0100",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgle112/ju0300.rpgle",
+      "remoteSrcFile": "V27STG",
+      "member": "Q_JU0300"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgle112/za0500.rpgle",
+      "remoteSrcFile": "V27STG",
+      "member": "Q_ZA0500"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/tk0100.rpg",
+      "remoteSrcFile": "V27STG",
+      "member": "R_TK0100"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/ju0300.rpg",
+      "remoteSrcFile": "V27STG",
+      "member": "R_JU0300"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/za0500.rpg",
+      "remoteSrcFile": "V27STG",
+      "member": "R_ZA0500"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/fldrefr.rpg",
+      "remoteSrcFile": "V27STG",
+      "member": "R_FLDREFR"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/fldref.pf",
+      "remoteSrcFile": "V27STG",
+      "member": "D_FLDREF"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/tk0100d.dspf",
+      "remoteSrcFile": "V27STG",
+      "member": "D_TK0100D"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/mn0000d.dspf",
+      "remoteSrcFile": "V27STG",
+      "member": "D_MN0000D"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qclsrc/ju0900c.clp",
+      "remoteSrcFile": "V27STG",
+      "member": "C_JU0900C"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qclsrc/mn0000c.clp",
+      "remoteSrcFile": "V27STG",
+      "member": "C_MN0000C"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/05-13/ju0900c-ticket1.clp",
+      "remoteSrcFile": "V27STG",
+      "member": "T1FIX"
+    },
+    {
+      "type": "sh",
+      "label": "MKTREE",
+      "cmd": "mkdir -p \"$HOME/ibmi-kyozai/src/legacy/qrpgle112\" \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc\" \"$HOME/ibmi-kyozai/src/legacy/qddssrc\" \"$HOME/ibmi-kyozai/src/legacy/qclsrc\" 2>&1\nls -d \"$HOME/ibmi-kyozai/.git\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-Q_TK0100",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/Q_TK0100.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgle112/tk0100.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-Q_JU0300",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/Q_JU0300.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgle112/ju0300.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-Q_ZA0500",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/Q_ZA0500.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgle112/za0500.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-R_TK0100",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/R_TK0100.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/tk0100.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-R_JU0300",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/R_JU0300.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/ju0300.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-R_ZA0500",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/R_ZA0500.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/za0500.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-R_FLDREFR",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/R_FLDREFR.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/fldrefr.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-D_FLDREF",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/D_FLDREF.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/fldref.pf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-D_TK0100D",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/D_TK0100D.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/tk0100d.dspf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-D_MN0000D",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/D_MN0000D.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/mn0000d.dspf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-C_JU0900C",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/C_JU0900C.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qclsrc/ju0900c.clp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-C_MN0000C",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/C_MN0000C.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qclsrc/mn0000c.clp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "LSTREE",
+      "cmd": "ls -l \"$HOME/ibmi-kyozai/src/legacy/qrpgle112\" \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc\" 2>&1"
+    },
+    {
+      "type": "file",
+      "localPath": "src/v50cap.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "V50CAP"
+    },
+    {
+      "type": "file",
+      "localPath": "src/v50nb1.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V50NB1",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "src/v50nb2.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V50NB2"
+    },
+    {
+      "type": "file",
+      "localPath": "src/v50div.rpgle",
+      "remoteSrcFile": "QRPGLESRC",
+      "member": "V50DIV"
+    },
+    {
+      "type": "cl",
+      "label": "CPV27RUN",
+      "cmd": "CRTCLPGM PGM(&LIB/V27RUN) SRCFILE(&LIB/QCLSRC) SRCMBR(V27RUN) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPV50CAP",
+      "cmd": "CRTCLPGM PGM(&LIB/V50CAP) SRCFILE(&LIB/QCLSRC) SRCMBR(V50CAP) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRECOND",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('PRECOND' '&LIB')\nMONMSG MSGID(CPF9898) EXEC(GOTO CMDLBL(DONE))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-TXLGP",
+      "cmd": "CHGPFM FILE(&LIB/QCLSRC) MBR(TXLEGACY) SRCTYPE(CLP)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-TXLGC",
+      "cmd": "CHGPFM FILE(&LIB/QCMDSRC) MBR(TXLEGACY) SRCTYPE(CMD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-V50CAP",
+      "cmd": "CHGPFM FILE(&LIB/QCLSRC) MBR(V50CAP) SRCTYPE(CLP)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-NB1",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V50NB1) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-NB2",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V50NB2) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-DIV",
+      "cmd": "CHGPFM FILE(&LIB/QRPGLESRC) MBR(V50DIV) SRCTYPE(RPGLE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTXLGP",
+      "cmd": "DLTPGM PGM(&LIB/TXLEGACY)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTXLGC",
+      "cmd": "DLTCMD CMD(&LIB/TXLEGACY)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A4-CLP",
+      "cmd": "CRTCLPGM PGM(&LIB/TXLEGACY) SRCFILE(&LIB/QCLSRC) SRCMBR(TXLEGACY)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A4-CMD",
+      "cmd": "CRTCMD CMD(&LIB/TXLEGACY) PGM(*LIBL/TXLEGACY) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXLEGACY)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A4-LASTCD",
+      "cmd": "CRTDTAARA DTAARA(&LIB/LASTCD) TYPE(*CHAR) LEN(6)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKJ50",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYJ50') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/VFYJ50 (TAG VARCHAR(10), SEQ INTEGER, MID VARCHAR(10), TXT VARCHAR(200))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKJ50X",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFYJ50X') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/VFYJ50X (TAG VARCHAR(10), SEQ INTEGER, MTYPE VARCHAR(30), SEV INTEGER, FPGM VARCHAR(30), FINS VARCHAR(30), TPGM VARCHAR(30), TINS VARCHAR(30), MID VARCHAR(10))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKM50",
+      "cmd": "RUNSQL SQL('DROP TABLE &LIB/VFY50MK') COMMIT(*NONE)\nMONMSG MSGID(CPF0000 SQL0000)\nRUNSQL SQL('CREATE TABLE &LIB/VFY50MK (TS TIMESTAMP NOT NULL DEFAULT CURRENT TIMESTAMP, TAG VARCHAR(16), K VARCHAR(28), V VARCHAR(160))') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ATT0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''T0-START'', ''ATTR'', OBJNAME CONCAT ''='' CONCAT COALESCE(OBJATTRIBUTE, ''-'') FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME IN (''ZA0500'', ''JU0300'', ''TK0100'', ''JU0900C'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "LNG0",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''T0-START'', ''TXLEGLNG'', COALESCE(DATA_AREA_VALUE, ''-'') FROM TABLE(QSYS2.DATA_AREA_INFO(DATA_AREA_LIBRARY => ''&LIB'', DATA_AREA_NAME => ''TXLEGLNG'')) X') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CNT0M",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''T0-START'', ''JUCHUM-ROWS'', CHAR(COUNT(*)) FROM &LIB/JUCHUM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CNT0D",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''T0-START'', ''JUCHUD-ROWS'', CHAR(COUNT(*)) FROM &LIB/JUCHUD') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MK1",
+      "cmd": "SNDPGMMSG MSG('V50 MARK: step 1: TXLEGACY LANG(*RPGLE) FORCE(*YES)')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "S1-FORCE",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('LEGRPGLEF' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ATT1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''T1-ILE'', ''ATTR'', OBJNAME CONCAT ''='' CONCAT COALESCE(OBJATTRIBUTE, ''-'') FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME IN (''ZA0500'', ''JU0300'', ''TK0100'', ''JU0900C'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "LNG1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''T1-ILE'', ''TXLEGLNG'', COALESCE(DATA_AREA_VALUE, ''-'') FROM TABLE(QSYS2.DATA_AREA_INFO(DATA_AREA_LIBRARY => ''&LIB'', DATA_AREA_NAME => ''TXLEGLNG'')) X') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MK2",
+      "cmd": "SNDPGMMSG MSG('V50 MARK: goal 1: ticket 1 fix on JU0900C, baseline, then JUCHUM out of sequence')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-FIX",
+      "cmd": "CPYSRCF FROMFILE(&LIB/V27STG) TOFILE(&LIB/QCLSRC) FROMMBR(T1FIX) TOMBR(JU0900C) MBROPT(*REPLACE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-CLP",
+      "cmd": "CRTCLPGM PGM(&LIB/JU0900C) SRCFILE(&LIB/QCLSRC) SRCMBR(JU0900C) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-SBBASE",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/V50CAP) PARM('RBASE' '&LIB' 'ZAT' 'VFYJ50')) JOB(V50BASE) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL) INLLIBL(*CURRENT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-WTBASE",
+      "cmd": "DLYJOB DLY(30)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-ACBASE",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G1-BASE'', ''JOB-V50BASE'', CHAR(COUNT(*)) CONCAT ''/'' CONCAT COALESCE(MIN(JOB_STATUS), ''-'') FROM TABLE(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => ''V50BASE'')) X') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-ENBASE",
+      "cmd": "ENDJOB JOB(V50BASE) OPTION(*IMMED)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-STK1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G1-BASE'', ''ZAIKOM-SUM'', CHAR(SUM(ZASU)) FROM &LIB/ZAIKOM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-PLM",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/JUCHUM (JUNO, JUTOK, JUDATE, JUTAN) VALUES (''J00000'', ''C00001'', 20260930, ''T00001'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-PLD",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/JUCHUD (JUNO, JULINE, JUSHO, JUSU, JUTNK) VALUES (''J00000'', 1, ''P00001'', 1, 100.00)') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-PLRRN",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G1-PLANT'', ''JUCHUM-RRN'', JUNO CONCAT ''='' CONCAT CHAR(RRN(X)) FROM &LIB/JUCHUM X WHERE JUNO = ''J00000''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-SBFAIL",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/V50CAP) PARM('RFAIL' '&LIB' 'ZAT' 'VFYJ50')) JOB(V50FAIL) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL) INLLIBL(*CURRENT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-WTFAIL",
+      "cmd": "DLYJOB DLY(30)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-ACFAIL",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G1-FAIL'', ''JOB-V50FAIL'', CHAR(COUNT(*)) CONCAT ''/'' CONCAT COALESCE(MIN(JOB_STATUS), ''-'') FROM TABLE(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => ''V50FAIL'')) X') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-ENFAIL",
+      "cmd": "ENDJOB JOB(V50FAIL) OPTION(*IMMED)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-STK2",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G1-FAIL'', ''ZAIKOM-SUM'', CHAR(SUM(ZASU)) FROM &LIB/ZAIKOM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-DLM",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/JUCHUM WHERE JUNO = ''J00000''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-DLD",
+      "cmd": "RUNSQL SQL('DELETE FROM &LIB/JUCHUD WHERE JUNO = ''J00000''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-RSTJU",
+      "cmd": "CPYSRCF FROMFILE(&LIB/V27STG) TOFILE(&LIB/QCLSRC) FROMMBR(C_JU0900C) TOMBR(JU0900C) MBROPT(*REPLACE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G1-RSTCL",
+      "cmd": "CRTCLPGM PGM(&LIB/JU0900C) SRCFILE(&LIB/QCLSRC) SRCMBR(JU0900C) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CNT1M",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G1-AFTER'', ''JUCHUM-ROWS'', CHAR(COUNT(*)) FROM &LIB/JUCHUM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CNT1D",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G1-AFTER'', ''JUCHUD-ROWS'', CHAR(COUNT(*)) FROM &LIB/JUCHUD') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MK3",
+      "cmd": "SNDPGMMSG MSG('V50 MARK: goal 2: CALL without indicator 85 (missing callee, failing callee)')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-CPDIV",
+      "cmd": "CRTBNDRPG PGM(&LIB/V50DIV) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V50DIV) DBGVIEW(*SOURCE) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-CPNB1",
+      "cmd": "CRTBNDRPG PGM(&LIB/V50NB1) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V50NB1) DBGVIEW(*SOURCE) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-CPNB2",
+      "cmd": "CRTBNDRPG PGM(&LIB/V50NB2) SRCFILE(&LIB/QRPGLESRC) SRCMBR(V50NB2) DBGVIEW(*SOURCE) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-PRE",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G2-NB1'', ''V50MISS-EXISTS'', CHAR(COUNT(*)) FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME = ''V50MISS''') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-SBNB1",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/V50CAP) PARM('NB1' '&LIB' 'NB1' 'VFYJ50')) JOB(V50NB1) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL) INLLIBL(*CURRENT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-WTNB1",
+      "cmd": "DLYJOB DLY(25)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-ACNB1",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G2-NB1'', ''JOB-V50NB1'', CHAR(COUNT(*)) CONCAT ''/'' CONCAT COALESCE(MIN(JOB_STATUS), ''-'') FROM TABLE(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => ''V50NB1'')) X') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-ENNB1",
+      "cmd": "ENDJOB JOB(V50NB1) OPTION(*IMMED)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-SBNB2",
+      "cmd": "SBMJOB CMD(CALL PGM(&LIB/V50CAP) PARM('NB2' '&LIB' 'NB2' 'VFYJ50')) JOB(V50NB2) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL) INLLIBL(*CURRENT)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-WTNB2",
+      "cmd": "DLYJOB DLY(25)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-ACNB2",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G2-NB2'', ''JOB-V50NB2'', CHAR(COUNT(*)) CONCAT ''/'' CONCAT COALESCE(MIN(JOB_STATUS), ''-'') FROM TABLE(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => ''V50NB2'')) X') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-ENNB2",
+      "cmd": "ENDJOB JOB(V50NB2) OPTION(*IMMED)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-DLNB1",
+      "cmd": "DLTPGM PGM(&LIB/V50NB1)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-DLNB2",
+      "cmd": "DLTPGM PGM(&LIB/V50NB2)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G2-DLDIV",
+      "cmd": "DLTPGM PGM(&LIB/V50DIV)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MK4",
+      "cmd": "SNDPGMMSG MSG('V50 MARK: goal 3: CPYSRCF TOMBR(JU0300C) as lesson 10-02 lines 402 (QRPGSRC) and 454 (QRPGLE112)')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-RW0A",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G3-BEFORE'', ''QRPGSRC-ROWS'', TABLE_PARTITION CONCAT ''='' CONCAT CHAR(NUMBER_ROWS) FROM QSYS2.SYSPARTITIONSTAT WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''QRPGSRC'' AND TABLE_PARTITION IN (''JU0300'', ''JU0300C'', ''V50JCB1'', ''V50JCB2'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-RW0B",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G3-BEFORE'', ''QRPGLE112-ROWS'', TABLE_PARTITION CONCAT ''='' CONCAT CHAR(NUMBER_ROWS) FROM QSYS2.SYSPARTITIONSTAT WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''QRPGLE112'' AND TABLE_PARTITION IN (''JU0300'', ''JU0300C'', ''V50JCB1'', ''V50JCB2'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-BKA",
+      "cmd": "CPYSRCF FROMFILE(&LIB/QRPGSRC) TOFILE(&LIB/QRPGSRC) FROMMBR(JU0300C) TOMBR(V50JCB1) MBROPT(*REPLACE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-BKB",
+      "cmd": "CPYSRCF FROMFILE(&LIB/QRPGLE112) TOFILE(&LIB/QRPGLE112) FROMMBR(JU0300C) TOMBR(V50JCB2) MBROPT(*REPLACE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-RW1A",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G3-BACKUP'', ''QRPGSRC-ROWS'', TABLE_PARTITION CONCAT ''='' CONCAT CHAR(NUMBER_ROWS) FROM QSYS2.SYSPARTITIONSTAT WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''QRPGSRC'' AND TABLE_PARTITION IN (''JU0300'', ''JU0300C'', ''V50JCB1'', ''V50JCB2'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-RW1B",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G3-BACKUP'', ''QRPGLE112-ROWS'', TABLE_PARTITION CONCAT ''='' CONCAT CHAR(NUMBER_ROWS) FROM QSYS2.SYSPARTITIONSTAT WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''QRPGLE112'' AND TABLE_PARTITION IN (''JU0300'', ''JU0300C'', ''V50JCB1'', ''V50JCB2'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-LESSA",
+      "cmd": "CPYSRCF FROMFILE(&LIB/QRPGSRC) TOFILE(&LIB/QRPGSRC) FROMMBR(JU0300) TOMBR(JU0300C) MBROPT(*REPLACE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-RW2A",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G3-L402'', ''QRPGSRC-ROWS'', TABLE_PARTITION CONCAT ''='' CONCAT CHAR(NUMBER_ROWS) FROM QSYS2.SYSPARTITIONSTAT WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''QRPGSRC'' AND TABLE_PARTITION IN (''JU0300'', ''JU0300C'', ''V50JCB1'', ''V50JCB2'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-LESSB",
+      "cmd": "CPYSRCF FROMFILE(&LIB/QRPGLE112) TOFILE(&LIB/QRPGLE112) FROMMBR(JU0300) TOMBR(JU0300C) MBROPT(*REPLACE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-RW2B",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G3-L454'', ''QRPGLE112-ROWS'', TABLE_PARTITION CONCAT ''='' CONCAT CHAR(NUMBER_ROWS) FROM QSYS2.SYSPARTITIONSTAT WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''QRPGLE112'' AND TABLE_PARTITION IN (''JU0300'', ''JU0300C'', ''V50JCB1'', ''V50JCB2'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-CKA",
+      "cmd": "CHKOBJ OBJ(&LIB/QRPGSRC) OBJTYPE(*FILE) MBR(V50JCB1)\nMONMSG MSGID(CPF9815) EXEC(RMVM FILE(&LIB/QRPGSRC) MBR(JU0300C))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-RSTA",
+      "cmd": "CPYSRCF FROMFILE(&LIB/QRPGSRC) TOFILE(&LIB/QRPGSRC) FROMMBR(V50JCB1) TOMBR(JU0300C) MBROPT(*REPLACE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-RMA",
+      "cmd": "RMVM FILE(&LIB/QRPGSRC) MBR(V50JCB1)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-CKB",
+      "cmd": "CHKOBJ OBJ(&LIB/QRPGLE112) OBJTYPE(*FILE) MBR(V50JCB2)\nMONMSG MSGID(CPF9815) EXEC(RMVM FILE(&LIB/QRPGLE112) MBR(JU0300C))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-RSTB",
+      "cmd": "CPYSRCF FROMFILE(&LIB/QRPGLE112) TOFILE(&LIB/QRPGLE112) FROMMBR(V50JCB2) TOMBR(JU0300C) MBROPT(*REPLACE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-RMB",
+      "cmd": "RMVM FILE(&LIB/QRPGLE112) MBR(V50JCB2)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-RW3A",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G3-RESTORE'', ''QRPGSRC-ROWS'', TABLE_PARTITION CONCAT ''='' CONCAT CHAR(NUMBER_ROWS) FROM QSYS2.SYSPARTITIONSTAT WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''QRPGSRC'' AND TABLE_PARTITION IN (''JU0300'', ''JU0300C'', ''V50JCB1'', ''V50JCB2'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "G3-RW3B",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''G3-RESTORE'', ''QRPGLE112-ROWS'', TABLE_PARTITION CONCAT ''='' CONCAT CHAR(NUMBER_ROWS) FROM QSYS2.SYSPARTITIONSTAT WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''QRPGLE112'' AND TABLE_PARTITION IN (''JU0300'', ''JU0300C'', ''V50JCB1'', ''V50JCB2'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKREST",
+      "cmd": "SNDPGMMSG MSG('V50 MARK: restore: RPG III legacy system')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RDLXLST",
+      "cmd": "DLTDTAARA DTAARA(&LIB/TXLEGST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RDLXLLN",
+      "cmd": "DLTDTAARA DTAARA(&LIB/TXLEGLNG)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RESTORE",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('LEGRPG' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RESET2",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "ATTZ",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''Z-FINAL'', ''ATTR'', OBJNAME CONCAT ''='' CONCAT COALESCE(OBJATTRIBUTE, ''-'') FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME IN (''ZA0500'', ''JU0300'', ''TK0100'', ''JU0900C'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "LNGZ",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''Z-FINAL'', ''TXLEGLNG'', COALESCE(DATA_AREA_VALUE, ''-'') FROM TABLE(QSYS2.DATA_AREA_INFO(DATA_AREA_LIBRARY => ''&LIB'', DATA_AREA_NAME => ''TXLEGLNG'')) X') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CNTZM",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''Z-FINAL'', ''JUCHUM-ROWS'', CHAR(COUNT(*)) FROM &LIB/JUCHUM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CNTZD",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''Z-FINAL'', ''JUCHUD-ROWS'', CHAR(COUNT(*)) FROM &LIB/JUCHUD') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "STKZ",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''Z-FINAL'', ''ZAIKOM-SUM'', CHAR(SUM(ZASU)) FROM &LIB/ZAIKOM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "STKZR",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''Z-FINAL'', ''ZAIKOM-ROWS'', CHAR(COUNT(*)) FROM &LIB/ZAIKOM') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "SRZ",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY50MK (TAG, K, V) SELECT ''Z-FINAL'', ''V50-MEMBERS'', TABLE_NAME CONCAT ''/'' CONCAT TABLE_PARTITION FROM QSYS2.SYSPARTITIONSTAT WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_PARTITION IN (''JU0300C'', ''V50JCB1'', ''V50JCB2'')') COMMIT(*NONE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TS, TAG, K, V FROM &LIB/VFY50MK ORDER BY TS"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, SEQ, MID, TXT FROM &LIB/VFYJ50 ORDER BY TAG, SEQ"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT TAG, SEQ, MTYPE, SEV, FPGM, FINS, TPGM, TINS, MID FROM &LIB/VFYJ50X ORDER BY TAG, SEQ"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYPRBASE"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT * FROM &LIB/VFYPRFAIL"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT DATA_AREA_LIBRARY, DATA_AREA_NAME, DATA_AREA_VALUE FROM TABLE(QSYS2.DATA_AREA_INFO(DATA_AREA_LIBRARY => '&LIB', DATA_AREA_NAME => 'TXLEGLNG')) X"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT OBJNAME, OBJTYPE, OBJATTRIBUTE, OBJCREATED FROM TABLE(QSYS2.OBJECT_STATISTICS('&LIB', '*PGM')) X WHERE OBJNAME IN ('ZA0500', 'JU0300', 'TK0100', 'JU0900C', 'V50NB1', 'V50NB2', 'V50DIV') ORDER BY OBJNAME"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT 'JUCHUM' AS T, COUNT(*) AS N FROM &LIB/JUCHUM UNION ALL SELECT 'JUCHUD', COUNT(*) FROM &LIB/JUCHUD UNION ALL SELECT 'ZAIKOM', COUNT(*) FROM &LIB/ZAIKOM"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT ZASHO, ZASU FROM &LIB/ZAIKOM ORDER BY ZASHO"
+    }
+  ]
+}

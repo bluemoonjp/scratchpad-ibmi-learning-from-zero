@@ -91,7 +91,7 @@
 
 **原因**: `CRTPF`/`CRTLF`/`CRTSRCPF` は、`CRTDSPF`/`CRTPRTF`/`CRT*PGM` 系とは別のコマンド・ファミリーで、そもそも `REPLACE` パラメーター自体を持たない。この事実は、このセッションでのコード・レビュー(git 履歴 `326dabe`)で確認され、`tools/qclsrc/txmigr.clp` のコメントにも明記されている。
 
-**対処**: `CHKOBJ` + `MONMSG MSGID(CPF9801) EXEC(CRTxxx ...)` による「無ければ作る」パターンを使う。既存オブジェクトがあれば何もしない(`tools/qclsrc/txsetup.clp`・`txlegacy.clp`・`src/qclsrc/c0511s.clp` の定番パターン)。
+**対処**: `CHKOBJ` + `MONMSG MSGID(CPF9801) EXEC(CRTxxx ...)` による「無ければ作る」パターンを使う。既存オブジェクトがあれば何もしない(`tools/qclsrc/txsetup.clp`・`txlegacy.clp`・`src/qclsrc/c0511s.clp` の定番パターン)。なお、このあとに`MONMSG`をもう1つ続けても、「既に存在する」場合は救えません(続けた`MONMSG`も監視するのは`CHKOBJ`だからです)。既存の場合にも値を更新したいときは、`CHKOBJ`の後ろに、条件なしの`CHGDTAARA`などの`CHG`系コマンドを置きます。
 
 **「DLTF してから作り直す」は無条件には安全ではない**: `tools/qclsrc/txmigr.clp` は一度 `DLTF` してから `CRTLF` する方式を試みたが、直後のコミット(`67a92f3`)で取り消された。理由は、`DSPDBR OUTPUT(*OUTFILE)` が返す `WHFILE`/`WHLIB` 項目が「依存する論理ファイル」を指しているのか、それとも「参照元の物理ファイル自身(`JUCHUM`)」を指しているのかが、まだ実機で確認できていなかったため。もし後者だった場合、`DLTF` は移行したばかりの `JUCHUM` 物理ファイルとその実データを誤って消してしまう。**削除対象が何であるか確信が持てるまでは、`CHKOBJ` + 条件付き作成を優先し、`DLTF` を伴う方式は避ける。**
 

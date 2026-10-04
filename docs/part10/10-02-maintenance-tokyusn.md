@@ -402,6 +402,8 @@ C仕様書の追加は合計で10行です(F仕様書とO仕様書を合わせ�
    CPYSRCF FROMFILE(<自分のユーザー名>2/QRPGSRC) TOFILE(<自分のユーザー名>2/QRPGSRC) FROMMBR(JU0300) TOMBR(JU0300C) MBROPT(*REPLACE)
    ```
 
+   (**実機で確認(issue50-ilemsg、2026-10-05)**: この `TOMBR(JU0300C)` の形の `CPYSRCF` は、`QRPGSRC`(180行)でも `QRPGLE112`(186行)でも通り、複写先の行数が複写元と同じになりました。既に `JU0300C` があるライブラリーでも、`MBROPT(*REPLACE)` で置き換わりました。)
+
    (`CPYSRCF`の形は、01-06bの形です。この宛先での実行は、していません。未検証(2026-09-30時点)。)`WRKMBRPDM FILE(<自分のユーザー名>2/QRPGSRC)`で`JU0300C`を編集し(V3)、「説明」の「`JU0300`の編集の大きさ」の表のとおりに追加します。**追加する場所**は、次のとおりです。
 
    - F仕様書3行: `FJUCHUL1`の行の次(`FQSYSPRT`の前)。

@@ -1,0 +1,431 @@
+{
+  "batch": "issue50-force",
+  "description": "Issue #50 / #47. ONE connection in the default library (<USER>2). Derived from part04v-27set (same CLONEDIR staging of the legacy tree). PRECOND: DBVER=1. Compiles the FIXED tools/qclsrc/txlegacy.clp, then (1) TXLEGACY LANG(*RPGLE) FORCE(*YES) from a clean start (SAVOBJ to <USER>B appears in the TXLEGACY job log lines in VFYLOG); (2) applies ticket 1 to JU0900C (source before/after copied to V27SB/V27SA); (3) sets TXLEGST to N and runs FORCE(*YES) again: issue #47 expects TXLEGST back to Y, and JU0900C source back to LEN(3 0) (V27SR), the lesson claim that FORCE(*YES) undoes the ticket 1 fix. LAST: restore the RPG III legacy system (TXLEGST/TXLEGLNG deleted, LANG(*RPG), no FORCE) and TXRESET. HONEST LIMITS: single-library simulation; V3 steps not covered.",
+  "sshTimeoutMs": 600000,
+  "steps": [
+    {
+      "type": "file",
+      "localPath": "src/v27run.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "V27RUN",
+      "ensureSrcFile": {
+        "recordLength": 92
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qclsrc/txlegacy.clp",
+      "remoteSrcFile": "QCLSRC",
+      "member": "TXLEGACY"
+    },
+    {
+      "type": "file",
+      "localPath": "../../tools/qcmdsrc/txlegacy.cmd",
+      "remoteSrcFile": "QCMDSRC",
+      "member": "TXLEGACY"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgle112/tk0100.rpgle",
+      "remoteSrcFile": "V27STG",
+      "member": "Q_TK0100",
+      "ensureSrcFile": {
+        "recordLength": 112
+      }
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgle112/ju0300.rpgle",
+      "remoteSrcFile": "V27STG",
+      "member": "Q_JU0300"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgle112/za0500.rpgle",
+      "remoteSrcFile": "V27STG",
+      "member": "Q_ZA0500"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/tk0100.rpg",
+      "remoteSrcFile": "V27STG",
+      "member": "R_TK0100"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/ju0300.rpg",
+      "remoteSrcFile": "V27STG",
+      "member": "R_JU0300"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/za0500.rpg",
+      "remoteSrcFile": "V27STG",
+      "member": "R_ZA0500"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qrpgsrc/fldrefr.rpg",
+      "remoteSrcFile": "V27STG",
+      "member": "R_FLDREFR"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/fldref.pf",
+      "remoteSrcFile": "V27STG",
+      "member": "D_FLDREF"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/tk0100d.dspf",
+      "remoteSrcFile": "V27STG",
+      "member": "D_TK0100D"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qddssrc/mn0000d.dspf",
+      "remoteSrcFile": "V27STG",
+      "member": "D_MN0000D"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qclsrc/ju0900c.clp",
+      "remoteSrcFile": "V27STG",
+      "member": "C_JU0900C"
+    },
+    {
+      "type": "file",
+      "localPath": "../../src/legacy/qclsrc/mn0000c.clp",
+      "remoteSrcFile": "V27STG",
+      "member": "C_MN0000C"
+    },
+    {
+      "type": "file",
+      "localPath": "../../solutions/05-13/ju0900c-ticket1.clp",
+      "remoteSrcFile": "V27STG",
+      "member": "T1FIX"
+    },
+    {
+      "type": "sh",
+      "label": "MKTREE",
+      "cmd": "mkdir -p \"$HOME/ibmi-kyozai/src/legacy/qrpgle112\" \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc\" \"$HOME/ibmi-kyozai/src/legacy/qddssrc\" \"$HOME/ibmi-kyozai/src/legacy/qclsrc\" 2>&1\nls -d \"$HOME/ibmi-kyozai/.git\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-Q_TK0100",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/Q_TK0100.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgle112/tk0100.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-Q_JU0300",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/Q_JU0300.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgle112/ju0300.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-Q_ZA0500",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/Q_ZA0500.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgle112/za0500.rpgle') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-R_TK0100",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/R_TK0100.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/tk0100.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-R_JU0300",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/R_JU0300.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/ju0300.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-R_ZA0500",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/R_ZA0500.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/za0500.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-R_FLDREFR",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/R_FLDREFR.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qrpgsrc/fldrefr.rpg') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-D_FLDREF",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/D_FLDREF.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/fldref.pf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-D_TK0100D",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/D_TK0100D.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/tk0100d.dspf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-D_MN0000D",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/D_MN0000D.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qddssrc/mn0000d.dspf') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-C_JU0900C",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/C_JU0900C.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qclsrc/ju0900c.clp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "TOSTMF-C_MN0000C",
+      "cmd": "system \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/V27STG.FILE/C_MN0000C.MBR') TOSTMF('$HOME/ibmi-kyozai/src/legacy/qclsrc/mn0000c.clp') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1"
+    },
+    {
+      "type": "sh",
+      "label": "LSTREE",
+      "cmd": "ls -l \"$HOME/ibmi-kyozai/src/legacy/qrpgle112\" \"$HOME/ibmi-kyozai/src/legacy/qrpgsrc\" 2>&1"
+    },
+    {
+      "type": "cl",
+      "label": "CPV27RUN",
+      "cmd": "CRTCLPGM PGM(&LIB/V27RUN) SRCFILE(&LIB/QCLSRC) SRCMBR(V27RUN) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "PRECOND",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('PRECOND' '&LIB')\nMONMSG MSGID(CPF9898) EXEC(GOTO CMDLBL(DONE))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-TXLGP",
+      "cmd": "CHGPFM FILE(&LIB/QCLSRC) MBR(TXLEGACY) SRCTYPE(CLP)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "TY-TXLGC",
+      "cmd": "CHGPFM FILE(&LIB/QCMDSRC) MBR(TXLEGACY) SRCTYPE(CMD)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTXLGP",
+      "cmd": "DLTPGM PGM(&LIB/TXLEGACY)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "DLTXLGC",
+      "cmd": "DLTCMD CMD(&LIB/TXLEGACY)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A4-CLP",
+      "cmd": "CRTCLPGM PGM(&LIB/TXLEGACY) SRCFILE(&LIB/QCLSRC) SRCMBR(TXLEGACY)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A4-CMD",
+      "cmd": "CRTCMD CMD(&LIB/TXLEGACY) PGM(*LIBL/TXLEGACY) SRCFILE(&LIB/QCMDSRC) SRCMBR(TXLEGACY)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "A4-LASTCD",
+      "cmd": "CRTDTAARA DTAARA(&LIB/LASTCD) TYPE(*CHAR) LEN(6)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MK1",
+      "cmd": "SNDPGMMSG MSG('V27 MARK: step 1: ILE legacy, FORCE(*YES), clean start')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "S1-FORCE",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('LEGRPGLEF' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MK2",
+      "cmd": "SNDPGMMSG MSG('V27 MARK: step 2: ticket 1 applied to JU0900C')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-DLSB",
+      "cmd": "DLTF FILE(&LIB/V27SB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-CPSB",
+      "cmd": "CPYF FROMFILE(&LIB/QCLSRC) TOFILE(&LIB/V27SB) FROMMBR(JU0900C) TOMBR(JU0900C) MBROPT(*REPLACE) CRTFILE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-FIX",
+      "cmd": "CPYSRCF FROMFILE(&LIB/V27STG) TOFILE(&LIB/QCLSRC) FROMMBR(T1FIX) TOMBR(JU0900C) MBROPT(*REPLACE)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-CLP",
+      "cmd": "CRTCLPGM PGM(&LIB/JU0900C) SRCFILE(&LIB/QCLSRC) SRCMBR(JU0900C) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-DLSA",
+      "cmd": "DLTF FILE(&LIB/V27SA)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-CPSA",
+      "cmd": "CPYF FROMFILE(&LIB/QCLSRC) TOFILE(&LIB/V27SA) FROMMBR(JU0900C) TOMBR(JU0900C) MBROPT(*REPLACE) CRTFILE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MK3",
+      "cmd": "SNDPGMMSG MSG('V27 MARK: step 3: TXLEGST forced to N, then FORCE(*YES) again (issue 47 check)')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "S3-SETN",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('SETN' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "S3-SHOW",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('SHOWST' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "S3-FORCE",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('LEGRPGLEF' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-DLSR",
+      "cmd": "DLTF FILE(&LIB/V27SR)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "B-CPSR",
+      "cmd": "CPYF FROMFILE(&LIB/QCLSRC) TOFILE(&LIB/V27SR) FROMMBR(JU0900C) TOMBR(JU0900C) MBROPT(*REPLACE) CRTFILE(*YES)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "MKRESTORE",
+      "cmd": "SNDPGMMSG MSG('V27 MARK: restore: RPG III legacy system')",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RDLXLST",
+      "cmd": "DLTDTAARA DTAARA(&LIB/TXLEGST)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RDLXLLN",
+      "cmd": "DLTDTAARA DTAARA(&LIB/TXLEGLNG)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RESTORE",
+      "cmd": "CALL PGM(&LIB/V27RUN) PARM('LEGRPG' '&LIB')",
+      "monmsg": [
+        "CPF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RESET2",
+      "cmd": "&LIB/TXRESET LIB(&LIB)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT SRCSEQ, SRCDTA FROM &LIB/V27SB WHERE SRCDTA LIKE '%MINQTY%' OR SRCDTA LIKE '%LEN(3 0)%'"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT SRCSEQ, SRCDTA FROM &LIB/V27SA WHERE SRCDTA LIKE '%MINQTY%' OR SRCDTA LIKE '%LEN(3 0)%'"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT SRCSEQ, SRCDTA FROM &LIB/V27SR WHERE SRCDTA LIKE '%MINQTY%' OR SRCDTA LIKE '%LEN(3 0)%'"
+    }
+  ]
+}
