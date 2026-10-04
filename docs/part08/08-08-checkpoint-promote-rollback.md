@@ -215,6 +215,8 @@ CRTDUPOBJ OBJ(ZAISRVBK) FROMLIB(<自分のユーザー名>B) OBJTYPE(*SRVPGM)
 
    このルートでは 05-12 を行っていません。`<自分のユーザー名>2` は、[04-27](../part04v/04-27-route-preparation.md) の C で作ります(`TXSETUP LIB(<自分のユーザー名>2)`、`LASTCD` の作成、`TXLEGACY LIB(<自分のユーザー名>2) LANG(*RPGLE)`)。「not initialized」と出たときは、05-12 の手順1〜3ではなく、04-27 の C を行ってください。
 
+   04-27 の C のうち `TXLEGACY LIB(<自分のユーザー名>2) LANG(*RPGLE)` は、実機で確認済みです(part04v-27set・part05-lglang、2026-10-04)。初回のロードで `TK0100`・`JU0300`・`ZA0500` が `CRTBNDRPG` で 00 highest severity、`TXLEGST` が `Y`、`TXLEGLNG` が `*RPGLE` になり、`LANG` を省略して実行し直すと「already loaded」で何も変わりません。04-27 の A6 の `TXCHECK LESSON('04-27')` は、10件すべて PASS でした。`TXSETUP` は、この検証では実行していません(未検証(2026-10-04時点))。
+
    </details>
 2. `<自分のユーザー名>2`に`JUCSRV`・`ZAISRV`がまだ無いことを確認します(この教材全体で初めての昇格のはずです)。
 
@@ -250,7 +252,7 @@ CRTDUPOBJ OBJ(ZAISRVBK) FROMLIB(<自分のユーザー名>B) OBJTYPE(*SRVPGM)
 
    <details><summary>RPG III を通らないルートの人へ(手順3)</summary>
 
-   `<自分のユーザー名>1/QDDSSRC` の `TXCKM` メンバーは、05-13 ではなく、[04-27](../part04v/04-27-route-preparation.md) の A1 で取り込み済みのはずです。04-27 の C は `<自分のユーザー名>2` に `TXCKM` を作りません(`TXSETUP` も作りません)。したがって、ここでの `DSPOBJD` は「見つからない」になり、`CRTPF` で初めて作るのが、このルートの通常の流れのはずです(**未検証(2026-10-01時点)**)。
+   `<自分のユーザー名>1/QDDSSRC` の `TXCKM` メンバーは、05-13 ではなく、[04-27](../part04v/04-27-route-preparation.md) の A1 で取り込み済みのはずです。04-27 の C は `<自分のユーザー名>2` に `TXCKM` を作りません(`TXSETUP` も作りません)。したがって、ここでの `DSPOBJD` は「見つからない」になり、`CRTPF` で初めて作るのが、このルートの通常の流れのはずです(**未検証(2026-10-04時点)**。`<自分のユーザー名>2` に `TXCKM` が無い状態から、04-27 の C → この手順を通した確認は、バッチではしていません)。
 
    </details>
 

@@ -192,27 +192,46 @@ RUNTEST: PASS=0000000038 FAIL=0000000000
 
 **困ること: 本文は、新旧を `OBJATTRIBUTE` で見分けています。** 旧が `RPG`、新が `RPGLE` だからです(手順1・6・9・9b と片付け)。ルートでは、旧も新も `RPGLE` なので、この印では見分けられません。`OBJATTRIBUTE` の問い合わせは、ルートでは「RPG III のプログラムが残っていない(すべて `RPGLE`)」ことの確認として使います([04-27](../part04v/04-27-route-preparation.md) の A5)。
 
-**ルート版の印(候補)。どれも未検証(2026-10-01時点)です。** 使えるかどうか、列の名前が合っているかは、検証バッチ `part10-03-rpgle` で決めます。決まるまでは、問い合わせの結果を、自分の目で読んでください。
+**ルート版の印: `BOUND_SRVPGM_INFO` の `ZAISRV` の行を使います。** 実機で確認(part10-03-rpgle、2026-10-04)。`OBJECT_STATISTICS` の `OBJATTRIBUTE` は、新旧とも `RPGLE` で、見分けに使えません。`OBJTEXT` も、見分けの印には使いません(下の表のとおり、新でテキストを付けなかっただけの差とみられます。付ければ消えるかは確かめていません(未検証(2026-10-04時点)))。
 
-1. `QSYS2.BOUND_MODULE_INFO`(プログラムに束縛されたモジュールの情報)。旧は `QRPGLE112` のメンバーから作ったプログラム、新は手順6で作業用ディレクトリーの `SRCSTMF` から作ったプログラムなので、ソースの出どころを示す列(ソース・ファイルやメンバー、ソース・ストリーム・ファイルの名前に当たるもの)や、モジュールの属性が違うかもしれません。
-2. `QSYS2.BOUND_SRVPGM_INFO`(プログラムが束縛しているサービス・プログラムの情報)。新 `ZA0500` は `ZAISRV` を束縛します(手順6。ソースの `ctl-opt bnddir` による)。旧は、`DFTACTGRP(*YES)` の `CRTBNDRPG` で作るので、サービス・プログラムを束縛しない作りのはずです。
-3. 補助: 手順3・7の `*TEST` の12行は、新旧で一致する設計なので、見分けには使えません。`TSTZA0500` の `B`・`C` のケースも、旧で通りうる(手順9b)ので、決め手になりません。
+実機で、旧(`QRPGLE112` のメンバーから `CRTBNDRPG` で作ったもの)・新(手順6の `CRTSQLRPGI`。`ZAISRV` を束縛)・切り戻し後の3つを比べました。
+
+| 見る場所 | 旧 | 新 | 切り戻し後 |
+|---|---|---|---|
+| `OBJECT_STATISTICS` の `OBJATTRIBUTE` | `RPGLE` | `RPGLE` | `RPGLE` |
+| 同じく `OBJTEXT` | `Stock allocation` | 空(バッチの `CRTSQLRPGI` に `TEXT` を付けなかったため) | `Stock allocation` |
+| `BOUND_SRVPGM_INFO` の行数 | 4(いずれも `QSYS` の `QRNXIE`・`QRNXIO`・`QRNXUTIL`・`QLEAWI`) | **5(上の4つ + `ZAISRV`。`BOUND_SERVICE_PROGRAM_LIBRARY` は `*LIBL`)** | 4 |
+| `BOUND_MODULE_INFO` の行数 | 1(`ZA0500`。`BOUND_MODULE_LIBRARY` は `QTEMP`、`MODULE_ATTRIBUTE` は `RPGLE`) | 1(同じ値) | 1 |
+| 同じく `SOURCE_FILE`・`SOURCE_FILE_MEMBER` | `QRPGLE112`・`ZA0500` | `QRPGLESRC`・`ZA0500`(バッチはソース・メンバーから作った) | `QRPGLE112`・`ZA0500` |
+| 同じく `SQL_STATEMENT_COUNT` | 0 | 10 | 0 |
+| 同じく `NUMBER_PROCEDURES` | 4 | 9 | 4 |
+| `PROGRAM_INFO` の `ACTIVATION_GROUP` | `*DFTACTGRP` | `*NEW` | `*DFTACTGRP` |
+| 同じく `SERVICE_PROGRAMS`・`MODULES` | 4・1 | 5・1 | 4・1 |
+
+`BOUND_MODULE_INFO` の `MODULE_ATTRIBUTE` は、新旧とも `RPGLE` で、印になりません。`BOUND_SRVPGM_INFO`・`BOUND_MODULE_INFO`・`PROGRAM_INFO` の `WHERE` に使う列は、実機で `PROGRAM_LIBRARY` と `PROGRAM_NAME` で正しいことを確認しました(バッチはどれも `RUNSQL` の `INSERT ... SELECT * ... WHERE PROGRAM_LIBRARY = ... AND PROGRAM_NAME = 'ZA0500'` で取り込みました)。**切り戻し後は、3つの見る場所とも旧と同じ値に戻りました。**
 
 ```sh
-db2 "SELECT * FROM QSYS2.BOUND_MODULE_INFO WHERE PROGRAM_LIBRARY = '<自分のユーザー名>2' AND PROGRAM_NAME = 'ZA0500' FETCH FIRST 5 ROWS ONLY"
-db2 "SELECT * FROM QSYS2.BOUND_SRVPGM_INFO WHERE PROGRAM_LIBRARY = '<自分のユーザー名>2' AND PROGRAM_NAME = 'ZA0500' FETCH FIRST 5 ROWS ONLY"
+db2 "SELECT BOUND_SERVICE_PROGRAM_LIBRARY, BOUND_SERVICE_PROGRAM FROM QSYS2.BOUND_SRVPGM_INFO WHERE PROGRAM_LIBRARY = '<自分のユーザー名>2' AND PROGRAM_NAME = 'ZA0500' AND BOUND_SERVICE_PROGRAM = 'ZAISRV'"
 ```
 
-(`PROGRAM_LIBRARY`・`PROGRAM_NAME` という列名は、この教材では確かめていません。違うときは、`SELECT *` の結果の見出しを見て、書き換えてください。ライブラリー名は大文字で書きます。)
+期待される結果: 新は `*LIBL`・`ZAISRV` の1行、旧と切り戻し後は `0 RECORD(S) SELECTED`。補助に、`SQL_STATEMENT_COUNT`(`BOUND_MODULE_INFO`。0 なら埋め込みSQLなし、新は 10)も使えます。(ライブラリー名は大文字で書きます。**この `db2` の形をSSHで打った実行は確認していません。実機で確認したのは、同じ `WHERE` の問い合わせをバッチの SQL として実行した結果です。未検証(2026-10-04時点)**。**`makei` で作った新 `ZA0500`、`SRCSTMF` の形で作った新 `ZA0500` で、この印が同じに出るか、`SOURCE_STREAM_FILE_PATH` に何が入るかは、確かめていません(バッチはソース・メンバーから `CRTSQLRPGI` で作りました)。未検証(2026-10-04時点)**。`ZAISRV` を束縛するのは、ソースの `ctl-opt bnddir` による設計なので、`makei` の形でも出るはずです。)
+
+補助にならないもの: 手順3・7の `*TEST` の12行は新旧で一致する設計で、旧の ILE 版も RPG III 版と同じ12行でした(下のとおり)。`TSTZA0500` の `B`・`C` のケースも、旧で通りうる(手順9b)ので、決め手になりません。
 
 **手順ごとの読み替え**:
 
-- 手順1: `ZA0500` の `OBJATTRIBUTE` は `RPGLE` のはずです(旧)。上の印で、この時点の `ZA0500` の束縛の状態を控えておきます(あとの比較の基準になります)。
-- 手順6・9b: 新に差し替わったことは、`OBJATTRIBUTE` ではなく、上の印の変化で確かめます。`RNS9304` と最高重大度 `00` は、そのまま使えます。
-- 手順9(切り戻し)と片付け1・8: `OBJATTRIBUTE` は `RPGLE` のまま変わりません。**旧に戻ったことは、上の印が手順1のときと同じに戻ったことと、12行の一致で確かめます。**
+- 手順1: `ZA0500` の `OBJATTRIBUTE` は `RPGLE` です(旧。実機で確認(part10-03-rpgle、2026-10-04))。上の印で、この時点の `ZA0500` に `ZAISRV` の行が**無い**ことを控えておきます(あとの比較の基準になります)。
+- 手順6・9b: 新に差し替わったことは、`OBJATTRIBUTE` ではなく、上の印(`BOUND_SRVPGM_INFO` に `ZAISRV` の行が出る)で確かめます。`RNS9304` と最高重大度 `00` は、そのまま使えます(バッチでも `Program ZA0500 placed in library ... 00 highest severity` が出ました)。
+- 手順9(切り戻し)と片付け1・8: `OBJATTRIBUTE` は `RPGLE` のまま変わりません。**旧に戻ったことは、`ZAISRV` の行が消えたことと、12行の一致で確かめます。** バッチでは、切り戻し後に `ZAISRV` の行が消え(4行)、12行も旧と同じでした。
 - 演習(a)の旧 `ZA0500` の規則(05-03 の読み方)は、ルートでは [04-25](../part04v/04-25-cycle-and-control-levels.md) で `za0500.rpgle` を読んで確かめます。
 
-旧 RPG IV 版 `ZA0500` の `*TEST` の出力が、RPG III 版と同じ12行になることは、検証バッチ `part05-lggold` で比べる計画です。結果が入るまでは、未検証(2026-10-01時点)です。
+旧 RPG IV 版 `ZA0500` の `*TEST` の出力は、RPG III 版と同じ12行(`OK` 10・`SHORT` 2。`SHORT` は `J00002`・`J00006`)でした。実機で確認(part05-lggold、2026-10-04)。
+
+**旧 ILE 版 `ZA0500` の確認(実機で確認(part10-03-rpgle、2026-10-04))**:
+
+- `*TEST` の12行は、このレッスンの12行(ゴールデン・マスター)と、空白を除いて一致しました。新(手順6)も、切り戻し後も同じです。
+- `*LIVE` の在庫は、旧・新とも `P00001`〜`P00006` が 39・3・235・48・9・20で、RPG III 版の実測と同じでした。旧と新の `EXCEPT` の差は0行です。`*LIVE` の12行は、旧と新で同一で、`J00007` が `SHORT` になります(`*TEST` では `OK`)。
+- **`CPF4123`**(`Open options ignored for shared open of member JUCHUD.`)は、旧 ILE 版でも出ました。**ジョブ・ログに1回**(`*TEST` のジョブ、`*LIVE` のジョブ、切り戻し後の `*TEST` のジョブのそれぞれ。メッセージの宛先は `ZA0500` で、送り元はシステムの `QDBSOPEN`。診断・重大度40)。新では、`*TEST`・`*LIVE` のどちらでも出ませんでした。本文(RPG III 版)の「2回」とは回数が違いますが、「旧で出て、新で出ない」ことは同じです。なぜ旧だけで出るかは、確かめていません(未検証(2026-10-04時点))。
 
 </details>
 
@@ -238,7 +257,7 @@ db2 "SELECT * FROM QSYS2.BOUND_SRVPGM_INFO WHERE PROGRAM_LIBRARY = '<自分の�
 
    0行なら、`TESTRES`はこのレッスンで初めてできます。1行出たら、以前から使っている表です(08-04など)。この問い合わせも、SSHでは実行していません(未検証(2026-09-30時点))。
 
-   期待される結果: 1つ目は`8`・`12`・`6`。2つ目は、`ZA0500`の`OBJATTRIBUTE`が`RPG`(旧プログラムの印)。(RPG III を通らないルートでは、旧も`RPGLE`のはずです。上の「RPG III を通らないルートの人へ」の囲みを見てください。未検証(2026-10-01時点))`TXRESET`のあとの件数(8・12・6)と、初期の在庫(45・3・250・60・12・22)は、バッチで確認しました(V2)。`ZA0500`の`RPG`も、バッチの`OBJECT_STATISTICS`で確認した値です。ここに書いた`db2`の形の問い合わせそのものは、SSHでは実行していません(未検証(2026-09-30時点))。
+   期待される結果: 1つ目は`8`・`12`・`6`。2つ目は、`ZA0500`の`OBJATTRIBUTE`が`RPG`(旧プログラムの印)。(RPG III を通らないルートでは、旧も`RPGLE`です。実機で確認(part10-03-rpgle、2026-10-04)。新旧の見分けは、上の「RPG III を通らないルートの人へ」の囲みの印を使います)`TXRESET`のあとの件数(8・12・6)と、初期の在庫(45・3・250・60・12・22)は、バッチで確認しました(V2)。`ZA0500`の`RPG`も、バッチの`OBJECT_STATISTICS`で確認した値です。ここに書いた`db2`の形の問い合わせそのものは、SSHでは実行していません(未検証(2026-09-30時点))。
 
 2. **(SSH) `JU0900C`が渡す`MINQTY`の型を、読んで確かめます。** 新しい`ZA0500`の引数は、これに合わせます。
 
@@ -305,7 +324,7 @@ db2 "SELECT * FROM QSYS2.BOUND_SRVPGM_INFO WHERE PROGRAM_LIBRARY = '<自分の�
    db2 "SELECT OBJNAME, OBJTYPE, OBJATTRIBUTE FROM TABLE(QSYS2.OBJECT_STATISTICS('<自分のユーザー名>2', '*PGM')) X WHERE OBJNAME = 'ZA0500'"
    ```
 
-   期待される結果: `OBJATTRIBUTE`が`RPGLE`(**`SQLRPGLE`ではありません**。埋め込みSQLの`*PGM`も`RPGLE`と出ました。V2)。旧プログラムの`RPG`から変わったことが、差し替えの目印です。(RPG III を通らないルートでは、この印は使えません。上の「RPG III を通らないルートの人へ」の囲みを見てください。未検証(2026-10-01時点))
+   期待される結果: `OBJATTRIBUTE`が`RPGLE`(**`SQLRPGLE`ではありません**。埋め込みSQLの`*PGM`も`RPGLE`と出ました。V2)。旧プログラムの`RPG`から変わったことが、差し替えの目印です。(RPG III を通らないルートでは、この印は使えません。実機で確認(part10-03-rpgle、2026-10-04)。上の「RPG III を通らないルートの人へ」の囲みの `ZAISRV` の行で確かめます)
 
 7. **(5250) `*TEST`で比べます(特性検定)。**
 
@@ -370,7 +389,7 @@ db2 "SELECT * FROM QSYS2.BOUND_SRVPGM_INFO WHERE PROGRAM_LIBRARY = '<自分の�
    SBMJOB CMD(CALL PGM(<自分のユーザー名>2/JU0900C) PARM('*TEST' '<自分のユーザー名>2')) JOB(T1003E) JOBQ(QGPL/QBATCH) INQMSGRPY(*DFT) LOG(4 00 *SECLVL)
    ```
 
-   期待される結果: `OBJECT_STATISTICS`の`OBJATTRIBUTE`が`RPG`に戻り(RPG III を通らないルートでは、`RPGLE` のままです。旧に戻ったことは、上の囲みの印で確かめます。未検証(2026-10-01時点))、12行が手順3と同じ(V2。バッチが、同じ形の切り戻しのあとで確認しました)。**切り戻しは、`DLTPGM`のあとの`CRTDUPOBJ`です。`CRTDUPOBJ`には`REPLACE`がありません。**
+   期待される結果: `OBJECT_STATISTICS`の`OBJATTRIBUTE`が`RPG`に戻り(RPG III を通らないルートでは、`RPGLE` のままです。実機で確認(part10-03-rpgle、2026-10-04)。旧に戻ったことは、上の囲みの印(`ZAISRV` の行が消える)で確かめます)、12行が手順3と同じ(V2。バッチが、同じ形の切り戻しのあとで確認しました)。**切り戻しは、`DLTPGM`のあとの`CRTDUPOBJ`です。`CRTDUPOBJ`には`REPLACE`がありません。**
 
    このあと、演習(b)を行い、続けて、手順9bで新`ZA0500`を戻します。
 
@@ -381,7 +400,7 @@ db2 "SELECT * FROM QSYS2.BOUND_SRVPGM_INFO WHERE PROGRAM_LIBRARY = '<自分の�
    CRTSQLRPGI OBJ(<自分のユーザー名>2/ZA0500) SRCSTMF('/home/<自分のユーザー名>/za-work/za0500s.sqlrpgle') OBJTYPE(*PGM) COMMIT(*NONE) CVTCCSID(*JOB) REPLACE(*YES)
    ```
 
-   (SSH)手順6と同じ`OBJECT_STATISTICS`の問い合わせで、`OBJATTRIBUTE`が`RPGLE`であることを確かめます。`RPG`のままなら、差し替えが済んでいません。(RPG III を通らないルートでは、この確認は使えません。上の「RPG III を通らないルートの人へ」の囲みを見てください。未検証(2026-10-01時点))
+   (SSH)手順6と同じ`OBJECT_STATISTICS`の問い合わせで、`OBJATTRIBUTE`が`RPGLE`であることを確かめます。`RPG`のままなら、差し替えが済んでいません。(RPG III を通らないルートでは、この確認は使えません。実機で確認(part10-03-rpgle、2026-10-04)。上の囲みの `BOUND_SRVPGM_INFO` に `ZAISRV` の行が出ることで確かめます)
 
 10. **(5250と SSH) `TSTZA0500`・`RUNTEST`を用意します。** 演習(b)と手順9bのあと、テストとラッパーを`<自分のユーザー名>2`に作ります。まず`TSTZA0500`です。
 
@@ -546,7 +565,7 @@ db2 "SELECT * FROM QSYS2.BOUND_SRVPGM_INFO WHERE PROGRAM_LIBRARY = '<自分の�
 - **`*TEST`の12行なのに、`J00007`の`P00005`が`SHORT`になっている。** 直前の`*LIVE`の実行の在庫が残っています(`*TEST`なら`OK`のはず)。`TXRESET`で戻します。
 - **`*LIVE`の12行で、`J00007`の`P00005`が`OK`のまま。** 新`ZA0500`が、`reserve()`を呼んでいない、または`RMODE`の比較が合っていません(`*LIVE`は10桁の`CHAR`で、`'*LIVE'`と比べます)。`ZAIKOM`の`P00005`が9になっているかを、`db2`で見ます。
 - **印字が全く出ない。または`RPG0907`。** `MINQTY`の型の食い違いを疑います(手順2)。(RPG III を通らないルートでは、ILE の実行時メッセージは `RNQ`・`RNX` などで始まるはずで、`RPG0907` とは限りません。[04-24](../part04v/04-24-call-parm-debugging.md)。未検証(2026-10-01時点))
-- **`OBJATTRIBUTE`が`RPG`のまま。** 差し替えが済んでいません。(RPG III を通らないルートでは、旧も`RPGLE`なので、この症状は出ません。差し替えは、上の囲みの印で確かめます。未検証(2026-10-01時点))`CRTSQLRPGI`のジョブ・ログの`RNS9304`と、`DLTPGM`の順を確かめます。
+- **`OBJATTRIBUTE`が`RPG`のまま。** 差し替えが済んでいません。(RPG III を通らないルートでは、旧も`RPGLE`なので、この症状は出ません。実機で確認(part10-03-rpgle、2026-10-04)。差し替えは、上の囲みの印(`ZAISRV` の行)で確かめます)`CRTSQLRPGI`のジョブ・ログの`RNS9304`と、`DLTPGM`の順を確かめます。
 - **`CRTSQLRPGI`が`CPD0043`。** `TGTCCSID`または`BNDDIR`を書いています。消します。
 - **`makei`で`ACTGRP`・`DFTACTGRP`まわりの失敗。** `$HOME/mk10/z/za0500s.sqlrpgle`に、`dftactgrp(*no) actgrp(*new)`が残っています。`makei`用のコピー側だけで消します(手順12。未検証)。
 - **`CRTSQLRPGI`が失敗した。** 手順6の「コンパイルが失敗したとき」のとおり、`DSPJOBLOG`の最後の`SQL`・`RNF`・`RNS`のメッセージと、`WRKSPLF`のコンパイル・リストを読み、最初のエラーだけを直して再実行します。
@@ -845,8 +864,12 @@ LC_ALL=C grep -n '[^ -~]' za0500s.sqlrpgle
   - `RUNTEST`は、バッチでは`CRTCLPGM`で作りました(メンバーはハーネスが直接入れました)。手順10の`ADDPFM`・`CPYFRMSTMF`でメンバーを作る形と、`TXLOAD`で取り込む形は、実行していません。
   - `iproj.json`は、V2で確認したのは`objlib`・`curlib`・`postUsrlibl`の3項目の最小の形です。手順12の`sed`、`SRCSTMF`の形に`REPLACE(*YES)`を付けた実行も、通していません。`RUNTEST`には、ライブラリー名をそのまま渡しました(バッチも同じ)。
   - `E1`(ロックを漏らさないことの見張り)は、証明ではありません(`ACTGRP(*NEW)`)。ロックを漏らさない、という主張の根拠は、作りと、`JU0900C`の2回目の呼び出しが正常だったことです。
-- **RPG III を通らないルート(2026-10-01追記)**: この本文の実測(`OBJATTRIBUTE` の `RPG`・`RPGLE`、12行、`*LIVE` の在庫、`RUNTEST` の38件)は、すべて RPG III 版の旧 `ZA0500` に対するものです。旧が固定形式 RPG IV 版のとき、新旧を見分ける印(`BOUND_MODULE_INFO`・`BOUND_SRVPGM_INFO` の列と値)、12行・在庫・`CPF4123` の一致は、検証バッチ `part10-03-rpgle` で確かめる計画です。**未検証(2026-10-01時点)。**
-- **未検証(2026-09-30時点)**:
+- **RPG III を通らないルート(2026-10-01追記)**: この本文の実測(`OBJATTRIBUTE` の `RPG`・`RPGLE`、12行、`*LIVE` の在庫、`RUNTEST` の38件)は、すべて RPG III 版の旧 `ZA0500` に対するものです。旧が固定形式 RPG IV 版のときの新旧を見分ける印、12行・在庫・`CPF4123` は、検証バッチ `part10-03-rpgle` で確かめました(下の追記)。
+- **RPG III を通らないルートの結果(2026-10-04追記。バッチ`part10-03-rpgle`、2026-10-04、PUB400、V7R5M0)**: `<自分のユーザー名>2` で、`TXLEGACY` を `LANG(*RPGLE)` で読み込み(旧 `ZA0500` が `OBJATTRIBUTE` = `RPGLE`)、チケット1の修正後に、旧・新(`CRTSQLRPGI`、`ZAISRV` を束縛)・切り戻し後の順に、`*TEST` と `*LIVE` を`SBMJOB`で流しました(V2。5250の画面からではありません)。最後に `LANG(*RPG)` で RPG III 版へ戻し、`ZA0500`・`JU0300`・`TK0100` が `RPG`、行数が 8・12・6、在庫の合計が392に戻ったことを確かめました。
+  - **印**: `BOUND_SRVPGM_INFO` に `ZAISRV` の行があるのは新だけ(旧・切り戻し後は `QSYS` の4行)。ほかに `SQL_STATEMENT_COUNT`(0 と 10)、`ACTIVATION_GROUP`(`*DFTACTGRP` と `*NEW`)、`SOURCE_FILE`(`QRPGLE112` と `QRPGLESRC`)も違います。`OBJATTRIBUTE`・`MODULE_ATTRIBUTE`・`PROGRAM_ATTRIBUTE` は、新旧とも `RPGLE` です。`OBJTEXT` は、旧が `Stock allocation`、新が空(`TEXT` を付けなかったため)でしたが、印にはしません。列名 `PROGRAM_LIBRARY`・`PROGRAM_NAME` は正しいことを確認しました。
+  - **出力**: 旧 ILE 版の `*TEST` の12行は、RPG III 版のゴールデン・マスターと空白を除いて一致。`*LIVE` の在庫は 39・3・235・48・9・20(旧・新で `EXCEPT` が0行)。`CPF4123` は、旧(切り戻し後を含む)で各ジョブに1回出て、新では出ませんでした(RPG III 版は2回)。
+  - **未確認**: `db2` をSSHから打った形、`makei`・`SRCSTMF` で作った新 `ZA0500` での印の値、旧だけ `CPF4123` が出る理由。バッチは `TXLEGACY` の控え(`LG261004`)の上書き確認に取り消しで答えており(`CPA4067`)、控えは更新していません。
+- **未検証(2026-09-30時点。ルートの項目は上の追記のとおり 2026-10-04時点)**:
   - 骨組み(`za0500s-skeleton.sqlrpgle`)から学習者が書いた`ZA0500`の動き(実機で動かしたのは、模範解答です)。骨組みがそのままコンパイルできるかも、確認していません。
   - `reserve()`が`*off`を返す経路(別のジョブとの競合、`MINQTY`が負の場合)。`DBVER`が2の環境での動き。
   - SQLのカーソルが`OVRDBF`・共有の開きを尊重するか、`CPF4123`が新の実行で出なかった原因。
