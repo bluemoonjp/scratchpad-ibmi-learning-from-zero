@@ -50,8 +50,11 @@
              /* job forever instead of failing).                          */
              MONMSG     MSGID(CPF0000) EXEC(GOTO CMDLBL(FAILSAFE))
 
-/* --- LANG: a caller that passes only three parameters (an older     */
-/* *CMD) gets MCH3601 on the first reference to &LANG; treat as *SAME. --- */
+/* --- LANG: a caller that passes only three parameters gets MCH3601 on  */
+/* the first reference to &LANG; treat as *SAME. (On hardware, an older   */
+/* 3-parameter *CMD or a CALL with 3 parameters is already rejected by    */
+/* CALL with CPD0172 before this runs: recreate the *CMD together with    */
+/* the *PGM. This MONMSG is only a second line of defence.) ---           */
              CHGVAR     VAR(&LANGU) VALUE(&LANG)
              MONMSG     MSGID(MCH3601) EXEC(CHGVAR VAR(&LANGU) +
                           VALUE('*SAME'))
