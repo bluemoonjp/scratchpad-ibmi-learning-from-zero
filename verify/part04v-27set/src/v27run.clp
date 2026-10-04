@@ -36,10 +36,7 @@
              DCL        VAR(&LANGV) TYPE(*CHAR) LEN(7)
              DCL        VAR(&FLAG) TYPE(*CHAR) LEN(1)
 
-             MONMSG     MSGID(CPF0000) EXEC(DO)
-                SNDPGMMSG  MSG('V27RUN: unexpected error, see job log.')
-                RETURN
-             ENDDO
+             MONMSG     MSGID(CPF0000) EXEC(GOTO CMDLBL(UNEXP))
 
              IF         COND(&WHAT *EQ 'PRECOND') THEN(GOTO +
                           CMDLBL(PRECOND))
@@ -120,4 +117,6 @@ PRECOND:     RTVDTAARA  DTAARA(&LIB/TXSTATE) RTNVAR(&DBVER)
                           system is not RPG III') TOPGMQ(*PRV) +
                           MSGTYPE(*ESCAPE))
              RETURN
+ UNEXP:       SNDPGMMSG  MSG('V27RUN: unexpected error, see job log.')
+              RETURN
              ENDPGM
