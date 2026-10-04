@@ -214,8 +214,7 @@ DETAIL:      RUNSQL     SQL('INSERT INTO QTEMP/JUBADD VALUES (''J00000'', +
              MONMSG     MSGID(CPF9801) EXEC(CRTDTAARA DTAARA(&LIB/TXCAPFL) +
                           TYPE(*CHAR) LEN(1) VALUE('Y') TEXT('Capstone +
                           incident planted flag'))
-             MONMSG     MSGID(CPF0000) EXEC(CHGDTAARA DTAARA(&LIB/TXCAPFL) +
-                          VALUE('Y'))
+             CHGDTAARA  DTAARA(&LIB/TXCAPFL) VALUE('Y')
 
 /* --- Step f: report. No key or byte names on purpose. --- */
              CHGVAR     VAR(&MSG) VALUE('TXCAPST: incident condition +
