@@ -3370,3 +3370,22 @@ RPG IV 版(`src/legacy/qrpgle112`)を `CRTBNDRPG` で作り直して同じ手順
     → `CEE9901`「MCH1202 unmonitored by ZA0500 at statement 0000000091」→ JU0900C の
     `MONMSG CPF0000` が拾い「JU0900C: ZA0500 ended abnormally」。ハングしなかった。
 - 未検証: TK0100 の画面動作(EXFMT は対話でのみ確認できる)。
+
+## Issue #35 TXLEGACY の LANG の動き: `part05-lglang`(確認日 2026-10-04)
+
+`<USER>2` で `TXLEGACY` を `LANG` ありの版に差し替えて、順に実行した。
+
+- `LANG(*RPGLE)` の初回ロード: `TK0100`・`JU0300`・`ZA0500` が `OBJATTRIBUTE` = `RPGLE`、
+  `TXLEGLNG` = `*RPGLE`、`QRPGLE112` が作られ、`TXLEGACY: done.` が出た。
+- `LANG` と `FORCE` を省略(`*SAME`): 「already loaded」で何も変えない。`TXLEGLNG` は `*RPGLE` のまま。
+- `LANG(*RPG) FORCE(*NO)`(食い違い): 「already loaded」に続き、
+  「note - the loaded language is *RPGLE , not *RPG」の注意が出た。何も変えない。
+- `FORCE(*YES)` で `LANG` 省略: `*RPGLE` が保たれた。
+- `LANG(*RPG) FORCE(*YES)`: RPG III 版(`OBJATTRIBUTE` = `RPG`)に戻り、`TXLEGLNG` = `*RPG`。
+  続けて `LANG` 省略の `FORCE(*YES)` で `*RPG` が保たれた。
+- **旧3パラメーターの呼び出しは、`MCH3601` の経路に届かない**: 3パラメーターで `CALL PGM(TXLEGACY)` すると、
+  `CPD0172`「Parameters passed on CALL do not match those required」と `CPF0001`
+  「Error found on CALL command」で CALL 自体が拒否される。旧 `*CMD`(3パラメーター)が残っていて
+  新しい `*PGM` だけが入っている場合も同じ。`*PGM` と `*CMD` は必ず一緒に作り直すこと。
+- 副産物: 2回目以降の `FORCE(*YES)` で `SAVOBJ` が「7 objects saved, 1 not saved」(`FLDREFR` が
+  `*RPGLE` のとき存在しない)になるが、`MONMSG` で捕捉され、進行に影響しない。
