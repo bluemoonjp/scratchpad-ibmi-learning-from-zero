@@ -142,7 +142,7 @@ cd $HOME/ibmi-kyozai && git sparse-checkout add solutions && git pull
 - 5250: `TXCAPST`・`TXLEGACY`・`TXRESET`・`TXCHECK`・`SBMJOB`・`DSPJOBLOG`・`CHGPF`・`CRTDUPOBJ`・`CRTSQLRPGI`・`RUNTEST`などのCLコマンド。`SBMJOB`には、必ず`INQMSGRPY(*DFT)`と`LOG(4 00 *SECLVL)`を付け([スタイル・ガイド](../style-guide.md)のPUB400での作法)、さらに`JOBQ(QGPL/QBATCH)`を明示します(第9部で、既定のジョブ・キューではワーカーが動かなかったため)。`JU0900C`を投入するときは、前述の`PARM('*TEST' <自分のユーザー名>2)`を付けます。
 - SSH: `git pull`、`RUNSQLSTM SRCSTMF`によるSQLスクリプトの実行、makeiのビルド(SSH接続後、`qsh`かbashの中)。`RUNSQLSTM`は、`NAMING(*SQL)`と`DFTRDBCOL`を付けて使います(実行の形は09-02・09-04)。認証に2回失敗したらやめてください。
 - PC側のエディター・git・リント: 設計書やREADMEを書く。rpglintは、学習者の手元で動かすもので、この教材の検証では実行していません(V3)。
-- 新しい道具: `TXCAPST`(10-01。障害を仕込む教材の道具で、`tools/`にあります。**10-01の障害報告書を書き終えるまで、この道具のソースは開かないでください**。仕込みの中身が書いてあります)、`TXLOAD`(`solutions/`の見本のソースを取り込むツール。10-01・10-03に、作ってある場合だけの別の形として載せています。この教材のどのレッスンも作る手順を書いておらず、実機では実行していません。V3)、`RUNTEST`(10-03。テストを1コマンドで回すCLで、`solutions/10-03/runtest.clp`を取り込んで作ります)。
+- 新しい道具: `TXCAPST`(10-01。障害を仕込む教材の道具で、`tools/`にあります。**10-01の障害報告書を書き終えるまで、この道具のソースは開かないでください**。仕込みの中身が書いてあります)、`TXLOAD`(`solutions/`の見本のソースを取り込むツール。10-01・10-03に、作った場合だけの別の形として載せています。作る手順は10-01の`<details>`の中にだけあり(読解・任意)、これまでどのレッスンも作らせていません。実機ではコンパイルも実行もしていません。V3)、`RUNTEST`(10-03。テストを1コマンドで回すCLで、`solutions/10-03/runtest.clp`を取り込んで作ります)。
 - ACS・VS Code: この部では必須ではありません(V3)。
 
 ## 観測方法
