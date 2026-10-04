@@ -3495,3 +3495,13 @@ RPG IV 版(`src/legacy/qrpgle112`)を `CRTBNDRPG` で作り直して同じ手順
 - `src/legacy/qrpgle112/za0500.rpgle` の `ZAIKOM` は、F 仕様書で外部記述ファイルとして宣言されている(63行目)。コンパイラーは、最後のプログラム記述の `I` 仕様書(75行目の直後)のあとに、レコード様式 `ZAIKOR` の入力仕様書を生成して挿入する。コンパイル・リストでは、`ZAIKOR` の1行と、フィールド `ZASHO`・`ZASU`・`ZAUPD`(`db/v1/zaikom.pf`)の3行、合計4行(`76`〜`79`)になる。
 - そのため、挿入より後ろの行は、コンパイル・リストの Line Number がファイルの行番号より4大きくなる。`COMP MINQTY` は、ファイルの87行目、Line Number 91(`*NOSRCSTMT` では Line Number がそのまま statement 番号)。挿入より前の `JUSU`(69行目)は、差が無いので一致する。出力側にも、同じように `OZAIKOR`(Line Number 108)が生成される。
 - `/COPY` の展開によるものではない。
+
+## Issue #50 ILE のメッセージ(RPG1031 相当、`CALL` に標識なし)と `CPYSRCF TOMBR(JU0300C)`: `issue50-ilemsg`(確認日 2026-10-05、1回の接続で最後まで)
+
+`verify/issue50-ilemsg` は、`<USER>2` を `TXLEGACY LANG(*RPGLE) FORCE(*YES)` で ILE 版にしてから、3つの目標を1回の接続で流した(`verify/issue50-force` と同じツリー)。ジョブ・ログは `QSYS2.JOBLOG_INFO` を永続表に写して回収した。終わりに RPG III 版へ戻し(`TXLEGLNG` が `*RPG`)、`TXRESET` で `JUCHUM` 8・`JUCHUD` 12・`ZAIKOM` 6、在庫合計392になった。
+
+- **ILE 版の `RPG1031` 相当**: チケット1の修正を `JU0900C` に当ててから、ヘッダー `J00000` を `JUCHUM` の末尾に足し、有効な明細行 `J00000/1/P00001/1` を `JUCHUD` に足して、`JU0900C` を `*TEST` で投入した。基準(足す前)は12行、メッセージなしで正常終了。足したあとは `ZA0500` が **`RNX1031`「The match field for file JUCHUM is out of sequence」→ `RNQ1031`(C G D F)→ `CEE9901`「RNX1031 unmonitored by ZA0500 at statement 0001000001」→ `CPF9999`「CEE9901 unmonitored by JU0900C at statement 8800」→ JU0900C の「ZA0500 ended abnormally」**。印字は12行(基準と同じ行)。在庫合計は前後で392。statement 番号は、ILE のほかの番号(`0000000069` など)と違い `0001000001` だった(理由は未確認)。
+- **04-24 の `RNQ0202`・`RNX0100`(`CALL` に標識なし)**: 呼ばれるプログラム `V50MISS` が無い場合は、`MCH3401` → `RNQ0211`「Error occurred while calling program or procedure *LIBL/V50MISS」→ `CEE9901`(呼ぶ側 `V50NB1` の statement 7、`MCH3401` unmonitored)。呼ばれるプログラム `V50DIV` が実行時にゼロ除算すると、`RNX0102`・`RNQ0102`(`V50DIV` の statement 12)→ `CEE9901` → 呼ぶ側に **`RNQ0202`「The call to *LIBL/V50DIV ended in error」** → `CEE9901`(`V50NB2` の statement 6)。`RNX0100` は出なかった。いずれも `INQMSGRPY(*DFT)` で投入し、ジョブは自分で終了した。
+- **`CPYSRCF ... TOMBR(JU0300C)`**: レッスン 10-02 の本文のとおり、`QRPGSRC` の `JU0300`(180行)→ `JU0300C`、`QRPGLE112` の `JU0300`(186行)→ `JU0300C` は、どちらも通り、複写先の行数が複写元と一致した。この `<USER>2` には、以前の検証の `JU0300C`(213行・104行)が残っていたが、`MBROPT(*REPLACE)` で置き換わった。検証側は、先に複写を取り、終わりに元の行数へ戻した。
+- **検証側の雑音**: `A4LASTCD`(既にある)と、終了済みジョブへの `ENDJOB` の `FAILED` 行(無害)。
+- **未検証(2026-10-05時点)**: `RNX0100` が出る場面、`statement 0001000001` の意味、5250 の画面での表示。
