@@ -204,7 +204,7 @@ PUB400.com のアカウントには、標準で3つのライブラリーが割�
 | `TXLEGACY` | 第5部の「旧システム」一式をロード・コンパイルする。`LANG` パラメーター(`*SAME`・`*RPG`・`*RPGLE`。既定は `*SAME`)で旧システムの言語を選べる。`*RPGLE` は RPG III を通らないルート用の固定形式 RPG IV 版で、オブジェクト名は同じ(`LANG` の実機確認は未検証(2026-10-01時点)) | [05-01](../part05/05-01-legacy-intro.md)。RPG III を通らないルートでは [04-27](../part04v/04-27-route-preparation.md) の A4・C |
 | `TXSNAP` | プログラムの最新スプール・ファイルを控えのメンバーに複写する(前後比較用) | [05-08](../part05/05-08-logic-change-and-compare.md)。RPG III を通らないルートでは [04-27](../part04v/04-27-route-preparation.md) の A2 |
 | `TXMIGR` | サンプル・データベースを新しい DBVER に移行し、影響先を再コンパイルする | [05-09](../part05/05-09-add-field-level-check.md) |
-| `TXSTATUS` | ライブラリーの現在の DBVER を表示する | [05-09](../part05/05-09-add-field-level-check.md) |
+| `TXSTATUS` | ライブラリーの現在の DBVER を表示する | [02-05](../part02/02-05-txsetup.md) |
 | `TXCHECK` | レッスンごとに記録されたチェック項目を実行し、PASS/FAIL を表示する | [05-13](../part05/05-13-checkpoint-tickets.md)で初出(RPG III を通らないルートでは [04-27](../part04v/04-27-route-preparation.md) の A1)。以降の各部のチェックポイント([07-05](../part07/07-05-checkpoint-zaisrv.md)・[08-08](../part08/08-08-checkpoint-promote-rollback.md)・[09-07](../part09/09-07-checkpoint-order-summary-api.md))でも使う |
 | `TXCAPST` | 第10部の総合演習用に、障害の状況(バッチ・プログラムを止める1件の不正なデータ)をあらかじめ仕込む | 第10部で初出([10-01](../part10/10-01-preparation-incident.md)) |
 | `TXLOAD` | 模範解答(`solutions/`)を取り込んでコンパイルする | まだどのレッスン本文でも扱われていない(主に著者・検証用) |
