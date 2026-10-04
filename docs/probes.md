@@ -3353,3 +3353,20 @@ P02〜P44 のうち、上記(P01, P08 の一部・P19・P20・P23・P43・P44)�
   元のヘッダー・コメントは変換後もそのまま残る。
 - `src/legacy/qrpgle112/*.rpgle` は、この実出力に H 仕様書(`DFTACTGRP(*YES)`)だけを
   変えたもの。実行時の出力の一致は `part05-lggold` で確かめる。
+
+## Issue #35 ゴールデン・マスター比較(RPG III 対 固定形式 RPG IV): `part05-lggold`(確認日 2026-10-04)
+
+`<USER>2` で TXRESET 後、RPG III 版の JU0300・ZA0500・TK0100 を作って実行し、同じ名前で
+RPG IV 版(`src/legacy/qrpgle112`)を `CRTBNDRPG` で作り直して同じ手順で実行した。
+
+- コンパイル: RPG IV 版の JU0300・ZA0500・TK0100 は、H 仕様書に `DFTACTGRP(*YES)` を
+  付けた状態で、すべて「00 highest severity」。
+- **印字の一致**: JU0300 の全件の印字(DATE TOTAL・CUST TOTAL・GRAND TOTAL 8、XFOOT=8 OK)と、
+  JU0900C(`*TEST`)から ZA0500 を呼んだ12行(SHORT は J00002 と J00006)が、
+  RPG III 版と RPG IV 版でテキストとして完全に同一。ZAIKOM は前後で変化なし。
+- **チケット1(JU0900C の `LEN(3 0)` と ZA0500 の `MINQTY` 5,0 の食い違い)のジョブ・ログ**:
+  - RPG III 版: `RPG0907` → `RPG9001`(JU0900C で未監視、statement 7400)→ 「ZA0500 ended abnormally」。
+  - RPG IV 版(ILE): `MCH1202`「Decimal data error」→ `RNQ0907`「Decimal-data error occurred (C G D F)」
+    → `CEE9901`「MCH1202 unmonitored by ZA0500 at statement 0000000091」→ JU0900C の
+    `MONMSG CPF0000` が拾い「JU0900C: ZA0500 ended abnormally」。ハングしなかった。
+- 未検証: TK0100 の画面動作(EXFMT は対話でのみ確認できる)。
