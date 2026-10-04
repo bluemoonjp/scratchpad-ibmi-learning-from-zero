@@ -1,0 +1,5 @@
+     A* W0424B - 04-24 numeric target: QTY is 5S 0 (zoned).
+     A* Filled from W0424A by CPYF FMTOPT(*NOCHK).
+     A          R W0424R                    TEXT('04-24 zoned target')
+     A            ID             2A         TEXT('Row id')
+     A            QTY            5S 0       TEXT('Quantity (zoned 5,0)')

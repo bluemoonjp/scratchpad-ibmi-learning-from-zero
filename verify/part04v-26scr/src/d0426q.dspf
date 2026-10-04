@@ -1,0 +1,11 @@
+     A*  D0426Q - PROBE ONLY (not shipped). Same as D0426A, plus one
+     A*  constant conditioned by indicator 50 (customer not found).
+     A                                      DSPSIZ(24 80 *DS3)
+     A          R INQFMT
+     A                                      CF03(03)
+     A                                  1  2'Customer code:'
+     A            TOKCD          6A  I  1 17
+     A                                  3  2'Name:'
+     A            TOKNM         30A  O  3  8
+     A  50                              5  2'Not found'
+     A                                  7  2'F3=Exit'

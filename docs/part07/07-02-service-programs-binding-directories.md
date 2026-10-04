@@ -2,6 +2,12 @@
 
 > 所要時間: 60分 / 前提レッスン: 07-01 / 目標番号: 5 / 観測方法: `DSPJOBLOG`・`DSPSRVPGM` / 道具: SSH(`CPYFRMSTMF` でのソース取り込み)、5250(コンパイル・実行・確認)、SQL(`STRSQL`)/ 同時接続数: 5250×1(SSHでのソース取り込みは1回の接続でまとめて行います)/ 作る・変えるオブジェクト: `<USER>1/JUCSRV`(*MODULE→*SRVPGM)・`<USER>1/JUCSRVBD`(*BNDDIR)・`<USER>1/F0702A`(プログラム)(発展・任意で`<USER>1/D0702A`・`<USER>1/F0702B`も)/ DBVER: 1 / 依存するプローブ: P26(`CRTSRVPGM`・`CRTBNDDIR`等、このレッスンの範囲を確認します。残り(`UPDSRVPGM`・バインダー言語)は07-03で確認します)/ PTF 依存: なし / 容量の目安: わずか
 
+<details><summary>RPG III を通らないルートの人へ</summary>
+
+本文の `R0408A`(04-08、`JUCINQ3`)は、ルートでは [04-21](../part04v/04-21-fixed-form-skeleton.md) の `V0421D`(同じ出力、`TOKUIM` を `CHAIN` して、見つからなければ別の処理に進む構成)に当たります。「見つからなければ `'NOTFOUND'`」というフォールバックの形を比べるときは、`V0421D` の `CHAIN` の行で読み替えてください。
+
+</details>
+
 ## ゴール
 
 - サービス・プログラム(`*SRVPGM`)が、07-01の`CRTPGM MODULE()`(コピーによる結合)と何が違うか(実行のたびに解決される、参照による結合)を説明できる。
