@@ -5,10 +5,11 @@
       * Model answer for lesson 10-02 (route that skips RPG III). Counterpart of
       * solutions/10-02/ju0300-credit.rpg (RPG III): same output, same rule.
       *
-      * Base lines: the hand conversion src/legacy/qrpgle112/ju0300.rpgle, kept
-      * verbatim. The lines between the "10-02 added" marks are the credit-limit
-      * change: 14 C lines (KLIST, 2 KFLD and 11 lines of the check), 3 F lines
-      * and 1 O line. All other lines are the base.
+      * Base lines: the real CVTRPGSRC output src/legacy/qrpgle112/ju0300.rpgle
+      * (code lines kept verbatim, the long original comment block left out). The
+      * lines between the "10-02 added" marks are the credit-limit change: 14 C
+      * lines (KLIST, 2 KFLD and 11 lines of the check), 3 F lines and 1 O line.
+      * All other lines are the base.
       *
       * Rule: the order is flagged when LINE 1 of the order, valued at the
       * CURRENT list price (SHOHIM SHOTNK), is greater than the credit limit
@@ -19,10 +20,11 @@
       * The check is one IFEQ/ANDEQ/ENDIF block: N96N97N98 cannot be written on
       * one line, and the MULT and the COMP would each need a CAN group.
       *
-      * UNVERIFIED (2026-10-01): not compiled yet. The base part is a hand
-      * conversion (see its header). If the real CVTRPGSRC output of JU0300
-      * differs, trust the compiled copy under src/legacy/qrpgle112/ for the
-      * base part and add only the marked lines.
+      * Real hardware (part10-02-rpgle, 2026-10-04): an earlier text of this
+      * file, whose D specs for CT and FTOK were written by hand, compiled with
+      * highest severity 00 (CRTBNDRPG) and printed OVER LIMIT on 0 / 8 / 2 / 0
+      * lines. This text takes those two D specs from the real conversion; the
+      * recompile of this exact text is UNVERIFIED (2026-10-04).
       * Needs the v3 TOKUIM (solutions/10-02/tokuim-v3.pf) BEFORE it compiles.
      H DFTACTGRP(*YES)
      FJUCHUL1   IP   E           K DISK
@@ -32,9 +34,9 @@
      FJUCHUD    IF   E           K DISK
       * ---- 10-02 added end ----
      FQSYSPRT   O    F  132        PRINTER
-     DCT               S              5S 0 DIM(50)
+     D CT              S              5  0 DIM(50)
      D                UDS
-     DFTOK                    11     16
+     D  FTOK                  11     16
      IJUCHUR
      I                                          JUDATE        L1
      I                                          JUTOK         L2
