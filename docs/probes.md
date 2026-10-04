@@ -3389,3 +3389,89 @@ RPG IV 版(`src/legacy/qrpgle112`)を `CRTBNDRPG` で作り直して同じ手順
   新しい `*PGM` だけが入っている場合も同じ。`*PGM` と `*CMD` は必ず一緒に作り直すこと。
 - 副産物: 2回目以降の `FORCE(*YES)` で `SAVOBJ` が「7 objects saved, 1 not saved」(`FLDREFR` が
   `*RPGLE` のとき存在しない)になるが、`MONMSG` で捕捉され、進行に影響しない。
+
+## Issue #35 10-03 の新旧の印と旧 ILE 版の出力: `part10-03-rpgle`(確認日 2026-10-04)
+
+`<USER>2` で `TXLEGACY LANG(*RPGLE)` を読み込み、チケット1の修正後に、旧 ILE 版 `ZA0500`・
+新(`CRTSQLRPGI`、`ZAISRV` を束縛)・切り戻し後(`CRTDUPOBJ`)の順に `*TEST`・`*LIVE` を
+`SBMJOB` で流し、最後に `LANG(*RPG)` と `TXRESET` で RPG III 版へ戻した(1回の接続、V7R5M0)。
+
+- **印**: `QSYS2.BOUND_SRVPGM_INFO` の行は、旧4行(`QSYS` の `QRNXIE`・`QRNXIO`・`QRNXUTIL`・`QLEAWI`)、
+  新5行(上の4行 + `*LIBL/ZAISRV`)、切り戻し後4行。`BOUND_MODULE_INFO` は3つとも1行
+  (`QTEMP/ZA0500`、`MODULE_ATTRIBUTE` = `RPGLE`)で、`SOURCE_FILE` が旧・切り戻し後 `QRPGLE112`、
+  新 `QRPGLESRC`、`SQL_STATEMENT_COUNT` が 0・10・0、`NUMBER_PROCEDURES` が 4・9・4。
+  `PROGRAM_INFO` の `ACTIVATION_GROUP` は `*DFTACTGRP`・`*NEW`・`*DFTACTGRP`、`SERVICE_PROGRAMS` は 4・5・4。
+  `PROGRAM_LIBRARY`・`PROGRAM_NAME` の列名は正しかった。`OBJATTRIBUTE` は3つとも `RPGLE`、
+  `OBJTEXT` は旧・切り戻し後 `Stock allocation`、新は空(バッチの `CRTSQLRPGI` に `TEXT` なし)。
+- **旧 ILE 版の出力**: `*TEST` の12行は `golden-test-12.txt` と空白を除いて一致(新・切り戻し後も)。
+  `*LIVE` の在庫は 39・3・235・48・9・20、旧・新の `EXCEPT` は0行、`*LIVE` の12行は旧・新で同一。
+- **`CPF4123`**: 旧のジョブ・ログに各1回(`*TEST`・`*LIVE`・切り戻し後の `*TEST`。診断、重大度40、宛先 `ZA0500`、送り元 `QDBSOPEN`)。
+  新では出なかった(RPG III 版は2回)。
+- 最後の状態: `ZA0500`・`JU0300`・`TK0100` が `RPG`、`TXLEGLNG` = `*RPG`、行数 8・12・6、在庫の合計 392。
+- 副産物: `TXLEGACY` の控え `LG261004` の上書き確認(`CPA4067`)に、ハーネスが取り消しで答えた。
+  `EVFEVENT` の取得は失敗(既知)。
+- 注意: `TXRNOL` は失敗した(ジョブのユーザーが QUSER で、`QUSER1` が見つからない)。ライブラリー・リストは実行中も <自分>1(位置7)が <自分>2(位置8)の前にあった。<自分>1 に同名のプログラムがあるかは確かめていない(未検証(2026-10-04時点))。問い合わせは <自分>2 を名指ししており、旧・新で `ZAISRV` の行が違う結果は <自分>2 のもの。
+- 未検証: `db2` をSSHから打った形、`makei`・`SRCSTMF` で作った新の印の値、旧だけ `CPF4123` が出る理由。
+
+## Issue #35 10-01 のジョブ・ログと復旧の ILE 版: `part10-01-rpgle`(確認日 2026-10-04)
+
+`<USER>2` で `TXLEGACY LANG(*RPGLE) FORCE(*YES)` のあと `TXRESET`、チケット1の修正版 `JU0900C`(`JU0900T1`)で
+補助ジョブ(`LOG(4 00 *SECLVL)`、`INQMSGRPY(*DFT)`)から `*TEST` 実行。ジョブ・ログは `JOBLOG_INFO(*)` で取り出した。
+
+- **基準**: 印字は12行(`OK` 10・`SHORT` 2)。写しは `-=*` の行を足して13レコード。在庫の合計 392。
+- **失敗した回**(`TXCAPST` の仕込みの行、`HEX(JUSU)` = `4B4B4B4B4B`): `CPF4123`(1回)→ `MCH1202`
+  「Decimal data error.」(ZA0500、ステートメント 69、重大度40)→ `RNQ0907`「Decimal-data error occurred (C G D F).」
+  (応答 `C` が自動)→ `CEE9901`「MCH1202 unmonitored by ZA0500 at statement 0000000069, instruction X'0000'.」
+  → `CPF9999`「CEE9901 unmonitored by JU0900C at statement 8800, instruction X'0056'.」→
+  `JU0900C: ZA0500 ended abnormally.` → `CLOF`・`DLTOVR`・`RETURN`。`JU0900C` の `MONMSG CPF0000` が
+  受けたのは `CPF9999`。呼び出し側は `the call ended normally.`。印字なし(`CPF3309`)、在庫 392 のまま。
+- **ステートメント番号**: ILE の `ZA0500` は10桁ゼロ詰めのコンパイル・リストの Line Number。Line Number 69 は
+  `I` 仕様書 `16 20 0JUSU`(`Src Seq` 006900、`za0500.rpgle` の69行目)。100倍ではない。
+  Line Number 91(`COMP MINQTY`)は `Src Seq` 008700(ファイルの87行目)で、ソースの行番号とは一致しない(理由は未検証(2026-10-04時点))。コンパイル・リストの
+  オプションは `*NOSRCSTMT`。
+- **復旧**: `UPDATE ... SET JUSU = 1` で `HEX(JUSU)` が `F0F0F0F0F1`。再投入の印字は13行(先頭に
+  `J00000  P00001  00001       OK`。`OK` 11・`SHORT` 2)、写しは14レコード。在庫 392 のまま。
+- **チケット1が未修正の `JU0900C`**(`LEN(3 0)`、きれいなデータ): ID の並びは同じで、`ZA0500` のステートメントが
+  `0000000091`(`COMP MINQTY`)、`JU0900C` のステートメントが `7400`。印字なし、在庫 392 のまま。
+  RPG III 版の `8100`(ZA0500)に当たる。ID だけでは壊れた行とチケット1を見分けられず、番号で見分ける。
+- 失敗した2回の投入ジョブは、`ENDJOB` のときには既に終了(`CPF1321`)。終わりに RPG III 版へ戻し、
+  `TXRESET` で 8・12・6 件、合計 392。
+- 未検証: `WRKSBMJOB`・`WRKSPLF` の画面(V3)、ILE 版の `RPG1031` に当たるメッセージ(昇順でない行は入れていない)、
+  `DSPMSGD` の `RNQ` 範囲、何件目で止まったか。`EVFEVENT` の取得は失敗(`CPF2802`、既知)。
+
+## Issue #35 10-02 の保守(`TOKYSN`)の ILE 版: `part10-02-rpgle`(確認日 2026-10-04、1回の接続で最後まで)
+
+`<USER>2` で `TXLEGACY LANG(*RPGLE) FORCE(*YES)` のあと、`CHGPF`(`TOKUIMV3`)・`TOKUIL1` の作り直し・`TK0100` の再コンパイル・
+見本 `JU0300C` のコンパイルと実行・`TOKUIM` の退避(`TKUIMRG`)からの切り戻しまでを実行し、最後に `LANG(*RPG)` と `TXRESET`。
+
+- **コンパイル**: `JU0300C`(見本の以前の版)を `CRTBNDRPG` で作って `RNS9304`、最高重大度 `00`、情報18件のみ
+  (`RNF2318`・`RNF6011`・`RNF7031`・`RNF7066`・`RNF7086`)。`TK0100`・`JU0300`・`ZA0500`(変換結果のまま)も `00`。
+- **`OVER LIMIT` の明細行**(`SBMJOB` で呼んだ `JU0300` の印刷を `CPYSPLF` で写して数えた): 原本0、`TOKYSN` 0 で8、
+  10000 で2(`J00002`・`J00006`)、原本へ戻して0。RPG III 版と同じ。印刷の写しは24レコード。
+- **`DSPPGMREF`**: 全体1788レコード、`*SRVPGM` 18、`TK0100` 13(`TOKUIM` の様式レベルID `3B1ECB3196772`、`TANTOM`、
+  `TK0100D` の6様式、`LASTCD`、`QRNXIE`・`QRNXIO`・`QRNXUTIL`・`QLEAWI`)、原本の `JU0300` 7(`TOKUIM` なし)、
+  改修版の `JU0300` 10(`TOKUIM`・`SHOHIM`・`JUCHUD` が増える)。`DSPDBR` は `TOKUIL1` の1行。`JUCSRV` は `*SRVPGM` の実行にだけ出る。
+- **`CPF4131` のあと**(変更前に作った小さな ILE プローブと、実際の `TK0100`。`SBMJOB`、`INQMSGRPY(*DFT)`):
+  `CPF4131`(重大度40)→ `RNX1216`(99)→ `RNQ1216`(照会、`(C S D F)`)→ 応答 `C` → `CEE9901`(30)
+  「RNX1216 unmonitored by TK0100 at statement 0001000001」。ジョブはメッセージ待ちにならず終了。
+  変更前のプローブは正常終了。
+- **`CHGPF`**: `TOKYSN` が位置6・長さ7・小数0(`TOKUIM`・`TOKUIL1` の両方)。様式レベルID `2E09E054754F9`。
+  `CRTDUPOBJ ... DATA(*YES)` で戻して `3B1ECB3196772`、5項目6行。
+- **`CPYSRCF`**(`QRPGLE112` の中、`JU0300` → `JU0300X`、`MBROPT(*REPLACE)`): `CPF2889`・`CPC2955`(186レコード)。
+  `SYSPARTITIONSTAT` で `JU0300`=186、`JU0300X`=186。
+- **最後の状態**: `ZA0500`・`JU0300`・`TK0100` が `RPG`、`TXLEGLNG` が `*RPG`、`TOKUIM` 5項目、行数 8・12・6、在庫の合計 392。
+- **見本の基の行**: 検証が使った `ju0300-credit-4x.rpgle` の以前の版は、基の D 仕様書(`CT` が `5S 0`、`FTOK` が `DFTOK`)が
+  手書きで、本物の変換結果(`D CT S 5  0`、`D  FTOK`)と2行違った。変換結果に合わせ直した版も、再実行(2026-10-04)で最高重大度 00、`OVER LIMIT` は 0・8・2・0 行と同じ結果だった。
+- 副産物・雑音: `TXLEGACY` の `CPA4067`(保存ファイルに前のデータ)に取り消しが返り退避なし。`TXRNOL` は `QUSER1` を探して
+  `CPF2110`。`EVFEVENT` の取得は失敗。`TK0100` の `ENDJOB` は `CPF1321`(ジョブが既に無い)。`<USER>B/TKUIMRG` は残した。
+- 未検証: 5250 の画面での `CPF4131`・`RNQ1216` への応答、再作成した `TK0100`・`JUCSRV` の、戻したファイルに対する動き、
+  合わせ直した見本のコンパイル。
+
+## Issue #35 一本道の退行確認: `part05-txlegacy-exec` の再実行(確認日 2026-10-04)
+
+`LANG` を足した `TXLEGACY` で、既存の `part05-txlegacy-exec` を再実行した(`LANG` を省略、`TXLEGST` を消した状態)。
+
+- RPG III 版で読み込まれた: `TK0100`・`JU0300`・`ZA0500` は `CRTRPGPGM` で作られ(「is placed in library ... 00 highest severity」)、
+  `JU0900C`・`MN0000C` も作られた。`OBJECT_STATISTICS` で6個とも作成日時が今回の実行時刻。
+- `TXLEGLNG` が無い状態の `*SAME` は `*RPG` に落ち、一本道の動きは変わらない。
+  差は、`TXLEGLNG`(`*RPG`)というデータ域が1つ増えることだけ。
