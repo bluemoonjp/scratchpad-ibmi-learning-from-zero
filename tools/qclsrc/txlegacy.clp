@@ -219,8 +219,7 @@ BUILD:       SNDPGMMSG  MSG('TXLEGACY: loading legacy system into library ' +
              MONMSG     MSGID(CPF9801) EXEC(CRTDTAARA DTAARA(&LIB/TXLEGST) +
                           TYPE(*CHAR) LEN(1) VALUE('Y') TEXT('Legacy system +
                           loaded flag'))
-             MONMSG     MSGID(CPF0000) EXEC(CHGDTAARA DTAARA(&LIB/TXLEGST) +
-                          VALUE('Y'))
+             CHGDTAARA  DTAARA(&LIB/TXLEGST) VALUE('Y')
 
              SNDPGMMSG  MSG('TXLEGACY: done. TXCHECK (05-13) can later +
                           confirm these objects still exist.')
