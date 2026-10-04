@@ -540,7 +540,7 @@ CLプログラムの中で、オブジェクトやメッセージの情報を変
 | `CPF4123`「Open options ignored for shared open of member JUCHUD.」 | `JUCHUD`を共有のオープン(`OVRDBF SHARE(*YES)`)で開いた | 何もしない(失敗した回にも、正常な回にも出る。V2) |
 | `CPA4067`(SAVFに既にデータがある) | 同じ日に、`TXLEGACY FORCE(*YES)`を2回実行した | `C`(取り消し)でよい。SAVFは更新されない(バッチでの結果。V2。5250での応答はV3) |
 | `CPF4174`「OPNID(TXCKM) for file TXCKM already exists.」+「TXCHECK: could not query the manifest for lesson 10-00.」 | **同じジョブで2回目**の`TXCHECK`(08-08・09-07の既知の不具合。`part10-00-probe`で再現、V2) | サインオフ・サインオンし直して、新しいジョブで**1回だけ**実行する。**`TXCHECK`は、ジョブごとに1回**(このレッスンでは、確認のあとで他の手順に進みます) |
-| `RPG1031`「JUCHUM match field is out of sequence」(通常の学習では出ません) | `JUCHUM`に、受注番号の昇順でない並びで行を足したとき、照合項目が昇順でないと言われた(V2)。`ZA0500`が`JUCHUM`を書かれた順に読むためと考えられる(推定) | 手で`JUCHUM`に行を足すときは、受注番号の順を保つ |
+| `RPG1031`「JUCHUM match field is out of sequence」(ILE 版では `RNX1031`・`RNQ1031`。通常の学習では出ません) | `JUCHUM`に、受注番号の昇順でない並びで行を足したとき、照合項目が昇順でないと言われた(V2)。`ZA0500`が`JUCHUM`を書かれた順に読むためと考えられる(推定) | 手で`JUCHUM`に行を足すときは、受注番号の順を保つ |
 | `CPF9898`・`CPC1221` | `RTVMSG`の読解用の例で出るメッセージ | 「説明」の読解用の囲みのとおり |
 
 <details><summary>RPG III を通らないルートの人へ(この表の読み替え)</summary>
