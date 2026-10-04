@@ -1,65 +1,147 @@
-      * HAND CONVERSION - UNVERIFIED (2026-10-01): not yet compiled with CRTBNDRPG nor
-      * compared to the real CVTRPGSRC output; replace by real output (verify batch
-      * part05-lgcvt) and keep the RPG III original (src/legacy/qrpgsrc) in sync.
+      * CVTRPGSRC output of src/legacy/qrpgsrc/tk0100.rpg (verified on hardware:
+      * part05-lgcvt, 2026-10-04, conversion 0 highest severity). Only edit:
+      * the H spec now says DFTACTGRP(*YES). Keep in sync with the RPG III
+      * original; the comment block below is the original header, unchanged.
+
+      * TK0100 - TOKUIM (customer master) inquiry program.
+      * Legacy system (Part 5). Reading-order / old-opcode / indicator-
+      * map teaching material (05-02). NOT compiled on real hardware:
+      * this session has run out of its SSH connection-count budget.
       *
-      * Made by converting src/legacy/qrpgsrc/tk0100.rpg column for column, as CVTRPGSRC
-      * does. Only three edits were made on purpose: this header, the H spec
-      * (DFTACTGRP(*YES)) and the 100-column limit of QRPGLE112. Code lines and
-      * the comment lines inside the code are not modernized. Changes that
-      * follow from the RPG III -> RPG IV layout:
-      *  - EXCPT -> EXCEPT, SETOF -> SETOFF, UPDAT -> UPDATE, DEFN -> DEFINE,
-      *    *NAMVAR -> *DTAARA, *IN,60 -> *IN(60), col 53 P -> MOVEL(P).
-      *  - RPG IV allows one conditioning indicator per line (cols 9-11). A line
-      *    with more than one is split: first indicator on its own line, the
-      *    other ones on CAN lines, with the operation on the last CAN line.
-      *    (Layout of these CAN lines is UNVERIFIED against real CVTRPGSRC.)
-      *  - Resulting indicators moved from cols 54-59 to cols 71-76.
+      * Companion display file TK0100D is a separate task/object
+      * (src/legacy/qddssrc/tk0100d.dspf). This program only uses its
+      * INQFMT record format via EXFMT, per the task brief; TK0100D
+      * also defines a customer-list subfile (SFL1/SFL1CTL) and a
+      * message subfile (MSGSFL/MSGCTL) that this program does not
+      * drive. Driving them would need the SFILE F-spec continuation-
+      * line option (RPG/400 Reference, "Continuation Line Options
+      * Summary Chart": col 53='K', cols 54-59='SFILE', cols 60-67=the
+      * subfile record format name, cols 47-52=its RRN field) plus
+      * READC - left for a later task (TK0100D's own header comment
+      * defers this to "TK0100 (RPG)" explicitly; an earlier draft of
+      * this comment called the construct "KSFILE", which does not
+      * appear anywhere in RPG/400 Reference - corrected here).
+      * UNRESOLVED REAL RISK, not just deferred scope (same "verify
+      * before relying on this source" treatment as the DDS-
+      * conditioning-indicator gap noted in mn0000c.clp/tk0100d.dspf's
+      * own headers, and probes.md 04-11: CPD7410/CPD7606/CPD5238,
+      * unresolved): the Reference states the SFILE continuation line
+      * "must be used to define any subfiles to be used in the file"
+      * whenever the main F-spec line has E in position 19 and WORKSTN
+      * in positions 40-46 - true of the FTK0100D line below, and
+      * TK0100D defines two subfile record formats (SFL1, MSGSFL).
+      * Whether that requirement still applies when the RPG program
+      * never drives the subfile at all (as here) is not settled by
+      * that wording alone, and probes.md's only real WORKSTN compile
+      * (04-11) never included a subfile format - so this is untested
+      * and possibly compile-blocking for the whole program. Verify
+      * with CRTRPGPGM before relying on this source.
       *
-      * TK0100 - TOKUIM (customer master) inquiry on the display file TK0100D.
-      * Legacy system, fixed-form RPG IV (QRPGLE112, CRTBNDRPG). Shows the same
-      * screen behavior as the RPG III TK0100. Reading material for the old
-      * opcodes and the indicator map (lesson 05-02).
+      * INQFMT fields (confirmed from tk0100d.dspf as written): TOKCD
+      * (6A, input), TOKNM (30A, output), TOKZIP (7A, output), TOKTAN
+      * (6A, output), TOKUPD (8S 0, output). All 5 match TOKUIM's own
+      * field names/lengths, so RPG's WORKSTN/program field auto-match
+      * (by name, confirmed real compile 04-11, docs/probes.md) fills
+      * them straight from the TOKUIM CHAIN below on the found path - no
+      * explicit MOVE needed there (see the not-found path below for
+      * why TOKZIP/TOKTAN/TOKUPD still need explicit clearing on ind 50).
+      * INQFMT has no rep-name field: the rep name is a 05-10 addition
+      * to the screen per design.objects[0].purpose - so the TANTOM
+      * CHAIN below computes TANNM but nothing displays it yet on
+      * INQFMT.
       *
-      * The program only uses the record format INQFMT (EXFMT). TK0100D also
-      * defines a customer-list subfile (SFL1/SFL1CTL) and a message subfile
-      * (MSGSFL/MSGCTL) that this program does not drive, so the F spec has no
-      * SFILE keyword (the RPG III source had no SFILE line either). Whether
-      * CRTBNDRPG accepts a WORKSTN file with subfile formats and no SFILE is
-      * UNVERIFIED. Driving the subfiles would need SFILE(format:rrn) and READC.
+      * F3=Exit: tk0100d.dspf codes CF03(03) on INQFMT and its own
+      * comment says "TK0100 reads *IN03 (no INDARA), same as R0411A"
+      * - so indicator 03 (not a named KA-KY indicator) is the real,
+      * confirmed exit signal, tested below exactly that way. Also
+      * tests indicator KC (F3 in RPG/400 Reference p.65's KA=F1,
+      * KB=F2,KC=F3,...,KY=F24 table) as a second, harmless exit line
+      * - functionally redundant today (INQFMT wires F3 to 03 only)
+      * but kept so the program exercises design.objects[0]'s "KA-KY"
+      * indicator requirement; costs nothing if KC never turns on.
       *
-      * INQFMT fields: TOKCD (6A, input), TOKNM (30A), TOKZIP (7A), TOKTAN (6A),
-      * TOKUPD (8S 0), all output. They match the TOKUIM field names, so a found
-      * CHAIN fills them by name. On a not-found CHAIN the buffer stays as it
-      * was, so TOKZIP, TOKTAN and TOKUPD are cleared on indicator 50. INQFMT
-      * has no rep-name field: TANNM is computed but not displayed yet.
-      *
-      * F3 = Exit: TK0100D has CF03(03), so indicator 03 is the exit signal.
-      * KC (the F3 function key indicator) is tested as a second, redundant
-      * exit line; it costs nothing if KC never turns on.
-      *
-      * Before running, the data area LASTCD must exist:
+      * Before running, the named data area LASTCD must exist:
       *   CRTDTAARA DTAARA(<LIB>/LASTCD) TYPE(*CHAR) LEN(6)
-      * RPG III declared it with *NAMVAR DEFN (RPG IV: *DTAARA DEFINE). It is
-      * read with IN *LOCK and written back with OUT, which also unlocks it.
       *
-      * TANTOM field names TANTOCODE and TANTONAME are renamed to TANCD and
-      * TANNM on the I spec (external name cols 21-30, program name 49-62).
+      * Design note vs. the task brief: the brief says "DEFN *DTAARA".
+      * The primary source (RPG/400 Reference, DEFN, p.239) has no
+      * *DTAARA keyword; the real Factor-1 keyword for a named (non-
+      * *LDA) data area is *NAMVAR ("*DTAARA" is RPG IV DEFINE syntax,
+      * not RPG III). Used *NAMVAR DEFN + *LOCK IN / OUT below, per
+      * p.239/276/317. (This OCR text drops the leading "*" on special
+      * words inconsistently: "Specify *LDA in factor 2..." (p.194)
+      * keeps the star, but "Use LDA for the name of..." (p.240, same
+      * word) drops it - so presence/absence of "*" in this converted
+      * text is not reliable by itself. The reference's own *ENTRY
+      * PLIST heading keeps the star on that Factor-1 special word
+      * throughout, and R0411A's real, confirmed compile of *IN03
+      * shows a starred Factor-1 special word actually compiling;
+      * ZA0500.rpg here uses *ENTRY PLIST the same way but is itself
+      * still unconfirmed. Together these point to keeping the star
+      * for *LIKE/*NAMVAR/*LOCK too.) IN/OUT Factor 2 is the RPG
+      * field name (LASTCD), same trap shape as CHAIN vs UPDAT
+      * Factor 2.
       *
-      * Indicator map:
-      *   03     TK0100D CF03(03): F3 = exit.
-      *   50/51  CHAIN not found (TOKUIM/TANTOM). Cleared with SETOFF first,
-      *          because a result indicator keeps its old value when its CHAIN
-      *          line is skipped by a conditioning indicator.
-      *   60/61  cosmetic MOVEA demo only (clears *IN(60) and *IN(61)).
-      *          Nothing tests 60/61.
-      *   H1     halt indicator used as the error indicator of IN *LOCK. When
-      *          it is on, the final OUT is skipped (N H1): OUT on an area that
-      *          never got locked would fail itself.
-      *   U1     external indicator (a job switch set by CHGJOB or CRTJOBD SWS,
-      *          not from *LDA). Gates one cosmetic MOVE only.
-      *   KC     function key indicator for F3 (redundant, see above).
-      *   OA-OG  not used: there is no PRINTER file.
+      * TANTOM external field names TANTOCODE/TANTONAME are 9 chars,
+      * over the RPG III 6-char symbol limit (docs/probes.md), so they
+      * are renamed via I-spec (cols 21-30 external name, 53-58 program
+      * name - RPG/400 Reference p.149/153) to TANCD/TANNM below. This
+      * rename form was first proven for control-level/matching-field
+      * renaming (cols 53-58/59-60, confirmed real compile 04-10); the
+      * cols 21-30 rename itself has since also been compile-confirmed,
+      * as this file's current source (unchanged in this respect) is
+      * exactly what part05-legacy-probe (2026-09-26) and
+      * part05-txlegacy-exec (2026-09-27) both compiled, Highest
+      * Severity 00 - so it is no longer merely reference-based.
       *
+      * Indicator map (this is the point of the 05-02 lesson):
+      *   03     TK0100D CF03(03): real, confirmed F3=Exit signal.
+      *   50/51  CHAIN not-found (TOKUIM/TANTOM). Cleared with SETOF
+      *          before the conditional CHAIN pair, same reason as
+      *          ZA0500 SETOF 9091: a result indicator only reflects
+      *          this pass if its CHAIN line actually ran; when a
+      *          conditioning indicator skips the CHAIN line, the
+      *          indicator keeps its stale value from an earlier
+      *          iteration unless cleared first. The NOTFOUND/NOREP
+      *          MOVELs below all carry the P extender (col 53) so a
+      *          longer field's leftover tail from an earlier, found
+      *          CHAIN is blank-padded, not left dangling (Reference
+      *          p.302-303); TOKZIP/TOKTAN are separately blanked (and
+      *          TOKUPD zeroed) on ind 50 for the same reason - a failed
+      *          CHAIN leaves the whole record buffer as it was, so
+      *          those three are never touched by TOKUIM's own auto
+      *          field-name match either.
+      *   60/61  cosmetic MOVEA demo only (old-style bulk indicator
+      *          clear via the indicator array *IN,60 as MOVEA's
+      *          result, Reference p.295/177) - functionally the same
+      *          as SETOF 6061 would be. Nothing tests 60/61.
+      *   H1     halt indicator, used as the LOCK IN error indicator
+      *          (Reference p.276: cols 56-57 only, 54-55/58-59 must
+      *          stay blank). Per p.66, a halt indicator still on at
+      *          LR time ends the program abnormally, so the final
+      *          OUT below is skipped (ind NH1) when LOCK IN failed -
+      *          OUT would itself error on an area that never got
+      *          locked. The lock is held for the program's whole
+      *          run (single inquiry session assumed; a concurrent
+      *          second user would see their own LOCK IN fail).
+      *   U1     external indicator. NOT *LDA-loaded (that was wrong -
+      *          see below); gates a purely cosmetic demo line only,
+      *          nothing load-bearing depends on it.
+      *   KC     function key indicator for F3 - see exit-key note
+      *          above (secondary/redundant today).
+      *   OA-OG (overflow) are not used: this program has no PRINTER
+      *   file (interactive inquiry only), so overflow does not apply.
+      *
+      * Correction: U1 is NOT loaded from *LDA position 17. RPG/400
+      * Reference's "External Indicators" section (p.59-60) says U1-U8
+      * "can be set in a CL program... by the SWS (switch-setting)
+      * parameter on the CL commands CHGJOB... or CRTJOBD" - no *LDA
+      * mapping for U1-U8 appears anywhere in the Reference; the only
+      * *LDA hits in it (grepped this session) are the NAMVAR DEFN
+      * factor-2 keyword used above for LASTCD (p.240) and its index
+      * entry. An earlier draft of this header conflated external
+      * indicators (job switches) with the Local Data Area - corrected
+      * here.
      H DFTACTGRP(*YES)
      FTK0100D   CF   E             WORKSTN
      FTOKUIM    IF   E           K DISK

@@ -44,6 +44,15 @@ MUT:         RTVMBRD    FILE(&LIB/VFY28G) NBRCURRCD(&N)
              ENDDO
              CRTDTAARA  DTAARA(QTEMP/T28MUT) TYPE(*CHAR) LEN(1) VALUE('Y')
              MONMSG     MSGID(CPF0000)
+/* The gate also passes when the three programs do not exist at all   */
+/* (cause unknown). Flag that, so RST deletes them    */
+/* again instead of creating RPG III programs that were not there.    */
+             CHKOBJ     OBJ(&LIB/JU0300) OBJTYPE(*PGM)
+             MONMSG     MSGID(CPF9801) EXEC(DO)
+                CRTDTAARA  DTAARA(QTEMP/T28ABS) TYPE(*CHAR) LEN(1) +
+                             VALUE('Y')
+                MONMSG     MSGID(CPF0000)
+             ENDDO
              CRTBNDRPG  PGM(&LIB/JU0300) SRCFILE(&LIB/QRPGLE112) +
                           SRCMBR(JU0300) REPLACE(*YES)
              MONMSG     MSGID(CPF0000 RNS0000 RNF0000 MCH0000)
@@ -70,7 +79,16 @@ RST:         CHKOBJ     OBJ(QTEMP/T28MUT) OBJTYPE(*DTAARA)
                 SNDPGMMSG  MSG('T28RUN: no flag, nothing to restore.')
                 RETURN
              ENDDO
-             CRTRPGPGM  PGM(&LIB/JU0300) SRCFILE(&LIB/QRPGSRC) +
+             CHKOBJ     OBJ(QTEMP/T28ABS) OBJTYPE(*DTAARA)
+             MONMSG     MSGID(CPF9801) EXEC(GOTO CMDLBL(RSTRPG))
+             DLTPGM     PGM(&LIB/JU0300)
+             MONMSG     MSGID(CPF0000)
+             DLTPGM     PGM(&LIB/ZA0500)
+             MONMSG     MSGID(CPF0000)
+             DLTPGM     PGM(&LIB/TK0100)
+             MONMSG     MSGID(CPF0000)
+             GOTO       CMDLBL(RSTJIC)
+RSTRPG:      CRTRPGPGM  PGM(&LIB/JU0300) SRCFILE(&LIB/QRPGSRC) +
                           SRCMBR(JU0300) REPLACE(*YES)
              MONMSG     MSGID(CPF0000 RNS0000 RNF0000 MCH0000)
              CRTRPGPGM  PGM(&LIB/ZA0500) SRCFILE(&LIB/QRPGSRC) +
@@ -79,7 +97,7 @@ RST:         CHKOBJ     OBJ(QTEMP/T28MUT) OBJTYPE(*DTAARA)
              CRTRPGPGM  PGM(&LIB/TK0100) SRCFILE(&LIB/QRPGSRC) +
                           SRCMBR(TK0100) REPLACE(*YES)
              MONMSG     MSGID(CPF0000 RNS0000 RNF0000 MCH0000)
-             CHKOBJ     OBJ(QTEMP/T28JIC) OBJTYPE(*DTAARA)
+RSTJIC:      CHKOBJ     OBJ(QTEMP/T28JIC) OBJTYPE(*DTAARA)
              MONMSG     MSGID(CPF0000) EXEC(GOTO CMDLBL(RSTDATA))
              DLTPGM     PGM(&LIB/JUCINQC)
              MONMSG     MSGID(CPF0000)

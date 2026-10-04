@@ -1,7 +1,7 @@
 {
   "batch": "part04v-28imp",
   "sshTimeoutMs": 900000,
-  "description": "Issue #35, part 4V lesson 04-28 (impact analysis against the fixed-form RPG IV legacy system). ONE wrapper job: gate (DBVER 1: JUCHUM has 4 columns and no JUDLV; JU0300/ZA0500/TK0100 are still OBJATTRIBUTE RPG) -> T28RUN MUT recompiles the three programs from QRPGLE112 with CRTBNDRPG over the same names (and builds JUCINQC from solutions/03-09 when absent) -> DSPPGMREF PGM(lib/*ALL), DSPPGMREF PGM(lib/ZA0500), DSPDBR JUCHUM and DSPFD JUCHU* TYPE(*RCDFMT) to QTEMP outfiles in the SAME job, read with RUNSQL into VFY28 (tags A-GATE, B-MUT, C-COLS, D-JUCHUM, E-JUCHUL1, F-ZAIKOM, G-BYPGM, H-DBR, Z-AFTER) and copied with CPYF into VFY28P/Z/D/F for the real column names (ILE specific columns are UNVERIFIED) -> T28RUN RST puts the RPG III programs back with CRTRPGPGM from QRPGSRC, deletes a JUCINQC this batch built, and runs TXRESET -> LAST (hang-prone, after the restore): FNDSTRPDM on QRPGLE112 and QCLSRC (OPTION(*NONE) PRTMBRLIST(*YES) PRTRCDS(*ALL), the proven form; hits are read with qsh grep in the after phase). T28RUN also does RMVLIBLE of <USER>1 (RTVJOBA CURUSER + 1) first, so unqualified file names resolve in the batch library. If the gate fails nothing is changed and the analysis still runs against whatever state the library is in (read the A-GATE rows). A final collect reads QTEMP.PGMREF from another job (expected to fail: QTEMP is job scoped). Nothing in the sample data is changed except by TXRESET, which restores it.",
+  "description": "Issue #35, part 4V lesson 04-28 (impact analysis against the fixed-form RPG IV legacy system). ONE wrapper job: gate (DBVER 1: JUCHUM has 4 columns and no JUDLV; JU0300/ZA0500/TK0100 are still OBJATTRIBUTE RPG) -> T28RUN MUT recompiles the three programs from QRPGLE112 with CRTBNDRPG over the same names (and builds JUCINQC from solutions/03-09 when absent) -> DSPPGMREF PGM(lib/*ALL), DSPPGMREF PGM(lib/ZA0500), DSPDBR JUCHUM and DSPFD JUCHU* TYPE(*RCDFMT) to QTEMP outfiles in the SAME job, read with RUNSQL into VFY28 (tags A-GATE, B-MUT, C-COLS, D-JUCHUM, E-JUCHUL1, F-ZAIKOM, G-BYPGM, H-DBR, Z-AFTER) and copied with CPYF into VFY28P/Z/D/F for the real column names (ILE specific columns are UNVERIFIED) -> T28RUN RST puts the RPG III programs back with CRTRPGPGM from QRPGSRC, deletes a JUCINQC this batch built, and runs TXRESET -> LAST (hang-prone, after the restore): FNDSTRPDM on QRPGLE112 and QCLSRC (OPTION(*NONE) PRTMBRLIST(*YES) PRTRCDS(*ALL), the proven form; hits are read with qsh grep in the after phase). T28RUN also does RMVLIBLE of <USER>1 (RTVJOBA CURUSER + 1) first, so unqualified file names resolve in the batch library. If the gate fails nothing is changed and the analysis still runs against whatever state the library is in (read the A-GATE rows). A final collect reads QTEMP.PGMREF from another job (expected to fail: QTEMP is job scoped). Nothing in the sample data is changed except by TXRESET, which restores it. REVISION 2 (after the first run, 2026-10-04: the library had no JU0300/ZA0500/TK0100 at all cause not verified, so the gate failed): the gate now also passes when none of the three programs exists, and T28RUN then deletes them again in the restore phase instead of putting RPG III back; the empty SPLLIST and CCOLS captures are removed and the VFY28P captures read full ILE rows.",
   "steps": [
     {
       "type": "file",
@@ -238,7 +238,7 @@
     {
       "type": "cl",
       "label": "GOK",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28G (OK) SELECT ''Y'' FROM SYSIBM.SYSDUMMY1 WHERE (SELECT COUNT(*) FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''JUCHUM'') = 4 AND (SELECT COUNT(*) FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''JUCHUM'' AND COLUMN_NAME = ''JUDLV'') = 0 AND (SELECT COUNT(*) FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME IN (''JU0300'', ''ZA0500'', ''TK0100'') AND OBJATTRIBUTE = ''RPG'') = 3') COMMIT(*NONE)",
+      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28G (OK) SELECT ''Y'' FROM SYSIBM.SYSDUMMY1 WHERE (SELECT COUNT(*) FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''JUCHUM'') = 4 AND (SELECT COUNT(*) FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = ''&LIB'' AND TABLE_NAME = ''JUCHUM'' AND COLUMN_NAME = ''JUDLV'') = 0 AND ((SELECT COUNT(*) FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME IN (''JU0300'', ''ZA0500'', ''TK0100'') AND OBJATTRIBUTE = ''RPG'') = 3 OR (SELECT COUNT(*) FROM TABLE(QSYS2.OBJECT_STATISTICS(''&LIB'', ''*PGM'')) X WHERE OBJNAME IN (''JU0300'', ''ZA0500'', ''TK0100'')) = 0)') COMMIT(*NONE)",
       "monmsg": [
         "CPF0000",
         "SQL0000",
@@ -382,16 +382,6 @@
     },
     {
       "type": "cl",
-      "label": "CCOLS",
-      "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''C-COLS'', COLUMN_NAME, DATA_TYPE, CHAR(LENGTH) FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = ''QTEMP'' AND TABLE_NAME = ''PGMREF'' ORDER BY ORDINAL_POSITION') COMMIT(*NONE)",
-      "monmsg": [
-        "CPF0000",
-        "SQL0000",
-        "SQL9010"
-      ]
-    },
-    {
-      "type": "cl",
       "label": "DJUCHUM",
       "cmd": "RUNSQL SQL('INSERT INTO &LIB/VFY28 (TAG, K1, K2, V) SELECT ''D-JUCHUM'', WHPNAM, WHFNAM, WHOBJT FROM QTEMP/PGMREF WHERE WHFNAM = ''JUCHUM'' ORDER BY WHPNAM') COMMIT(*NONE)",
       "monmsg": [
@@ -512,20 +502,9 @@
       "after": true
     },
     {
-      "type": "sh",
-      "label": "SPLLIST",
-      "cmd": "db2 \"SELECT SPOOLED_FILE_NAME, JOB_NAME, FILE_NUMBER, TOTAL_PAGES, CREATE_TIMESTAMP FROM QSYS2.OUTPUT_QUEUE_ENTRIES WHERE USER_NAME = CURRENT_USER ORDER BY CREATE_TIMESTAMP DESC FETCH FIRST 12 ROWS ONLY\" 2>&1",
-      "after": true
-    },
-    {
       "type": "collect",
       "kind": "sql",
       "sql": "SELECT TS, TAG, K1, K2, V FROM &LIB/VFY28 ORDER BY TS"
-    },
-    {
-      "type": "collect",
-      "kind": "sql",
-      "sql": "SELECT * FROM &LIB/VFY28P WHERE WHPNAM IN ('ZA0500', 'JU0300') FETCH FIRST 24 ROWS ONLY"
     },
     {
       "type": "collect",
@@ -546,6 +525,21 @@
       "type": "collect",
       "kind": "sql",
       "sql": "SELECT COUNT(*) FROM QTEMP.PGMREF"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT COLUMN_NAME, DATA_TYPE, LENGTH FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = '&LIB' AND TABLE_NAME = 'VFY28P' ORDER BY ORDINAL_POSITION"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT WHLIB, WHPNAM, WHFNAM, WHLNAM, WHOBJT, WHOTYP, WHFUSG, WHRFNM, WHRFSN, WHRFFN, WHSPKG, WHSYSN FROM &LIB/VFY28P WHERE WHPNAM IN ('JU0300', 'ZA0500', 'TK0100', 'V0421D', 'V0601A', 'JUCINQC') ORDER BY WHPNAM, WHFNAM"
+    },
+    {
+      "type": "collect",
+      "kind": "sql",
+      "sql": "SELECT WHOBJT, WHOTYP, WHFUSG, COUNT(*) AS N FROM &LIB/VFY28P GROUP BY WHOBJT, WHOTYP, WHFUSG ORDER BY 4 DESC FETCH FIRST 20 ROWS ONLY"
     }
   ]
 }
