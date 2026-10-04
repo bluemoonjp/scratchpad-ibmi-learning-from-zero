@@ -204,6 +204,8 @@ A0〜A6 は続けて行ってください。C は第8部の 08-08 に入る前�
    CRTCMD CMD(<USER>1/TXLEGACY) PGM(*LIBL/TXLEGACY) SRCFILE(<USER>1/QCMDSRC) SRCMBR(TXLEGACY)
    ```
 
+   **`*PGM` と `*CMD` は必ずセットで作り直します。** 旧版(`LANG` の無い、3パラメーターの `TXLEGACY`)の `*CMD` が残ったまま `*PGM` だけを新しくすると、`TXLEGACY` の実行が `CPD0172`(Parameters passed on CALL do not match those required)で止まります(`part05-lglang` で確認、2026-10-04)。すでに `TXLEGACY` がある場合は、`CRTCLPGM` に `REPLACE(*YES)` を付け、`CRTCMD` の前に `DLTCMD CMD(<USER>1/TXLEGACY)` を実行してください。
+
 3. `TK0100` が実行時に必要とするデータ域 `LASTCD` を作ります(`TXLEGACY` は作りません。05-01 で確認済みです)。すでにあれば「既に存在する」という趣旨のメッセージが出るだけなので、そのまま次に進みます。
 
    ```text
