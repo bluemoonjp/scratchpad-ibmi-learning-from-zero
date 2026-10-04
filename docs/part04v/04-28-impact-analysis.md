@@ -1,6 +1,6 @@
 # 04-28 影響調査(固定形式 RPG IV の旧システムを相手に)
 
-> 所要時間: 60分 / 前提レッスン: [04-27](04-27-route-preparation.md)(ルートの 04-21〜04-27。A4 で旧システムを `LANG(*RPGLE)` で `<USER>1` に入れてあること。04-21 の `V0421D` と 04-23 の `V0423D` を作ってあると、調査結果が増えて読み比べやすくなります)/ 目標番号: 4 / 観測方法: SQL の結果(`QTEMP` の出力ファイル)と `FNDSTRPDM` の一覧 / 道具: ACS「実行 SQL スクリプト」(`CL:` 行)・5250 / 同時接続数: ACS×1 と 5250×1(`FNDSTRPDM` のとき)/ 作る・変えるオブジェクト: なし(`QTEMP` の一時ファイルのみ)/ DBVER: 1 / 依存するプローブ: `part04v-28imp`(実施済み 2026-10-04。`JU0300`・`ZA0500` を作り直した状態での確認は、再実行待ち)/ PTF 依存: なし / 容量の目安: わずか
+> 所要時間: 60分 / 前提レッスン: [04-27](04-27-route-preparation.md)(ルートの 04-21〜04-27。A4 で旧システムを `LANG(*RPGLE)` で `<USER>1` に入れてあること。04-21 の `V0421D` と 04-23 の `V0423D` を作ってあると、調査結果が増えて読み比べやすくなります)/ 目標番号: 4 / 観測方法: SQL の結果(`QTEMP` の出力ファイル)と `FNDSTRPDM` の一覧 / 道具: ACS「実行 SQL スクリプト」(`CL:` 行)・5250 / 同時接続数: ACS×1 と 5250×1(`FNDSTRPDM` のとき)/ 作る・変えるオブジェクト: なし(`QTEMP` の一時ファイルのみ)/ DBVER: 1 / 依存するプローブ: `part04v-28imp`(実施済み 2026-10-04。再実行で、`JU0300`・`ZA0500`・`TK0100` を `CRTBNDRPG` で作り直した状態まで確認)/ PTF 依存: なし / 容量の目安: わずか
 
 **このレッスンは、第5部を通ってきた人は行いません。** 第5部の [05-07](../part05/05-07-impact-analysis.md) の核を、固定形式 RPG IV の旧システム(`QRPGLE112` のソースを `CRTBNDRPG` でコンパイルしたもの)を相手に書き直したものです。05-07 を終えた人は、次へ進んでください。08-06・08-07・10-02 が、このレッスンを前提にしています。
 
@@ -74,7 +74,7 @@
 そこで、この教材では ACS の「実行 SQL スクリプト」に `CL:` 行と SQL を並べて、1つのスクリプトとして実行します。
 
 - **未検証(2026-10-04時点)**: `CL:` 行は ACS の機能で、08-06 と10-02 の本文も使っていますが、著者はこの `QTEMP` と ACS の組み合わせを実機でまだ実行していません。うまく動かないときは、5250 のコマンド行で `DSPPGMREF` を実行し、**同じ 5250 セッションから** `STRSQL` や `RUNSQL` で読む手もあります(どちらも同じジョブになるはずです。こちらも未検証です)。
-- **実機で確認(part04v-28imp、2026-10-04)**: 1本の CL ラッパー・ジョブの中で、`DSPPGMREF PGM(ライブラリー/*ALL) OUTPUT(*OUTFILE) OUTFILE(QTEMP/PGMREF)` を実行し(`CPF3030`: 1648 件追加)、続けて同じジョブの `RUNSQL` と `CPYF` で `QTEMP` の出力ファイルを読めました。`DSPDBR`(1 件)と `DSPFD`(3 件)も同じです。
+- **実機で確認(part04v-28imp、2026-10-04)**: 1本の CL ラッパー・ジョブの中で、`DSPPGMREF PGM(ライブラリー/*ALL) OUTPUT(*OUTFILE) OUTFILE(QTEMP/PGMREF)` を実行し(`CPF3030`: 1678 件追加。再実行の値です)、続けて同じジョブの `RUNSQL` と `CPYF` で `QTEMP` の出力ファイルを読めました。`DSPDBR`(1 件)と `DSPFD`(3 件)も同じです。
 - **実機で確認(part04v-28imp、2026-10-04)**: 同じ検証の最後に、**別のジョブ**から `SELECT COUNT(*) FROM QTEMP.PGMREF` を実行すると、`SQLSTATE 42704`(`PGMREF in QTEMP type *FILE not found`)で失敗しました。`QTEMP` がジョブ・スコープで、別のジョブからは見えないことの実測です。
 
 ### `DSPPGMREF` の `*OUTFILE`: 確認できていること
@@ -91,11 +91,15 @@
 **実機で確認(part04v-28imp、2026-10-04)**: ILE のプログラム(04-21・04-27 で作った `V0421D`・`V0601A` など。この検証では `OBJATTRIBUTE` を確かめていません)と CL プログラムが入ったライブラリーで `DSPPGMREF PGM(ライブラリー/*ALL)` を実行した結果です。
 
 1. 列は OPM のときと同じ名前で出ます。全体は `WHLIB`・`WHPNAM`・`WHTEXT`・`WHFNUM`・`WHDTTM`・`WHFNAM`・`WHLNAM`・`WHSNAM`・`WHRFNO`・`WHFUSG`・`WHRFNM`・`WHRFSN`・`WHRFFN`・`WHOBJT`・`WHOTYP`・`WHSYSN`・`WHSPKG`・`WHRFNB` の18列です。**`WHFNAM` と `WHLNAM` で絞る問い合わせは、そのまま使えます。** それでも、**先に `SELECT * FROM QTEMP.PGMREF FETCH FIRST 1 ROW ONLY` で実物を見る**習慣は続けます(05-07 と同じです)。
-2. プログラムの種類やモジュールを持つ列は、見当たりません(`WHOTYP` がオブジェクトの種別らしい列ですが、値は確認していません)。`V0421D`・`V0601A`・`F0604A` などの ILE のプログラムは、CL と同じ形の行で、`WHFNAM = 'JUCHUM'`・`WHOBJT = 'F'` として出ました。
+2. プログラムの種類やモジュールを持つ列は、見当たりません。`WHOTYP` は参照先のオブジェクトの種別で、`*FILE`・`*PGM`・`*DTAARA`・`*SRVPGM` の4種が出ました(`WHOBJT` は順に `F`・`P`・`D`・空白です。ILE のプログラムには、`QRNXIE`・`QRNXIO`・`QRNXUTIL`・`QLEAWI` の `*SRVPGM` の行が付きます。`OBJTYPE` なしの実行でも出ました)。`V0421D`・`V0601A`・`F0604A` などの ILE のプログラムは、CL と同じ形の行で、`WHFNAM = 'JUCHUM'`・`WHOBJT = 'F'` として出ました。
 3. 1つのプログラムの同じファイルが、**複数行**で出ることがあります(`JU0900C` は、`JUCHUM` と `JUCHUD` がそれぞれ3行)。問い合わせは `SELECT DISTINCT` にします。
-4. ライブラリー全体(`/*ALL`)の結果は、この検証用ライブラリーで 1648 行でした。`JUCHUM` を参照する行は 34 行(28 本のプログラム)です(他の検証で作ったプログラムが多く入っているためです)。
+4. ライブラリー全体(`/*ALL`)の結果は、この検証用ライブラリーで 1678 行でした(`JU0300`・`ZA0500`・`TK0100` を作り直した後)。`JUCHUM` を参照する行は 35 行(29 本のプログラム。`ZA0500` を含みます)です(他の検証で作ったプログラムが多く入っているためです)。
 
-**未検証(2026-10-04時点)**: `ZA0500` のプログラム記述ファイル(`FJUCHUM    IS   F   26        DISK`)が、`DSPPGMREF` の行に出るか。初回の検証では、検証用ライブラリーに `JU0300`・`ZA0500`・`TK0100` のプログラムが無く(なぜ無かったかは、未検証(2026-10-04時点)です)、`CRTBNDRPG` で作り直す手順に進めませんでした。`DSPPGMREF PGM(ライブラリー/ZA0500)` は `CPF3033` で失敗しています。出ない場合は、`ZA0500` を探すにはソースの検索が必要になります。`JU0300` が `JUCHUL1` で出て `JUCHUM` で出ないことも、同じ理由で、ILE のこの2本では未確認です。
+**実機で確認(part04v-28imp、2026-10-04)**: 検証の再実行で、`JU0300`・`ZA0500`・`TK0100` を `QRPGLE112` から `CRTBNDRPG` で作り直し(`OBJATTRIBUTE` は `RPG` から `RPGLE` に変わりました)、そのうえで `DSPPGMREF PGM(ライブラリー/*ALL)` を実行しました(1678 行。初回の 1648 行より 30 行増えています。3本を作り直したことによる増加と考えられますが、増えた行の内訳は見ていません)。
+
+- **`ZA0500` のプログラム記述ファイル(`FJUCHUM    IS   F   26        DISK`)は、`DSPPGMREF` の行に出ます。** `JUCHUM` と `JUCHUD`(こちらも同じ形のプログラム記述)が、それぞれ `WHOBJT = 'F'`・`WHOTYP = '*FILE'`・`WHFUSG = 1`・`WHLNAM = '*LIBL'` の1行です。**ただし、外部記述のファイルとは違い、様式名の `WHRFNM` と様式レベル ID の `WHRFSN` は空で、`WHRFFN` は 0 です。** 同じ `ZA0500` の `ZAIKOM`(`E` の外部記述)は、`WHRFNM = 'ZAIKOR'`・`WHRFSN = '2FF50CA837102'`・`WHRFFN = 3` が入り、`WHLNAM` もライブラリー名(コンパイル時の名前)で出ます。よって、`JUCHUM` の行の `WHRFSN` が空なら、**プログラム記述ファイルと見分けられます**(様式レベル ID を持たないので、照合の対象外です。理由は、下の「様式レベル ID は、何を決めるのか」です)。
+- **`JU0300` は `JUCHUL1` で出て、`JUCHUM` では出ません。** `WHFNAM = 'JUCHUL1'` の行(`WHRFNM = 'JUCHUR'`・`WHRFSN = '2D46394749174'`・`WHFUSG = 1`)と、`*LDA`(`WHOTYP = '*DTAARA'`)・`QSYSPRT` の行が、`JU0300` のファイル・データ域の参照のすべてです(ほかに、ILE のプログラムに共通の `*SRVPGM` の行が4つ付きます)。この `WHRFSN` は、`JUCHUM`・`JUCHUL1` の `RFID`(下の `DSPFD` の表)と同じ値です。このため、ファイルを変えたあとに、`PGMREF` の `WHRFSN` と `DSPFD` の `RFID` を比べれば、食い違うプログラムを SQL で探せると考えられます(この比較そのものは、実行していません)。
+- `TK0100` は `TOKUIM`・`TANTOM`・`TK0100D`(表示ファイル、様式6つ)・`LASTCD`(`*DTAARA`)で出て、`JUCHUM` は出ません。
 
 ### `DSPDBR`: 確認できていること
 
@@ -107,7 +111,7 @@
 | `WHREFI`・`WHRELI` | 従属するファイル(ここでは論理ファイル `JUCHUL1`)とそのライブラリー |
 | `WHTYPE` | 従属側の種別。`D` |
 
-`DSPDBR` は、プログラムの言語とは関係のないファイル・システム側の情報なので、旧システムが RPG IV になっても同じです。**実機で確認(part04v-28imp、2026-10-04)**: ILE のプログラムが入ったライブラリーで `DSPDBR FILE(ライブラリー/JUCHUM) OUTPUT(*OUTFILE)` を実行すると、1行(`WHRTYP` は `P`、`WHRFI` は `JUCHUM`、`WHREFI` は `JUCHUL1`、`WHTYPE` は `D`、`WHRMB` は `*NONE`)でした。**ただし、`JU0300`・`ZA0500` を ILE にした状態では実行していません**(上の「ILE のプログラムでの確認」のとおり、検証用ライブラリーに無かったためです)。`DSPDBR` はプログラムを見ないので、結果は変わらないはずです。
+`DSPDBR` は、プログラムの言語とは関係のないファイル・システム側の情報なので、旧システムが RPG IV になっても同じです。**実機で確認(part04v-28imp、2026-10-04)**: ILE のプログラムが入ったライブラリーで `DSPDBR FILE(ライブラリー/JUCHUM) OUTPUT(*OUTFILE)` を実行すると、1行(`WHRTYP` は `P`、`WHRFI` は `JUCHUM`、`WHREFI` は `JUCHUL1`、`WHTYPE` は `D`、`WHRMB` は `*NONE`)でした。**再実行で、`JU0300`・`ZA0500`・`TK0100` を ILE にした状態でも、同じ1行でした**(`DSPDBR` はプログラムを見ないので、変わりません)。
 
 ### 間接参照を辿る
 
@@ -148,7 +152,7 @@ DDS の論理ファイルは物理ファイルの上に作るので、この旧�
 grep -in 'juchum' /QSYS.LIB/<USER>1.LIB/QRPGLE112.FILE/*.MBR
 ```
 
-**実機で確認(part04v-28imp、2026-10-04)**: 検索先が `QRPGLE112`(`RCDLEN(112)`)・`QCLSRC` のとき、`FNDSTRPDM FILE(ライブラリー/QRPGLE112) MBR(*ALL) STRING('JUCHUM') OPTION(*NONE) PRTMBRLIST(*YES) PRTRCDS(*ALL)` は、`QRPGSRC` のときと同じように画面を出さずに終わりました(`PDM0594`「29 records are printed」・`PDM0574`「The list is printed」・`PDM0575`「7 members match the Find string」)。`QCLSRC` は `PDM0594` が 213 行・`PDM0575` が 29 メンバーでした。`qsh` の `grep -in`・`grep -il` も、`QRPGLE112`・`QCLSRC` に対して動きました。印字された一覧そのものは、検証では読めていません(上の `CPYSPLF` の件のとおり)。「ヒットした行」は `grep` の結果から確認しました。
+**実機で確認(part04v-28imp、2026-10-04)**: 検索先が `QRPGLE112`(`RCDLEN(112)`)・`QCLSRC` のとき、`FNDSTRPDM FILE(ライブラリー/QRPGLE112) MBR(*ALL) STRING('JUCHUM') OPTION(*NONE) PRTMBRLIST(*YES) PRTRCDS(*ALL)` は、`QRPGSRC` のときと同じように画面を出さずに終わりました(`PDM0594`「29 records are printed」・`PDM0574`「The list is printed」・`PDM0575`「7 members match the Find string」)。`QCLSRC` は `PDM0594` が 213 行・`PDM0575` が 29 メンバーでした。`qsh` の `grep -in`・`grep -il` も、`QRPGLE112`・`QCLSRC` に対して動きました。印字された一覧は、検証の出力の中で読めました(メンバーごとに、ヘッダー、ヒットした行の行番号つきの内容、`Number of records found` が並びます。ヒットした文字列の位置には、行の上に印が付きます)。5250 の画面や `WRKSPLF` での見え方は、未検証(2026-10-04時点)です。行番号は `grep` の結果とも突き合わせました。
 
 `QRPGLE112` で `JUCHUM` を検索した結果(`grep` による行番号)は、次のとおりです。
 
@@ -158,7 +162,7 @@ grep -in 'juchum' /QSYS.LIB/<USER>1.LIB/QRPGLE112.FILE/*.MBR
 | `JU0300` | 2件(6・58行) | **2件ともコメント**(`JUCHUM/JUCHUL1` の言及)。F 仕様書は `FJUCHUL1` なので、コードには `JUCHUM` が出ません |
 | `V0601A` | 2件(4・10行) | 4行が `FJUCHUM    IF   E             DISK`、10行が `C                   READ      JUCHUM` |
 
-`QCLSRC` では、`JUCINQC` が2件(1行目のコメントと、6行目の `DCLF       FILE(JUCHUM)`)、`JU0900C` が8件(21・24・60行のコメント、46行の `DCLF`、66行の `OVRDBF     FILE(JUCHUM) TOFILE(...)`、69・72行のメッセージ文、111行の `DLTOVR`)でした。**8件のうち、コードの依存はコマンドの3行(`DCLF`・`OVRDBF`・`DLTOVR`)で、残りはコメントとメッセージ文の言及です。** 検索先ライブラリーには、他の検証で作った `LGZA0500`・`LLJU0300` のような複製メンバーも入っていて、同じ行がそれぞれにもヒットします。
+`QCLSRC` では、`JUCINQC` が2件(1行目のコメントと、6行目の `DCLF       FILE(JUCHUM)`)、`JU0900C` が8件(7・10・47行のコメント、33行の `DCLF`、53行の `OVRDBF     FILE(JUCHUM) TOFILE(...)`、56・59行のメッセージ文、106行の `DLTOVR`)でした。**8件のうち、コードの依存はコマンドの3行(`DCLF`・`OVRDBF`・`DLTOVR`)で、残りはコメントとメッセージ文の言及です。** 検索先ライブラリーには、他の検証で作った `LGZA0500`・`LLJU0300` のような複製メンバーも入っていて、同じ行がそれぞれにもヒットします。
 
 ### ヒットは依存ではない: コメントの言及
 
@@ -168,7 +172,7 @@ grep -in 'juchum' /QSYS.LIB/<USER>1.LIB/QRPGLE112.FILE/*.MBR
 
 ### 相互参照表: 1本のプログラムの中を見る
 
-`DSPPGMREF` はファイル単位の一覧と考えてください(ILE のプログラムの出力 18 列に、項目名と分かる列は見当たりません。`WHRFNM`・`WHRFSN`・`WHRFFN` の意味は、未検証(2026-10-04時点))。たとえば `JUCHUM` に項目を足すとき、プログラム記述の `ZA0500` は、**I 仕様書の桁位置を手で直す**必要があります。
+`DSPPGMREF` はファイル単位の一覧と考えてください(ILE のプログラムの出力 18 列に、項目名と分かる列は見当たりません。`WHRFNM`・`WHRFSN`・`WHRFFN` は、様式名・様式レベル ID・数でした。実機で確認、part04v-28imp、2026-10-04。`JUCHUR` は 4、`ZAIKOR` は 3 で、プログラム記述のファイルでは空白と 0 です。この数が何の数かは、確認していません)。たとえば `JUCHUM` に項目を足すとき、プログラム記述の `ZA0500` は、**I 仕様書の桁位置を手で直す**必要があります。
 
 ```text
      IJUCHUM    AA  02
@@ -178,14 +182,14 @@ grep -in 'juchum' /QSYS.LIB/<USER>1.LIB/QRPGLE112.FILE/*.MBR
      I                                 21   26  JUTAN
 ```
 
-1本のプログラムを細かく見るには、`CRTBNDRPG` のコンパイル・リストを読みます。Cross-Reference Table の節に、ファイル・項目・標識が、どの行で使われているかが載ります。リストに出ていないときは、ILE RPG の一次資料では `OPTION(*XREF)` を付けると出ると書かれています(未検証(2026-10-04時点)。この検証では `CRTBNDRPG` のコンパイル・リストを取っていません。04-21 の「コンパイル・リストの読み方」の確認と、同じ形で試します)。
+1本のプログラムを細かく見るには、`CRTBNDRPG` のコンパイル・リストを読みます。Cross-Reference Table の節に、ファイル・項目・標識が、どの行で使われているかが載ります。**実機で確認(part04v-28imp、2026-10-04)**: `CRTBNDRPG` を既定のオプションで実行したコンパイル・リストに、`*XREF` が入っていて、`Cross Reference` の節に `File and Record References`・`Global Field References`・`Indicator References` が、それぞれ行番号つきで載りました(`JU0300` では、`JUCHUL1` が 138 行で定義、143 行で参照、など)。リストに出ていないときに `OPTION(*XREF)` を付ける手順は、未検証(2026-10-04時点)です。
 
 ### 様式レベル ID は、何を決めるのか
 
 `DSPPGMREF` と `DSPDBR` は、**だれが関係しているか**を教えます。**変更したとき実際に止まるのはだれか**を決めるのは、様式レベル ID です(04-23 の「落とし穴 2」)。
 
 - 外部記述のファイル(`JU0300`・`V0421D` など)は、コンパイルしたときの様式レベル ID を覚えていて、実行時にファイルの今の ID と比べます。ずれると `CPF4131`(Level check)です。
-- プログラム記述のファイル(`ZA0500` の `JUCHUM` と `JUCHUD`)は、**この照合の対象外**です(05-09 の話で、ILE RPG の一次資料にも同じ記述があります。**ILE の `ZA0500` では未検証(2026-10-04時点)**)。ずれたまま、**エラーにならず別の位置のデータを読みます**。影響調査で見つけて、手で直します。
+- プログラム記述のファイル(`ZA0500` の `JUCHUM` と `JUCHUD`)は、**この照合の対象外**です(05-09 の話で、ILE RPG の一次資料にも同じ記述があります。**ILE の `ZA0500` では、`PGMREF` の `JUCHUM` の行に様式レベル ID が無いことまでを、実機で確認しました(part04v-28imp、2026-10-04)。ずれたファイルを実際に開いて動かす確認は、未検証(2026-10-04時点)です**)。ずれたまま、**エラーにならず別の位置のデータを読みます**。影響調査で見つけて、手で直します。
 - ID の見方は、`DSPFD FILE(<USER>1/JUCHU*) TYPE(*RCDFMT)` です([08-06](../part08/08-06-dds-to-sql-ddl.md) が、`DSPFD` で ID を比べます)。
 - 10-02 の検証(`part10-02-tokuim`、確認日 2026-09-30)では、`TOKUIM` に `CHGPF` で項目を足したとき、**論理ファイル `TOKUIL1` も、作り直す前に、物理ファイルと同じ新しい ID になっていました。** 物理ファイルを変えると、その上の論理ファイルを開くプログラムも、止まる側に入ります。同じ検証で、`DSPPGMREF` の一覧に出る再コンパイルしていないプログラムが、実際に `CPF4131` を出すかどうかは、観測していません。**一覧に出ること=止まること、ではありません。**
 
@@ -218,7 +222,7 @@ grep -in 'juchum' /QSYS.LIB/<USER>1.LIB/QRPGLE112.FILE/*.MBR
     ORDER BY OBJNAME;
    ```
 
-   3行すべて `OBJATTRIBUTE` が `RPGLE` のはずです(**未検証(2026-10-04時点)**。04-27 の A5 と同じです。`part04v-28imp` の検証用ライブラリーには、この3本が無い状態でした)。
+   3行すべて `OBJATTRIBUTE` が `RPGLE` のはずです(実機で確認、part04v-28imp、2026-10-04。`CRTBNDRPG` で作り直した直後に3本とも `RPGLE`、作り直す前と `CRTRPGPGM` で戻した後は `RPG` でした)。
 
 2. **(ACS)「実行 SQL スクリプト」で、次を1つのスクリプトとして実行します。**
 
@@ -245,7 +249,7 @@ grep -in 'juchum' /QSYS.LIB/<USER>1.LIB/QRPGLE112.FILE/*.MBR
     ORDER BY WHPNAM;
    ```
 
-   `JU0900C`・`ZA0500` が出るはずです(`JUCINQC`・`V0421D`・`V0601A` は、作ってあれば出ます)。実機では、`JU0900C`・`JUCINQC`・`V0421D`・`V0601A` が `WHOBJT = 'F'` で出ました(part04v-28imp、2026-10-04。`ZA0500` は未検証(2026-10-04時点))。**`JU0300` は出ないはずです。** `ZA0500` が出なければ、「`DSPPGMREF` の3点目」(上の説明)の問題です。メモしておき、手順8のソース検索で拾います。
+   `JU0900C`・`ZA0500` が出るはずです(`JUCINQC`・`V0421D`・`V0601A` は、作ってあれば出ます)。実機では、`JU0900C`・`JUCINQC`・`V0421D`・`V0601A` と `ZA0500`(プログラム記述のファイル)が `WHOBJT = 'F'` で出ました(part04v-28imp、2026-10-04)。**`JU0300` は出ないはずです**(実機でも出ませんでした)。`ZA0500` が出なければ、プログラム記述のファイルが `DSPPGMREF` に出ない環境です(実機では出ました)。メモしておき、手順8のソース検索で拾います。
 
 5. **`JUCHUM` の上の論理ファイルを見ます。**
 
@@ -265,7 +269,7 @@ grep -in 'juchum' /QSYS.LIB/<USER>1.LIB/QRPGLE112.FILE/*.MBR
     ORDER BY WHPNAM;
    ```
 
-   `JU0300` が出るはずです(未検証(2026-10-04時点)。part04v-28imp では、`JU0300` が無い状態でした)。**直接参照だけを調べると、`JU0300` を見落とします。**
+   `JU0300` が出るはずです(実機で確認、part04v-28imp、2026-10-04。`JU0300` は `JUCHUL1` の行で出て、`JUCHUM` の行には出ませんでした)。**直接参照だけを調べると、`JU0300` を見落とします。**
 
 7. **`DCLF` が見えるかを確かめます。** 手順4の結果に、`JU0900C` に並んで `JUCINQC`(`DCLF FILE(JUCHUM)` と `RCVF` しかない CL)が出ているかを見ます。出ていれば「`DCLF` は見える」、出ていなければ「`DCLF` は死角」と確定します(実機では「見える」でした。part04v-28imp、2026-10-04)。**どちらの結果でも、次の手順8は行います。**
 
@@ -312,7 +316,7 @@ grep -in 'juchum' /QSYS.LIB/<USER>1.LIB/QRPGLE112.FILE/*.MBR
 | 手順3の `SELECT` が「ファイルが見つかりません」になる | `CL:` 行と `SELECT` が別の接続・別のジョブで実行されています。同じ「実行 SQL スクリプト」の中で実行し直します。 |
 | `PGMREF` に `WHPNAM` や `WHFNAM` が無い | 実機の ILE では、ありました(2026-10-04)。無いときは、手順3の実物の列名に合わせて、問い合わせを直します。 |
 | 手順4で、同じプログラムが同じファイルで何行も出る | 1つのプログラムが、同じファイルを複数の行で参照しているためです(`JU0900C` は3行)。`SELECT DISTINCT` にします。 |
-| 手順4に `ZA0500` が出ない | プログラム記述のファイルが、`DSPPGMREF` の行にならない可能性があります(未検証)。手順8のソース検索の結果を根拠にします。 |
+| 手順4に `ZA0500` が出ない | 実機では、プログラム記述のファイルも `DSPPGMREF` の行になりました(2026-10-04)。出ないときは、`ZA0500` が `RPGLE` で作り直されているか(手順1)と、対象のライブラリーを見直し、手順8のソース検索の結果も根拠にします。 |
 | 手順4に、4本以外のプログラムも多く出る | ライブラリー全体(`/*ALL`)を調べているためです。作った覚えのないものも、自分のライブラリーのものだけです。 |
 | `FNDSTRPDM` が画面を出して止まる | PDM の一覧画面が出ます(画面操作は、この教材の検証では確認していません。V3)。`F3` で戻り、`qsh` の `grep` に替えます。 |
 | `grep` が何も返さない | パスの `<USER>1` を、自分のユーザー名にそろえます。メンバーの無い `QRPGLE112` に当たっている可能性もあります(04-27 の A4)。 |
@@ -322,7 +326,7 @@ grep -in 'juchum' /QSYS.LIB/<USER>1.LIB/QRPGLE112.FILE/*.MBR
 **同じ手順を `ZAIKOM` で行ってください。**
 
 1. `DSPPGMREF` を `ZAIKOM` 向けに調べ(`WHFNAM = 'ZAIKOM'`)、直接参照しているプログラムを探してください。
-2. `ZA0500`(`FZAIKOM    UF   E           K DISK`)が出るはずです(未検証(2026-10-04時点))。04-23 で作った `V0423D`・`V0423E`・`W0423A` も、作ってあれば出ます(実機で確認、part04v-28imp、2026-10-04)。**旧システムの `ZA0510`(05-07 の演習が挙げる独立の教材)は、この旧システムには入っていません**(`TXLEGACY` が入れないため)。05-07 の演習と、出る顔ぶれが違います。
+2. `ZA0500`(`FZAIKOM    UF   E           K DISK`)が出るはずです(実機で確認、part04v-28imp、2026-10-04。`WHFUSG` は 5、`WHRFNM` は `ZAIKOR`)。04-23 で作った `V0423D`・`V0423E`・`W0423A` も、作ってあれば出ます(実機で確認、part04v-28imp、2026-10-04)。**旧システムの `ZA0510`(05-07 の演習が挙げる独立の教材)は、この旧システムには入っていません**(`TXLEGACY` が入れないため)。05-07 の演習と、出る顔ぶれが違います。
 3. `ZAIKOM` の上に論理ファイルがあるか、`DSPDBR` で確認してください。`db/` には `ZAIKOM` の論理ファイルが無いので、間接参照の段は発生しないはずです(自分の目で確かめます)。
 4. ソースの検索で `ZAIKOM` を探してください。`JU0900C` のヘッダー・コメント(`RUNMODE` の説明)に `ZAIKOM` が出ます。これは**コメントの言及**で、`JU0900C` は `ZA0500` を `CALL` するだけです。ヒット=依存、と判断しないことの実例として確認してください。
 5. `ZAIKOM` と `JUCHUM` の影響調査表を並べ、**どちらにも出るプログラム**(`ZA0500`)を挙げてください。2つのファイルを同時に変える保守では、そのプログラムの手直しが重くなります。
@@ -356,21 +360,23 @@ grep -in 'juchum' /QSYS.LIB/<USER>1.LIB/QRPGLE112.FILE/*.MBR
 
 ## 実機メモ
 
-- **実施した検証: `verify/part04v-28imp`(2026-10-04)。ただし、このレッスンの要である `JU0300`・`ZA0500` を `CRTBNDRPG` で作り直した状態の確認は、再実行待ちです。** 初回は、検証用ライブラリーに `JU0300`・`ZA0500`・`TK0100` のプログラムが無く(なぜ無かったかは、未検証(2026-10-04時点)です)、ゲートが「作り直さない」と判断しました(`T28RUN: gate row missing, nothing changed.`)。ライブラリーにあった ILE のプログラムと CL について、`DSPPGMREF`・`DSPDBR`・`DSPFD`・`FNDSTRPDM`・`grep` は実行できています。
+- **実施した検証: `verify/part04v-28imp`(2026-10-04、再実行)。** 初回は、検証用ライブラリーに `JU0300`・`ZA0500`・`TK0100` のプログラムが無く(前のバッチ `27set` が消していたためです)、ゲートが「作り直さない」と判断しました。再実行では、3本を `QRPGLE112` から `CRTBNDRPG` で作り直し、`DSPPGMREF`・`DSPDBR`・`DSPFD`・`FNDSTRPDM`・`grep` を実行したあと、`CRTRPGPGM` で RPG III に戻し、`TXRESET` でデータを初期状態にしました(戻した後の `OBJATTRIBUTE` は3本とも `RPG`)。
 - **実機で確認したこと(part04v-28imp、2026-10-04)**:
-  - 同じジョブの中で `DSPPGMREF`(`CPF3030`: 1648 件)・`DSPDBR`(1 件)・`DSPFD`(3 件)を `QTEMP` に出力し、`RUNSQL`・`CPYF` で読めた。別のジョブからの `SELECT` は `SQLSTATE 42704` で失敗した(ジョブ・スコープ)。
+  - 同じジョブの中で `DSPPGMREF`(`CPF3030`: 1678 件。初回は 1648 件)・`DSPDBR`(1 件)・`DSPFD`(3 件)を `QTEMP` に出力し、`RUNSQL`・`CPYF` で読めた。別のジョブからの `SELECT` は `SQLSTATE 42704` で失敗した(ジョブ・スコープ)。
+  - `ZA0500` のプログラム記述の `JUCHUM`・`JUCHUD` は `DSPPGMREF` に出る(`WHOBJT = 'F'`・`WHOTYP = '*FILE'`・`WHFUSG = 1`・`WHLNAM = '*LIBL'`、`WHRFNM`・`WHRFSN` は空、`WHRFFN` は 0)。外部記述の `ZAIKOM` は `WHRFNM = 'ZAIKOR'`・`WHRFSN = '2FF50CA837102'`・`WHRFFN = 3`・`WHFUSG = 5`。`JU0300` は `JUCHUL1`(`WHRFSN` は `DSPFD` の `RFID` と同じ `2D46394749174`)で出て、`JUCHUM` では出ない。`WHOTYP` は `*FILE`・`*PGM`・`*DTAARA`・`*SRVPGM` の4種。
+  - `OBJECT_STATISTICS` の `OBJATTRIBUTE`: 作り直す前は3本とも `RPG`、`CRTBNDRPG` の後は `RPGLE`。
+  - `ZAIKOM` を参照する行に `ZA0500`・`V0423D`・`V0423E`・`W0423A` が出る(検証用ライブラリーの内容として `ZA0510` も出る)。
   - `PGMREF` の列(18列。`WHLIB`・`WHPNAM`・`WHTEXT`・`WHFNUM`・`WHDTTM`・`WHFNAM`・`WHLNAM`・`WHSNAM`・`WHRFNO`・`WHFUSG`・`WHRFNM`・`WHRFSN`・`WHRFFN`・`WHOBJT`・`WHOTYP`・`WHSYSN`・`WHSPKG`・`WHRFNB`)。ILE のプログラム(`V0421D`・`V0601A`)も CL(`JU0900C`・`JUCINQC`)も `WHFNAM = 'JUCHUM'`・`WHOBJT = 'F'` で出る。`DCLF` は見える。`JU0900C` から `ZA0500` を呼ぶ行は `WHOBJT = 'P'`。同じファイルが複数行で出る。
   - `DSPDBR`: `JUCHUM` の上は `JUCHUL1` の1行(`WHTYPE = 'D'`)。
   - `DSPFD ... TYPE(*RCDFMT)` の出力ファイルの `RFID` で ID を読める。`JUCHUM` と `JUCHUL1` は同じ `2D46394749174`、`JUCHUD` は `3B05FA0363592`。
   - `FNDSTRPDM`(`OPTION(*NONE) PRTMBRLIST(*YES) PRTRCDS(*ALL)`)は `QRPGLE112`・`QCLSRC` でも画面を出さず終わり(`PDM0594`・`PDM0574`・`PDM0575`)、`grep` も動く。ヒットのコード/コメントの内訳は、上の表のとおり。
 - **未検証(2026-10-04時点)のこと**:
-  - `JU0300`・`ZA0500` を `CRTBNDRPG` で作り直したとき、`OBJATTRIBUTE` が `RPGLE` になること、`DSPPGMREF` に `ZA0500`(プログラム記述の `JUCHUM`)が出るか、`JU0300` が `JUCHUL1` だけで出るか(再実行します)。
-  - 項目単位の列(`WHRFNM`・`WHRFSN`・`WHRFFN` の意味、`WHOTYP` の値)。
-  - `CRTBNDRPG` のコンパイル・リストの相互参照表(`OPTION(*XREF)`)。
+  - `WHRFFN` が何の数か(様式の項目数か、使った項目数か)と、`WHFUSG` の値の意味(観測した値は 1・2・3・5 など)。
+  - コンパイル・リストに相互参照表が出ないときの `OPTION(*XREF)` の効果(既定のオプションで出ることは確認済み)。
   - ACS の `CL:` 行と SQL を、同じジョブで実行できるか(著者は ACS で実行していません)。
-  - `ZA0500` の様式レベル・チェックが、ILE でも効かないか。
-  - `FNDSTRPDM` の印字結果の画面での見え方(5250 の画面と `WRKSPLF`)。
-- **検証用ライブラリーについて**: 検証用ライブラリーには、他の検証で作ったプログラム・ソース・複製メンバーが多く入っています。`JUCHUM` を参照する行が34行(28本)出たのも、`ZAIKOM` の結果に `ZA0510` が出たのも、そのためです。あなたのライブラリーでは、この数にはなりません(演習の「`ZA0510` は入っていません」は、ルートの旧システムのとおりです)。
+  - `ZA0500` の様式レベル・チェックが、ILE でも効かないか(`PGMREF` に ID が無いことまでは確認。ずれたファイルを実際に開く確認は、未実施)。
+  - `FNDSTRPDM` の印字結果の、5250 の画面と `WRKSPLF` での見え方(印字内容そのものは確認済み)。
+- **検証用ライブラリーについて**: 検証用ライブラリーには、他の検証で作ったプログラム・ソース・複製メンバーが多く入っています。`JUCHUM` を参照する行が35行(29本)出たのも、`ZAIKOM` の結果に `ZA0510` が出たのも、そのためです。あなたのライブラリーでは、この数にはなりません(演習の「`ZA0510` は入っていません」は、ルートの旧システムのとおりです)。
 - **ほかのレッスンとのつながり**: [08-06](../part08/08-06-dds-to-sql-ddl.md) は `DSPFD ... TYPE(*RCDFMT) OUTPUT(*PRINT)` で ID を比べます。上の `OUTPUT(*OUTFILE)` の `RFID`・`RFNAME` を使えば、同じ比較を SQL で書けます(08-06 の本文の書き換えは要りません)。10-02 の影響調査(`DSPDBR`・`DSPPGMREF` の `WHPNAM`・`WHFNAM`)は、ここで確認した列名と同じです。
 - **`JUDLV` について(上の説明の再掲)**: 08-06 は `JUDLV` を日付型の例として名前を挙げるだけで、使う手順は無い。ルートの `JUCHUM`(`DBVER` 1)には `JUDLV` が無い(検証でも、`JUCHUM` は4列、`JUDLV` は0列でした)。08-06 を書き直す必要はない。
 - 食い違いに気づいたら [Issue](https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero/issues) で教えてください。
