@@ -3466,3 +3466,12 @@ RPG IV 版(`src/legacy/qrpgle112`)を `CRTBNDRPG` で作り直して同じ手順
   `CPF2110`。`EVFEVENT` の取得は失敗。`TK0100` の `ENDJOB` は `CPF1321`(ジョブが既に無い)。`<USER>B/TKUIMRG` は残した。
 - 未検証: 5250 の画面での `CPF4131`・`RNQ1216` への応答、再作成した `TK0100`・`JUCSRV` の、戻したファイルに対する動き、
   合わせ直した見本のコンパイル。
+
+## Issue #35 一本道の退行確認: `part05-txlegacy-exec` の再実行(確認日 2026-10-04)
+
+`LANG` を足した `TXLEGACY` で、既存の `part05-txlegacy-exec` を再実行した(`LANG` を省略、`TXLEGST` を消した状態)。
+
+- RPG III 版で読み込まれた: `TK0100`・`JU0300`・`ZA0500` は `CRTRPGPGM` で作られ(「is placed in library ... 00 highest severity」)、
+  `JU0900C`・`MN0000C` も作られた。`OBJECT_STATISTICS` で6個とも作成日時が今回の実行時刻。
+- `TXLEGLNG` が無い状態の `*SAME` は `*RPG` に落ち、一本道の動きは変わらない。
+  差は、`TXLEGLNG`(`*RPG`)というデータ域が1つ増えることだけ。
