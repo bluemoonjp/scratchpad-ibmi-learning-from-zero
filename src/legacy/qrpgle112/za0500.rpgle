@@ -1,48 +1,62 @@
-      * HAND CONVERSION - UNVERIFIED (2026-10-01): not yet compiled with CRTBNDRPG nor
-      * compared to the real CVTRPGSRC output; replace by real output (verify batch
-      * part05-lgcvt) and keep the RPG III original (src/legacy/qrpgsrc) in sync.
-      *
-      * Made by converting src/legacy/qrpgsrc/za0500.rpg column for column, as CVTRPGSRC
-      * does. Only three edits were made on purpose: this header, the H spec
-      * (DFTACTGRP(*YES)) and the 100-column limit of QRPGLE112. Code lines are
-      * not modernized. Changes that follow from the RPG III -> RPG IV layout:
-      *  - EXCPT -> EXCEPT, SETOF -> SETOFF, UPDAT -> UPDATE, DEFN -> DEFINE,
-      *    array notation CT,IX -> CT(IX), *IN,60 -> *IN(60).
-      *  - RPG IV allows one conditioning indicator per line (cols 9-11). A line
-      *    with more than one is split: first indicator on its own line, the
-      *    other ones on CAN lines, with the operation on the last CAN line.
-      *    (Layout of these CAN lines is UNVERIFIED against real CVTRPGSRC.)
-      *  - Resulting indicators moved from cols 54-59 to cols 71-76.
-      *
-      * ZA0500 - allocate stock for order lines (JUCHUD) matched to their order
-      * header (JUCHUM), M1/MR processing. Legacy system, fixed-form RPG IV
-      * (QRPGLE112, CRTBNDRPG). Prints the same lines as the RPG III ZA0500.
-      * JUCHUD is opened by JU0900C via OVRDBF SHARE(*YES); this program only
-      * opens JUCHUM and ZAIKOM directly.
-      *
-      * BUG (05-13 ticket 1): *ENTRY PLIST below declares MINQTY as 5,0, but
-      * JU0900C declares the CL variable it passes as 3,0. Left in on purpose;
-      * the fix is LEN(5 0) in JU0900C (solutions/05-13/ju0900c-ticket1.clp).
-      *
-      * JUCHUD (primary, IP) and JUCHUM (secondary, IS) are program-described
-      * files; each has one record type, so the sequence entry AA and the
-      * record identifying indicator (01 for JUCHUD, 02 for JUCHUM) are
-      * required. JUNO is the match field (M1) in both.
-      *
-      * The allocation block runs only when 01 and MR are both on. A matched
-      * pair is processed as two detail cycles and MR stays on for both, so
-      * without 01 the JUCHUM side would run the block a second time.
-      * There is no SETON LR on every cycle: the primary file turns LR on by
-      * itself at its end, and JU0900C calls this program once for all lines.
-      * Mode '*LIVE' updates ZAIKOM; any other mode only reports.
-      *
-      * Indicators: 90 ZAIKOM row not found, 91 AVAIL < MINQTY (the stock left
-      * after the line is below the minimum). Printed as NOTFOUND, SHORT or OK.
-      * 9091 are cleared first because a result indicator keeps its old value
-      * when the line that sets it is skipped.
-      * GOTO/TAG is used for the branch: DOLIVE is a TAG label, so CABEQ (not
-      * CASEQ) is the right test.
-      *
+      * CVTRPGSRC output of src/legacy/qrpgsrc/za0500.rpg (verified on hardware:
+      * part05-lgcvt, 2026-10-04, conversion 0 highest severity). Only edit:
+      * the H spec now says DFTACTGRP(*YES). Keep in sync with the RPG III
+      * original; the comment block below is the original header, unchanged.
+
+      * ZA0500 - allocate stock for order lines (JUCHUD) matched to
+      * their order header (JUCHUM), M1/MR processing. Legacy system
+      * (Part 5). JUCHUD is opened by JU0900C via OVRDBF SHARE(*YES);
+      * this program only opens JUCHUM and ZAIKOM directly.
+      * BUG (05-13 ticket 1): *ENTRY PLIST below declares MINQTY as
+      * 5,0, but JU0900C declares the CL variable it passes as 3,0.
+      * FIXED (found while writing za0510.rpg): the O-specs below
+      * reference QSYSPRT, but this file had no FQSYSPRT F-spec line at
+      * all - an undeclared file reference, which would fail to
+      * compile. Added, matching ju0300.rpg's identical line.
+      * FIXED (adversarial review, 2026-09-26): four more real bugs in
+      * the C/O-specs below, found by re-deriving every line's opcode
+      * semantics and column layout against RPG/400 Reference instead of
+      * trusting the earlier hand-typed source. Regenerated via
+      * tools/gen/rpg3.mjs's cSpec()/oSpec() rather than hand-edited.
+      *   - CABEQ, not CASEQ: DOLIVE below is a TAG (GOTO target), not a
+      *     BEGSR/ENDSR subroutine - CASxx's result field must name a
+      *     subroutine and CASxx needs an ENDCS, neither of which applies
+      *     here; CABxx's result field is a label, matching this GOTO/TAG
+      *     idiom.
+      *   - O-spec constants NOTFOUND/SHORT/OK now quoted with an end
+      *     position (cols 40-43); the original bare, unquoted words with
+      *     no end position would not compile (ju0300.rpg's OK/MISMATCH
+      *     pair is the correct precedent, followed here).
+      *   - No unconditional SETON LR: JUCHUD is the primary file (F-spec
+      *     IP), so RPG/400 sets LR on automatically once it is
+      *     exhausted. An unconditional SETON LR in detail calculations
+      *     sets LR on the very first cycle, and the cycle does not read
+      *     another primary record once LR is on - JU0900C calls ZA0500
+      *     once and relies on ZA0500's own cycle to walk every matched
+      *     order line, so this would have allocated stock for only the
+      *     first line then returned.
+      *   - Gated the allocation block on record-identifying indicator
+      *     01 (JUCHUD's own turn) in addition to MR: a matched primary/
+      *     secondary pair is processed as two separate detail cycles
+      *     (rpg400ref.txt, matching-record Table 41), and MR stays on
+      *     for both, so without the 01 gate the JUCHUM side of the same
+      *     matched pair re-ran CHAIN/allocate/UPDAT/EXCPT against
+      *     whatever JUSHO/JUSU were still sitting from the JUCHUD cycle
+      *     (JUCHUM's own I-specs don't touch them), double-deducting
+      *     stock and printing a duplicate line every time a match
+      *     occurred.
+      * FIXED (part05-legacy-probe, 2026-09-26, real-hardware CRTRPGPGM):
+      *   - QRG4008 (severity 10, halts compile at this shop's GENLVL):
+      *     the IJUCHUD/IJUCHUM record-identification lines below left the
+      *     Sequence entry (cols 15-16) blank. rpg400ref.txt ch.8 "Positions
+      *     21-41 (Record Identification Codes)" is explicit: when a
+      *     program-described file has only one record type (true for both
+      *     files here - no codes in 21-41), "a record identifying
+      *     indicator entry (positions 19 and 20) and a sequence entry
+      *     (positions 15 and 16) must be made." Added 'AA' (any two
+      *     alphabetic characters is valid per Table 21 when no special
+      *     sequence-checking is needed, which matches the compiler's own
+      *     silent AA default this message was warning about).
      H DFTACTGRP(*YES)
      FJUCHUD    IP   F   27        DISK
      FJUCHUM    IS   F   26        DISK
