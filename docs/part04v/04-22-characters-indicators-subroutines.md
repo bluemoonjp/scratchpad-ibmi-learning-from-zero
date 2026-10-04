@@ -415,21 +415,35 @@ DLTPGM PGM(<USER>1/V0422P)
 
 ## 実機メモ
 
-- 確認日: **未検証(2026-10-01時点)**。`V0422A`〜`V0422G`・`V0422P` はいずれも、まだ PUB400 でコンパイル・実行していません。検証用のバッチは `verify/part04v-22cmp/` にあり、実機で確認したあと、このメモを実測値で書き直します。
-- 確認済みの事実は、このレッスンの元になった別ルートの結果だけです。`R0403A`・`R0404A`・`R0405A` が実機で `A=JOHNSON     B=ALHNSON     C=123456  D=1234AB  E=BOB`・`REORDER`・`A             SUM= 00015` を印刷したことは、別の機会に確認されています。**`V0422A`〜`V0422C` が同じ出力になることは、本レッスンの設計上の狙いであり、未検証です。**
+- 確認日: **実機で確認(part04v-22cmp、2026-10-04)**。`V0422A`〜`V0422G`・`V0422P` の8本はすべて PUB400(V7R5M0)で `CRTBNDRPG ... OPTION(*EVENTF)` により最高重大度 00 でコンパイルでき(`RNS9304`: 'placed in library ... 00 highest severity')、`CALL` して下記のとおり印刷されました。コンパイル時のメッセージは、全プログラムとも次の2つ(どちらも重大度 00 の情報)だけです。`RNF2318`(オーバーフロー標識 `*INOA` を QSYSPRT に割り当てた)、`RNF6011`(`OQSYSPRT   E` の行でスペース・スキップが空白なので、スペース後は 1 になる)。
+- 実機で確認した印刷結果(part04v-22cmp、2026-10-04)。`V0422A`〜`V0422C` は、元の RPG III プログラム(`R0403A`・`R0404A`・`R0405A`)と同じ出力でした。
+
+    | プログラム | 印刷された行 |
+    |---|---|
+    | `V0422A` | `A=JOHNSON     B=ALHNSON     C=123456  D=1234AB  E=BOB` |
+    | `V0422B` | 行頭30桁が空白のあとに `REORDER` |
+    | `V0422C` | `A             SUM= 00015` |
+    | `V0422D`(解答1) | `A=JOHNSON     B=AL          C=123456  D=    AB  E=BOB` |
+    | `V0422E`(解答2) | `A=JOHNSON     B=AL          C=123456  D=    AB` |
+    | `V0422F`(解答) | 行頭30桁が空白のあとに `OVER        F=OK  S=OFF` |
+    | `V0422G`(解答) | `X             SUM= 00015` |
+    | `V0422P`(読解) | `BIG        00015` |
+
+    手計算した期待値(`V0422D`〜`V0422G`・`V0422P`)も、すべて実測と一致しました。
 - 桁位置の根拠: ILE RPG リファレンス(`ilerpgref75.txt`)の、条件標識(9〜11桁目)・C 仕様書の見出し行・Table 125(結果標識 71〜76)・`CABxx`/`CASxx`・`CLEAR`(結果フィールドに対象を書く)・`MOVE`/`MOVEL`(`(P)` の説明)の各節、および実機で動作確認済みの `v0601s.rpgle`・`v0601bs.rpgle` の F・O・D・C 仕様書の形です。
-- 未検証の事項(2026-10-01時点):
-  - 制御仕様書 `H DFTACTGRP(*YES)`(`CRTBNDRPG` の既定と同じ指定)がそのままコンパイルできること。
-  - D 仕様書で宣言した `P`(パック10進数)のフィールドが、編集コードなしの O 仕様書で `00015` のように前ゼロつきの数字で印刷されること。
-  - `MOVEL(P)`・`MOVE(P)` の拡張が、命令の直後(スペース無し)の形で受け付けられること。
-  - 演習の解答(`V0422D`〜`V0422G`)・読解用 `V0422P` の出力。いずれも手計算した値です。
-  - 次の RPG III の癖をそのまま持ち込んだときのメッセージ ID と重大度(コンパイルエラーの一覧):
+- 実機で確認した事項(part04v-22cmp、2026-10-04):
+  - 制御仕様書 `H DFTACTGRP(*YES)` は、そのままコンパイルできました。
+  - D 仕様書で宣言した `P`(パック10進数)のフィールドは、編集コードなしの O 仕様書で `00015` のように前ゼロつきの数字で印刷されました(`V0422C`・`V0422G`・`V0422P`)。
+  - `MOVEL(P)`・`MOVE(P)` は、命令の直後(スペース無し)の形で受け付けられました(`V0422E`)。
+  - 次の RPG III の癖をそのまま持ち込むと、コンパイルは失敗しました(`CRTBNDRPG` が `RNS9308` 'Compilation stopped' と `RNS9310` 'Program ... not created' で終わり、プログラムは作られません)。コンパイル・リストに出た主なメッセージは次のとおりです。
 
-    | 持ち込んだもの | 原因 | メッセージ ID |
+    | 持ち込んだもの | 原因 | メッセージ ID(重大度) |
     |---|---|---|
-    | `EXCPT`(命令名を略した綴り) | 固定形式 RPG IV の命令名は `EXCEPT` | (実機で確認後に記入) |
-    | `COMP` の結果標識を54〜59桁目に書く | RPG IV では71〜76桁目 | (実機で確認後に記入) |
-    | `CLEAR` の対象を Factor 2 に書く | RPG IV では結果フィールド | (実機で確認後に記入) |
-    | RPG III のソースを、そのまま `QRPGLESRC` に貼る | F・C・O のすべての桁位置がずれる | (実機で確認後に記入) |
+    | `EXCPT`(命令名を略した綴り) | 固定形式 RPG IV の命令名は `EXCEPT` | `RNF5014`(30) 'Operation code is not valid; specification is ignored.'。続けて `RNF6062`(00) 'EXCEPT output with no name but no EXCEPT Calculation' も出ます。最高重大度は30 |
+    | `COMP` の結果標識を54〜59桁目に書く | RPG IV では71〜76桁目 | `RNF0262`(20) 'Entry not left-adjusted'、`RNF5032`(20) 'Result-Field entry is not blank for the specified operation'、`RNF5053`(30) 'Resulting-Indicators entry is blank for specified operation; specification is ignored.'。結果標識が働かないため、標識31を使う行に `RNF7030`(30) 'The name or indicator *IN31 is not defined.' も出ます。最高重大度は30 |
+    | `CLEAR` の対象を Factor 2 に書く | RPG IV では結果フィールド | `RNF5393`(20) 'Factor 2 of a CLEAR or RESET operation is not valid.'、`RNF5030`(30) 'Result-Field operand is required but not specified.'。最高重大度は30 |
+    | RPG III のソース(`R0404A`)を、そのまま `QRPGLESRC` に貼る | F・C・O のすべての桁位置がずれる | `RNF0289`(20)・`RNF2013`(20)・`RNF2023`(30)(F 仕様書)、`RNF5014`(30)(命令名)、`RNF5053`(30)、`RNF7030`(30)(未定義の名前)など多数、さらに `RNF7023`(40) 'The Compiler cannot determine how the program can end.'。最高重大度は40 |
 
+  - 上の表は、コンパイル・リストに出たメッセージから読み取ったものです。メッセージ本文は、長いものは先頭だけを引用しています。
+- まだ確認していない事項(2026-10-04時点): `WRKSPLF` の画面での見え方と、`STRDBG`・SEU など対話形式の操作は、このバッチでは試していません(上の印刷結果は、スプール・ファイルの内容を取り出して確かめたものです)。
 - 食い違いに気づいたら [Issue](https://github.com/bluemoonjp/scratchpad-ibmi-learning-from-zero/issues) で教えてください。

@@ -1,6 +1,6 @@
 {
   "batch": "part04v-21cmp",
-  "description": "Part 4V lesson 04-21 (fixed-form RPG IV skeleton, Issue #35). Uploads the four reference samples V0421A-D (src/qrpglesrc/v0421s/bs/cs/ds.rpgle), two exercise answers V0421S/V0421T (solutions/04-21) and four deliberately wrong sources V0421W-Z (RPG III columns, missing F spec, opcode in column 27, result field without length) into QRPGLESRC (RCDLEN 112, created by the file step if absent), sets member type RPGLE, compiles every member with CRTBNDRPG OPTION(*EVENTF) and copies the compile event file (QTEMP/EVFEVENT member = source member) into VFYEV21 so RNF message ids and severities can be read. Negative examples are compiled first (they are expected to fail; DLTPGM before and CHKOBJ after show whether a program object came out). Then CALLs the six good programs (all non-interactive: QSYSPRT only, TOKUIM/JUCHUM read-only) and captures QSYSPRT through CPYSPLF into VFYSP21 (CPYSPLF may fail with CPF3303 in this harness job; the raw run section then carries the text, see part06-01-cvtrpgsrc). Expected output: V0421A prints HELLO, RPG III! ending at column 20; V0421B prints 1,738.00 ending at column 20 (same as R0401A/R0402A); V0421C prints one line SUM=   13 DIF=    7 MUL=   30 QUO=    3 REM=    1 CNT=   42 OVF=99990; V0421D prints the two ACME TRADING CO lines J00001/J00003 (same as R0408A); V0421S should print 38.00; V0421T should print the lines of customer C00003. CURSET makes the batch library the current library and LIBFIX removes and re-adds it at *FIRST of the user library list, so TOKUIM/JUCHUM resolve to it first without naming any private library (there is no placeholder for the first library, so RMVLIBLE of it is not done). Wrapper program name is TPART04V21 (first 10 chars of T+batch), so sibling batches part04v-22.. do not collide.",
+  "description": "Part 4V lesson 04-21 (fixed-form RPG IV skeleton, Issue #35). Uploads the four reference samples V0421A-D (src/qrpglesrc/v0421s/bs/cs/ds.rpgle), two exercise answers V0421S/V0421T (solutions/04-21) and four deliberately wrong sources V0421W-Z (RPG III columns, missing F spec, opcode in column 27, result field without length) into QRPGLESRC (RCDLEN 112, created by the file step if absent), sets member type RPGLE, compiles every member with CRTBNDRPG OPTION(*EVENTF) (the event file is not used). The EVFEVENT/CPYSPLF captures were removed after the 2026-10-04 run (they never worked); message ids are read from the raw compile listings in the run section. Negative examples are compiled first (they are expected to fail; DLTPGM before and CHKOBJ after show whether a program object came out). Then CALLs the six good programs (all non-interactive: QSYSPRT only, TOKUIM/JUCHUM read-only) (QSYSPRT printouts appear in the raw run section). Expected output: V0421A prints HELLO, RPG III! ending at column 20; V0421B prints 1,738.00 ending at column 20 (same as R0401A/R0402A); V0421C prints one line SUM=   13 DIF=    7 MUL=   30 QUO=    3 REM=    1 CNT=   42 OVF=99990; V0421D prints the two ACME TRADING CO lines J00001/J00003 (same as R0408A); V0421S should print 38.00; V0421T should print the lines of customer C00003. CURSET makes the batch library the current library and LIBFIX removes and re-adds it at *FIRST of the user library list, so TOKUIM/JUCHUM resolve to it first without naming any private library (there is no placeholder for the first library, so RMVLIBLE of it is not done). Wrapper program name is TPART04V21 (first 10 chars of T+batch), so sibling batches part04v-22.. do not collide.",
   "sshTimeoutMs": 600000,
   "steps": [
     {
@@ -92,38 +92,6 @@
     },
     {
       "type": "cl",
-      "label": "SPLPF",
-      "cmd": "CHKOBJ OBJ(&LIB/VFYSP21) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYSP21) RCDLEN(133) TEXT('04-21 spooled-file text capture'))",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "SPLCLR",
-      "cmd": "CLRPFM FILE(&LIB/VFYSP21)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "EVFPF",
-      "cmd": "CHKOBJ OBJ(&LIB/VFYEV21) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYEV21) RCDLEN(300) TEXT('04-21 compile event capture'))",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "EVFCLR",
-      "cmd": "CLRPFM FILE(&LIB/VFYEV21)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
       "label": "DLV0421W",
       "cmd": "DLTPGM PGM(&LIB/V0421W)",
       "monmsg": [
@@ -139,14 +107,6 @@
         "RNF0000",
         "RNS0000",
         "MCH0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "EVV0421W",
-      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0421W) TOFILE(&LIB/VFYEV21) MBROPT(*ADD) FMTOPT(*NOCHK)",
-      "monmsg": [
-        "CPF0000"
       ]
     },
     {
@@ -178,14 +138,6 @@
     },
     {
       "type": "cl",
-      "label": "EVV0421X",
-      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0421X) TOFILE(&LIB/VFYEV21) MBROPT(*ADD) FMTOPT(*NOCHK)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
       "label": "CKV0421X",
       "cmd": "CHKOBJ OBJ(&LIB/V0421X) OBJTYPE(*PGM)",
       "monmsg": [
@@ -209,14 +161,6 @@
         "RNF0000",
         "RNS0000",
         "MCH0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "EVV0421Y",
-      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0421Y) TOFILE(&LIB/VFYEV21) MBROPT(*ADD) FMTOPT(*NOCHK)",
-      "monmsg": [
-        "CPF0000"
       ]
     },
     {
@@ -248,14 +192,6 @@
     },
     {
       "type": "cl",
-      "label": "EVV0421Z",
-      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0421Z) TOFILE(&LIB/VFYEV21) MBROPT(*ADD) FMTOPT(*NOCHK)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
       "label": "CKV0421Z",
       "cmd": "CHKOBJ OBJ(&LIB/V0421Z) OBJTYPE(*PGM)",
       "monmsg": [
@@ -279,14 +215,6 @@
         "RNF0000",
         "RNS0000",
         "MCH0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "EVV0421A",
-      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0421A) TOFILE(&LIB/VFYEV21) MBROPT(*ADD) FMTOPT(*NOCHK)",
-      "monmsg": [
-        "CPF0000"
       ]
     },
     {
@@ -318,14 +246,6 @@
     },
     {
       "type": "cl",
-      "label": "EVV0421B",
-      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0421B) TOFILE(&LIB/VFYEV21) MBROPT(*ADD) FMTOPT(*NOCHK)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
       "label": "CKV0421B",
       "cmd": "CHKOBJ OBJ(&LIB/V0421B) OBJTYPE(*PGM)",
       "monmsg": [
@@ -349,14 +269,6 @@
         "RNF0000",
         "RNS0000",
         "MCH0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "EVV0421C",
-      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0421C) TOFILE(&LIB/VFYEV21) MBROPT(*ADD) FMTOPT(*NOCHK)",
-      "monmsg": [
-        "CPF0000"
       ]
     },
     {
@@ -388,14 +300,6 @@
     },
     {
       "type": "cl",
-      "label": "EVV0421D",
-      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0421D) TOFILE(&LIB/VFYEV21) MBROPT(*ADD) FMTOPT(*NOCHK)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
       "label": "CKV0421D",
       "cmd": "CHKOBJ OBJ(&LIB/V0421D) OBJTYPE(*PGM)",
       "monmsg": [
@@ -419,14 +323,6 @@
         "RNF0000",
         "RNS0000",
         "MCH0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "EVV0421S",
-      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0421S) TOFILE(&LIB/VFYEV21) MBROPT(*ADD) FMTOPT(*NOCHK)",
-      "monmsg": [
-        "CPF0000"
       ]
     },
     {
@@ -458,14 +354,6 @@
     },
     {
       "type": "cl",
-      "label": "EVV0421T",
-      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(V0421T) TOFILE(&LIB/VFYEV21) MBROPT(*ADD) FMTOPT(*NOCHK)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
       "label": "CKV0421T",
       "cmd": "CHKOBJ OBJ(&LIB/V0421T) OBJTYPE(*PGM)",
       "monmsg": [
@@ -486,14 +374,6 @@
     },
     {
       "type": "cl",
-      "label": "CAPV0421A",
-      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSP21) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
       "label": "RUNV0421B",
       "cmd": "CALL PGM(&LIB/V0421B)",
       "monmsg": [
@@ -502,14 +382,6 @@
         "RNQ0000",
         "RNX0000",
         "CEE0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "CAPV0421B",
-      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSP21) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
-      "monmsg": [
-        "CPF0000"
       ]
     },
     {
@@ -526,14 +398,6 @@
     },
     {
       "type": "cl",
-      "label": "CAPV0421C",
-      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSP21) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
       "label": "RUNV0421D",
       "cmd": "CALL PGM(&LIB/V0421D)",
       "monmsg": [
@@ -542,14 +406,6 @@
         "RNQ0000",
         "RNX0000",
         "CEE0000"
-      ]
-    },
-    {
-      "type": "cl",
-      "label": "CAPV0421D",
-      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSP21) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
-      "monmsg": [
-        "CPF0000"
       ]
     },
     {
@@ -566,14 +422,6 @@
     },
     {
       "type": "cl",
-      "label": "CAPV0421S",
-      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSP21) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "cl",
       "label": "RUNV0421T",
       "cmd": "CALL PGM(&LIB/V0421T)",
       "monmsg": [
@@ -583,24 +431,6 @@
         "RNX0000",
         "CEE0000"
       ]
-    },
-    {
-      "type": "cl",
-      "label": "CAPV0421T",
-      "cmd": "CPYSPLF FILE(QSYSPRT) TOFILE(&LIB/VFYSP21) SPLNBR(*LAST) JOB(*) CTLCHAR(*NONE) MBROPT(*ADD)",
-      "monmsg": [
-        "CPF0000"
-      ]
-    },
-    {
-      "type": "collect",
-      "kind": "sql",
-      "sql": "SELECT * FROM &LIB/VFYEV21"
-    },
-    {
-      "type": "collect",
-      "kind": "sql",
-      "sql": "SELECT * FROM &LIB/VFYSP21"
     }
   ]
 }

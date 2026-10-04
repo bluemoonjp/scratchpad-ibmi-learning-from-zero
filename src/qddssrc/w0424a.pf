@@ -1,0 +1,5 @@
+     A*                                     W0424A - 04-24 staging file: QTY is 5A (character).
+     A*                                     Same layout as W0424B except QTY.
+     A          R W0424R                    TEXT('04-24 char staging')
+     A            ID             2A         TEXT('Row id')
+     A            QTY            5A         TEXT('Quantity (5A on purpose)')

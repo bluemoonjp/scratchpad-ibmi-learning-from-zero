@@ -1,6 +1,6 @@
       * V0421S - exercise 2 answer: TOTAL shrunk to 4 digits (2 decimals).
       * 1738.00 does not fit; the high-order digits are dropped silently.
-      * Expected line (to be confirmed on the machine): 38.00
+      * Printed line (confirmed on PUB400, part04v-21cmp, 2026-10-04): 38.00
      H DFTACTGRP(*YES)
      FQSYSPRT   O    F  132        PRINTER
      C                   Z-ADD     1580          PRICE             7 2
