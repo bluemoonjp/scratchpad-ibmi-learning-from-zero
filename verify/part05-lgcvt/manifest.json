@@ -2,33 +2,240 @@
   "batch": "part05-lgcvt",
   "description": "Issue #35 stage 1, V1 gate: CVTRPGSRC-convert the three legacy RPG III programs (JU0300, ZA0500, TK0100) into QRPGLE112 and CRTBNDRPG them under scratch names (LGC0300/LGC0500/LGC0100, so the real RPG III programs are not overwritten). Records conversion messages (job log) and the full converted text (VFYSRC), plus the compile event file (EVFEVENT) for severity/RNF ids.",
   "steps": [
-    { "type": "file", "localPath": "src/ju0300.rpg", "remoteSrcFile": "QRPGSRC", "member": "LGJU0300" },
-    { "type": "file", "localPath": "src/za0500.rpg", "remoteSrcFile": "QRPGSRC", "member": "LGZA0500" },
-    { "type": "file", "localPath": "src/tk0100.rpg", "remoteSrcFile": "QRPGSRC", "member": "LGTK0100" },
-    { "type": "cl", "label": "CHGTYP1", "cmd": "CHGPFM FILE(&LIB/QRPGSRC) MBR(LGJU0300) SRCTYPE(RPG)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "CHGTYP2", "cmd": "CHGPFM FILE(&LIB/QRPGSRC) MBR(LGZA0500) SRCTYPE(RPG)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "CHGTYP3", "cmd": "CHGPFM FILE(&LIB/QRPGSRC) MBR(LGTK0100) SRCTYPE(RPG)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "VSRCPF", "cmd": "CHKOBJ OBJ(&LIB/QRPGLE112) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTSRCPF FILE(&LIB/QRPGLE112) RCDLEN(112) TEXT('CVTRPGSRC target'))", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "RM1", "cmd": "RMVM FILE(&LIB/QRPGLE112) MBR(LGJU0300)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "RM2", "cmd": "RMVM FILE(&LIB/QRPGLE112) MBR(LGZA0500)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "RM3", "cmd": "RMVM FILE(&LIB/QRPGLE112) MBR(LGTK0100)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "CVT1", "cmd": "CVTRPGSRC FROMFILE(&LIB/QRPGSRC) FROMMBR(LGJU0300) TOFILE(&LIB/QRPGLE112) TOMBR(LGJU0300) CVTRPT(*YES) LOGFILE(*NONE)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
-    { "type": "cl", "label": "CVT2", "cmd": "CVTRPGSRC FROMFILE(&LIB/QRPGSRC) FROMMBR(LGZA0500) TOFILE(&LIB/QRPGLE112) TOMBR(LGZA0500) CVTRPT(*YES) LOGFILE(*NONE)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
-    { "type": "cl", "label": "CVT3", "cmd": "CVTRPGSRC FROMFILE(&LIB/QRPGSRC) FROMMBR(LGTK0100) TOFILE(&LIB/QRPGLE112) TOMBR(LGTK0100) CVTRPT(*YES) LOGFILE(*NONE)", "monmsg": ["CPF0000", "RNF0000", "MCH0000"] },
-    { "type": "cl", "label": "CRTEVF", "cmd": "CHKOBJ OBJ(&LIB/VFYEVF) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYEVF) RCDLEN(300) TEXT('compile event capture'))", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "CLREVF", "cmd": "CLRPFM FILE(&LIB/VFYEVF)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "CMP1", "cmd": "CRTBNDRPG PGM(&LIB/LGC0300) SRCFILE(&LIB/QRPGLE112) SRCMBR(LGJU0300) OPTION(*EVENTF) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
-    { "type": "cl", "label": "EVF1", "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(LGJU0300) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "CMP2", "cmd": "CRTBNDRPG PGM(&LIB/LGC0500) SRCFILE(&LIB/QRPGLE112) SRCMBR(LGZA0500) OPTION(*EVENTF) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
-    { "type": "cl", "label": "EVF2", "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(LGZA0500) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "CMP3", "cmd": "CRTBNDRPG PGM(&LIB/LGC0100) SRCFILE(&LIB/QRPGLE112) SRCMBR(LGTK0100) OPTION(*EVENTF) REPLACE(*YES)", "monmsg": ["CPF0000", "RNF0000", "RNS0000", "MCH0000"] },
-    { "type": "cl", "label": "EVF3", "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(LGTK0100) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "VSRCTXT", "cmd": "CHKOBJ OBJ(&LIB/VFYSRC) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTSRCPF FILE(&LIB/VFYSRC) RCDLEN(112) TEXT('converted text capture'))", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "CLRSRC", "cmd": "CLRPFM FILE(&LIB/VFYSRC) MBR(*ALL)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "CPY1", "cmd": "CPYF FROMFILE(&LIB/QRPGLE112) FROMMBR(LGJU0300) TOFILE(&LIB/VFYSRC) TOMBR(LGJU0300) MBROPT(*REPLACE) CRTFILE(*NO)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "CPY2", "cmd": "CPYF FROMFILE(&LIB/QRPGLE112) FROMMBR(LGZA0500) TOFILE(&LIB/VFYSRC) TOMBR(LGZA0500) MBROPT(*REPLACE) CRTFILE(*NO)", "monmsg": ["CPF0000"] },
-    { "type": "cl", "label": "CPY3", "cmd": "CPYF FROMFILE(&LIB/QRPGLE112) FROMMBR(LGTK0100) TOFILE(&LIB/VFYSRC) TOMBR(LGTK0100) MBROPT(*REPLACE) CRTFILE(*NO)", "monmsg": ["CPF0000"] },
-    { "type": "collect", "kind": "sql", "sql": "SELECT * FROM &LIB/VFYEVF" },
-    { "type": "collect", "kind": "sql", "sql": "SELECT TABLE_PARTITION, SRCSEQ, SRCDTA FROM &LIB/VFYSRC ORDER BY TABLE_PARTITION, SRCSEQ" }
+    {
+      "type": "file",
+      "localPath": "src/ju0300.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "LGJU0300"
+    },
+    {
+      "type": "file",
+      "localPath": "src/za0500.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "LGZA0500"
+    },
+    {
+      "type": "file",
+      "localPath": "src/tk0100.rpg",
+      "remoteSrcFile": "QRPGSRC",
+      "member": "LGTK0100"
+    },
+    {
+      "type": "cl",
+      "label": "CHGTYP1",
+      "cmd": "CHGPFM FILE(&LIB/QRPGSRC) MBR(LGJU0300) SRCTYPE(RPG)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CHGTYP2",
+      "cmd": "CHGPFM FILE(&LIB/QRPGSRC) MBR(LGZA0500) SRCTYPE(RPG)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CHGTYP3",
+      "cmd": "CHGPFM FILE(&LIB/QRPGSRC) MBR(LGTK0100) SRCTYPE(RPG)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "VSRCPF",
+      "cmd": "CHKOBJ OBJ(&LIB/QRPGLE112) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTSRCPF FILE(&LIB/QRPGLE112) RCDLEN(112) TEXT('CVTRPGSRC target'))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RM1",
+      "cmd": "RMVM FILE(&LIB/QRPGLE112) MBR(LGJU0300)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RM2",
+      "cmd": "RMVM FILE(&LIB/QRPGLE112) MBR(LGZA0500)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "RM3",
+      "cmd": "RMVM FILE(&LIB/QRPGLE112) MBR(LGTK0100)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CVT1",
+      "cmd": "CVTRPGSRC FROMFILE(&LIB/QRPGSRC) FROMMBR(LGJU0300) TOFILE(&LIB/QRPGLE112) TOMBR(LGJU0300) CVTRPT(*YES) LOGFILE(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CVT2",
+      "cmd": "CVTRPGSRC FROMFILE(&LIB/QRPGSRC) FROMMBR(LGZA0500) TOFILE(&LIB/QRPGLE112) TOMBR(LGZA0500) CVTRPT(*YES) LOGFILE(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CVT3",
+      "cmd": "CVTRPGSRC FROMFILE(&LIB/QRPGSRC) FROMMBR(LGTK0100) TOFILE(&LIB/QRPGLE112) TOMBR(LGTK0100) CVTRPT(*YES) LOGFILE(*NONE)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CRTEVF",
+      "cmd": "CHKOBJ OBJ(&LIB/VFYEVF) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTPF FILE(&LIB/VFYEVF) RCDLEN(300) TEXT('compile event capture'))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLREVF",
+      "cmd": "CLRPFM FILE(&LIB/VFYEVF)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CMP1",
+      "cmd": "CRTBNDRPG PGM(&LIB/LGC0300) SRCFILE(&LIB/QRPGLE112) SRCMBR(LGJU0300) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVF1",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(LGJU0300) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CMP2",
+      "cmd": "CRTBNDRPG PGM(&LIB/LGC0500) SRCFILE(&LIB/QRPGLE112) SRCMBR(LGZA0500) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVF2",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(LGZA0500) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CMP3",
+      "cmd": "CRTBNDRPG PGM(&LIB/LGC0100) SRCFILE(&LIB/QRPGLE112) SRCMBR(LGTK0100) OPTION(*EVENTF) REPLACE(*YES)",
+      "monmsg": [
+        "CPF0000",
+        "RNF0000",
+        "RNS0000",
+        "MCH0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "EVF3",
+      "cmd": "CPYF FROMFILE(QTEMP/EVFEVENT) FROMMBR(LGTK0100) TOFILE(&LIB/VFYEVF) MBROPT(*ADD) FMTOPT(*NOCHK)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "VSRCTXT",
+      "cmd": "CHKOBJ OBJ(&LIB/VFYSRC) OBJTYPE(*FILE)\nMONMSG MSGID(CPF9801) EXEC(CRTSRCPF FILE(&LIB/VFYSRC) RCDLEN(112) TEXT('converted text capture'))",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CLRSRC",
+      "cmd": "CLRPFM FILE(&LIB/VFYSRC) MBR(*ALL)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPY1",
+      "cmd": "CPYF FROMFILE(&LIB/QRPGLE112) FROMMBR(LGJU0300) TOFILE(&LIB/VFYSRC) TOMBR(LGJU0300) MBROPT(*REPLACE) CRTFILE(*NO)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPY2",
+      "cmd": "CPYF FROMFILE(&LIB/QRPGLE112) FROMMBR(LGZA0500) TOFILE(&LIB/VFYSRC) TOMBR(LGZA0500) MBROPT(*REPLACE) CRTFILE(*NO)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "cl",
+      "label": "CPY3",
+      "cmd": "CPYF FROMFILE(&LIB/QRPGLE112) FROMMBR(LGTK0100) TOFILE(&LIB/VFYSRC) TOMBR(LGTK0100) MBROPT(*REPLACE) CRTFILE(*NO)",
+      "monmsg": [
+        "CPF0000"
+      ]
+    },
+    {
+      "type": "sh",
+      "after": true,
+      "label": "TXT-LGJU0300",
+      "cmd": "echo ===SRC:LGJU0300===\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGLE112.FILE/LGJU0300.MBR') TOSTMF('$HOME/vfy/part05-lgcvt/LGJU0300.txt') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\ncat \"$HOME/vfy/part05-lgcvt/LGJU0300.txt\""
+    },
+    {
+      "type": "sh",
+      "after": true,
+      "label": "TXT-LGZA0500",
+      "cmd": "echo ===SRC:LGZA0500===\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGLE112.FILE/LGZA0500.MBR') TOSTMF('$HOME/vfy/part05-lgcvt/LGZA0500.txt') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\ncat \"$HOME/vfy/part05-lgcvt/LGZA0500.txt\""
+    },
+    {
+      "type": "sh",
+      "after": true,
+      "label": "TXT-LGTK0100",
+      "cmd": "echo ===SRC:LGTK0100===\nsystem \"CPYTOSTMF FROMMBR('/QSYS.LIB/&LIB.LIB/QRPGLE112.FILE/LGTK0100.MBR') TOSTMF('$HOME/vfy/part05-lgcvt/LGTK0100.txt') STMFOPT(*REPLACE) STMFCCSID(1208) ENDLINFMT(*LF)\" 2>&1\ncat \"$HOME/vfy/part05-lgcvt/LGTK0100.txt\""
+    }
   ]
 }

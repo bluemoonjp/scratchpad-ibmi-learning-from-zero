@@ -1,7 +1,7 @@
       * V0425B - exercise 1 (04-25): the L1 lines BEFORE the detail lines.
       * Same as V0425A except for the order of the C specs. The compiler
-      * is expected to reject this order; the message id is recorded by the
-      * verify batch part04v-25run, not guessed here. Do not use as a model.
+      * rejects it: RNF5002 (severity 20) on the two blank-level lines,
+      * confirmed by part04v-25run (2026-10-04). Do not use as a model.
      H DFTACTGRP(*YES)
      FJUCHUL1   IP   E           K DISK
      FQSYSPRT   O    F  132        PRINTER
