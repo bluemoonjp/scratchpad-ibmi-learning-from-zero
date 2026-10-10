@@ -51,7 +51,7 @@
 
 - `RTVOBJD`(オブジェクトの作成日・所有者・テキストを変数に取り出す)と`RTVMSG`(メッセージ記述からメッセージ文を取り出す)。`RTVUSRPRF`(ユーザー・プロファイルの情報を変数に取り出す)と`RTVMBRD`(メンバーの情報を取り出す)は、同じ仲間のコマンドとして名前だけ挙げます(この教材では実行していません。未検証(2026-09-30時点))。「説明」の読解用の囲みにあります。
 
-**既習(復習。新出に数えません)**: `SBMJOB`(05-06・09-06)・`WRKSBMJOB`・`WRKSPLF`・`DSPLIBL OUTPUT(*PRINT)`(08-08)・`HEX()`(05-11)・`SETENV`(03-11・05-12)・`TXLEGACY FORCE(*YES)`(05-01)・`TXRESET`(02-05)・`TXCHECK`と`TXCKM`(05-13・09-07)・`CPYFRMSTMF`と`ADDPFM`・`CRTCLPGM`・`CRTCMD`(02-05)・`RUNSQL`(05-11・09-07)・`CHGCURLIB`(01-05・03-11)・`DLTPGM`・`DLTDTAARA`・`TXSTATUS`/`TXSETUP`(02-05)・`INQMSGRPY(*DFT)`(03-12)・SQLの`UPDATE`/`INSERT`/`DELETE`。`LOG(4 00 *SECLVL)`と、各コマンドを扱ったレッスン番号は、要確認です(05-11以降のレッスンで使っています)。
+**既習(復習。新出に数えません)**: `SBMJOB`(05-06・09-06)・`WRKSBMJOB`・`WRKSPLF`・`DSPLIBL OUTPUT(*PRINT)`(08-08)・`HEX()`(05-11)・`SETENV`(03-11・05-12)・`TXLEGACY FORCE(*YES)`(05-01)・`TXRESET`(02-05)・`TXCHECK`と`TXCKM`(05-13・08-08・09-07)・`CPYFRMSTMF`と`ADDPFM`・`CRTCLPGM`・`CRTCMD`(02-05)・`RUNSQL`(05-11・09-07)・`CHGCURLIB`(01-05・03-11)・`DLTPGM`・`DLTDTAARA`・`TXSTATUS`/`TXSETUP`(02-05)・`INQMSGRPY(*DFT)`(03-12)・SQLの`UPDATE`/`INSERT`/`DELETE`。`LOG(4 00 *SECLVL)`と、各コマンドを扱ったレッスン番号は、要確認です(05-11以降のレッスンで使っています)。
 
 ## 説明
 
@@ -79,7 +79,7 @@
 
 - **前提(04-27 の A4 と C で済ませてあること)**: `<自分のユーザー名>2` に `TXLEGACY ... LANG(*RPGLE)` で旧システムを入れてあり、データ域 `TXLEGLNG`(7桁の文字型。`TXLEGACY` が最後に、入れた言語を記録します)が `*RPGLE` であること。`DSPDTAARA DTAARA(<自分のユーザー名>2/TXLEGLNG)` で確かめます。
 - **手順4の `TXLEGACY LIB(<自分のユーザー名>2) FORCE(*YES)` は、そのまま打ってかまいません。** `LANG` を省くと既定の `*SAME` になり、`TXLEGLNG` に記録された言語(`*RPGLE`)のまま作り直します(`tools/qclsrc/txlegacy.clp` のソースの記述。実機での確認は 04-27 の準備に委ねます。未検証(2026-10-01時点))。`TXLEGLNG` が無いときは `*RPG` になり、RPG III 版が入ってしまいます。その場合と、RPG III 版が入っているときは、`TXLEGACY LIB(<自分のユーザー名>2) LANG(*RPGLE) FORCE(*YES)` で入れ直します。
-- **既習の技法の読み替え**: 上の「既習」に書いた技法の出どころは、ルートでは次のとおりです。`SBMJOB`・`WRKSBMJOB`・`INQMSGRPY(*DFT)` は [03-12](../part03/03-12-batch-jobs.md) と [09-06](../part09/09-06-data-queues-async.md)(05-06 は読みません)。`HEX()`(SQL)と `RUNSQL` は [04-24](../part04v/04-24-call-parm-debugging.md)(05-11 の代わり)。`TXLEGACY FORCE(*YES)` は [04-27](../part04v/04-27-route-preparation.md) の A4(05-01 の代わり)。`SETENV` は 03-11 で作ってあります(05-12 は読みません)。`TXLOAD` を作る手順は、手順6の「別の形」の中にだけあり、読解・任意です。ルートの人は飛ばしてかまいません。
+- **既習の技法の読み替え**: 上の「既習」に書いた技法の出どころは、ルートでは次のとおりです。`SBMJOB`・`WRKSBMJOB`・`INQMSGRPY(*DFT)` は [03-12](../part03/03-12-batch-jobs.md) と [09-06](../part09/09-06-data-queues-async.md)(05-06 は読みません)。`HEX()`(SQL)と `RUNSQL` は [04-24](../part04v/04-24-call-parm-debugging.md)(05-11 の代わり)。`TXLEGACY FORCE(*YES)` は [04-27](../part04v/04-27-route-preparation.md) の A4(05-01 の代わり)。`SETENV` は 03-11 で作ってあります(05-12 は読みません)。`TXCHECK`(`*PGM`・`*CMD`)と `TXCKM` のソースは、04-27 の A1(05-13 の代わり)で用意してあります。`<自分のユーザー名>2` の `TXCKM` は、どちらのルートでも [08-08](../part08/08-08-checkpoint-promote-rollback.md) の実演Aの手順3で作ったものです。`TXLOAD` を作る手順は、手順6の「別の形」の中にだけあり、読解・任意です。ルートの人は飛ばしてかまいません。
 - **入った言語の確認**: 手順4のあと、`ZA0500`・`JU0300`・`TK0100` の `OBJATTRIBUTE` がすべて `RPGLE` であることを、04-27 の A5 の問い合わせで確かめます。
 - **手順6のチケット1の修正**は、CL の `JU0900C` の宣言(`LEN(3 0)` を `LEN(5 0)` に)を直すもので、RPG の言語には関係しません。同じファイル `solutions/05-13/ju0900c-ticket1.clp` を使います(診断は 04-27 の B)。**ただし、修正前の症状として本文が書いている `RPG0907`・ステートメント `8100` は、RPG III 版の記録です。** 桁が食い違ったまま ILE 版の `ZA0500` を呼んだときのメッセージは、この教材ではまだ確かめていません(未検証(2026-10-01時点))。
 - **基準の12行**(手順7)は、ILE 版でも `OK` 10行・`SHORT` 2行になる作りです(移植の狙いです)。RPG III 版との出力の一致は、実機で確認しました(`part05-lggold`、2026-10-04。12行がテキストとして同一)。このレッスンのバッチでも、ILE 版の基準は `OK` 10行・`SHORT` 2行の12行で、写しは末尾の `-=*` の行を足して13レコードでした(実機で確認(part10-01-rpgle、2026-10-04)。ジョブの中から `CPYSPLF` で取り出した写し。`WRKSPLF` の画面での見え方はV3、未検証(2026-10-04時点))。
@@ -496,7 +496,7 @@ CLプログラムの中で、オブジェクトやメッセージの情報を変
 
     最後に、`CALL PGM(<自分のユーザー名>1/SETENV) PARM('*DEV')`で元に戻します(03-11のとおり、最後は`*DEV`に戻します)。
 
-17. **(SSH と 5250) `TXCKM`に、このレッスンの4行を登録し、`TXCHECK`を実行します。** `TXCHECK`は、`TXCKM`と、確かめる対象が、同じライブラリーにあることを前提にします(`LIB`パラメーター)。今回の対象は`<自分のユーザー名>2`にあるので、`TXCKM`も`<自分のユーザー名>2`に要ります(08-08で作ってあるはずです。無い場合は、05-13の手順で、`<自分のユーザー名>2`に作ります)。まず、`10-01`の行を消してから、入れます。`INSERT`の列の順は、08-08の`TXCKM`と同じです(違うときは、08-08の`INSERT`の形に合わせてください)。
+17. **(SSH と 5250) `TXCKM`に、このレッスンの4行を登録し、`TXCHECK`を実行します。** `TXCHECK`は、`TXCKM`と、確かめる対象が、同じライブラリーにあることを前提にします(`LIB`パラメーター)。今回の対象は`<自分のユーザー名>2`にあるので、`TXCKM`も`<自分のユーザー名>2`に要ります(08-08で作ってあるはずです。無い場合は、08-08の実演Aの手順3で、`DSPOBJD`で無いことを確かめてから、`CRTPF FILE(<自分のユーザー名>2/TXCKM) SRCFILE(<自分のユーザー名>1/QDDSSRC) SRCMBR(TXCKM)`で作ります。ソース・メンバーは、05-13(RPG III を通らないルートでは 04-27 の A1)で取り込み済みのはずです)。まず、`10-01`の行を消してから、入れます。`INSERT`の列の順は、08-08の`TXCKM`と同じです(違うときは、08-08の`INSERT`の形に合わせてください)。
 
     ```sh
     system "RUNSQL SQL('DELETE FROM <自分のユーザー名>2/TXCKM WHERE LESSON = ''10-01''') COMMIT(*NONE)"
