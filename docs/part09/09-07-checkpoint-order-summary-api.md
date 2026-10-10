@@ -398,7 +398,7 @@ APIの設計書を決まった書式で書く方法の1つが、**OpenAPI**(HTTP
 | `SQL0084` | (09-02・09-05で確認)`RUNSQLSTM`で`SELECT`単独文を実行した。このレッスンの検証では出ていません | 結果を見るには`db2`かACS。`.sql`には`SELECT`を書かない |
 | `SQL7905`(重大度20) | 演習(b)の表`W0907A`を、ジャーナルなしで作ったときに出るはずの警告(推測。`W0907A`は、検証で作っていません。未検証(2026-09-29時点)) | 無視してよい(09-02・09-05・09-06と同じ) |
 | `TXCHECK FAIL: (説明) (名前 型 not found in ライブラリー)` | 実体が無い(`CHKOBJ`が`CPF9801`)。**この文言は`tools/qclsrc/txcheck.clp`のソースから読み取った形で、このレッスンの検証では出ていません(未検証(2026-09-29時点))** | 関数を作り直す。`TXCKM`の名前・型を確かめる |
-| `TXCHECK: manifest TXCKM not found in ライブラリー. Nothing to check.` | ソース(`txcheck.clp`)から読み取った形で、この文言が出る条件は確認していません(未検証(2026-09-29時点))。`OVRDBF`は上書きを設定するだけなので、`TXCKM`が無いときは、この文言ではなく、`CPF4174`の場合と同じ「could not query the manifest」になる可能性があります | `LIB(...)`の指定と、05-13の`TXCKM`の作成を確かめる |
+| `TXCHECK: manifest TXCKM not found in ライブラリー. Nothing to check.` | ソース(`txcheck.clp`)から読み取った形で、この文言が出る条件は確認していません(未検証(2026-09-29時点))。`OVRDBF`は上書きを設定するだけなので、`TXCKM`が無いときは、この文言ではなく、`CPF4174`の場合と同じ「could not query the manifest」になる可能性があります | `LIB(...)`の指定と、05-13(RPG III を通らないルートでは 04-27)の`TXCKM`の作成を確かめる |
 
 メッセージ全般は[付録B](../appendix/b-message-ids.md)・[付録C](../appendix/c-troubleshooting.md)も参照してください。
 
